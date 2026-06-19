@@ -10,7 +10,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "IIAL — AI Grant Intelligence" },
-      { name: "description", content: "Discover, evaluate, and win Canadian grants with AI agents. Bilingual EN/FR." },
+      { name: "description", content: "Discover, evaluate, and win Canadian grants with AI agents. Bilingual EN/FR.." },
       { property: "og:title", content: "IIAL — AI Grant Intelligence" },
       { property: "og:description", content: "Discover, evaluate, and win Canadian grants with AI agents." },
     ],
