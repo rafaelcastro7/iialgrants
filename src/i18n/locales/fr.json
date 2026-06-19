@@ -49,5 +49,15 @@
     "cancel": "Annuler",
     "recordOutcome": "Enregistrer le résultat",
     "results": { "won": "Gagnée", "lost": "Perdue", "withdrawn": "Retirée", "no_response": "Sans réponse" }
+  },
+  "ops": {
+    "title": "Opérations",
+    "subtitle": "30 derniers jours d'activité des agents IA (admin seulement).",
+    "runs30d": "Exécutions (30j)",
+    "errorRate": "Taux d'erreur",
+    "cost30d": "Coût (30j)",
+    "pipeline": "Subventions en pipeline",
+    "byAgent": "Métriques quotidiennes par agent",
+    "recent": "Exécutions récentes"
   }
 }
