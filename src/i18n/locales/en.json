@@ -1,6 +1,6 @@
 {
   "app": { "name": "IIAL", "tagline": "AI-native grant intelligence for Canadian organizations", "loading": "Loading…", "error": "Something went wrong" },
-  "nav": { "dashboard": "Dashboard", "grants": "Grants", "proposals": "Proposals", "settings": "Settings", "signOut": "Sign out" },
+  "nav": { "dashboard": "Dashboard", "grants": "Grants", "proposals": "Proposals", "submissions": "Submissions", "settings": "Settings", "signOut": "Sign out" },
   "auth": { "signIn": "Sign in", "signUp": "Sign up", "email": "Email", "password": "Password", "continueWithGoogle": "Continue with Google" },
   "lang": { "switch": "Language", "en": "English", "fr": "Français" },
   "home": { "title": "IIAL — Grant Intelligence", "subtitle": "Discover, evaluate, and win Canadian grants with AI agents.", "cta": "Get started" },
@@ -31,6 +31,23 @@
     "citations": "Citations",
     "criticSummary": "Critic summary",
     "findings": "Findings",
-    "createdFrom": "From grant"
+    "createdFrom": "From grant",
+    "exportMd": "Export Markdown",
+    "submit": "Submit",
+    "submitPrompt": "Submission method (portal, email, mail, api, other):",
+    "confirmationPrompt": "Confirmation number (optional):"
+  },
+  "submissions": {
+    "title": "Submissions",
+    "empty": "No submissions yet. Submit a proposal from its detail page.",
+    "submittedAt": "Submitted at",
+    "result": "Result",
+    "amount": "Amount awarded (CAD)",
+    "decisionDate": "Decision date",
+    "feedback": "Funder feedback",
+    "save": "Save outcome",
+    "cancel": "Cancel",
+    "recordOutcome": "Record outcome",
+    "results": { "won": "Won", "lost": "Lost", "withdrawn": "Withdrawn", "no_response": "No response" }
   }
 }
