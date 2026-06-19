@@ -1,6 +1,6 @@
 {
   "app": { "name": "IIAL", "tagline": "Intelligence des subventions par IA pour les organisations canadiennes", "loading": "Chargement…", "error": "Une erreur est survenue" },
-  "nav": { "dashboard": "Tableau de bord", "grants": "Subventions", "proposals": "Propositions", "settings": "Paramètres", "signOut": "Se déconnecter" },
+  "nav": { "dashboard": "Tableau de bord", "grants": "Subventions", "proposals": "Propositions", "submissions": "Soumissions", "settings": "Paramètres", "signOut": "Se déconnecter" },
   "auth": { "signIn": "Se connecter", "signUp": "Créer un compte", "email": "Courriel", "password": "Mot de passe", "continueWithGoogle": "Continuer avec Google" },
   "lang": { "switch": "Langue", "en": "Anglais", "fr": "Français" },
   "home": { "title": "IIAL — Intelligence des subventions", "subtitle": "Découvrez, évaluez et gagnez des subventions canadiennes avec des agents IA.", "cta": "Commencer" },
@@ -31,6 +31,23 @@
     "citations": "Citations",
     "criticSummary": "Résumé du critique",
     "findings": "Constats",
-    "createdFrom": "À partir de la subvention"
+    "createdFrom": "À partir de la subvention",
+    "exportMd": "Exporter Markdown",
+    "submit": "Soumettre",
+    "submitPrompt": "Méthode de soumission (portal, email, mail, api, other) :",
+    "confirmationPrompt": "Numéro de confirmation (optionnel) :"
+  },
+  "submissions": {
+    "title": "Soumissions",
+    "empty": "Aucune soumission. Soumettez une proposition depuis sa page de détail.",
+    "submittedAt": "Soumise le",
+    "result": "Résultat",
+    "amount": "Montant accordé (CAD)",
+    "decisionDate": "Date de décision",
+    "feedback": "Rétroaction du bailleur",
+    "save": "Enregistrer le résultat",
+    "cancel": "Annuler",
+    "recordOutcome": "Enregistrer le résultat",
+    "results": { "won": "Gagnée", "lost": "Perdue", "withdrawn": "Retirée", "no_response": "Sans réponse" }
   }
 }

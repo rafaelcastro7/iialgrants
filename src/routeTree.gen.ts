@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSubmissionsRouteImport } from './routes/_authenticated.submissions'
 import { Route as AuthenticatedProposalsRouteImport } from './routes/_authenticated.proposals'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
@@ -19,6 +20,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
+import { Route as ApiPublicHooksDeadlinesRouteImport } from './routes/api/public/hooks/deadlines'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -34,6 +36,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSubmissionsRoute =
+  AuthenticatedSubmissionsRouteImport.update({
+    id: '/submissions',
+    path: '/submissions',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedProposalsRoute = AuthenticatedProposalsRouteImport.update({
   id: '/proposals',
   path: '/proposals',
@@ -70,6 +78,11 @@ const ApiPublicHooksDiscoverRoute = ApiPublicHooksDiscoverRouteImport.update({
   path: '/api/public/hooks/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksDeadlinesRoute = ApiPublicHooksDeadlinesRouteImport.update({
+  id: '/api/public/hooks/deadlines',
+  path: '/api/public/hooks/deadlines',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -78,7 +91,9 @@ export interface FileRoutesByFullPath {
   '/grants': typeof AuthenticatedGrantsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
+  '/submissions': typeof AuthenticatedSubmissionsRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -89,7 +104,9 @@ export interface FileRoutesByTo {
   '/grants': typeof AuthenticatedGrantsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
+  '/submissions': typeof AuthenticatedSubmissionsRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -102,7 +119,9 @@ export interface FileRoutesById {
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/_authenticated/proposals': typeof AuthenticatedProposalsRouteWithChildren
+  '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -115,7 +134,9 @@ export interface FileRouteTypes {
     | '/grants'
     | '/org'
     | '/proposals'
+    | '/submissions'
     | '/proposals/$id'
+    | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   fileRoutesByTo: FileRoutesByTo
@@ -126,7 +147,9 @@ export interface FileRouteTypes {
     | '/grants'
     | '/org'
     | '/proposals'
+    | '/submissions'
     | '/proposals/$id'
+    | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   id:
@@ -138,7 +161,9 @@ export interface FileRouteTypes {
     | '/_authenticated/grants'
     | '/_authenticated/org'
     | '/_authenticated/proposals'
+    | '/_authenticated/submissions'
     | '/_authenticated/proposals/$id'
+    | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   fileRoutesById: FileRoutesById
@@ -147,6 +172,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicHooksDeadlinesRoute: typeof ApiPublicHooksDeadlinesRoute
   ApiPublicHooksDiscoverRoute: typeof ApiPublicHooksDiscoverRoute
   ApiPublicHooksEnrichRoute: typeof ApiPublicHooksEnrichRoute
 }
@@ -173,6 +199,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/submissions': {
+      id: '/_authenticated/submissions'
+      path: '/submissions'
+      fullPath: '/submissions'
+      preLoaderRoute: typeof AuthenticatedSubmissionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/proposals': {
       id: '/_authenticated/proposals'
@@ -223,6 +256,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/deadlines': {
+      id: '/api/public/hooks/deadlines'
+      path: '/api/public/hooks/deadlines'
+      fullPath: '/api/public/hooks/deadlines'
+      preLoaderRoute: typeof ApiPublicHooksDeadlinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -245,6 +285,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedProposalsRoute: typeof AuthenticatedProposalsRouteWithChildren
+  AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -252,6 +293,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedProposalsRoute: AuthenticatedProposalsRouteWithChildren,
+  AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -262,6 +304,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicHooksDeadlinesRoute: ApiPublicHooksDeadlinesRoute,
   ApiPublicHooksDiscoverRoute: ApiPublicHooksDiscoverRoute,
   ApiPublicHooksEnrichRoute: ApiPublicHooksEnrichRoute,
 }

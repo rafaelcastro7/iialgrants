@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getProposal } from "@/lib/proposals.functions";
+import { submitProposal, exportProposalMarkdown } from "@/lib/submissions.functions";
 import { draftSection } from "@/agents/writer.functions";
 import { runCritic } from "@/agents/critic.functions";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ function ProposalDetailPage() {
   const fetchProposal = useServerFn(getProposal);
   const draft = useServerFn(draftSection);
   const critic = useServerFn(runCritic);
+  const submit = useServerFn(submitProposal);
+  const exportMd = useServerFn(exportProposalMarkdown);
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -87,9 +90,52 @@ function ProposalDetailPage() {
               {proposal.critic_score != null && <span className="ml-2">{t("proposals.score")}: {(Number(proposal.critic_score) * 100).toFixed(0)}%</span>}
             </p>
           </div>
-          <Button onClick={onCritic} disabled={pending === "critic"}>
-            {pending === "critic" ? t("app.loading") : t("proposals.runCritic")}
-          </Button>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button onClick={onCritic} disabled={pending === "critic"}>
+              {pending === "critic" ? t("app.loading") : t("proposals.runCritic")}
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={pending === "export"}
+              onClick={async () => {
+                setPending("export"); setErr(null);
+                try {
+                  const r = await exportMd({ data: { id, language: fr ? "fr" : "en" } });
+                  const blob = new Blob([r.markdown], { type: "text/markdown;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = r.filename; a.click();
+                  URL.revokeObjectURL(url);
+                } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+                finally { setPending(null); }
+              }}
+            >{t("proposals.exportMd")}</Button>
+            {proposal.status !== "submitted" && (
+              <Button
+                variant="default"
+                disabled={pending === "submit"}
+                onClick={async () => {
+                  const method = window.prompt(t("proposals.submitPrompt"), "portal");
+                  if (!method) return;
+                  const conf = window.prompt(t("proposals.confirmationPrompt"), "") || "";
+                  setPending("submit"); setErr(null);
+                  try {
+                    await submit({
+                      data: {
+                        proposalId: id,
+                        method: (["portal","email","mail","api","other"].includes(method) ? method : "other") as "portal"|"email"|"mail"|"api"|"other",
+                        confirmation_number: conf || null,
+                        language: fr ? "fr" : "en",
+                      },
+                    });
+                    await qc.invalidateQueries({ queryKey: ["proposal", id] });
+                    await navigate({ to: "/submissions" });
+                  } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+                  finally { setPending(null); }
+                }}
+              >{t("proposals.submit")}</Button>
+            )}
+          </div>
         </div>
 
         {(meta.critic_summary_en || meta.critic_summary_fr) && (
