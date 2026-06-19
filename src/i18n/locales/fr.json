@@ -28,5 +28,24 @@
     "title": "IIAL — Intelligence des subventions",
     "subtitle": "Découvrez, évaluez et remportez des subventions canadiennes grâce à des agents IA.",
     "cta": "Commencer"
+  },
+  "grants": {
+    "empty": "Aucune subvention découverte pour l'instant. L'agent Discoverer s'exécute toutes les heures.",
+    "amount": "Montant",
+    "deadline": "Échéance",
+    "fit": "Adéquation",
+    "source": "Voir la source",
+    "status": {
+      "discovered": "Découverte",
+      "enriched": "Enrichie",
+      "scored": "Évaluée",
+      "shortlisted": "Présélectionnée",
+      "in_proposal": "En rédaction",
+      "submitted": "Soumise",
+      "won": "Gagnée",
+      "lost": "Perdue",
+      "expired": "Expirée",
+      "archived": "Archivée"
+    }
   }
 }

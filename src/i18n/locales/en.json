@@ -28,5 +28,24 @@
     "title": "IIAL — Grant Intelligence",
     "subtitle": "Discover, evaluate, and win Canadian grants with AI agents.",
     "cta": "Get started"
+  },
+  "grants": {
+    "empty": "No grants discovered yet. The Discoverer agent runs hourly.",
+    "amount": "Amount",
+    "deadline": "Deadline",
+    "fit": "Fit",
+    "source": "Open source",
+    "status": {
+      "discovered": "Discovered",
+      "enriched": "Enriched",
+      "scored": "Scored",
+      "shortlisted": "Shortlisted",
+      "in_proposal": "In proposal",
+      "submitted": "Submitted",
+      "won": "Won",
+      "lost": "Lost",
+      "expired": "Expired",
+      "archived": "Archived"
+    }
   }
 }
