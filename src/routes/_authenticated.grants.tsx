@@ -38,6 +38,8 @@ function GrantsPage() {
   const navigate = useNavigate();
   const fetchGrants = useServerFn(listGrants);
   const evaluate = useServerFn(runEvaluator);
+  const strategize = useServerFn(runStrategist);
+
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
   const [evalError, setEvalError] = useState<string | null>(null);
