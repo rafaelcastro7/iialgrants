@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DiscovererOutput, EnrichedGrant, PROMPTS } from "@/agents/schemas";
+import { DiscovererOutput, EnricherOutput, EvaluatorOutput, PROMPTS } from "@/agents/schemas";
 
 describe("agents/schemas", () => {
   it("accepts a valid discoverer output", () => {
