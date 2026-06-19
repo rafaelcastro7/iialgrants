@@ -1,51 +1,31 @@
 {
-  "app": {
-    "name": "IIAL",
-    "tagline": "AI-native grant intelligence for Canadian organizations",
-    "loading": "Loading…",
-    "error": "Something went wrong"
-  },
-  "nav": {
-    "dashboard": "Dashboard",
-    "grants": "Grants",
-    "proposals": "Proposals",
-    "settings": "Settings",
-    "signOut": "Sign out"
-  },
-  "auth": {
-    "signIn": "Sign in",
-    "signUp": "Sign up",
-    "email": "Email",
-    "password": "Password",
-    "continueWithGoogle": "Continue with Google"
-  },
-  "lang": {
-    "switch": "Language",
-    "en": "English",
-    "fr": "Français"
-  },
-  "home": {
-    "title": "IIAL — Grant Intelligence",
-    "subtitle": "Discover, evaluate, and win Canadian grants with AI agents.",
-    "cta": "Get started"
-  },
+  "app": { "name": "IIAL", "tagline": "AI-native grant intelligence for Canadian organizations", "loading": "Loading…", "error": "Something went wrong" },
+  "nav": { "dashboard": "Dashboard", "grants": "Grants", "proposals": "Proposals", "settings": "Settings", "signOut": "Sign out" },
+  "auth": { "signIn": "Sign in", "signUp": "Sign up", "email": "Email", "password": "Password", "continueWithGoogle": "Continue with Google" },
+  "lang": { "switch": "Language", "en": "English", "fr": "Français" },
+  "home": { "title": "IIAL — Grant Intelligence", "subtitle": "Discover, evaluate, and win Canadian grants with AI agents.", "cta": "Get started" },
   "grants": {
     "empty": "No grants discovered yet. The Discoverer agent runs hourly.",
     "amount": "Amount",
     "deadline": "Deadline",
     "fit": "Fit",
     "source": "Open source",
+    "evaluate": "Evaluate fit",
     "status": {
-      "discovered": "Discovered",
-      "enriched": "Enriched",
-      "scored": "Scored",
-      "shortlisted": "Shortlisted",
-      "in_proposal": "In proposal",
-      "submitted": "Submitted",
-      "won": "Won",
-      "lost": "Lost",
-      "expired": "Expired",
-      "archived": "Archived"
+      "discovered": "Discovered", "enriched": "Enriched", "scored": "Scored", "shortlisted": "Shortlisted",
+      "in_proposal": "In proposal", "submitted": "Submitted", "won": "Won", "lost": "Lost", "expired": "Expired", "archived": "Archived"
     }
+  },
+  "org": {
+    "title": "Organization profile",
+    "name": "Organization name",
+    "sectors": "Sectors (comma-separated)",
+    "jurisdictions": "Jurisdictions (comma-separated, e.g. CA, ON)",
+    "stage": "Stage",
+    "budget": "Annual budget (CAD)",
+    "focus": "Focus areas",
+    "save": "Save profile",
+    "saved": "Saved.",
+    "stages": { "startup": "Startup", "sme": "SME", "nonprofit": "Non-profit", "research": "Research / academia", "public_sector": "Public sector" }
   }
 }
