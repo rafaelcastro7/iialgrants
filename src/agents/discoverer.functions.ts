@@ -119,7 +119,7 @@ export const runDiscoverer = createServerFn({ method: "POST" })
             amount_cad_min: g.amount_cad_min ?? null,
             amount_cad_max: g.amount_cad_max ?? null,
             deadline: g.deadline ?? null,
-            eligibility: g.eligibility ?? {},
+            eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
             sectors: g.sectors ?? [],
             language: g.language,
             url: g.url,
