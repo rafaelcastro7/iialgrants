@@ -62,3 +62,38 @@
 - Tests: golden set ampliado (5 → 20 cases), gate 3 (LLM-as-judge para Enricher).
 
 **Riesgo principal:** rate limits y bloqueos de scraping de fuentes públicas. Mitigación: usar feeds RSS oficiales del Gobierno de Canadá (Open Data Portal + Grants Canada API) antes de scraping.
+
+---
+
+## Fase 3 — Strategist + Writer + Critic + RAG ✅
+
+### Entregables
+- **Tablas nuevas**: `proposal_templates`, `knowledge_chunks` (pgvector 1536), `proposals` (versionado + critic_score), `proposal_sections`, `proposal_citations` (audit trail inmutable).
+- **RAG híbrido**: BM25 (FTS GIN) ∪ similitud vectorial (HNSW cosine), fusionados con RRF (k=60). RPC `match_knowledge_chunks` (SECURITY INVOKER, RLS por usuario).
+- **Embeddings**: `openai/text-embedding-3-small` (1536 dims) vía Lovable AI Gateway `/embeddings`.
+- **Agente Strategist** (Gemini 2.5 Flash): plan de propuesta a partir de grant + perfil + plantilla; crea proposal + sections; transiciona `scored → shortlisted → in_proposal`.
+- **Agente Writer** (Gemini 2.5 Flash): redacta una sección con chunks numerados `[d1]..[dN]`, EN + FR-CA. Validador `validateCitations` rechaza marcadores no declarados o chunk_ids fuera del conjunto recuperado.
+- **Agente Critic** (Gemini 2.5 Pro): puntaje global 0–1 + findings por sección (info/warn/block) bilingües; persiste en `proposals.critic_score` y `proposal_sections.critic_notes`.
+- **Ingesta de conocimiento**: `ingestOrgProfileAsKnowledge` sincroniza el perfil org como chunks embebidos; `ingestKnowledge` para texto manual.
+- **UI**: `/proposals` (listado + botón sync RAG), `/proposals/$id` (secciones, draft por sección, run critic, citaciones inline, findings); botón "Draft proposal" en `/grants` para subvenciones `scored/shortlisted/in_proposal`.
+- **i18n EN/FR**: todas las cadenas de Fase 3 traducidas (FR-CA).
+- **Eval Gate 1 ampliado**: `src/evals/writer.test.ts` — 4 tests unitarios del validador de citaciones (propiedad de seguridad no-negociable ADR-005).
+
+### Estado de gates EDD
+- Gate 1 (unit): 12 tests (schemas + writer validator) ✅
+- Gate 2 (golden regression): 2 (runner) ✅
+- Gate 3 (LLM-judge Evaluator): 4 + 1 skip placeholder ✅
+- Gate 4 (pairwise) y Gate 5 (adversarial Writer/Critic): pendientes Fase 5.
+
+### Verificación
+- `vitest run`: **17/17 pass** (1 skip placeholder).
+- Migración 005 OK; warnings restantes (vector/pg_net en `public`) son estándar Supabase.
+
+## Progreso: Fase 4 de 6 (~67%)
+
+### Próximo paso — Fase 4: Submission + Tracking + Outcomes
+- Estado `in_proposal → submitted → won/lost` con timestamps.
+- Exportación de propuesta a PDF/DOCX bilingüe.
+- Dashboard de métricas: pipeline por estado, fit_score promedio, win-rate, tokens/costo por agente (OTel + `agent_runs`).
+- Notificaciones (deadlines próximos vía pg_cron + email).
+- Gate 4 (pairwise A/B Writer): 2 prompts → preferencia LLM-judge.
