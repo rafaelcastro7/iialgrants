@@ -361,6 +361,53 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body_en: string
+          body_fr: string
+          created_at: string
+          grant_id: string | null
+          id: string
+          kind: string
+          read_at: string | null
+          title_en: string
+          title_fr: string
+          user_id: string
+        }
+        Insert: {
+          body_en: string
+          body_fr: string
+          created_at?: string
+          grant_id?: string | null
+          id?: string
+          kind: string
+          read_at?: string | null
+          title_en: string
+          title_fr: string
+          user_id: string
+        }
+        Update: {
+          body_en?: string
+          body_fr?: string
+          created_at?: string
+          grant_id?: string | null
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title_en?: string
+          title_fr?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_profiles: {
         Row: {
           annual_budget_cad: number | null
@@ -396,6 +443,63 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      outcomes: {
+        Row: {
+          amount_awarded_cad: number | null
+          created_at: string
+          decision_date: string | null
+          feedback: string | null
+          grant_id: string
+          id: string
+          lessons_learned: string | null
+          result: string
+          submission_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_awarded_cad?: number | null
+          created_at?: string
+          decision_date?: string | null
+          feedback?: string | null
+          grant_id: string
+          id?: string
+          lessons_learned?: string | null
+          result: string
+          submission_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_awarded_cad?: number | null
+          created_at?: string
+          decision_date?: string | null
+          feedback?: string | null
+          grant_id?: string
+          id?: string
+          lessons_learned?: string | null
+          result?: string
+          submission_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outcomes_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outcomes_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: true
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -617,6 +721,66 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submissions: {
+        Row: {
+          attachments: Json
+          confirmation_number: string | null
+          created_at: string
+          grant_id: string
+          id: string
+          language: Database["public"]["Enums"]["app_lang"]
+          method: string
+          notes: string | null
+          proposal_id: string
+          submitted_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json
+          confirmation_number?: string | null
+          created_at?: string
+          grant_id: string
+          id?: string
+          language?: Database["public"]["Enums"]["app_lang"]
+          method: string
+          notes?: string | null
+          proposal_id: string
+          submitted_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachments?: Json
+          confirmation_number?: string | null
+          created_at?: string
+          grant_id?: string
+          id?: string
+          language?: Database["public"]["Enums"]["app_lang"]
+          method?: string
+          notes?: string | null
+          proposal_id?: string
+          submitted_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
             referencedColumns: ["id"]
           },
         ]
