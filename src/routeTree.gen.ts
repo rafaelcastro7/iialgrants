@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedProposalsRouteImport } from './routes/_authenticated.proposals'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
 
@@ -32,6 +34,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedProposalsRoute = AuthenticatedProposalsRouteImport.update({
+  id: '/proposals',
+  path: '/proposals',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedOrgRoute = AuthenticatedOrgRouteImport.update({
   id: '/org',
   path: '/org',
@@ -47,6 +54,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedProposalsIdRoute =
+  AuthenticatedProposalsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedProposalsRoute,
+  } as any)
 const ApiPublicHooksEnrichRoute = ApiPublicHooksEnrichRouteImport.update({
   id: '/api/public/hooks/enrich',
   path: '/api/public/hooks/enrich',
@@ -64,6 +77,8 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/org': typeof AuthenticatedOrgRoute
+  '/proposals': typeof AuthenticatedProposalsRouteWithChildren
+  '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -73,6 +88,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/org': typeof AuthenticatedOrgRoute
+  '/proposals': typeof AuthenticatedProposalsRouteWithChildren
+  '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -84,6 +101,8 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
+  '/_authenticated/proposals': typeof AuthenticatedProposalsRouteWithChildren
+  '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -95,6 +114,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grants'
     | '/org'
+    | '/proposals'
+    | '/proposals/$id'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   fileRoutesByTo: FileRoutesByTo
@@ -104,6 +125,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grants'
     | '/org'
+    | '/proposals'
+    | '/proposals/$id'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   id:
@@ -114,6 +137,8 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/grants'
     | '/_authenticated/org'
+    | '/_authenticated/proposals'
+    | '/_authenticated/proposals/$id'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   fileRoutesById: FileRoutesById
@@ -149,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/proposals': {
+      id: '/_authenticated/proposals'
+      path: '/proposals'
+      fullPath: '/proposals'
+      preLoaderRoute: typeof AuthenticatedProposalsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/org': {
       id: '/_authenticated/org'
       path: '/org'
@@ -170,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/proposals/$id': {
+      id: '/_authenticated/proposals/$id'
+      path: '/$id'
+      fullPath: '/proposals/$id'
+      preLoaderRoute: typeof AuthenticatedProposalsIdRouteImport
+      parentRoute: typeof AuthenticatedProposalsRoute
+    }
     '/api/public/hooks/enrich': {
       id: '/api/public/hooks/enrich'
       path: '/api/public/hooks/enrich'
@@ -187,16 +226,32 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedProposalsRouteChildren {
+  AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
+}
+
+const AuthenticatedProposalsRouteChildren: AuthenticatedProposalsRouteChildren =
+  {
+    AuthenticatedProposalsIdRoute: AuthenticatedProposalsIdRoute,
+  }
+
+const AuthenticatedProposalsRouteWithChildren =
+  AuthenticatedProposalsRoute._addFileChildren(
+    AuthenticatedProposalsRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
+  AuthenticatedProposalsRoute: typeof AuthenticatedProposalsRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
+  AuthenticatedProposalsRoute: AuthenticatedProposalsRouteWithChildren,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
