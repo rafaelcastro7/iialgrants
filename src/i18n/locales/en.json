@@ -59,5 +59,47 @@
     "pipeline": "Pipeline grants",
     "byAgent": "Daily metrics by agent",
     "recent": "Recent runs"
+  },
+  "compliance": {
+    "title": "Compliance & Trust",
+    "maintainedBy": "This page is maintained by IIAL to answer common security and privacy questions about the platform.",
+    "dataResidency": "Data residency",
+    "frameworks": "Frameworks we align with",
+    "notCertification": "Alignment, not certification. We follow these frameworks; we do not claim third-party certification.",
+    "aiTransparency": "AI transparency",
+    "rights": "Your rights",
+    "openPrivacyCenter": "Open Privacy Center",
+    "contact": "Contact",
+    "link": "Compliance"
+  },
+  "privacy": {
+    "title": "Privacy Center",
+    "subtitle": "Manage consents, export your data, request rectification or deletion.",
+    "consents": "Consents",
+    "grant": "Grant",
+    "revoke": "Revoke",
+    "notRecorded": "Not recorded",
+    "saved": "Consent recorded.",
+    "dataRights": "Data rights",
+    "exportData": "Export my data (JSON)",
+    "requestAccess": "Request access record",
+    "requestRectify": "Request rectification",
+    "requestDelete": "Request account deletion",
+    "deleteConfirm": "This files a deletion request. We will process it within 30 days. Continue?",
+    "deleteRequested": "Deletion request filed.",
+    "exportDone": "Export ready — file downloaded.",
+    "requestFiled": "Request filed.",
+    "dsarSla": "Requests are processed within 30 days (PIPEDA / Law 25).",
+    "dsarHistory": "Request history",
+    "dsarEmpty": "No requests yet.",
+    "link": "Privacy",
+    "types": {
+      "terms_of_service": "Terms of service",
+      "privacy_policy": "Privacy policy",
+      "ai_processing": "AI processing of my data",
+      "cross_border_transfer": "Cross-border data transfer",
+      "marketing": "Product updates and marketing"
+    },
+    "kinds": { "access": "Access", "export": "Export", "delete": "Delete", "rectify": "Rectify" }
   }
 }
