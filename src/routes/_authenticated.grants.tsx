@@ -63,6 +63,17 @@ function GrantsPage() {
       setEvalError(e instanceof Error ? e.message : String(e));
     } finally { setPending(null); }
   }
+  async function onDraft(grantId: string) {
+    setPending(grantId + ":draft"); setEvalError(null);
+    try {
+      const r = await strategize({ data: { grantId } });
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+      await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally { setPending(null); }
+  }
+
 
   const fmt = (n: number | null) =>
     n == null ? "—" : new Intl.NumberFormat(fr ? "fr-CA" : "en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
