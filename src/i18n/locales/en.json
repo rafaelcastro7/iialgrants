@@ -49,5 +49,15 @@
     "cancel": "Cancel",
     "recordOutcome": "Record outcome",
     "results": { "won": "Won", "lost": "Lost", "withdrawn": "Withdrawn", "no_response": "No response" }
+  },
+  "ops": {
+    "title": "Operations",
+    "subtitle": "Last 30 days of AI agent activity (admin only).",
+    "runs30d": "Runs (30d)",
+    "errorRate": "Error rate",
+    "cost30d": "Cost (30d)",
+    "pipeline": "Pipeline grants",
+    "byAgent": "Daily metrics by agent",
+    "recent": "Recent runs"
   }
 }

@@ -47,9 +47,12 @@ function Dashboard() {
         <CardContent>
           <p className="text-sm text-muted-foreground">{email ?? "—"}</p>
           <p className="mt-4 text-sm">{t("app.tagline")}</p>
-          <Link to="/grants" className="inline-block mt-4">
-            <Button>{t("nav.grants")} →</Button>
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link to="/grants"><Button>{t("nav.grants")} →</Button></Link>
+            <Link to="/proposals"><Button variant="outline">{t("nav.proposals")}</Button></Link>
+            <Link to="/submissions"><Button variant="outline">{t("nav.submissions")}</Button></Link>
+            <Link to="/ops"><Button variant="ghost">{t("ops.title")}</Button></Link>
+          </div>
         </CardContent>
       </Card>
     </main>

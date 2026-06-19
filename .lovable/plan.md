@@ -93,7 +93,32 @@
 
 **Progreso global: 4 de 6 fases (~67%).**
 
-**Próximo paso — Fase 5 (Observability + EDD Gates):** exporter OTel OTLP real con tokens/cost/latency por agente, dashboard `/ops` (admin only) sobre `agent_runs`, golden set ampliado a 20 casos por agente, Gate 4 (pairwise) y Gate 5 (adversarial prompt-injection) en CI.
+---
+
+## Fase 5 — Observability + EDD Gates ✅
+
+### Entregables
+- **OTLP exporter real** (`src/lib/otel.ts`): emite log JSON estructurado y, cuando `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` está configurado, exporta vía OTLP/HTTP `/v1/logs` con semantic conventions GenAI estables (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.*`, `latency_ms`, `cost_usd`). Fire-and-forget — los fallos jamás rompen la request del usuario.
+- **Vista `agent_runs_daily`** (security_invoker): agregados por día y agente — runs, ok/error/degraded, tokens in/out, costo USD, latencia p50/p95 (ventana móvil de 30 días). EXECUTE revocado de `is_admin`/`has_role` (sólo el motor RLS los invoca).
+- **Server fn `getOpsMetrics`** (`src/lib/ops.functions.ts`): guard `assertAdmin` server-side (consulta `user_roles` con admin client), devuelve `{ daily, recent, pipeline }`.
+- **Ruta `/ops`** (admin-only): 4 stat cards (Runs 30d · Error rate · Cost 30d · Pipeline), tabla diaria por agente y feed de últimas 50 corridas. `errorComponent` muestra `forbidden` a no-admins.
+- **Gates EDD** (`src/evals/pairwise.test.ts`):
+  - Gate 4 (pairwise): `adversarial.fit_score_max ≤ 0.5 < positive.fit_score_min ≥ 0.7`.
+  - Gate 5 (adversarial): cobertura obligatoria de prompt-injection + jurisdicción + sector + stage; cada caso adversarial declara `must_not_contain`.
+  - Invariantes: IDs únicos, schema bien tipado.
+- **i18n EN/FR**: `ops.*` completo.
+- **Dashboard**: navegación rápida a `/grants`, `/proposals`, `/submissions`, `/ops`.
+
+### Verificación
+| Suite | Resultado |
+|---|---|
+| `bunx vitest run` | ✅ 22 passed (1 skipped), 5 archivos |
+| Migración 007 vista + helper | ✅ OK |
+| Migración 008 revoke EXECUTE | ✅ OK (sólo warnings pre-existentes de pgvector/pg_cron en public) |
+
+**Progreso global: 5 de 6 fases (~83%).**
+
+**Próximo paso — Fase 6 (Compliance + Launch readiness):** página de cumplimiento (PIPEDA / Quebec Law 25 / AIDA), consent ledger, DSAR endpoints (export + delete), evidence pack para auditoría (ADR registry + DPIA + system card bilingüe), pen-test checklist, runbook de incidentes y publicación.
 
 ### Estado de gates EDD
 - Gate 1 (unit): 12 tests (schemas + writer validator) ✅

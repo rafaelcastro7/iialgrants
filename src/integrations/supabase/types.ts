@@ -808,7 +808,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      agent_runs_daily: {
+        Row: {
+          agent: Database["public"]["Enums"]["agent_name"] | null
+          cost_usd: number | null
+          day: string | null
+          degraded_runs: number | null
+          error_runs: number | null
+          input_tokens: number | null
+          ok_runs: number | null
+          output_tokens: number | null
+          p50_ms: number | null
+          p95_ms: number | null
+          runs: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
@@ -818,6 +833,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: { _uid: string }; Returns: boolean }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
