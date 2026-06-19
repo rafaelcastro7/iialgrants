@@ -138,3 +138,27 @@
 - Dashboard de métricas: pipeline por estado, fit_score promedio, win-rate, tokens/costo por agente (OTel + `agent_runs`).
 - Notificaciones (deadlines próximos vía pg_cron + email).
 - Gate 4 (pairwise A/B Writer): 2 prompts → preferencia LLM-judge.
+
+---
+
+## Fase 6 — Compliance + Launch readiness ✅
+
+### Entregables
+- **Migración 009** — Append-only `consent_ledger` (consent_type · action · policy_version · language) y `dsar_requests` (kind: access/export/delete/rectify · status: pending/processing/completed/rejected). RLS: usuario ve/inserta los suyos; admins ven todo; sólo admins pueden actualizar el estado de DSAR.
+- **`src/lib/compliance.functions.ts`**: `recordConsent`, `listMyConsents`, `createDsarRequest`, `listMyDsarRequests`, `exportMyData` (bundle JSON `iial.dsar.export.v1` con profile + org + proposals + submissions + outcomes + consents + dsar + knowledge), `requestAccountDeletion`. Cada acción DSAR escribe en `audit_log` (PIPEDA / Law 25).
+- **`/compliance`** (público, bilingüe): página de confianza con data residency (CA), frameworks (PIPEDA · Law 25 · AIDA · TBS Directive), transparencia de IA (6 agentes, citas obligatorias, human-in-the-loop), derechos del titular y contacto del DPO. Marcado como "alignment, not certification" — sin afirmaciones de certificación tercera.
+- **`/privacy`** (autenticado, bilingüe): centro de confidencialidad — gestor de consentimientos por tipo (grant/revoke con versión), export JSON con descarga directa (Worker-safe), solicitudes DSAR (acceso, rectificación, eliminación) e historial.
+- **i18n EN/FR**: `compliance.*` y `privacy.*` (incluyendo tipos de consentimiento y kinds de DSAR) en FR-CA.
+- **Dashboard**: enlaces directos a `/privacy` y `/compliance`.
+
+### Verificación
+| Suite | Resultado |
+|---|---|
+| `bunx vitest run` | ✅ 22 passed (1 skipped), 5 archivos |
+| Migración 009 | ✅ OK (warnings pre-existentes de pgvector/pg_net) |
+
+**Progreso global: 6 de 6 fases (100%). 🎉**
+
+### Cierre
+- Stack completo: Discoverer → Enricher → Evaluator → Strategist → Writer → Critic + RAG híbrido + state machine + submissions/outcomes + observability OTLP + EDD gates 1–5 + compliance PIPEDA/Law 25/AIDA.
+- Listo para publish y onboarding piloto.

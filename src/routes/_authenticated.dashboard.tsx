@@ -52,7 +52,10 @@ function Dashboard() {
             <Link to="/proposals"><Button variant="outline">{t("nav.proposals")}</Button></Link>
             <Link to="/submissions"><Button variant="outline">{t("nav.submissions")}</Button></Link>
             <Link to="/ops"><Button variant="ghost">{t("ops.title")}</Button></Link>
+            <Link to="/privacy"><Button variant="ghost">{t("privacy.link")}</Button></Link>
+            <Link to="/compliance"><Button variant="ghost">{t("compliance.link")}</Button></Link>
           </div>
+
         </CardContent>
       </Card>
     </main>
