@@ -1,31 +1,36 @@
 {
-  "app": { "name": "IIAL", "tagline": "Veille de subventions assistée par IA pour les organisations canadiennes", "loading": "Chargement…", "error": "Une erreur est survenue" },
-  "nav": { "dashboard": "Tableau de bord", "grants": "Subventions", "proposals": "Propositions", "settings": "Paramètres", "signOut": "Déconnexion" },
-  "auth": { "signIn": "Connexion", "signUp": "Inscription", "email": "Courriel", "password": "Mot de passe", "continueWithGoogle": "Continuer avec Google" },
-  "lang": { "switch": "Langue", "en": "English", "fr": "Français" },
-  "home": { "title": "IIAL — Intelligence des subventions", "subtitle": "Découvrez, évaluez et remportez des subventions canadiennes grâce à des agents IA.", "cta": "Commencer" },
+  "app": { "name": "IIAL", "tagline": "Intelligence des subventions par IA pour les organisations canadiennes", "loading": "Chargement…", "error": "Une erreur est survenue" },
+  "nav": { "dashboard": "Tableau de bord", "grants": "Subventions", "proposals": "Propositions", "settings": "Paramètres", "signOut": "Se déconnecter" },
+  "auth": { "signIn": "Se connecter", "signUp": "Créer un compte", "email": "Courriel", "password": "Mot de passe", "continueWithGoogle": "Continuer avec Google" },
+  "lang": { "switch": "Langue", "en": "Anglais", "fr": "Français" },
+  "home": { "title": "IIAL — Intelligence des subventions", "subtitle": "Découvrez, évaluez et gagnez des subventions canadiennes avec des agents IA.", "cta": "Commencer" },
   "grants": {
-    "empty": "Aucune subvention découverte pour l'instant. L'agent Discoverer s'exécute toutes les heures.",
-    "amount": "Montant",
-    "deadline": "Échéance",
-    "fit": "Adéquation",
-    "source": "Voir la source",
-    "evaluate": "Évaluer l'adéquation",
+    "empty": "Aucune subvention découverte. L'agent Découvreur s'exécute chaque heure.",
+    "amount": "Montant", "deadline": "Date limite", "fit": "Adéquation", "source": "Source",
+    "evaluate": "Évaluer l'adéquation", "draftProposal": "Rédiger une proposition",
     "status": {
       "discovered": "Découverte", "enriched": "Enrichie", "scored": "Évaluée", "shortlisted": "Présélectionnée",
-      "in_proposal": "En rédaction", "submitted": "Soumise", "won": "Gagnée", "lost": "Perdue", "expired": "Expirée", "archived": "Archivée"
+      "in_proposal": "En proposition", "submitted": "Soumise", "won": "Gagnée", "lost": "Perdue", "expired": "Expirée", "archived": "Archivée"
     }
   },
   "org": {
-    "title": "Profil de l'organisation",
-    "name": "Nom de l'organisation",
-    "sectors": "Secteurs (séparés par virgules)",
-    "jurisdictions": "Juridictions (séparées par virgules, ex. CA, QC)",
-    "stage": "Étape",
-    "budget": "Budget annuel (CAD)",
-    "focus": "Domaines d'intérêt",
-    "save": "Enregistrer le profil",
-    "saved": "Enregistré.",
-    "stages": { "startup": "Démarrage", "sme": "PME", "nonprofit": "OBNL", "research": "Recherche / universitaire", "public_sector": "Secteur public" }
+    "title": "Profil de l'organisation", "name": "Nom de l'organisation",
+    "sectors": "Secteurs (séparés par des virgules)", "jurisdictions": "Juridictions (séparées par des virgules, ex. CA, QC)",
+    "stage": "Étape", "budget": "Budget annuel (CAD)", "focus": "Domaines d'intérêt",
+    "save": "Enregistrer", "saved": "Enregistré.",
+    "stages": { "startup": "Jeune pousse", "sme": "PME", "nonprofit": "OBNL", "research": "Recherche / universitaire", "public_sector": "Secteur public" }
+  },
+  "proposals": {
+    "title": "Propositions",
+    "empty": "Aucune proposition. Rédigez-en une à partir d'une subvention évaluée.",
+    "status": { "draft": "Brouillon", "in_review": "En révision", "submitted": "Soumise", "accepted": "Acceptée", "rejected": "Refusée", "withdrawn": "Retirée" },
+    "version": "Version", "score": "Note du critique",
+    "open": "Ouvrir", "draftSection": "Rédiger la section", "runCritic": "Lancer le critique",
+    "ingestKnowledge": "Synchroniser le profil avec le RAG",
+    "noKnowledge": "Synchronisez d'abord le profil de votre organisation avec le corpus RAG.",
+    "citations": "Citations",
+    "criticSummary": "Résumé du critique",
+    "findings": "Constats",
+    "createdFrom": "À partir de la subvention"
   }
 }
