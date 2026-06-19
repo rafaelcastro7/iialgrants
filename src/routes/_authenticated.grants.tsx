@@ -12,6 +12,11 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
+const grantsQueryOptions = queryOptions({
+  queryKey: ["grants", "all"],
+  queryFn: () => listGrants({ data: { limit: 50 } }),
+});
+
 export const Route = createFileRoute("/_authenticated/grants")({
   head: () => ({
     meta: [
@@ -19,14 +24,10 @@ export const Route = createFileRoute("/_authenticated/grants")({
       { name: "description", content: "Browse Canadian funding opportunities discovered and enriched by IIAL agents." },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(grantsQueryOptions),
   component: GrantsPage,
 });
 
-const grantsQuery = () =>
-  queryOptions({
-    queryKey: ["grants", "all"],
-    queryFn: () => listGrants({ data: { limit: 50 } }),
-  });
 
 function GrantsPage() {
   const { t, i18n } = useTranslation();
@@ -112,8 +113,3 @@ function GrantsPage() {
     </main>
   );
 }
-
-// Loader prefetch (uses TanStack Query default pattern).
-Route.update({
-  loader: ({ context }) => context.queryClient.ensureQueryData(grantsQuery()),
-});
