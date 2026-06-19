@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
 
 const AuthRoute = AuthRouteImport.update({
@@ -40,6 +41,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const ApiPublicHooksEnrichRoute = ApiPublicHooksEnrichRouteImport.update({
+  id: '/api/public/hooks/enrich',
+  path: '/api/public/hooks/enrich',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksDiscoverRoute = ApiPublicHooksDiscoverRouteImport.update({
   id: '/api/public/hooks/discover',
   path: '/api/public/hooks/discover',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
+  '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
+  '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
+  '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -77,8 +86,15 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grants'
     | '/api/public/hooks/discover'
+    | '/api/public/hooks/enrich'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/grants' | '/api/public/hooks/discover'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/grants'
+    | '/api/public/hooks/discover'
+    | '/api/public/hooks/enrich'
   id:
     | '__root__'
     | '/'
@@ -87,6 +103,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/grants'
     | '/api/public/hooks/discover'
+    | '/api/public/hooks/enrich'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +111,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiPublicHooksDiscoverRoute: typeof ApiPublicHooksDiscoverRoute
+  ApiPublicHooksEnrichRoute: typeof ApiPublicHooksEnrichRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -133,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/enrich': {
+      id: '/api/public/hooks/enrich'
+      path: '/api/public/hooks/enrich'
+      fullPath: '/api/public/hooks/enrich'
+      preLoaderRoute: typeof ApiPublicHooksEnrichRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/discover': {
       id: '/api/public/hooks/discover'
       path: '/api/public/hooks/discover'
@@ -162,6 +187,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiPublicHooksDiscoverRoute: ApiPublicHooksDiscoverRoute,
+  ApiPublicHooksEnrichRoute: ApiPublicHooksEnrichRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
