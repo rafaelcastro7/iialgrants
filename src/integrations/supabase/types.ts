@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_runs: {
+        Row: {
+          agent: Database["public"]["Enums"]["agent_name"]
+          cost_usd: number | null
+          created_at: string
+          error: string | null
+          grant_id: string | null
+          id: string
+          input_tokens: number | null
+          latency_ms: number | null
+          metadata: Json
+          model: string | null
+          output_tokens: number | null
+          run_id: string
+          status: Database["public"]["Enums"]["agent_status"]
+          user_id: string | null
+        }
+        Insert: {
+          agent: Database["public"]["Enums"]["agent_name"]
+          cost_usd?: number | null
+          created_at?: string
+          error?: string | null
+          grant_id?: string | null
+          id?: string
+          input_tokens?: number | null
+          latency_ms?: number | null
+          metadata?: Json
+          model?: string | null
+          output_tokens?: number | null
+          run_id: string
+          status?: Database["public"]["Enums"]["agent_status"]
+          user_id?: string | null
+        }
+        Update: {
+          agent?: Database["public"]["Enums"]["agent_name"]
+          cost_usd?: number | null
+          created_at?: string
+          error?: string | null
+          grant_id?: string | null
+          id?: string
+          input_tokens?: number | null
+          latency_ms?: number | null
+          metadata?: Json
+          model?: string | null
+          output_tokens?: number | null
+          run_id?: string
+          status?: Database["public"]["Enums"]["agent_status"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_runs_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -43,6 +102,178 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      funders: {
+        Row: {
+          active: boolean
+          country: string
+          created_at: string
+          id: string
+          jurisdiction: string | null
+          name: string
+          name_fr: string | null
+          source_type: Database["public"]["Enums"]["funder_source_type"]
+          source_url: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          active?: boolean
+          country?: string
+          created_at?: string
+          id?: string
+          jurisdiction?: string | null
+          name: string
+          name_fr?: string | null
+          source_type?: Database["public"]["Enums"]["funder_source_type"]
+          source_url?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          active?: boolean
+          country?: string
+          created_at?: string
+          id?: string
+          jurisdiction?: string | null
+          name?: string
+          name_fr?: string | null
+          source_type?: Database["public"]["Enums"]["funder_source_type"]
+          source_url?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      grant_events: {
+        Row: {
+          actor_agent: Database["public"]["Enums"]["agent_name"] | null
+          actor_user_id: string | null
+          created_at: string
+          from_status: Database["public"]["Enums"]["grant_status"] | null
+          grant_id: string
+          id: string
+          metadata: Json
+          reason: string | null
+          to_status: Database["public"]["Enums"]["grant_status"]
+        }
+        Insert: {
+          actor_agent?: Database["public"]["Enums"]["agent_name"] | null
+          actor_user_id?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["grant_status"] | null
+          grant_id: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          to_status: Database["public"]["Enums"]["grant_status"]
+        }
+        Update: {
+          actor_agent?: Database["public"]["Enums"]["agent_name"] | null
+          actor_user_id?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["grant_status"] | null
+          grant_id?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          to_status?: Database["public"]["Enums"]["grant_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grant_events_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grants: {
+        Row: {
+          amount_cad_max: number | null
+          amount_cad_min: number | null
+          country: string
+          created_at: string
+          currency: string
+          deadline: string | null
+          discovered_at: string
+          eligibility: Json
+          enriched_at: string | null
+          fit_score: number | null
+          funder_id: string
+          id: string
+          language: string
+          scored_at: string | null
+          sectors: string[]
+          source_hash: string
+          status: Database["public"]["Enums"]["grant_status"]
+          summary: string | null
+          summary_fr: string | null
+          title: string
+          title_fr: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          amount_cad_max?: number | null
+          amount_cad_min?: number | null
+          country?: string
+          created_at?: string
+          currency?: string
+          deadline?: string | null
+          discovered_at?: string
+          eligibility?: Json
+          enriched_at?: string | null
+          fit_score?: number | null
+          funder_id: string
+          id?: string
+          language?: string
+          scored_at?: string | null
+          sectors?: string[]
+          source_hash: string
+          status?: Database["public"]["Enums"]["grant_status"]
+          summary?: string | null
+          summary_fr?: string | null
+          title: string
+          title_fr?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          amount_cad_max?: number | null
+          amount_cad_min?: number | null
+          country?: string
+          created_at?: string
+          currency?: string
+          deadline?: string | null
+          discovered_at?: string
+          eligibility?: Json
+          enriched_at?: string | null
+          fit_score?: number | null
+          funder_id?: string
+          id?: string
+          language?: string
+          scored_at?: string | null
+          sectors?: string[]
+          source_hash?: string
+          status?: Database["public"]["Enums"]["grant_status"]
+          summary?: string | null
+          summary_fr?: string | null
+          title?: string
+          title_fr?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grants_funder_id_fkey"
+            columns: ["funder_id"]
+            isOneToOne: false
+            referencedRelation: "funders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -106,8 +337,28 @@ export type Database = {
       }
     }
     Enums: {
+      agent_name:
+        | "discoverer"
+        | "enricher"
+        | "evaluator"
+        | "strategist"
+        | "writer"
+        | "critic"
+      agent_status: "running" | "succeeded" | "failed" | "degraded"
       app_lang: "en" | "fr"
       app_role: "admin" | "member" | "viewer"
+      funder_source_type: "rss" | "api" | "html" | "manual"
+      grant_status:
+        | "discovered"
+        | "enriched"
+        | "scored"
+        | "shortlisted"
+        | "in_proposal"
+        | "submitted"
+        | "won"
+        | "lost"
+        | "expired"
+        | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -235,8 +486,30 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agent_name: [
+        "discoverer",
+        "enricher",
+        "evaluator",
+        "strategist",
+        "writer",
+        "critic",
+      ],
+      agent_status: ["running", "succeeded", "failed", "degraded"],
       app_lang: ["en", "fr"],
       app_role: ["admin", "member", "viewer"],
+      funder_source_type: ["rss", "api", "html", "manual"],
+      grant_status: [
+        "discovered",
+        "enriched",
+        "scored",
+        "shortlisted",
+        "in_proposal",
+        "submitted",
+        "won",
+        "lost",
+        "expired",
+        "archived",
+      ],
     },
   },
 } as const
