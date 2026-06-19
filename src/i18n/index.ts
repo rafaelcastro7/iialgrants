@@ -18,7 +18,6 @@ if (!i18n.isInitialized) {
       lng: "en",
       fallbackLng: "en",
       supportedLngs: ["en", "fr"],
-      initImmediate: false,
       interpolation: { escapeValue: false },
       detection: {
         order: ["localStorage", "navigator", "htmlTag"],
