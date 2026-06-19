@@ -132,14 +132,22 @@ function GrantsPage() {
                       <span>{t("grants.deadline")}: {g.deadline ?? "—"}</span>
                       {g.fit_score != null && <span>{t("grants.fit")}: {(g.fit_score * 100).toFixed(0)}%</span>}
                     </div>
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
                       <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
                         {t("grants.source")} →
                       </a>
-                      <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
-                        {pending === g.id ? t("app.loading") : t("grants.evaluate")}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
+                          {pending === g.id ? t("app.loading") : t("grants.evaluate")}
+                        </Button>
+                        {(g.status === "scored" || g.status === "shortlisted" || g.status === "in_proposal") && (
+                          <Button size="sm" disabled={pending === g.id + ":draft"} onClick={() => onDraft(g.id)}>
+                            {pending === g.id + ":draft" ? t("app.loading") : t("grants.draftProposal")}
+                          </Button>
+                        )}
+                      </div>
                     </div>
+
                   </CardContent>
                 </Card>
               );
