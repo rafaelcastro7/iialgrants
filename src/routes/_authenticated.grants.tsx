@@ -86,7 +86,9 @@ function GrantsPage() {
             <Link to="/dashboard" className="font-semibold">{t("app.name")}</Link>
             <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">{t("nav.dashboard")}</Link>
             <Link to="/grants" className="text-sm font-medium">{t("nav.grants")}</Link>
+            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">{t("nav.proposals")}</Link>
             <Link to="/org" className="text-sm text-muted-foreground hover:underline">{t("org.title")}</Link>
+
           </nav>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
