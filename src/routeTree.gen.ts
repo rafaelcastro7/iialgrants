@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
@@ -30,6 +31,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedOrgRoute = AuthenticatedOrgRouteImport.update({
+  id: '/org',
+  path: '/org',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
   id: '/grants',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
+  '/org': typeof AuthenticatedOrgRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -65,6 +72,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
+  '/org': typeof AuthenticatedOrgRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
+  '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
 }
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/grants'
+    | '/org'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   fileRoutesByTo: FileRoutesByTo
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/grants'
+    | '/org'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   id:
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/grants'
+    | '/_authenticated/org'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
   fileRoutesById: FileRoutesById
@@ -137,6 +149,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/org': {
+      id: '/_authenticated/org'
+      path: '/org'
+      fullPath: '/org'
+      preLoaderRoute: typeof AuthenticatedOrgRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/grants': {
       id: '/_authenticated/grants'
       path: '/grants'
@@ -171,11 +190,13 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
+  AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
+  AuthenticatedOrgRoute: AuthenticatedOrgRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

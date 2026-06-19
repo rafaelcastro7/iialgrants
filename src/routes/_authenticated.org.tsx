@@ -26,13 +26,22 @@ export const Route = createFileRoute("/_authenticated/org")({
 
 const STAGES = ["startup", "sme", "nonprofit", "research", "public_sector"] as const;
 
+type OrgInput = {
+  org_name: string;
+  sectors: string[];
+  jurisdictions: string[];
+  stage: (typeof STAGES)[number];
+  annual_budget_cad: number | null;
+  focus_areas: string | null;
+};
+
 function OrgPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { data } = useSuspenseQuery(orgQueryOptions);
   const save = useServerFn(saveOrgProfile);
   const mut = useMutation({
-    mutationFn: (input: Parameters<typeof save>[0]["data"]) => save({ data: input }),
+    mutationFn: (input: OrgInput) => save({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["org"] }),
   });
   useEffect(() => { syncClientLocale(); }, []);
