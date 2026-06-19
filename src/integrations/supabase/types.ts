@@ -325,6 +325,42 @@ export type Database = {
           },
         ]
       }
+      knowledge_chunks: {
+        Row: {
+          content: string
+          created_at: string
+          embedding: string | null
+          id: string
+          language: Database["public"]["Enums"]["app_lang"]
+          metadata: Json
+          source: string
+          source_kind: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          language?: Database["public"]["Enums"]["app_lang"]
+          metadata?: Json
+          source: string
+          source_kind?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          language?: Database["public"]["Enums"]["app_lang"]
+          metadata?: Json
+          source?: string
+          source_kind?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       org_profiles: {
         Row: {
           annual_budget_cad: number | null
@@ -388,6 +424,203 @@ export type Database = {
         }
         Relationships: []
       }
+      proposal_citations: {
+        Row: {
+          chunk_id: string
+          created_at: string
+          id: string
+          marker: string
+          section_id: string
+          snippet: string
+          user_id: string
+        }
+        Insert: {
+          chunk_id: string
+          created_at?: string
+          id?: string
+          marker: string
+          section_id: string
+          snippet: string
+          user_id: string
+        }
+        Update: {
+          chunk_id?: string
+          created_at?: string
+          id?: string
+          marker?: string
+          section_id?: string
+          snippet?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_citations_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_chunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_citations_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_sections: {
+        Row: {
+          citations: Json
+          content_en: string
+          content_fr: string | null
+          created_at: string
+          critic_notes: Json
+          heading_en: string
+          heading_fr: string | null
+          id: string
+          kind: Database["public"]["Enums"]["section_kind"]
+          ord: number
+          proposal_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          citations?: Json
+          content_en?: string
+          content_fr?: string | null
+          created_at?: string
+          critic_notes?: Json
+          heading_en: string
+          heading_fr?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["section_kind"]
+          ord?: number
+          proposal_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          citations?: Json
+          content_en?: string
+          content_fr?: string | null
+          created_at?: string
+          critic_notes?: Json
+          heading_en?: string
+          heading_fr?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["section_kind"]
+          ord?: number
+          proposal_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_sections_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_global: boolean
+          name: string
+          name_fr: string | null
+          owner_id: string | null
+          sections: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_global?: boolean
+          name: string
+          name_fr?: string | null
+          owner_id?: string | null
+          sections?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_global?: boolean
+          name?: string
+          name_fr?: string | null
+          owner_id?: string | null
+          sections?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      proposals: {
+        Row: {
+          created_at: string
+          critic_score: number | null
+          grant_id: string
+          id: string
+          language: Database["public"]["Enums"]["app_lang"]
+          metadata: Json
+          status: Database["public"]["Enums"]["proposal_status"]
+          template_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          critic_score?: number | null
+          grant_id: string
+          id?: string
+          language?: Database["public"]["Enums"]["app_lang"]
+          metadata?: Json
+          status?: Database["public"]["Enums"]["proposal_status"]
+          template_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          critic_score?: number | null
+          grant_id?: string
+          id?: string
+          language?: Database["public"]["Enums"]["app_lang"]
+          metadata?: Json
+          status?: Database["public"]["Enums"]["proposal_status"]
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -421,6 +654,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      match_knowledge_chunks: {
+        Args: {
+          match_count?: number
+          match_user_id: string
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          id: string
+          language: Database["public"]["Enums"]["app_lang"]
+          similarity: number
+          source: string
+        }[]
+      }
     }
     Enums: {
       agent_name:
@@ -446,6 +693,24 @@ export type Database = {
         | "expired"
         | "archived"
       org_stage: "startup" | "sme" | "nonprofit" | "research" | "public_sector"
+      proposal_status:
+        | "draft"
+        | "in_review"
+        | "submitted"
+        | "accepted"
+        | "rejected"
+        | "withdrawn"
+      section_kind:
+        | "summary"
+        | "problem"
+        | "solution"
+        | "impact"
+        | "budget"
+        | "team"
+        | "timeline"
+        | "sustainability"
+        | "evaluation"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -598,6 +863,26 @@ export const Constants = {
         "archived",
       ],
       org_stage: ["startup", "sme", "nonprofit", "research", "public_sector"],
+      proposal_status: [
+        "draft",
+        "in_review",
+        "submitted",
+        "accepted",
+        "rejected",
+        "withdrawn",
+      ],
+      section_kind: [
+        "summary",
+        "problem",
+        "solution",
+        "impact",
+        "budget",
+        "team",
+        "timeline",
+        "sustainability",
+        "evaluation",
+        "other",
+      ],
     },
   },
 } as const

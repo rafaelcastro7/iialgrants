@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { listGrants } from "@/lib/grants.functions";
 import { runEvaluator } from "@/agents/evaluator.functions";
+import { runStrategist } from "@/agents/strategist.functions";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +38,8 @@ function GrantsPage() {
   const navigate = useNavigate();
   const fetchGrants = useServerFn(listGrants);
   const evaluate = useServerFn(runEvaluator);
+  const strategize = useServerFn(runStrategist);
+
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
   const [evalError, setEvalError] = useState<string | null>(null);
@@ -59,6 +63,17 @@ function GrantsPage() {
       setEvalError(e instanceof Error ? e.message : String(e));
     } finally { setPending(null); }
   }
+  async function onDraft(grantId: string) {
+    setPending(grantId + ":draft"); setEvalError(null);
+    try {
+      const r = await strategize({ data: { grantId } });
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+      await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally { setPending(null); }
+  }
+
 
   const fmt = (n: number | null) =>
     n == null ? "—" : new Intl.NumberFormat(fr ? "fr-CA" : "en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
@@ -71,7 +86,9 @@ function GrantsPage() {
             <Link to="/dashboard" className="font-semibold">{t("app.name")}</Link>
             <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">{t("nav.dashboard")}</Link>
             <Link to="/grants" className="text-sm font-medium">{t("nav.grants")}</Link>
+            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">{t("nav.proposals")}</Link>
             <Link to="/org" className="text-sm text-muted-foreground hover:underline">{t("org.title")}</Link>
+
           </nav>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
@@ -115,14 +132,22 @@ function GrantsPage() {
                       <span>{t("grants.deadline")}: {g.deadline ?? "—"}</span>
                       {g.fit_score != null && <span>{t("grants.fit")}: {(g.fit_score * 100).toFixed(0)}%</span>}
                     </div>
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
                       <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
                         {t("grants.source")} →
                       </a>
-                      <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
-                        {pending === g.id ? t("app.loading") : t("grants.evaluate")}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
+                          {pending === g.id ? t("app.loading") : t("grants.evaluate")}
+                        </Button>
+                        {(g.status === "scored" || g.status === "shortlisted" || g.status === "in_proposal") && (
+                          <Button size="sm" disabled={pending === g.id + ":draft"} onClick={() => onDraft(g.id)}>
+                            {pending === g.id + ":draft" ? t("app.loading") : t("grants.draftProposal")}
+                          </Button>
+                        )}
+                      </div>
                     </div>
+
                   </CardContent>
                 </Card>
               );
