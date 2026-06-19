@@ -47,6 +47,9 @@ function Dashboard() {
         <CardContent>
           <p className="text-sm text-muted-foreground">{email ?? "—"}</p>
           <p className="mt-4 text-sm">{t("app.tagline")}</p>
+          <Link to="/grants" className="inline-block mt-4">
+            <Button>{t("nav.grants")} →</Button>
+          </Link>
         </CardContent>
       </Card>
     </main>
