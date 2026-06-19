@@ -7,7 +7,7 @@ import fr from "./locales/fr.json";
 // Bilingual EN/FR scaffolding — required per ADR-008 (Canadian market, Quebec Law 25).
 // Detection order: localStorage -> navigator -> htmlTag. Fallback: en.
 if (!i18n.isInitialized) {
-  void i18n
+  i18n
     .use(LanguageDetector)
     .use(initReactI18next)
     .init({
@@ -15,6 +15,7 @@ if (!i18n.isInitialized) {
         en: { translation: en },
         fr: { translation: fr },
       },
+      lng: "en",
       fallbackLng: "en",
       supportedLngs: ["en", "fr"],
       interpolation: { escapeValue: false },

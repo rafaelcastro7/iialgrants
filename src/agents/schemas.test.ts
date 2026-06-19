@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DiscovererOutput, EnrichedGrant, PROMPTS } from "@/agents/schemas";
+import { DiscovererOutput, EnricherOutput, EvaluatorOutput, PROMPTS } from "@/agents/schemas";
 
 describe("agents/schemas", () => {
   it("accepts a valid discoverer output", () => {
@@ -32,12 +32,23 @@ describe("agents/schemas", () => {
     expect(() => DiscovererOutput.parse(bad)).toThrow();
   });
 
-  it("enricher requires french translation", () => {
+  it("enricher requires french title", () => {
     expect(() =>
-      EnrichedGrant.parse({
-        title: "T", url: "https://example.ca", language: "en",
+      EnricherOutput.parse({
+        title_fr: "",
+        summary_fr: null,
         amount_cad_min: null, amount_cad_max: null, deadline: null,
-        title_fr: null as unknown as string, summary_fr: null,
+      }),
+    ).toThrow();
+  });
+
+  it("evaluator score must be within 0..1", () => {
+    expect(() =>
+      EvaluatorOutput.parse({
+        fit_score: 1.5,
+        eligibility_pass: true,
+        rationale_en: "long enough rationale text",
+        rationale_fr: "justification suffisamment longue",
       }),
     ).toThrow();
   });
@@ -45,5 +56,6 @@ describe("agents/schemas", () => {
   it("prompts are versioned", () => {
     expect(PROMPTS.discoverer.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(PROMPTS.enricher.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(PROMPTS.evaluator.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });

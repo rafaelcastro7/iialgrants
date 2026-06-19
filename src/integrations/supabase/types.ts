@@ -145,6 +145,56 @@ export type Database = {
         }
         Relationships: []
       }
+      grant_evaluations: {
+        Row: {
+          created_at: string
+          eligibility_pass: boolean
+          fit_score: number
+          grant_id: string
+          id: string
+          model: string
+          prompt_version: string
+          rationale_en: string
+          rationale_fr: string | null
+          run_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          eligibility_pass?: boolean
+          fit_score: number
+          grant_id: string
+          id?: string
+          model: string
+          prompt_version: string
+          rationale_en: string
+          rationale_fr?: string | null
+          run_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          eligibility_pass?: boolean
+          fit_score?: number
+          grant_id?: string
+          id?: string
+          model?: string
+          prompt_version?: string
+          rationale_en?: string
+          rationale_fr?: string | null
+          run_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grant_evaluations_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grant_events: {
         Row: {
           actor_agent: Database["public"]["Enums"]["agent_name"] | null
@@ -275,6 +325,42 @@ export type Database = {
           },
         ]
       }
+      org_profiles: {
+        Row: {
+          annual_budget_cad: number | null
+          created_at: string
+          focus_areas: string | null
+          jurisdictions: string[]
+          org_name: string
+          sectors: string[]
+          stage: Database["public"]["Enums"]["org_stage"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          annual_budget_cad?: number | null
+          created_at?: string
+          focus_areas?: string | null
+          jurisdictions?: string[]
+          org_name: string
+          sectors?: string[]
+          stage?: Database["public"]["Enums"]["org_stage"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          annual_budget_cad?: number | null
+          created_at?: string
+          focus_areas?: string | null
+          jurisdictions?: string[]
+          org_name?: string
+          sectors?: string[]
+          stage?: Database["public"]["Enums"]["org_stage"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           country: string
@@ -359,6 +445,7 @@ export type Database = {
         | "lost"
         | "expired"
         | "archived"
+      org_stage: "startup" | "sme" | "nonprofit" | "research" | "public_sector"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -510,6 +597,7 @@ export const Constants = {
         "expired",
         "archived",
       ],
+      org_stage: ["startup", "sme", "nonprofit", "research", "public_sector"],
     },
   },
 } as const
