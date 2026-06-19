@@ -1,6 +1,8 @@
-// Minimal OpenTelemetry GenAI-style structured logging stub (Phase 0).
-// Real OTLP exporter wires in Phase 1. Keeps semantic-convention keys stable
-// from day one so dashboards/alerts don't need rework later.
+// OpenTelemetry GenAI-style structured logging with optional OTLP export.
+// - Console JSON line: always emitted (collectable by any log shipper).
+// - OTLP/HTTP /v1/logs export: enabled when OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+//   is set. Fire-and-forget; failures are swallowed so they never break a
+//   user-facing request.
 // Ref: https://opentelemetry.io/docs/specs/semconv/gen-ai/
 
 export type GenAIEvent = {
@@ -19,10 +21,65 @@ export type GenAIEvent = {
   error?: string;
 };
 
+function nowNs(): string {
+  return String(BigInt(Date.now()) * 1_000_000n);
+}
+
+function severity(ok: boolean): { number: number; text: string } {
+  return ok ? { number: 9, text: "INFO" } : { number: 17, text: "ERROR" };
+}
+
+function toOtlpLog(evt: GenAIEvent) {
+  const attrs: Array<{ key: string; value: { stringValue?: string; intValue?: string; doubleValue?: number; boolValue?: boolean } }> = [];
+  for (const [k, v] of Object.entries(evt)) {
+    if (v == null) continue;
+    if (typeof v === "string") attrs.push({ key: k, value: { stringValue: v } });
+    else if (typeof v === "number") attrs.push({ key: k, value: Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v } });
+    else if (typeof v === "boolean") attrs.push({ key: k, value: { boolValue: v } });
+    else attrs.push({ key: k, value: { stringValue: JSON.stringify(v) } });
+  }
+  const sev = severity(evt.ok);
+  return {
+    resourceLogs: [{
+      resource: { attributes: [{ key: "service.name", value: { stringValue: "iial" } }] },
+      scopeLogs: [{
+        scope: { name: "gen_ai" },
+        logRecords: [{
+          timeUnixNano: nowNs(),
+          severityNumber: sev.number,
+          severityText: sev.text,
+          body: { stringValue: `${evt.agent} ${evt["gen_ai.operation.name"]}` },
+          attributes: attrs,
+        }],
+      }],
+    }],
+  };
+}
+
+async function exportOtlp(evt: GenAIEvent) {
+  const endpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
+  if (!endpoint) return;
+  try {
+    await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.OTEL_EXPORTER_OTLP_HEADERS_AUTH
+          ? { Authorization: process.env.OTEL_EXPORTER_OTLP_HEADERS_AUTH }
+          : {}),
+      },
+      body: JSON.stringify(toOtlpLog(evt)),
+    });
+  } catch {
+    /* swallow — observability must never break requests */
+  }
+}
+
 export function logGenAI(evt: GenAIEvent) {
-  // Structured JSON line — collectable by any log shipper.
   // eslint-disable-next-line no-console
   console.log(JSON.stringify({ kind: "gen_ai", ts: new Date().toISOString(), ...evt }));
+  // Fire-and-forget OTLP export (no await — handler returns promptly).
+  void exportOtlp(evt);
 }
 
 export function newRunId(): string {
