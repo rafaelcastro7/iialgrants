@@ -1,22 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createHmac, timingSafeEqual } from "crypto";
 
 // Public cron endpoint — pg_cron calls this hourly to discover new grants.
-// Auth: shared HMAC signature header `x-iial-signature` over the raw body.
+// Auth: Supabase publishable (anon) key in the `apikey` header — the
+// canonical Lovable Cloud pattern. No custom shared secrets.
 export const Route = createFileRoute("/api/public/hooks/discover")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env.DISCOVERER_WEBHOOK_SECRET;
-        if (!secret) {
-          return new Response("misconfigured", { status: 500 });
-        }
-        const signature = request.headers.get("x-iial-signature") ?? "";
-        const body = await request.text();
-        const expected = createHmac("sha256", secret).update(body).digest("hex");
-        const sig = Buffer.from(signature);
-        const exp = Buffer.from(expected);
-        if (sig.length !== exp.length || !timingSafeEqual(sig, exp)) {
+        const expected = process.env.SUPABASE_PUBLISHABLE_KEY;
+        const provided = request.headers.get("apikey");
+        if (!expected || !provided || provided !== expected) {
           return new Response("unauthorized", { status: 401 });
         }
 
