@@ -103,6 +103,84 @@ export type Database = {
         }
         Relationships: []
       }
+      consent_ledger: {
+        Row: {
+          action: Database["public"]["Enums"]["consent_action"]
+          consent_type: Database["public"]["Enums"]["consent_type"]
+          created_at: string
+          id: string
+          ip_hash: string | null
+          language: Database["public"]["Enums"]["app_lang"]
+          metadata: Json
+          policy_version: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["consent_action"]
+          consent_type: Database["public"]["Enums"]["consent_type"]
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          language?: Database["public"]["Enums"]["app_lang"]
+          metadata?: Json
+          policy_version: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["consent_action"]
+          consent_type?: Database["public"]["Enums"]["consent_type"]
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          language?: Database["public"]["Enums"]["app_lang"]
+          metadata?: Json
+          policy_version?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dsar_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["dsar_kind"]
+          notes: string | null
+          reason: string | null
+          result_url: string | null
+          status: Database["public"]["Enums"]["dsar_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["dsar_kind"]
+          notes?: string | null
+          reason?: string | null
+          result_url?: string | null
+          status?: Database["public"]["Enums"]["dsar_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["dsar_kind"]
+          notes?: string | null
+          reason?: string | null
+          result_url?: string | null
+          status?: Database["public"]["Enums"]["dsar_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       funders: {
         Row: {
           active: boolean
@@ -860,6 +938,15 @@ export type Database = {
       agent_status: "running" | "succeeded" | "failed" | "degraded"
       app_lang: "en" | "fr"
       app_role: "admin" | "member" | "viewer"
+      consent_action: "granted" | "revoked"
+      consent_type:
+        | "terms_of_service"
+        | "privacy_policy"
+        | "ai_processing"
+        | "cross_border_transfer"
+        | "marketing"
+      dsar_kind: "access" | "export" | "delete" | "rectify"
+      dsar_status: "pending" | "processing" | "completed" | "rejected"
       funder_source_type: "rss" | "api" | "html" | "manual"
       grant_status:
         | "discovered"
@@ -1029,6 +1116,16 @@ export const Constants = {
       agent_status: ["running", "succeeded", "failed", "degraded"],
       app_lang: ["en", "fr"],
       app_role: ["admin", "member", "viewer"],
+      consent_action: ["granted", "revoked"],
+      consent_type: [
+        "terms_of_service",
+        "privacy_policy",
+        "ai_processing",
+        "cross_border_transfer",
+        "marketing",
+      ],
+      dsar_kind: ["access", "export", "delete", "rectify"],
+      dsar_status: ["pending", "processing", "completed", "rejected"],
       funder_source_type: ["rss", "api", "html", "manual"],
       grant_status: [
         "discovered",
