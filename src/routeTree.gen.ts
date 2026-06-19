@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSubmissionsRouteImport } from './routes/_authenticated.submissions'
 import { Route as AuthenticatedProposalsRouteImport } from './routes/_authenticated.proposals'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
+import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
@@ -50,6 +51,11 @@ const AuthenticatedProposalsRoute = AuthenticatedProposalsRouteImport.update({
 const AuthenticatedOrgRoute = AuthenticatedOrgRouteImport.update({
   id: '/org',
   path: '/org',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedOpsRoute = AuthenticatedOpsRouteImport.update({
+  id: '/ops',
+  path: '/ops',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
+  '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
+  '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
+  '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/_authenticated/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/grants'
+    | '/ops'
     | '/org'
     | '/proposals'
     | '/submissions'
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/grants'
+    | '/ops'
     | '/org'
     | '/proposals'
     | '/submissions'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/grants'
+    | '/_authenticated/ops'
     | '/_authenticated/org'
     | '/_authenticated/proposals'
     | '/_authenticated/submissions'
@@ -219,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/org'
       fullPath: '/org'
       preLoaderRoute: typeof AuthenticatedOrgRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/ops': {
+      id: '/_authenticated/ops'
+      path: '/ops'
+      fullPath: '/ops'
+      preLoaderRoute: typeof AuthenticatedOpsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/grants': {
@@ -283,6 +302,7 @@ const AuthenticatedProposalsRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
+  AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedProposalsRoute: typeof AuthenticatedProposalsRouteWithChildren
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
@@ -291,6 +311,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
+  AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedProposalsRoute: AuthenticatedProposalsRouteWithChildren,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
