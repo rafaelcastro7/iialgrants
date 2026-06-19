@@ -52,9 +52,10 @@ export const runCritic = createServerFn({ method: "POST" })
           critic_summary_en: parsed.summary_en,
           critic_summary_fr: parsed.summary_fr,
           critic_run: runId,
-        } as Record<string, unknown>,
+        } as never,
       })
       .eq("id", proposal.id);
+
 
     // Attach findings into each section's critic_notes.
     for (const s of sections ?? []) {
