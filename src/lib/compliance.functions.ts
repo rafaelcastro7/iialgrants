@@ -76,12 +76,13 @@ export const createDsarRequest = createServerFn({ method: "POST" })
     await supabase.from("audit_log").insert({
       user_id: userId,
       action: "dsar.request",
-      resource: "dsar_requests",
+      resource_type: "dsar_requests",
       resource_id: row.id,
       metadata: { kind: data.kind },
     });
     return row;
   });
+
 
 export const listMyDsarRequests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -106,7 +107,6 @@ export const exportMyData = createServerFn({ method: "POST" })
     const [
       profile,
       org,
-      grants,
       proposals,
       submissions,
       outcomes,
@@ -116,7 +116,6 @@ export const exportMyData = createServerFn({ method: "POST" })
     ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("org_profiles").select("*").eq("user_id", userId),
-      supabase.from("grants").select("*").eq("user_id", userId),
       supabase.from("proposals").select("*").eq("user_id", userId),
       supabase.from("submissions").select("*").eq("user_id", userId),
       supabase.from("outcomes").select("*").eq("user_id", userId),
@@ -138,7 +137,6 @@ export const exportMyData = createServerFn({ method: "POST" })
       },
       profile: profile.data,
       org_profile: org.data ?? [],
-      grants: grants.data ?? [],
       proposals: proposals.data ?? [],
       submissions: submissions.data ?? [],
       outcomes: outcomes.data ?? [],
@@ -151,10 +149,9 @@ export const exportMyData = createServerFn({ method: "POST" })
     await supabase.from("audit_log").insert({
       user_id: userId,
       action: "dsar.export",
-      resource: "self",
+      resource_type: "self",
       resource_id: userId,
       metadata: { counts: {
-        grants: bundle.grants.length,
         proposals: bundle.proposals.length,
         submissions: bundle.submissions.length,
       } },
@@ -162,6 +159,7 @@ export const exportMyData = createServerFn({ method: "POST" })
 
     return { json: JSON.stringify(bundle, null, 2) };
   });
+
 
 // Self-service deletion request — creates a pending DSAR delete request.
 // Actual hard-delete is performed by an admin (verified identity, retention checks).
@@ -182,8 +180,9 @@ export const requestAccountDeletion = createServerFn({ method: "POST" })
     await supabase.from("audit_log").insert({
       user_id: userId,
       action: "dsar.delete_requested",
-      resource: "dsar_requests",
+      resource_type: "dsar_requests",
       resource_id: row.id,
     });
     return row;
   });
+
