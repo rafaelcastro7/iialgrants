@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { listGrants } from "@/lib/grants.functions";
+import { runEvaluator } from "@/agents/evaluator.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,10 @@ function GrantsPage() {
   const fr = i18n.language?.startsWith("fr");
   const navigate = useNavigate();
   const fetchGrants = useServerFn(listGrants);
+  const evaluate = useServerFn(runEvaluator);
+  const qc = useQueryClient();
+  const [pending, setPending] = useState<string | null>(null);
+  const [evalError, setEvalError] = useState<string | null>(null);
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
     queryFn: () => fetchGrants({ data: { limit: 50 } }),
@@ -44,6 +49,15 @@ function GrantsPage() {
   async function signOut() {
     await supabase.auth.signOut();
     await navigate({ to: "/" });
+  }
+  async function onEvaluate(grantId: string) {
+    setPending(grantId); setEvalError(null);
+    try {
+      await evaluate({ data: { grantId } });
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally { setPending(null); }
   }
 
   const fmt = (n: number | null) =>
@@ -57,6 +71,7 @@ function GrantsPage() {
             <Link to="/dashboard" className="font-semibold">{t("app.name")}</Link>
             <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">{t("nav.dashboard")}</Link>
             <Link to="/grants" className="text-sm font-medium">{t("nav.grants")}</Link>
+            <Link to="/org" className="text-sm text-muted-foreground hover:underline">{t("org.title")}</Link>
           </nav>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
@@ -100,13 +115,19 @@ function GrantsPage() {
                       <span>{t("grants.deadline")}: {g.deadline ?? "—"}</span>
                       {g.fit_score != null && <span>{t("grants.fit")}: {(g.fit_score * 100).toFixed(0)}%</span>}
                     </div>
-                    <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
-                      {t("grants.source")} →
-                    </a>
+                    <div className="flex items-center justify-between pt-2">
+                      <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
+                        {t("grants.source")} →
+                      </a>
+                      <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
+                        {pending === g.id ? t("app.loading") : t("grants.evaluate")}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               );
             })}
+            {evalError && <p className="text-sm text-destructive">{evalError}</p>}
           </div>
         )}
       </section>
