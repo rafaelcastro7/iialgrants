@@ -98,10 +98,11 @@ function ComplianceRoute() {
             <li>{fr ? "Droit de retrait du consentement — révoquez vos consentements depuis le ledger." : "Right to withdraw consent — revoke consents from the ledger."}</li>
           </ul>
           <div className="pt-3">
-            <Link to="/_authenticated/privacy" disabled>
+            <Link to="/privacy">
               <Button variant="outline" size="sm">{t("compliance.openPrivacyCenter")}</Button>
             </Link>
           </div>
+
         </CardContent>
       </Card>
 
