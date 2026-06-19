@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,9 @@ function Dashboard() {
         <CardContent>
           <p className="text-sm text-muted-foreground">{email ?? "—"}</p>
           <p className="mt-4 text-sm">{t("app.tagline")}</p>
+          <Link to="/grants" className="inline-block mt-4">
+            <Button>{t("nav.grants")} →</Button>
+          </Link>
         </CardContent>
       </Card>
     </main>
