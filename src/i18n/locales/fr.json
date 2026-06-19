@@ -1,0 +1,32 @@
+{
+  "app": {
+    "name": "IIAL",
+    "tagline": "Veille de subventions assistée par IA pour les organisations canadiennes",
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "grants": "Subventions",
+    "proposals": "Propositions",
+    "settings": "Paramètres",
+    "signOut": "Déconnexion"
+  },
+  "auth": {
+    "signIn": "Connexion",
+    "signUp": "Inscription",
+    "email": "Courriel",
+    "password": "Mot de passe",
+    "continueWithGoogle": "Continuer avec Google"
+  },
+  "lang": {
+    "switch": "Langue",
+    "en": "English",
+    "fr": "Français"
+  },
+  "home": {
+    "title": "IIAL — Intelligence des subventions",
+    "subtitle": "Découvrez, évaluez et remportez des subventions canadiennes grâce à des agents IA.",
+    "cta": "Commencer"
+  }
+}
