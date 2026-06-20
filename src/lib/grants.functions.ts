@@ -439,7 +439,7 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
     const parts: string[] = [
       `# IIAL Curation Bundle — ${new Date().toISOString().slice(0, 10)}`,
       ``,
-      `Status filter: \`${data.status}\` · Count: ${rows.length}`,
+      `Status filter: \`${data.status}\` · Language: \`${lang}\` · Count: ${rows.length}`,
       ``,
       `> Drop this markdown into NotebookLM as a single source. Each grant is delimited by \`---\`. Use the IDs below to mark curated items via the "Mark as curated" action in /grants.`,
       ``,
