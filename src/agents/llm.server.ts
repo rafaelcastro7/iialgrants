@@ -73,15 +73,19 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     });
   };
 
-
-    const res = await fetch(GATEWAY_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+  try {
+    let res = await doCall(resolvedModel);
+    // Retry on 429/5xx with exponential backoff, then try fallback model.
+    let attempt = 0;
+    while (!res.ok && (res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+      attempt++;
+      await new Promise((r) => setTimeout(r, 250 * Math.pow(2, attempt)));
+      res = await doCall(resolvedModel);
+    }
+    if (!res.ok && fallbackModel && fallbackModel !== resolvedModel) {
+      usedModel = fallbackModel;
+      res = await doCall(fallbackModel);
+    }
 
     if (res.status === 429) throw new Error("rate_limited: AI gateway 429");
     if (res.status === 402) throw new Error("payment_required: add credits to Lovable AI workspace");
@@ -99,7 +103,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   } finally {
     logGenAI({
       "gen_ai.system": "lovable.ai",
-      "gen_ai.request.model": opts.model,
+      "gen_ai.request.model": usedModel,
       "gen_ai.operation.name": "chat",
       "gen_ai.usage.input_tokens": inputTokens,
       "gen_ai.usage.output_tokens": outputTokens,
@@ -111,3 +115,4 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     });
   }
 }
+
