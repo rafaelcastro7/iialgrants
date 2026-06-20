@@ -239,8 +239,8 @@ export const enrichGrant = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     await assertAgentEnabled("enricher");
-    const { runEnricher } = await import("@/agents/enricher.functions");
-    return runEnricher({ data: { grantId: data.grantId } });
+    const { enrichGrantImpl } = await import("@/agents/enricher.functions");
+    return enrichGrantImpl(data.grantId);
   });
 
 // Auto-evaluate every enriched/scored grant that the calling user has NOT yet
@@ -407,14 +407,14 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
 
     let enrichmentReport: { attempted: number; succeeded: number; failed: number } | null = null;
     if (incompleteIds.length > 0 && data.autoEnrich) {
-      const { runEnricher } = await import("@/agents/enricher.functions");
+      const { enrichGrantImpl } = await import("@/agents/enricher.functions");
       const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
       await assertAgentEnabled("enricher");
       let succeeded = 0; let failed = 0;
       // Cap to keep the request bounded; the rest can be re-tried in a follow-up export.
       const batch = incompleteIds.slice(0, 10);
       for (const id of batch) {
-        try { await runEnricher({ data: { grantId: id } }); succeeded++; }
+        try { await enrichGrantImpl(id); succeeded++; }
         catch { failed++; }
       }
       enrichmentReport = { attempted: batch.length, succeeded, failed };
