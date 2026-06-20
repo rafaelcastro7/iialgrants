@@ -239,8 +239,8 @@ export const enrichGrant = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     await assertAgentEnabled("enricher");
-    const { runEnricher } = await import("@/agents/enricher.functions");
-    return runEnricher({ data: { grantId: data.grantId } });
+    const { enrichGrantImpl } = await import("@/agents/enricher.functions");
+    return enrichGrantImpl(data.grantId);
   });
 
 // Auto-evaluate every enriched/scored grant that the calling user has NOT yet
