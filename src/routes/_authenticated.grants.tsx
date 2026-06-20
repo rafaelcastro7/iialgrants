@@ -17,6 +17,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
 import { EventLog } from "@/components/grants/EventLog";
+import { FunderSelector } from "@/components/grants/FunderSelector";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
