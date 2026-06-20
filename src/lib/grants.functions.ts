@@ -333,3 +333,112 @@ export const listAgentEvents = createServerFn({ method: "GET" })
 
     return { runs: runs ?? [], events: events ?? [] };
   });
+
+// ---------------------------------------------------------------------------
+// NotebookLM bridge: export a markdown bundle of curated-ready grants.
+// Returns a single concatenated markdown document (≤ ~50 sources) that the
+// curator drops into NotebookLM as a single source, plus a JSON index for
+// audit. NotebookLM has no public API, so we optimize for copy/paste UX.
+// ---------------------------------------------------------------------------
+export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      status: z.enum(["discovered", "enriched", "scored", "shortlisted"]).default("discovered"),
+      limit: z.number().int().min(1).max(50).default(25),
+    }).parse(i ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("grants")
+      .select("id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, language, url, status, sectors, funder:funders(name, jurisdiction)")
+      .eq("status", data.status)
+      .order("discovered_at", { ascending: false })
+      .limit(data.limit);
+    if (error) throw new Error(error.message);
+
+    const fmt = (n: number | null) => n == null ? "—" : `CAD ${n.toLocaleString("en-CA")}`;
+    const parts: string[] = [
+      `# IIAL Curation Bundle — ${new Date().toISOString().slice(0, 10)}`,
+      ``,
+      `Status filter: \`${data.status}\` · Count: ${rows?.length ?? 0}`,
+      ``,
+      `> Drop this markdown into NotebookLM as a single source. Each grant is delimited by \`---\`. Use the IDs below to mark curated items via the "Mark as curated" action in /grants.`,
+      ``,
+    ];
+    const index: Array<{ id: string; title: string; url: string }> = [];
+
+    for (const g of rows ?? []) {
+      const r = g as unknown as {
+        id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
+        amount_cad_min: number | null; amount_cad_max: number | null; deadline: string | null;
+        language: string; url: string; status: string; sectors: string[] | null;
+        funder: { name: string; jurisdiction: string | null } | { name: string; jurisdiction: string | null }[] | null;
+      };
+      const funder = Array.isArray(r.funder) ? r.funder[0] : r.funder;
+      index.push({ id: r.id, title: r.title, url: r.url });
+      parts.push(
+        `---`,
+        ``,
+        `## ${r.title}${r.title_fr ? ` / ${r.title_fr}` : ""}`,
+        ``,
+        `- **IIAL id**: \`${r.id}\``,
+        `- **Funder**: ${funder?.name ?? "—"}${funder?.jurisdiction ? ` (${funder.jurisdiction})` : ""}`,
+        `- **Amount**: ${fmt(r.amount_cad_min)} – ${fmt(r.amount_cad_max)}`,
+        `- **Deadline**: ${r.deadline ?? "—"}`,
+        `- **Language**: ${r.language}`,
+        `- **Sectors**: ${(r.sectors ?? []).join(", ") || "—"}`,
+        `- **Source**: ${r.url}`,
+        ``,
+        r.summary ? `${r.summary}` : "_(no summary)_",
+        r.summary_fr ? `\n\n_(FR)_ ${r.summary_fr}` : "",
+        ``,
+      );
+    }
+
+    return {
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      count: rows?.length ?? 0,
+      markdown: parts.join("\n"),
+      index,
+    };
+  });
+
+// Curator action: mark a list of grant IDs as shortlisted, with optional note.
+// Records who curated it and the note inside grant_events for full audit.
+export const markGrantsCurated = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      grantIds: z.array(z.string().uuid()).min(1).max(50),
+      note: z.string().max(2000).optional(),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const ts = new Date().toISOString();
+    let updated = 0;
+    for (const id of data.grantIds) {
+      const { data: prev } = await supabaseAdmin.from("grants").select("status").eq("id", id).maybeSingle();
+      const fromStatus = (prev as { status?: string } | null)?.status ?? null;
+      const { error: uerr } = await supabaseAdmin
+        .from("grants")
+        .update({ status: "shortlisted", updated_at: ts } as never)
+        .eq("id", id);
+      if (uerr) continue;
+      updated++;
+      await supabaseAdmin.from("grant_events").insert({
+        grant_id: id,
+        from_status: fromStatus,
+        to_status: "shortlisted",
+        actor_id: context.userId,
+        metadata: { source: "curator_notebooklm", note: data.note ?? null },
+      } as never);
+    }
+    return { ok: true, updated };
+  });
+
