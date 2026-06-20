@@ -284,15 +284,18 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
       if (llmResultText) try {
         const llm = { text: llmResultText, model: llmModel };
 
-        // Parse {fields: {field: {value, quote}}}
-        const Shape = z.object({
-          fields: z.record(z.string(), z.object({
-            value: z.unknown(),
-            quote: z.string().min(8).max(1500),
-          })).optional().default({}),
+        // Per-field validation. A bad quote on ONE field must not discard
+        // the entire LLM response — accept the good fields and drop the rest.
+        const FieldShape = z.object({
+          value: z.unknown(),
+          quote: z.string().min(4).max(1500),
         });
-        const parsed = Shape.parse(JSON.parse(llm.text));
-        for (const [field, payload] of Object.entries(parsed.fields)) {
+        const rawJson = JSON.parse(llm.text) as { fields?: Record<string, unknown> };
+        const fieldsObj = rawJson.fields ?? {};
+        for (const [field, raw] of Object.entries(fieldsObj)) {
+          const parsedField = FieldShape.safeParse(raw);
+          if (!parsedField.success) continue; // skip this field, keep going
+          const payload = parsedField.data;
           if (!stillMissing.includes(field) && !field.startsWith("eligibility") && !field.startsWith("sectors")) continue;
           if (!snippetIsGrounded(payload.quote, markdown)) continue; // hallucination — drop
           // Coerce per-field
