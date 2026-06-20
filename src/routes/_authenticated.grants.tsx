@@ -169,7 +169,12 @@ function GrantsPage() {
                       <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
                         {t("grants.source")} →
                       </a>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        {isAdmin && g.status === "discovered" && (
+                          <Button size="sm" variant="outline" disabled={pending === g.id + ":enrich"} onClick={() => onEnrich(g.id)}>
+                            {pending === g.id + ":enrich" ? t("app.loading") : "Enrich"}
+                          </Button>
+                        )}
                         <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
                           {pending === g.id ? t("app.loading") : t("grants.evaluate")}
                         </Button>
