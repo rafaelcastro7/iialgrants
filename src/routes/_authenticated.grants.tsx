@@ -4,9 +4,10 @@ import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { listGrants } from "@/lib/grants.functions";
+import { listGrants, discoverAllFunders, enrichGrant } from "@/lib/grants.functions";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
+import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,13 +37,17 @@ function GrantsPage() {
   const { t, i18n } = useTranslation();
   const fr = i18n.language?.startsWith("fr");
   const navigate = useNavigate();
+  const isAdmin = useIsAdmin();
   const fetchGrants = useServerFn(listGrants);
   const evaluate = useServerFn(runEvaluator);
   const strategize = useServerFn(runStrategist);
+  const discoverAll = useServerFn(discoverAllFunders);
+  const enrichOne = useServerFn(enrichGrant);
 
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
   const [evalError, setEvalError] = useState<string | null>(null);
+  const [discoveryMsg, setDiscoveryMsg] = useState<string | null>(null);
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
     queryFn: () => fetchGrants({ data: { limit: 50 } }),
