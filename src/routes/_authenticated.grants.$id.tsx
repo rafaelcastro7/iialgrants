@@ -16,7 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
 import { EvidencePanel, EvidenceChip } from "@/components/grants/EvidencePanel";
+import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
 import { useState } from "react";
+import { Activity } from "lucide-react";
 import "@/i18n";
 
 const detailQuery = (id: string) =>
