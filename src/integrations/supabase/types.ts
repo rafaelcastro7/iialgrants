@@ -384,63 +384,96 @@ export type Database = {
       }
       fit_rules: {
         Row: {
+          applicant_types_allowed: string[]
+          applicant_types_excluded: string[]
           auto_archive_on_fail: boolean
           created_at: string
           excluded_jurisdictions: string[]
           excluded_keywords: string[]
           excluded_sectors: string[]
           hard_fail_on_amount: boolean
+          hard_fail_on_applicant_type: boolean
+          hard_fail_on_capability: boolean
           hard_fail_on_deadline: boolean
           hard_fail_on_excluded_keyword: boolean
           hard_fail_on_jurisdiction: boolean
+          hard_fail_on_runway: boolean
+          iial_capabilities: string[]
+          lead_min_weeks: number | null
           max_amount_cad: number | null
+          max_cost_share_pct_org_carries: number | null
           min_amount_cad: number | null
           min_days_to_deadline: number | null
+          partner_min_weeks: number | null
+          require_match_verification: boolean
           required_jurisdictions: string[]
           required_keywords: string[]
           required_sectors: string[]
+          rolling_intake_passes_runway: boolean
           threshold_fit_pass: number
           updated_at: string
           user_id: string
           weight_llm: number
         }
         Insert: {
+          applicant_types_allowed?: string[]
+          applicant_types_excluded?: string[]
           auto_archive_on_fail?: boolean
           created_at?: string
           excluded_jurisdictions?: string[]
           excluded_keywords?: string[]
           excluded_sectors?: string[]
           hard_fail_on_amount?: boolean
+          hard_fail_on_applicant_type?: boolean
+          hard_fail_on_capability?: boolean
           hard_fail_on_deadline?: boolean
           hard_fail_on_excluded_keyword?: boolean
           hard_fail_on_jurisdiction?: boolean
+          hard_fail_on_runway?: boolean
+          iial_capabilities?: string[]
+          lead_min_weeks?: number | null
           max_amount_cad?: number | null
+          max_cost_share_pct_org_carries?: number | null
           min_amount_cad?: number | null
           min_days_to_deadline?: number | null
+          partner_min_weeks?: number | null
+          require_match_verification?: boolean
           required_jurisdictions?: string[]
           required_keywords?: string[]
           required_sectors?: string[]
+          rolling_intake_passes_runway?: boolean
           threshold_fit_pass?: number
           updated_at?: string
           user_id: string
           weight_llm?: number
         }
         Update: {
+          applicant_types_allowed?: string[]
+          applicant_types_excluded?: string[]
           auto_archive_on_fail?: boolean
           created_at?: string
           excluded_jurisdictions?: string[]
           excluded_keywords?: string[]
           excluded_sectors?: string[]
           hard_fail_on_amount?: boolean
+          hard_fail_on_applicant_type?: boolean
+          hard_fail_on_capability?: boolean
           hard_fail_on_deadline?: boolean
           hard_fail_on_excluded_keyword?: boolean
           hard_fail_on_jurisdiction?: boolean
+          hard_fail_on_runway?: boolean
+          iial_capabilities?: string[]
+          lead_min_weeks?: number | null
           max_amount_cad?: number | null
+          max_cost_share_pct_org_carries?: number | null
           min_amount_cad?: number | null
           min_days_to_deadline?: number | null
+          partner_min_weeks?: number | null
+          require_match_verification?: boolean
           required_jurisdictions?: string[]
           required_keywords?: string[]
           required_sectors?: string[]
+          rolling_intake_passes_runway?: boolean
           threshold_fit_pass?: number
           updated_at?: string
           user_id?: string
