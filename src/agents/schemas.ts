@@ -10,8 +10,16 @@ export const DiscoveredGrant = z.object({
   amount_cad_min: z.number().nonnegative().nullable().optional(),
   amount_cad_max: z.number().nonnegative().nullable().optional(),
   deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  eligibility: z.record(z.string(), z.unknown()).default({}),
-  sectors: z.array(z.string()).default([]),
+  // Accept null from LLMs that emit explicit nulls for missing optional fields,
+  // then normalize to safe defaults so a single null doesn't fail the batch.
+  eligibility: z.preprocess(
+    (v) => (v == null ? {} : v),
+    z.record(z.string(), z.unknown()).default({}),
+  ),
+  sectors: z.preprocess(
+    (v) => (v == null ? [] : v),
+    z.array(z.string()).default([]),
+  ),
   language: z.enum(["en", "fr"]).default("en"),
   url: z.string().url(),
 });
