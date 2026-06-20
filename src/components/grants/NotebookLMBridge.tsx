@@ -16,17 +16,22 @@ export function NotebookLMBridge({ fr }: { fr: boolean }) {
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<"export" | "curate" | null>(null);
-  const [bundle, setBundle] = useState<{ count: number; generatedAt: string; markdown: string } | null>(null);
+  const [bundle, setBundle] = useState<{ count: number; generatedAt: string; markdown: string; quality?: Record<string, unknown> } | null>(null);
   const [ids, setIds] = useState("");
   const [note, setNote] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [pendingEnrich, setPendingEnrich] = useState<{ incompleteIds: string[]; total: number } | null>(null);
 
-  async function onExport() {
-    setBusy("export"); setMsg(null);
+  async function runExport(opts: { autoEnrich?: boolean; force?: boolean }) {
+    setBusy("export"); setMsg(null); setPendingEnrich(null);
     try {
-      const r = await exportFn({ data: { status: "discovered", limit: 25 } });
-      setBundle({ count: r.count, generatedAt: r.generatedAt, markdown: r.markdown });
-      // Trigger download.
+      const r = await exportFn({ data: { status: "discovered", limit: 25, autoEnrich: !!opts.autoEnrich, force: !!opts.force } });
+      if (r.ok === false) {
+        setPendingEnrich({ incompleteIds: r.incompleteIds, total: r.total });
+        setMsg(r.message);
+        return;
+      }
+      setBundle({ count: r.count, generatedAt: r.generatedAt, markdown: r.markdown, quality: r.quality as Record<string, unknown> });
       const blob = new Blob([r.markdown], { type: "text/markdown;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -34,13 +39,17 @@ export function NotebookLMBridge({ fr }: { fr: boolean }) {
       a.download = `iial-curation-${r.generatedAt.slice(0, 10)}.md`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      setMsg(fr
+      const enrichSuffix = r.enrichment
+        ? (fr ? ` · Enrichi: ${r.enrichment.succeeded}/${r.enrichment.attempted}` : ` · Enriched: ${r.enrichment.succeeded}/${r.enrichment.attempted}`)
+        : "";
+      setMsg((fr
         ? `${r.count} subvention(s) exportée(s). Glissez le fichier .md dans NotebookLM.`
-        : `${r.count} grant(s) exported. Drag the .md into NotebookLM as a source.`);
+        : `${r.count} grant(s) exported. Drag the .md into NotebookLM as a source.`) + enrichSuffix);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally { setBusy(null); }
   }
+  const onExport = () => runExport({});
 
   async function onCurate() {
     setBusy("curate"); setMsg(null);
@@ -82,6 +91,23 @@ export function NotebookLMBridge({ fr }: { fr: boolean }) {
             <Button size="sm" onClick={onExport} disabled={busy === "export"}>
               {busy === "export" ? "…" : (fr ? "Télécharger le bundle" : "Download bundle")}
             </Button>
+            {pendingEnrich && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 space-y-2">
+                <p className="text-xs">
+                  {fr
+                    ? `${pendingEnrich.incompleteIds.length}/${pendingEnrich.total} subventions sans montant/échéance/secteurs.`
+                    : `${pendingEnrich.incompleteIds.length}/${pendingEnrich.total} grants missing amount/deadline/sectors.`}
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" variant="secondary" onClick={() => runExport({ autoEnrich: true })} disabled={busy === "export"}>
+                    {fr ? "Enrichir puis exporter" : "Enrich then export"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => runExport({ force: true })} disabled={busy === "export"}>
+                    {fr ? "Exporter quand même" : "Export anyway"}
+                  </Button>
+                </div>
+              </div>
+            )}
             {bundle && (
               <p className="text-xs text-muted-foreground">
                 {fr ? "Bundle généré" : "Generated"} {new Date(bundle.generatedAt).toLocaleString()} · {bundle.count} {fr ? "fiches" : "items"}
