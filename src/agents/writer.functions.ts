@@ -31,8 +31,8 @@ export const draftSection = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
-    await assertModuleEnabled("writer");
+    const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
+    await assertAgentEnabled("writer");
     const { callLlm } = await import("@/agents/llm.server");
     const { ragRetrieve } = await import("@/lib/rag.server");
     const { newRunId } = await import("@/lib/otel");

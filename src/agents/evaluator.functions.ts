@@ -10,8 +10,8 @@ export const runEvaluator = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ grantId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
-    await assertModuleEnabled("evaluator");
+    const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
+    await assertAgentEnabled("evaluator");
     const { callLlm } = await import("@/agents/llm.server");
     const { newRunId } = await import("@/lib/otel");
     const runId = newRunId();
