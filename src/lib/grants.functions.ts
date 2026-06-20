@@ -75,7 +75,6 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { runDiscoverer } = await import("@/agents/discoverer.functions");
-    const { runEnricher } = await import("@/agents/enricher.functions");
 
     const { data: funders, error } = await supabaseAdmin
       .from("funders")
