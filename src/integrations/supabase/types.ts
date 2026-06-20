@@ -382,6 +382,72 @@ export type Database = {
           },
         ]
       }
+      fit_rules: {
+        Row: {
+          auto_archive_on_fail: boolean
+          created_at: string
+          excluded_jurisdictions: string[]
+          excluded_keywords: string[]
+          excluded_sectors: string[]
+          hard_fail_on_amount: boolean
+          hard_fail_on_deadline: boolean
+          hard_fail_on_excluded_keyword: boolean
+          hard_fail_on_jurisdiction: boolean
+          max_amount_cad: number | null
+          min_amount_cad: number | null
+          min_days_to_deadline: number | null
+          required_jurisdictions: string[]
+          required_keywords: string[]
+          required_sectors: string[]
+          threshold_fit_pass: number
+          updated_at: string
+          user_id: string
+          weight_llm: number
+        }
+        Insert: {
+          auto_archive_on_fail?: boolean
+          created_at?: string
+          excluded_jurisdictions?: string[]
+          excluded_keywords?: string[]
+          excluded_sectors?: string[]
+          hard_fail_on_amount?: boolean
+          hard_fail_on_deadline?: boolean
+          hard_fail_on_excluded_keyword?: boolean
+          hard_fail_on_jurisdiction?: boolean
+          max_amount_cad?: number | null
+          min_amount_cad?: number | null
+          min_days_to_deadline?: number | null
+          required_jurisdictions?: string[]
+          required_keywords?: string[]
+          required_sectors?: string[]
+          threshold_fit_pass?: number
+          updated_at?: string
+          user_id: string
+          weight_llm?: number
+        }
+        Update: {
+          auto_archive_on_fail?: boolean
+          created_at?: string
+          excluded_jurisdictions?: string[]
+          excluded_keywords?: string[]
+          excluded_sectors?: string[]
+          hard_fail_on_amount?: boolean
+          hard_fail_on_deadline?: boolean
+          hard_fail_on_excluded_keyword?: boolean
+          hard_fail_on_jurisdiction?: boolean
+          max_amount_cad?: number | null
+          min_amount_cad?: number | null
+          min_days_to_deadline?: number | null
+          required_jurisdictions?: string[]
+          required_keywords?: string[]
+          required_sectors?: string[]
+          threshold_fit_pass?: number
+          updated_at?: string
+          user_id?: string
+          weight_llm?: number
+        }
+        Relationships: []
+      }
       funder_candidates: {
         Row: {
           bn_number: string | null
