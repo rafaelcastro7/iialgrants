@@ -181,28 +181,108 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     if (stillMissing.length > 0) {
       const { callFreeLlm, freeProvidersAvailable } = await import("@/agents/llm-free.server");
       const hasFree = freeProvidersAvailable().length > 0;
-      try {
-        const llm = await callFreeLlm({
-          agent: "enricher",
-          runId,
-          temperature: 0.1,
-          responseFormat: "json",
-          allowLovableFallback: !hasFree,
-          messages: [
-            { role: "system", content:
-              `${PROMPTS.enricher.system}\nPrompt version: ${PROMPTS.enricher.version}\n` +
-              `You MUST quote literal text from the source markdown to justify every field you fill. ` +
-              `Return JSON: { "fields": { "<field>": { "value": ..., "quote": "literal text from markdown" } } }. ` +
-              `If you cannot find justification in the markdown, omit the field. Never invent.` },
-            { role: "user", content: JSON.stringify({
-              needs: stillMissing,
-              source_language: language,
-              source_url: g.url,
-              markdown: markdown.slice(0, 18_000),
-            })},
-          ],
+      const { firecrawlAvailable, firecrawlScrape } = await import("@/lib/firecrawl.server");
+
+      // Tier order:
+      //   1) Free LLM cascade (Groq → Gemini → Cerebras) if any key set.
+      //   2) Firecrawl JSON extraction — LLM runs server-side on their plan
+      //      (no per-token cost beyond Firecrawl), uses FIRECRAWL_API_KEY only.
+      //   3) Lovable AI Gateway — last-resort, costs project credits.
+      // If none of the three are reachable, the enricher commits whatever the
+      // deterministic extractors produced and records "needs_review" metadata.
+
+      let llmResultText: string | null = null;
+      let llmProvider = "none";
+      let llmModel = "none";
+      let llmInTok: number | undefined;
+      let llmOutTok: number | undefined;
+
+      // Tier 1 — free LLM cascade
+      if (hasFree) {
+        try {
+          const llm = await callFreeLlm({
+            agent: "enricher", runId, temperature: 0.1, responseFormat: "json",
+            allowLovableFallback: false,
+            messages: [
+              { role: "system", content:
+                `${PROMPTS.enricher.system}\nPrompt version: ${PROMPTS.enricher.version}\n` +
+                `You MUST quote literal text from the source markdown to justify every field you fill. ` +
+                `Return JSON: { "fields": { "<field>": { "value": ..., "quote": "literal text from markdown" } } }. ` +
+                `If you cannot find justification in the markdown, omit the field. Never invent.` },
+              { role: "user", content: JSON.stringify({
+                needs: stillMissing, source_language: language,
+                source_url: g.url, markdown: markdown.slice(0, 18_000),
+              })},
+            ],
+          });
+          llmResultText = llm.text; llmProvider = llm.provider; llmModel = llm.model;
+          llmInTok = llm.inputTokens; llmOutTok = llm.outputTokens;
+        } catch { /* fall through */ }
+      }
+
+      // Tier 2 — Firecrawl JSON extraction (zero extra LLM cost)
+      if (!llmResultText && firecrawlAvailable()) {
+        const props: Record<string, unknown> = {};
+        const needSchema = (name: string, type: string) => ({
+          type: "object",
+          properties: {
+            value: { type },
+            quote: { type: "string", description: "Verbatim sentence from the page that justifies this value." },
+          },
+          required: ["value", "quote"],
         });
-        llmInfo = { provider: llm.provider, model: llm.model, inputTokens: llm.inputTokens, outputTokens: llm.outputTokens };
+        if (stillMissing.includes("amount_cad_min")) props.amount_cad_min = needSchema("amount_cad_min", "number");
+        if (stillMissing.includes("amount_cad_max")) props.amount_cad_max = needSchema("amount_cad_max", "number");
+        if (stillMissing.includes("deadline")) props.deadline = needSchema("deadline", "string");
+        if (stillMissing.includes("eligibility")) {
+          props.eligibility = {
+            type: "object",
+            properties: { value: { type: "object" }, quote: { type: "string" } },
+            required: ["value", "quote"],
+          };
+        }
+        if (stillMissing.includes("sectors")) {
+          props.sectors = {
+            type: "object",
+            properties: { value: { type: "array", items: { type: "string" } }, quote: { type: "string" } },
+            required: ["value", "quote"],
+          };
+        }
+        const fcSchema = { type: "object", properties: { fields: { type: "object", properties: props } } };
+        const fc = await firecrawlScrape(g.url, {
+          jsonSchema: fcSchema,
+          jsonPrompt: "Extract the requested grant fields. For each field, copy a verbatim sentence from the page into `quote`. If the page does not state a field, omit it. Amounts must be in CAD as numbers. Deadlines must be ISO YYYY-MM-DD.",
+        });
+        if (fc.ok && fc.json) {
+          llmResultText = JSON.stringify(fc.json);
+          llmProvider = "firecrawl"; llmModel = "firecrawl-extract";
+        }
+      }
+
+      // Tier 3 — Lovable AI (only if truly nothing else available)
+      if (!llmResultText && !hasFree && !firecrawlAvailable()) {
+        try {
+          const llm = await callFreeLlm({
+            agent: "enricher", runId, temperature: 0.1, responseFormat: "json",
+            allowLovableFallback: true,
+            messages: [
+              { role: "system", content:
+                `${PROMPTS.enricher.system}\nReturn JSON {"fields":{"<field>":{"value":...,"quote":"..."}}}. Quote literal page text. Never invent.` },
+              { role: "user", content: JSON.stringify({
+                needs: stillMissing, source_language: language,
+                source_url: g.url, markdown: markdown.slice(0, 18_000),
+              })},
+            ],
+          });
+          llmResultText = llm.text; llmProvider = llm.provider; llmModel = llm.model;
+          llmInTok = llm.inputTokens; llmOutTok = llm.outputTokens;
+        } catch { /* fall through */ }
+      }
+
+      llmInfo = { provider: llmProvider, model: llmModel, inputTokens: llmInTok, outputTokens: llmOutTok };
+
+      if (llmResultText) try {
+        const llm = { text: llmResultText, model: llmModel };
 
         // Parse {fields: {field: {value, quote}}}
         const Shape = z.object({
