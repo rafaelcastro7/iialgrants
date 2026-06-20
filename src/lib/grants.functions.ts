@@ -433,11 +433,11 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
       updated++;
       await supabaseAdmin.from("grant_events").insert({
         grant_id: id,
-        from_status: fromStatus,
-        to_status: "shortlisted",
-        actor_id: context.userId,
-        metadata: { source: "curator_notebooklm", note: data.note ?? null },
-      } as never);
+        from_status: (fromStatus ?? null) as never,
+        to_status: "shortlisted" as never,
+        actor_user_id: context.userId,
+        metadata: { source: "curator_notebooklm", note: data.note ?? null } as never,
+      });
     }
     return { ok: true, updated };
   });
