@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_flags: {
+        Row: {
+          agent: string
+          created_at: string
+          description: string
+          description_fr: string
+          enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent: string
+          created_at?: string
+          description?: string
+          description_fr?: string
+          enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent?: string
+          created_at?: string
+          description?: string
+          description_fr?: string
+          enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       agent_runs: {
         Row: {
           agent: Database["public"]["Enums"]["agent_name"]
