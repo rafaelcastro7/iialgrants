@@ -70,17 +70,24 @@ export const listGrants = createServerFn({ method: "GET" })
 // getDiscoveryJobStatus({ jobId }).
 export const discoverAllFunders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((i) =>
+    z.object({
+      funderIds: z.array(z.string().uuid()).optional(),
+    }).parse(i ?? {}),
+  )
+  .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     await assertAgentEnabled("discoverer");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: funders, error } = await supabaseAdmin
+    let fq = supabaseAdmin
       .from("funders")
       .select("id")
       .eq("active", true)
       .not("source_url", "is", null);
+    if (data.funderIds && data.funderIds.length > 0) fq = fq.in("id", data.funderIds);
+    const { data: funders, error } = await fq;
     if (error) throw new Error(error.message);
 
     const jobId = crypto.randomUUID();
@@ -89,7 +96,7 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
     // Kick off background work without awaiting. The orchestrator logs every
     // attempt, success and failure into agent_runs tagged with this job_id.
     const { runDiscoveryJob } = await import("@/agents/discoverer-orchestrator.server");
-    void runDiscoveryJob(jobId, context.userId).catch((e) => {
+    void runDiscoveryJob(jobId, context.userId, data.funderIds).catch((e) => {
       console.error("[discoverAllFunders] background job crashed", e);
     });
 
@@ -106,6 +113,23 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
       perFunder: [] as Array<{ funder: string; inserted: number; seenAgain?: number; engine?: string; error?: string }>,
       status: "queued" as const,
     };
+  });
+
+// List active funders with a discoverable source_url. Used by the admin UI to
+// select which funders to run in the next discovery job.
+export const listActiveFunders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("funders")
+      .select("id, name, name_fr, jurisdiction")
+      .eq("active", true)
+      .not("source_url", "is", null)
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return { funders: data ?? [] };
   });
 
 // Aggregated status of a discovery job, computed from agent_runs rows tagged
