@@ -27,6 +27,7 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
 import { Route as AuthenticatedAdminHistoryRouteImport } from './routes/_authenticated.admin.history'
 import { Route as AuthenticatedAdminAgentsRouteImport } from './routes/_authenticated.admin.agents'
+import { Route as ApiPublicHooksRssPollRouteImport } from './routes/api/public/hooks/rss-poll'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
 import { Route as ApiPublicHooksDeadlinesRouteImport } from './routes/api/public/hooks/deadlines'
@@ -125,6 +126,11 @@ const AuthenticatedAdminAgentsRoute =
     path: '/agents',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicHooksRssPollRoute = ApiPublicHooksRssPollRouteImport.update({
+  id: '/api/public/hooks/rss-poll',
+  path: '/api/public/hooks/rss-poll',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksEnrichRoute = ApiPublicHooksEnrichRouteImport.update({
   id: '/api/public/hooks/enrich',
   path: '/api/public/hooks/enrich',
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
+  '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
+  '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -207,6 +215,7 @@ export interface FileRoutesById {
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
+  '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
+    | '/api/public/hooks/rss-poll'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
+    | '/api/public/hooks/rss-poll'
   id:
     | '__root__'
     | '/'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
+    | '/api/public/hooks/rss-poll'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -285,6 +297,7 @@ export interface RootRouteChildren {
   ApiPublicHooksDeadlinesRoute: typeof ApiPublicHooksDeadlinesRoute
   ApiPublicHooksDiscoverRoute: typeof ApiPublicHooksDiscoverRoute
   ApiPublicHooksEnrichRoute: typeof ApiPublicHooksEnrichRoute
+  ApiPublicHooksRssPollRoute: typeof ApiPublicHooksRssPollRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -415,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAgentsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/hooks/rss-poll': {
+      id: '/api/public/hooks/rss-poll'
+      path: '/api/public/hooks/rss-poll'
+      fullPath: '/api/public/hooks/rss-poll'
+      preLoaderRoute: typeof ApiPublicHooksRssPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/enrich': {
       id: '/api/public/hooks/enrich'
       path: '/api/public/hooks/enrich'
@@ -506,17 +526,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksDeadlinesRoute: ApiPublicHooksDeadlinesRoute,
   ApiPublicHooksDiscoverRoute: ApiPublicHooksDiscoverRoute,
   ApiPublicHooksEnrichRoute: ApiPublicHooksEnrichRoute,
+  ApiPublicHooksRssPollRoute: ApiPublicHooksRssPollRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

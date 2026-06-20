@@ -91,8 +91,9 @@ export async function discoverFunderImpl(
   const { callLlm } = await import("@/agents/llm.server");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { newRunId } = await import("@/lib/otel");
-  const { firecrawlAvailable, firecrawlMap, firecrawlScrape, filterProgramUrls } =
+  const { firecrawlAvailable, firecrawlMap, filterProgramUrls } =
     await import("@/lib/firecrawl.server");
+  const { scrapeWithFallback, jinaSearch } = await import("@/lib/web-fetch.server");
 
   const runId = newRunId();
   const t0 = Date.now();
@@ -110,7 +111,7 @@ export async function discoverFunderImpl(
   if (!funder?.source_url) throw new Error("funder_has_no_source_url");
   const F = funder as { id: string; name: string; source_url: string; source_urls?: string[]; source_type?: string };
 
-  // ----- Path A: Firecrawl available → multi-page structured extraction -----
+  // ----- Path A: structured extraction (Firecrawl preferred, Jina/raw fallback) -----
   if (firecrawlAvailable()) {
     const indexUrls: string[] = [F.source_url, ...(F.source_urls ?? [])];
     const mapped = new Set<string>();
@@ -126,6 +127,19 @@ export async function discoverFunderImpl(
         if (m.ok) m.links.forEach((l) => mapped.add(l));
       }
     }
+    // Last-resort seeding: free Jina Search constrained to the funder host.
+    // Helps when Firecrawl map returns nothing (paywalled sitemaps, JS-only nav).
+    let seedSearchUsed = 0;
+    if (mapped.size < 3) {
+      try {
+        const host = new URL(F.source_url).host;
+        const r = await jinaSearch(`site:${host} (program OR funding OR grant OR subvention OR financement)`, 20);
+        if (r.ok) {
+          r.hits.forEach((h) => mapped.add(h.url));
+          seedSearchUsed = r.hits.length;
+        }
+      } catch { /* ignore */ }
+    }
     indexUrls.forEach((u) => mapped.add(u));
 
     const origin = new URL(F.source_url).origin;
@@ -137,12 +151,14 @@ export async function discoverFunderImpl(
     let foundTotal = 0;
     let inputTokens = 0;
     let outputTokens = 0;
-    const perPageStats: Array<{ url: string; found: number; via: "firecrawl_json" | "llm" | "skipped"; reason?: string }> = [];
+    const viaCounts = { firecrawl_json: 0, firecrawl: 0, jina_reader: 0, raw_html: 0 } as Record<string, number>;
+    const perPageStats: Array<{ url: string; found: number; via: string; reason?: string }> = [];
 
     // Scrape pages in parallel (bounded). Firecrawl JSON mode handles many
-    // pages cheaply and returns multiple grants per index page.
+    // pages cheaply and returns multiple grants per index page; falls back to
+    // Jina Reader (free) then raw HTML on transient failures.
     async function processOne(url: string): Promise<void> {
-      const scrape = await firecrawlScrape(url, {
+      const scrape = await scrapeWithFallback(url, {
         jsonSchema: FIRECRAWL_JSON_SCHEMA,
         jsonPrompt: JSON_PROMPT,
       });
@@ -151,10 +167,11 @@ export async function discoverFunderImpl(
         perPageStats.push({ url, found: 0, via: "skipped", reason: scrape.error });
         return;
       }
+      viaCounts[scrape.via] = (viaCounts[scrape.via] ?? 0) + 1;
 
       // Try Firecrawl-extracted JSON first (cheaper + more reliable).
       let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
-      let via: "firecrawl_json" | "llm" = "firecrawl_json";
+      let via: string = scrape.via;
 
       if (scrape.json && typeof scrape.json === "object") {
         try {
@@ -175,7 +192,8 @@ export async function discoverFunderImpl(
         } catch { /* fall through to LLM */ }
       }
 
-      // Fallback to in-process LLM if Firecrawl JSON returned nothing usable.
+      // Fallback to in-process LLM if no structured JSON was returned (e.g.
+      // Jina Reader / raw HTML paths, or Firecrawl JSON empty).
       if (pageGrants.length === 0) {
         const md = scrape.markdown.slice(0, MAX_MARKDOWN_LEN);
         if (md.length < 200) {
@@ -208,7 +226,7 @@ export async function discoverFunderImpl(
         try {
           const parsed = MultiPageOutput.parse(JSON.parse(llm.text));
           pageGrants = parsed.grants;
-          via = "llm";
+          via = `${scrape.via}+llm`;
         } catch {
           skipped++;
           perPageStats.push({ url, found: 0, via: "skipped", reason: "schema_validation" });
@@ -270,6 +288,8 @@ export async function discoverFunderImpl(
         funder_id: F.id, funder_name: F.name, engine: "firecrawl_v2",
         urls_mapped: mapped.size, urls_scraped: candidates.length,
         urls_skipped: skipped, found: foundTotal, inserted, seen_again: seenAgain,
+        seed_search_used: seedSearchUsed,
+        via_counts: viaCounts,
         per_page: perPageStats.slice(0, 12),
       },
     });
