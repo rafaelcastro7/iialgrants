@@ -260,7 +260,8 @@ function GrantsPage() {
             })}
             {evalError && <p className="text-sm text-destructive">{evalError}</p>}
           </div>
-        )}
+        );
+        })()}
       </section>
     </main>
   );
