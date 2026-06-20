@@ -5,7 +5,7 @@
 
 type MapResult = { ok: true; links: string[] } | { ok: false; error: string };
 type ScrapeResult =
-  | { ok: true; url: string; markdown: string; title?: string }
+  | { ok: true; url: string; markdown: string; title?: string; json?: unknown }
   | { ok: false; url: string; error: string };
 
 const BASE = "https://api.firecrawl.dev/v2";
@@ -18,17 +18,21 @@ export function firecrawlAvailable(): boolean {
   return Boolean(getKey());
 }
 
-export async function firecrawlMap(url: string, limit = 50): Promise<MapResult> {
+// Map a site with optional keyword focus (Firecrawl ranks links by relevance
+// when `search` is provided — great for narrowing thousand-link sitemaps to
+// program-style URLs).
+export async function firecrawlMap(
+  url: string,
+  limit = 100,
+  search?: string,
+): Promise<MapResult> {
   const key = getKey();
   if (!key) return { ok: false, error: "no_api_key" };
   try {
     const res = await fetch(`${BASE}/map`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ url, limit, includeSubdomains: false }),
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url, limit, includeSubdomains: false, ...(search ? { search } : {}) }),
     });
     if (!res.ok) return { ok: false, error: `map_${res.status}` };
     const json = (await res.json()) as { links?: Array<string | { url: string }>; data?: { links?: Array<string | { url: string }> } };
@@ -42,33 +46,40 @@ export async function firecrawlMap(url: string, limit = 50): Promise<MapResult> 
   }
 }
 
-export async function firecrawlScrape(url: string): Promise<ScrapeResult> {
+// Scrape a page. If `jsonSchema` is provided, also request Firecrawl's JSON
+// extraction (LLM-on-server) so callers can skip a second LLM round trip.
+export async function firecrawlScrape(
+  url: string,
+  opts: { jsonSchema?: object; jsonPrompt?: string } = {},
+): Promise<ScrapeResult> {
   const key = getKey();
   if (!key) return { ok: false, url, error: "no_api_key" };
   try {
+    const formats: unknown[] = ["markdown"];
+    if (opts.jsonSchema || opts.jsonPrompt) {
+      formats.push({
+        type: "json",
+        ...(opts.jsonSchema ? { schema: opts.jsonSchema } : {}),
+        ...(opts.jsonPrompt ? { prompt: opts.jsonPrompt } : {}),
+      });
+    }
     const res = await fetch(`${BASE}/scrape`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url,
-        formats: ["markdown"],
-        onlyMainContent: true,
-        timeout: 20000,
-      }),
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url, formats, onlyMainContent: true, timeout: 25000 }),
     });
     if (!res.ok) return { ok: false, url, error: `scrape_${res.status}` };
     const json = (await res.json()) as {
-      data?: { markdown?: string; metadata?: { title?: string } };
+      data?: { markdown?: string; metadata?: { title?: string }; json?: unknown };
       markdown?: string;
       metadata?: { title?: string };
+      json?: unknown;
     };
     const markdown = json.data?.markdown ?? json.markdown ?? "";
     const title = json.data?.metadata?.title ?? json.metadata?.title;
-    if (!markdown) return { ok: false, url, error: "empty_markdown" };
-    return { ok: true, url, markdown, title };
+    const jsonOut = json.data?.json ?? json.json;
+    if (!markdown && !jsonOut) return { ok: false, url, error: "empty_response" };
+    return { ok: true, url, markdown, title, json: jsonOut };
   } catch (e) {
     return { ok: false, url, error: e instanceof Error ? e.message : String(e) };
   }
@@ -84,6 +95,8 @@ const SKIP_PATTERNS = [
 const KEEP_PATTERNS = [
   /program/i, /financ/i, /fund/i, /subsid/i, /grant/i, /tax-credit/i,
   /innovation/i, /support/i, /scholarship/i, /credit/i, /loan/i, /produit/i,
+  /programme/i, /subvention/i, /bourse/i, /aide/i, /cr[eé]dit/i, /incit/i,
+  /pret/i, /pr[eê]t/i, /investiss/i,
 ];
 
 export function filterProgramUrls(links: string[], origin: string): string[] {
