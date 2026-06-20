@@ -294,6 +294,9 @@ export async function discoverFunderImpl(
       perPageStats.push({ url, found: pageGrants.length, via });
 
       for (const g of pageGrants) {
+        if (isGenericTitle(g.title) || isRootIndex(g.url || url)) {
+          continue; // structural filter: skip landing-page / index-only entries
+        }
         const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
         const { data: existing } = await supabaseAdmin
           .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
@@ -413,6 +416,7 @@ export async function discoverFunderImpl(
   let inserted = 0;
   let seenAgain = 0;
   for (const g of parsed.grants) {
+    if (isGenericTitle(g.title) || isRootIndex(g.url)) continue;
     const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
     const { data: existing } = await supabaseAdmin
       .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
