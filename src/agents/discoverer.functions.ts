@@ -161,33 +161,72 @@ export const runDiscoverer = createServerFn({ method: "POST" })
     }
 
     let inserted = 0;
+    let seenAgain = 0;
     for (const g of parsed.grants) {
       const source_hash = createHash("sha256")
         .update(`${g.url}|${g.title}`)
         .digest("hex");
-      const { error: ierr } = await supabaseAdmin
+      const { data: existing } = await supabaseAdmin
         .from("grants")
-        .upsert(
-          {
-            funder_id: funder.id,
-            title: g.title,
-            title_fr: g.title_fr ?? null,
-            summary: g.summary ?? null,
-            summary_fr: g.summary_fr ?? null,
-            amount_cad_min: g.amount_cad_min ?? null,
-            amount_cad_max: g.amount_cad_max ?? null,
-            deadline: g.deadline ?? null,
-            eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
-            sectors: g.sectors ?? [],
-            language: g.language,
-            url: g.url,
-            source_hash,
-            status: "discovered",
-          },
-          { onConflict: "source_hash", ignoreDuplicates: true },
-        );
+        .select("id, times_seen")
+        .eq("source_hash", source_hash)
+        .maybeSingle();
+      if (existing) {
+        await supabaseAdmin
+          .from("grants")
+          .update({
+            last_seen_at: new Date().toISOString(),
+            times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
+          } as never)
+          .eq("id", existing.id);
+        seenAgain++;
+        continue;
+      }
+      const { error: ierr } = await supabaseAdmin.from("grants").insert({
+        funder_id: funder.id,
+        title: g.title,
+        title_fr: g.title_fr ?? null,
+        summary: g.summary ?? null,
+        summary_fr: g.summary_fr ?? null,
+        amount_cad_min: g.amount_cad_min ?? null,
+        amount_cad_max: g.amount_cad_max ?? null,
+        deadline: g.deadline ?? null,
+        eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
+        sectors: g.sectors ?? [],
+        language: g.language,
+        url: g.url,
+        source_hash,
+        status: "discovered",
+      });
       if (!ierr) inserted++;
     }
+
+    // Cache discovery_sources history for future runs.
+    await supabaseAdmin.from("discovery_sources" as never).upsert(
+      {
+        funder_id: funder.id,
+        url: funder.source_url,
+        content_hash: contentHash,
+        etag: resEtag,
+        last_modified: resLastModified,
+        http_status: httpStatus,
+        text_length: text.length,
+        grants_found: parsed.grants.length,
+        grants_inserted: inserted,
+        times_seen: (priorRow?.times_seen ?? 0) + 1,
+        last_fetched_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "funder_id,url" },
+    );
+
+    // Refresh funder freshness fields.
+    await supabaseAdmin
+      .from("funders")
+      .update({
+        last_discovered_at: new Date().toISOString(),
+        last_content_hash: contentHash,
+      } as never)
+      .eq("id", funder.id);
 
     await supabaseAdmin.from("agent_runs").insert({
       run_id: runId,
@@ -197,8 +236,8 @@ export const runDiscoverer = createServerFn({ method: "POST" })
       input_tokens: llm.inputTokens,
       output_tokens: llm.outputTokens,
       latency_ms: Date.now() - runStart,
-      metadata: { funder_id: funder.id, found: parsed.grants.length, inserted },
+      metadata: { funder_id: funder.id, found: parsed.grants.length, inserted, seen_again: seenAgain },
     });
 
-    return { ok: true, inserted, found: parsed.grants.length, runId };
+    return { ok: true, inserted, found: parsed.grants.length, seenAgain, runId };
   });
