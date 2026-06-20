@@ -184,15 +184,21 @@ function GrantsPage() {
           eligibleOnly={eligibleOnly} setEligibleOnly={setEligibleOnly}
           onlyWithDeadline={onlyWithDeadline} setOnlyWithDeadline={setOnlyWithDeadline}
         />
-        {data.grants.length === 0 ? (
+        {(() => {
+          const filtered = applyGrantFilters(data.grants, { jurisdiction, eligibleOnly, onlyWithDeadline });
+          return data.grants.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
               {t("grants.empty")}
             </CardContent>
           </Card>
+        ) : filtered.length === 0 ? (
+          <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">
+            {fr ? "Aucune subvention ne correspond aux filtres." : "No grants match the current filters."}
+          </CardContent></Card>
         ) : (
           <div className="grid gap-4">
-            {data.grants.map((g) => {
+            {filtered.map((g) => {
               const funder = Array.isArray(g.funder) ? g.funder[0] : g.funder;
               const title = (fr && g.title_fr) ? g.title_fr : g.title;
               const summary = (fr && g.summary_fr) ? g.summary_fr : g.summary;
