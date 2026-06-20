@@ -158,7 +158,7 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     const { data: candidates } = await context.supabase
       .from("grants")
       .select("id, status")
-      .in("status", ["enriched", "scored", "shortlisted"])
+      .in("status", ["discovered", "enriched", "scored", "shortlisted"])
       .limit(data.limit * 3);
 
     const ids = (candidates ?? []).map((g) => g.id);

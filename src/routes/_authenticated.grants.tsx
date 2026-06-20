@@ -66,7 +66,7 @@ function GrantsPage() {
     if (autoRan.current) return;
     autoRan.current = true;
     const pendingIds = data.grants
-      .filter((g) => !g.evaluation && (g.status === "enriched" || g.status === "scored" || g.status === "shortlisted"))
+      .filter((g) => !g.evaluation && ["discovered", "enriched", "scored", "shortlisted"].includes(g.status))
       .map((g) => g.id);
     if (pendingIds.length === 0) return;
     setEvaluatingIds(new Set(pendingIds));
