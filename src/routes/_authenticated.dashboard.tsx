@@ -61,6 +61,8 @@ function Dashboard() {
           <p className="mt-4 text-sm">{t("app.tagline")}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {on("grants") && <Link to="/grants"><Button>{t("nav.grants")} →</Button></Link>}
+            <Link to="/org"><Button variant="outline">Organization</Button></Link>
+            <Link to="/fit-rules"><Button variant="outline">Fit Rules</Button></Link>
             {on("proposals") && <Link to="/proposals"><Button variant="outline">{t("nav.proposals")}</Button></Link>}
             {on("submissions") && <Link to="/submissions"><Button variant="outline">{t("nav.submissions")}</Button></Link>}
             {isAdmin && on("analytics") && <Link to="/ops"><Button variant="ghost">{t("ops.title")}</Button></Link>}
