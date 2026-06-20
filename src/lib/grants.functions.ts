@@ -198,3 +198,36 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     }
     return { ok: true, evaluated, skipped };
   });
+
+// List recent agent_runs (and recent grant_events) for the live event panel.
+// Admin-only because it includes failure messages and tokens.
+export const listAgentEvents = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      limit: z.number().int().min(1).max(200).default(50),
+      agent: z.string().optional(),
+      status: z.enum(["succeeded", "failed", "degraded", "running"]).optional(),
+    }).parse(i ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin
+      .from("agent_runs")
+      .select("id, run_id, agent, status, model, latency_ms, input_tokens, output_tokens, error, metadata, grant_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+    if (data.agent) q = q.eq("agent", data.agent);
+    if (data.status) q = q.eq("status", data.status);
+    const { data: runs, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const { data: events } = await supabaseAdmin
+      .from("grant_events")
+      .select("id, grant_id, from_status, to_status, metadata, created_at")
+      .order("created_at", { ascending: false })
+      .limit(25);
+
+    return { runs: runs ?? [], events: events ?? [] };
+  });
