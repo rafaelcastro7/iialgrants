@@ -25,6 +25,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
+import { Route as AuthenticatedAdminAgentsRouteImport } from './routes/_authenticated.admin.agents'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
 import { Route as ApiPublicHooksDeadlinesRouteImport } from './routes/api/public/hooks/deadlines'
@@ -111,6 +112,12 @@ const AuthenticatedAdminModulesRoute =
     path: '/modules',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminAgentsRoute =
+  AuthenticatedAdminAgentsRouteImport.update({
+    id: '/agents',
+    path: '/agents',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const ApiPublicHooksEnrichRoute = ApiPublicHooksEnrichRouteImport.update({
   id: '/api/public/hooks/enrich',
   path: '/api/public/hooks/enrich',
@@ -139,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
+  '/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -158,6 +166,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
+  '/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -180,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
   '/_authenticated/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
+  '/_authenticated/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/proposals'
     | '/submissions'
+    | '/admin/agents'
     | '/admin/modules'
     | '/admin/users'
     | '/proposals/$id'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/proposals'
     | '/submissions'
+    | '/admin/agents'
     | '/admin/modules'
     | '/admin/users'
     | '/proposals/$id'
@@ -242,6 +254,7 @@ export interface FileRouteTypes {
     | '/_authenticated/privacy'
     | '/_authenticated/proposals'
     | '/_authenticated/submissions'
+    | '/_authenticated/admin/agents'
     | '/_authenticated/admin/modules'
     | '/_authenticated/admin/users'
     | '/_authenticated/proposals/$id'
@@ -375,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminModulesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/agents': {
+      id: '/_authenticated/admin/agents'
+      path: '/agents'
+      fullPath: '/admin/agents'
+      preLoaderRoute: typeof AuthenticatedAdminAgentsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/api/public/hooks/enrich': {
       id: '/api/public/hooks/enrich'
       path: '/api/public/hooks/enrich'
@@ -400,12 +420,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminAgentsRoute: typeof AuthenticatedAdminAgentsRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminAgentsRoute: AuthenticatedAdminAgentsRoute,
   AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
