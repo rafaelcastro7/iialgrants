@@ -91,6 +91,23 @@ export function NotebookLMBridge({ fr }: { fr: boolean }) {
             <Button size="sm" onClick={onExport} disabled={busy === "export"}>
               {busy === "export" ? "…" : (fr ? "Télécharger le bundle" : "Download bundle")}
             </Button>
+            {pendingEnrich && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 space-y-2">
+                <p className="text-xs">
+                  {fr
+                    ? `${pendingEnrich.incompleteIds.length}/${pendingEnrich.total} subventions sans montant/échéance/secteurs.`
+                    : `${pendingEnrich.incompleteIds.length}/${pendingEnrich.total} grants missing amount/deadline/sectors.`}
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" variant="secondary" onClick={() => runExport({ autoEnrich: true })} disabled={busy === "export"}>
+                    {fr ? "Enrichir puis exporter" : "Enrich then export"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => runExport({ force: true })} disabled={busy === "export"}>
+                    {fr ? "Exporter quand même" : "Export anyway"}
+                  </Button>
+                </div>
+              </div>
+            )}
             {bundle && (
               <p className="text-xs text-muted-foreground">
                 {fr ? "Bundle généré" : "Generated"} {new Date(bundle.generatedAt).toLocaleString()} · {bundle.count} {fr ? "fiches" : "items"}
