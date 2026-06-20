@@ -69,12 +69,20 @@ export async function evaluateGrantImpl(opts: {
     prompt_version: PROMPTS.evaluator.version, run_id: runId,
   }, { onConflict: "user_id,grant_id" });
 
-  if (g.status === "discovered" || g.status === "enriched") {
+  // Eligibility-first gating: if we don't qualify, archive immediately and
+  // stop spending tokens on enrichment/scoring downstream.
+  if (!parsed.eligibility_pass) {
+    if (g.status === "discovered" || g.status === "enriched" || g.status === "scored") {
+      await supabaseAdmin.from("grants").update({
+        status: "archived", fit_score: parsed.fit_score,
+      } as never).eq("id", g.id);
+    }
+  } else if (g.status === "discovered" || g.status === "enriched") {
     await supabaseAdmin.from("grants").update({
       status: "scored", scored_at: new Date().toISOString(), fit_score: parsed.fit_score,
-    }).eq("id", g.id);
+    } as never).eq("id", g.id);
   } else {
-    await supabaseAdmin.from("grants").update({ fit_score: parsed.fit_score }).eq("id", g.id);
+    await supabaseAdmin.from("grants").update({ fit_score: parsed.fit_score } as never).eq("id", g.id);
   }
 
   await supabaseAdmin.from("agent_runs").insert({

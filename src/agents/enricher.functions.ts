@@ -2,12 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EnricherOutput, PROMPTS } from "@/agents/schemas";
 
-// Enricher v2 — re-engineered (Fase 7):
-//   * Canonical language = ENGLISH. FR is lazy/on-demand, NOT this agent.
-//   * Skip LLM entirely when the grant is already complete + already in EN.
-//   * When the LLM is needed, ask ONLY for the missing fields ("needs" array).
-//   * If source language ≠ 'en', move original title/summary to *_fr and
-//     translate the canonical fields to EN.
+// Enricher v3 — Lovable-only, no translation.
+//   * FR/EN stay as-is. French is for SEARCH only, never translated.
+//   * Skip LLM entirely if grant already has amount/deadline/sectors/eligibility.
+//   * Only asks LLM for the missing structured fields.
 export const runEnricher = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ grantId: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
@@ -19,7 +17,7 @@ export const runEnricher = createServerFn({ method: "POST" })
 
     const { data: g, error } = await supabaseAdmin
       .from("grants")
-      .select("id, title, title_fr, summary, summary_fr, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors")
+      .select("id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors")
       .eq("id", data.grantId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -28,9 +26,6 @@ export const runEnricher = createServerFn({ method: "POST" })
       return { ok: true, skipped: true, reason: `status=${g.status}`, runId };
     }
 
-    // ---- Diagnose what's actually missing ---------------------------------
-    const sourceLang = (g.language ?? "en").toLowerCase();
-    const needsTranslation = sourceLang !== "en";
     const hasAmount = g.amount_cad_min != null || g.amount_cad_max != null;
     const hasDeadline = !!g.deadline;
     const hasSectors = Array.isArray(g.sectors) && g.sectors.length > 0;
@@ -38,17 +33,16 @@ export const runEnricher = createServerFn({ method: "POST" })
     const hasEligibility = Object.keys(eligObj).length > 0;
 
     const needs: string[] = [];
-    if (needsTranslation) needs.push("title_en", "summary_en");
     if (!hasAmount) needs.push("amount_cad_min", "amount_cad_max");
     if (!hasDeadline) needs.push("deadline");
     if (!hasEligibility) needs.push("eligibility");
     if (!hasSectors) needs.push("sectors");
 
-    // ---- FAST PATH: nothing to do, skip the LLM call entirely -------------
+    // FAST PATH: 0 tokens.
     if (needs.length === 0) {
       await supabaseAdmin
         .from("grants")
-        .update({ status: "enriched", enriched_at: new Date().toISOString() })
+        .update({ status: "enriched", enriched_at: new Date().toISOString() } as never)
         .eq("id", g.id);
       await supabaseAdmin.from("agent_runs").insert({
         run_id: runId, agent: "enricher", status: "succeeded",
@@ -58,7 +52,6 @@ export const runEnricher = createServerFn({ method: "POST" })
       return { ok: true, runId, skipped: true, reason: "already_complete" };
     }
 
-    // ---- SLOW PATH: focused LLM call, only the missing keys ---------------
     const { callLlm } = await import("@/agents/llm.server");
     const llm = await callLlm({
       model: "google/gemini-2.5-flash",
@@ -72,17 +65,10 @@ export const runEnricher = createServerFn({ method: "POST" })
           role: "user",
           content: JSON.stringify({
             needs,
-            source_language: sourceLang,
+            source_language: g.language,
             title: g.title,
             summary: g.summary,
             url: g.url,
-            current: {
-              amount_cad_min: g.amount_cad_min,
-              amount_cad_max: g.amount_cad_max,
-              deadline: g.deadline,
-              eligibility: g.eligibility,
-              sectors: g.sectors,
-            },
           }),
         },
       ],
@@ -102,24 +88,10 @@ export const runEnricher = createServerFn({ method: "POST" })
       return { ok: false, runId, error: "schema_validation" };
     }
 
-    // ---- Apply only the fields we actually requested ----------------------
     const patch: Record<string, unknown> = {
       status: "enriched",
       enriched_at: new Date().toISOString(),
     };
-
-    if (needsTranslation) {
-      // Preserve the original (FR or other) in *_fr, install canonical EN in title/summary.
-      if (parsed.title_en) {
-        patch.title = parsed.title_en;
-        if (!g.title_fr && g.title) patch.title_fr = g.title;
-      }
-      if (parsed.summary_en !== undefined) {
-        patch.summary = parsed.summary_en ?? g.summary;
-        if (!g.summary_fr && g.summary) patch.summary_fr = g.summary;
-      }
-      patch.language = "en"; // canonical is now EN
-    }
     if (!hasAmount) {
       if (parsed.amount_cad_min !== undefined) patch.amount_cad_min = parsed.amount_cad_min;
       if (parsed.amount_cad_max !== undefined) patch.amount_cad_max = parsed.amount_cad_max;
