@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_config_audit: {
+        Row: {
+          agent: string
+          changed_at: string
+          field: string
+          id: string
+          is_prompt: boolean
+          new_value: Json | null
+          old_value: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          agent: string
+          changed_at?: string
+          field: string
+          id?: string
+          is_prompt?: boolean
+          new_value?: Json | null
+          old_value?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          agent?: string
+          changed_at?: string
+          field?: string
+          id?: string
+          is_prompt?: boolean
+          new_value?: Json | null
+          old_value?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       agent_configs: {
         Row: {
           agent: string

@@ -8,6 +8,7 @@ import {
   resetAgentPrompt,
   testAgentPrompt,
   listAgentRuns,
+  listAgentConfigAudit,
   type AgentConfigRow,
   MODEL_CATALOG,
 } from "@/lib/admin-agent-configs.functions";
@@ -183,6 +184,7 @@ function AgentEditor({ agent, models }: { agent: AgentRow; models: readonly Mode
             <TabsTrigger value="reliability">Reliability</TabsTrigger>
             <TabsTrigger value="playground">Playground</TabsTrigger>
             <TabsTrigger value="runs">Recent Runs</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="model" className="space-y-5 pt-4">
@@ -281,6 +283,10 @@ function AgentEditor({ agent, models }: { agent: AgentRow; models: readonly Mode
 
           <TabsContent value="runs" className="pt-4">
             <RecentRuns agent={agent.agent} />
+          </TabsContent>
+
+          <TabsContent value="history" className="pt-4">
+            <ChangeHistory agent={agent.agent} />
           </TabsContent>
         </Tabs>
 
@@ -409,5 +415,86 @@ function RecentRuns({ agent }: { agent: string }) {
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function ChangeHistory({ agent }: { agent: string }) {
+  const fetchAudit = useServerFn(listAgentConfigAudit);
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "agent-audit", agent],
+    queryFn: () => fetchAudit({ data: { agent: agent as never, limit: 100 } }),
+  });
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading history…</p>;
+  const events = data?.events ?? [];
+  if (events.length === 0) return <p className="text-sm text-muted-foreground">No changes recorded yet.</p>;
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Every parameter and prompt edit is recorded with before / after values, the author, and a timestamp. Last 100 events.
+      </p>
+      <ol className="relative border-l pl-5 space-y-4">
+        {events.map((e) => (
+          <li key={e.id} className="relative">
+            <span className="absolute -left-[27px] top-1.5 h-3 w-3 rounded-full border-2 border-background bg-primary" />
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <Badge variant={e.is_prompt ? "default" : "secondary"} className="font-mono">{e.field}</Badge>
+              <span className="text-muted-foreground">by {e.user_email ?? (e.user_id ? e.user_id.slice(0, 8) : "system")}</span>
+              <span className="text-muted-foreground">· {new Date(e.changed_at).toLocaleString()}</span>
+            </div>
+            {e.is_prompt ? (
+              <PromptDiff oldText={e.old_value ?? ""} newText={e.new_value ?? ""} />
+            ) : (
+              <div className="mt-1 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <div className="rounded border bg-destructive/5 p-2">
+                  <div className="text-[10px] uppercase text-muted-foreground mb-0.5">before</div>
+                  <pre className="whitespace-pre-wrap font-mono break-all">{e.old_value ?? "—"}</pre>
+                </div>
+                <div className="rounded border bg-emerald-500/5 p-2">
+                  <div className="text-[10px] uppercase text-muted-foreground mb-0.5">after</div>
+                  <pre className="whitespace-pre-wrap font-mono break-all">{e.new_value ?? "—"}</pre>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+// Simple line-level diff for prompt changes. Lightweight (no dep).
+function PromptDiff({ oldText, newText }: { oldText: string; newText: string }) {
+  const a = oldText.split(/\r?\n/);
+  const b = newText.split(/\r?\n/);
+  const aSet = new Set(a);
+  const bSet = new Set(b);
+  const lines: Array<{ kind: "same" | "add" | "del"; text: string }> = [];
+  // Naive merge: walk longest, mark line as added/removed/same based on membership in the other side.
+  const max = Math.max(a.length, b.length);
+  for (let i = 0; i < max; i++) {
+    const av = a[i];
+    const bv = b[i];
+    if (av === bv) { if (av !== undefined) lines.push({ kind: "same", text: av }); continue; }
+    if (av !== undefined && !bSet.has(av)) lines.push({ kind: "del", text: av });
+    if (bv !== undefined && !aSet.has(bv)) lines.push({ kind: "add", text: bv });
+    if (av !== undefined && bSet.has(av) && bv !== undefined && aSet.has(bv) && av !== bv) {
+      lines.push({ kind: "same", text: av });
+    }
+  }
+  return (
+    <div className="mt-1 rounded border bg-muted/30 p-2 text-[11px] font-mono max-h-72 overflow-auto">
+      {lines.map((l, i) => (
+        <div
+          key={i}
+          className={
+            l.kind === "add" ? "bg-emerald-500/15 text-emerald-700 px-1" :
+            l.kind === "del" ? "bg-destructive/15 text-destructive line-through px-1" :
+            "px-1 text-muted-foreground"
+          }
+        >
+          {l.kind === "add" ? "+ " : l.kind === "del" ? "− " : "  "}{l.text || " "}
+        </div>
+      ))}
+    </div>
   );
 }
