@@ -122,7 +122,7 @@ function AuthPage() {
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
               Password: <code className="font-mono">IIAL-Demo-2026!</code>
             </p>
-          </form>
+          </div>
         </CardContent>
       </Card>
     </div>
