@@ -215,6 +215,13 @@ function GrantDetailPage() {
           </div>
         </div>
       </section>
+
+      <EvidencePanel
+        grantId={id}
+        field={evField}
+        open={!!evField}
+        onOpenChange={(o) => !o && setEvField(null)}
+      />
     </main>
   );
 }
