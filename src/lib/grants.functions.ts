@@ -346,16 +346,29 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
     z.object({
       status: z.enum(["discovered", "enriched", "scored", "shortlisted"]).default("discovered"),
       limit: z.number().int().min(1).max(50).default(25),
-      // Curator escape hatches:
-      // - autoEnrich: run the Enricher synchronously for grants missing amount/deadline/sectors
-      // - force: bypass the completeness gate and export as-is
       autoEnrich: z.boolean().default(false),
       force: z.boolean().default(false),
+      // Language filter: 'auto' = use the curator's preferred_lang from profile,
+      // 'en'/'fr' = explicit, 'all' = both (legacy behaviour, can be noisy).
+      language: z.enum(["auto", "en", "fr", "all"]).default("auto"),
     }).parse(i ?? {}),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Resolve target language from the curator's profile when 'auto'.
+    let lang: "en" | "fr" | "all" = data.language === "auto" ? "en" : data.language;
+    if (data.language === "auto") {
+      const { data: prof } = await supabaseAdmin
+        .from("profiles")
+        .select("preferred_lang")
+        .eq("id", context.userId)
+        .maybeSingle();
+      const pl = (prof as { preferred_lang?: string } | null)?.preferred_lang;
+      if (pl === "en" || pl === "fr") lang = pl;
+    }
+
 
     const selectCols = "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, language, url, status, sectors, funder:funders(id, name, jurisdiction)";
     type Row = {
