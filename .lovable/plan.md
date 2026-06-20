@@ -1,166 +1,87 @@
-# Plan: Fase 0 — Sprint 0 (Esqueleto IIAL Canada)
+# Consola Admin — Usuarios & Módulos
 
-## Estado: COMPLETADA ✅
+Nueva ruta `/_authenticated/admin` (gate adicional: `has_role('admin')`) con dos pestañas profesionales: **Usuarios** y **Módulos**. Sidebar persistente con shadcn `Sidebar` para navegación de la consola.
 
-### Entregables Fase 0
+## Alcance
 
-**1. Lovable Cloud (backend) habilitado**
-- Proyecto provisionado, residencia de datos Canadá (ADR-006).
-- LOVABLE_API_KEY ya configurada para los 6 agentes futuros.
+### 1. Gestión de usuarios
+- Tabla con: email, nombre, rol (`admin` / `member`), idioma preferido, último login, fecha creación, estado (activo / baneado).
+- Acciones por fila:
+  - **Promover / degradar** rol (admin ↔ member) → upsert/delete en `user_roles`.
+  - **Resetear contraseña** → envía magic link / recovery via Auth Admin API.
+  - **Banear / reactivar** → `auth.admin.updateUserById({ ban_duration })`.
+  - **Eliminar** (con confirmación dura, dispara DSAR audit log) → `auth.admin.deleteUser`.
+- Botón **"Invitar usuario"** → modal con email + rol inicial → `auth.admin.inviteUserByEmail`.
+- Filtro búsqueda por email + selector de rol.
+- Todo vía `createServerFn` con `requireSupabaseAuth` + verificación `has_role(uid, 'admin')` antes de `supabaseAdmin`.
 
-**2. Esqueleto de seguridad (migración 001)**
-- `app_role` enum: admin, member, viewer
-- `app_lang` enum: en, fr
-- `profiles` (id, org_name, country='CA', preferred_lang)
-- `user_roles` (separada — anti-escalada de privilegios)
-- `audit_log` (PIPEDA / Law 25, append-only)
-- `has_role()` security definer; EXECUTE revocado a public/anon/authenticated
-- Trigger `on_auth_user_created` → crea profile + role 'member' por defecto
+### 2. Gestión de módulos
+- 8 módulos del producto registrados como flags:
+  `grants_discovery`, `evaluator`, `strategist`, `writer`, `critic`, `submissions`, `rag_org_profile`, `public_webhooks`.
+- Vista grid con switch on/off por módulo, descripción, agente vinculado, y badge de estado.
+- Toggle off → desactiva entrada al módulo en la nav + bloquea server fns asociadas (middleware `requireModuleEnabled('writer')` que lee `module_flags`).
+- Audit trail: cada toggle inserta en `audit_log` (actor, módulo, on/off, timestamp).
 
-**3. Scaffolding i18n EN/FR (ADR-008)**
-- i18next + react-i18next + LanguageDetector
-- `src/i18n/locales/en.json`, `fr.json`
-- `<LanguageSwitcher />` con persistencia en localStorage
-- `syncClientLocale()` SSR-safe
+### 3. Nueva tabla `module_flags`
+- Columnas: `module` (text PK), `enabled` (bool), `updated_by`, `updated_at`, `description`, `description_fr`.
+- Seed inicial con los 8 módulos activos.
+- RLS: `SELECT` para `authenticated` (todos pueden leer su disponibilidad), `UPDATE` solo `admin`.
+- Hook `useModuleFlags()` para condicionar UI (esconder botones / nav items).
 
-**4. Auth scaffolding**
-- `/auth` — email/password sign-in/sign-up
-- `_authenticated` layout con `beforeLoad` gate
-- `/dashboard` (protegida) como primera ruta autenticada
+### 4. Layout consola
+- `src/routes/_authenticated/admin/route.tsx` — pathless layout con sidebar (shadcn `Sidebar` con `collapsible="icon"`), gate `has_role('admin')`, redirige a `/dashboard` si no es admin.
+- Hijos: `admin/users.tsx`, `admin/modules.tsx`, `admin/index.tsx` (resumen: # usuarios, # admins, módulos activos, últimas acciones).
+- Diseño limpio, profesional, alineado con tokens existentes (no purple/indigo). Tipografía consistente con el resto.
 
-**5. Evals harness (RNF — EDD)**
-- `src/evals/types.ts` (Zod schemas: GoldenCase, EvalResult)
-- `src/evals/golden/evaluator.seed.json` (caso positivo + adversarial)
-- `src/evals/runner.test.ts` (gate 1: validación de schema; gate 2: cobertura adversarial)
-- Vitest configurado con jsdom
+### 5. Acceso
+- Nuevo link **"Console"** visible solo cuando `has_role('admin') === true` en el dashboard y en el header.
 
-**6. Observabilidad (OTel GenAI stub)**
-- `src/lib/otel.ts` con semantic conventions GenAI estables desde día 0
-- Exporter OTLP real en Fase 1
+## Detalles técnicos
 
-**7. CI pipeline**
-- `.github/workflows/ci.yml` — lint · vitest · build en cada PR
+- **Migración 015**: crea `module_flags` + GRANTs + RLS + seed + trigger `updated_at`.
+- **Server fns**:
+  - `src/lib/admin-users.functions.ts` — `listUsers`, `setUserRole`, `inviteUser`, `banUser`, `unbanUser`, `deleteUser`, `sendRecovery`.
+  - `src/lib/admin-modules.functions.ts` — `listModules`, `toggleModule`.
+  - Cada handler: `requireSupabaseAuth` → comprueba `has_role(ctx.userId,'admin')` → carga `supabaseAdmin` dinámicamente.
+- **Middleware `requireModuleEnabled(name)`** reutilizable en agent server fns (writer, strategist, etc.) — devuelve 403 si flag off.
+- **Sidebar**: provider montado solo dentro de `/admin/*` para no afectar el resto del app.
+- **i18n**: claves nuevas `admin.*` en EN/FR.
+- **Tests**: añadir cases en `src/evals/runner.test.ts` validando que un toggle off bloquea el flow correspondiente.
+- **Evidence**: `docs/evidence/admin-console.md` con capturas + descripción de RBAC.
 
-## Verificación end-to-end (Fase 0)
+## Fuera de alcance
+- Multi-tenant orgs reales (cada usuario sigue siendo su propio tenant — el toggle es global del proyecto, no por org).
+- SSO/SCIM (out of scope, ya documentado en ADR).
+- Audit log viewer rico (solo se escriben entradas; visor queda como follow-up).
 
-| Ruta | Esperado | Real |
-|---|---|---|
-| `/` | 200 (landing bilingüe) | ✅ 200 |
-| `/auth` | 200 (formulario) | ✅ 200 |
-| `/dashboard` | 307 → /auth (sin sesión) | ✅ 307 |
-| `vitest run` | 2/2 pass | ✅ 2/2 |
+```text
+src/routes/
+  _authenticated/
+    admin/
+      route.tsx        # layout + gate admin + Sidebar
+      index.tsx        # resumen
+      users.tsx        # tabla usuarios + acciones
+      modules.tsx      # grid de toggles
+src/lib/
+  admin-users.functions.ts
+  admin-modules.functions.ts
+  module-gate.server.ts   # requireModuleEnabled middleware
+src/components/admin/
+  AdminSidebar.tsx
+  UserRow.tsx
+  InviteUserDialog.tsx
+  ModuleCard.tsx
+supabase/migrations/015_*.sql
+docs/evidence/admin-console.md
+```
 
-## Próximo paso: Fase 1 — Discovery + Ingesta
+## Iteraciones (High Autonomy)
+1. Migración + seed `module_flags`.
+2. Server fns admin (users + modules) con verificación de rol.
+3. Layout `/admin` + sidebar + gate.
+4. Página Usuarios completa.
+5. Página Módulos completa + hook `useModuleFlags` + middleware `requireModuleEnabled`.
+6. Integración: ocultar nav items + bloquear writer/strategist si módulo off.
+7. i18n + evidencia + tests.
 
-**Cubre RF-001, RF-002, RF-003, RF-005**
-
-- Tabla `funders` y `grants` (state machine: discovered → enriched → scored → shortlisted → in_proposal → submitted → won/lost/expired).
-- Agente **Discoverer** (server fn + Lovable AI / Gemini 2.5 Flash) — descubre nuevos grants desde fuentes RSS/HTML.
-- Agente **Enricher** — normaliza y completa metadata (montos CAD, deadlines, elegibilidad).
-- UI: lista de grants con filtros por sector, monto, deadline, idioma.
-- Cron pg_cron → `/api/public/hooks/discover` (firma HMAC).
-- Tests: golden set ampliado (5 → 20 cases), gate 3 (LLM-as-judge para Enricher).
-
-**Riesgo principal:** rate limits y bloqueos de scraping de fuentes públicas. Mitigación: usar feeds RSS oficiales del Gobierno de Canadá (Open Data Portal + Grants Canada API) antes de scraping.
-
----
-
-## Fase 3 — Strategist + Writer + Critic + RAG ✅
-
-### Entregables
-- **Tablas nuevas**: `proposal_templates`, `knowledge_chunks` (pgvector 1536), `proposals` (versionado + critic_score), `proposal_sections`, `proposal_citations` (audit trail inmutable).
-- **RAG híbrido**: BM25 (FTS GIN) ∪ similitud vectorial (HNSW cosine), fusionados con RRF (k=60). RPC `match_knowledge_chunks` (SECURITY INVOKER, RLS por usuario).
-- **Embeddings**: `openai/text-embedding-3-small` (1536 dims) vía Lovable AI Gateway `/embeddings`.
-- **Agente Strategist** (Gemini 2.5 Flash): plan de propuesta a partir de grant + perfil + plantilla; crea proposal + sections; transiciona `scored → shortlisted → in_proposal`.
-- **Agente Writer** (Gemini 2.5 Flash): redacta una sección con chunks numerados `[d1]..[dN]`, EN + FR-CA. Validador `validateCitations` rechaza marcadores no declarados o chunk_ids fuera del conjunto recuperado.
-- **Agente Critic** (Gemini 2.5 Pro): puntaje global 0–1 + findings por sección (info/warn/block) bilingües; persiste en `proposals.critic_score` y `proposal_sections.critic_notes`.
-- **Ingesta de conocimiento**: `ingestOrgProfileAsKnowledge` sincroniza el perfil org como chunks embebidos; `ingestKnowledge` para texto manual.
-- **UI**: `/proposals` (listado + botón sync RAG), `/proposals/$id` (secciones, draft por sección, run critic, citaciones inline, findings); botón "Draft proposal" en `/grants` para subvenciones `scored/shortlisted/in_proposal`.
-- **i18n EN/FR**: todas las cadenas de Fase 3 traducidas (FR-CA).
-- **Eval Gate 1 ampliado**: `src/evals/writer.test.ts` — 4 tests unitarios del validador de citaciones (propiedad de seguridad no-negociable ADR-005).
-
----
-
-## Fase 4 — Submission + Tracking + Outcomes ✅
-
-### Entregables
-- **Tablas nuevas** (`submissions`, `outcomes`, `notifications`): RLS por `auth.uid()`, GRANTs explícitos, triggers `set_updated_at`. `outcomes.submission_id` UNIQUE para idempotencia. `notifications` con campos bilingües (`title_en/fr`, `body_en/fr`).
-- **State machine extendida**: `submitProposal` transiciona `grants.in_proposal → submitted` y marca `proposals.status='submitted'`; `recordOutcome` transiciona `submitted → won/lost` cuando aplica.
-- **Server functions** (`src/lib/submissions.functions.ts`): `submitProposal`, `recordOutcome` (upsert), `listSubmissions`, `listNotifications`, `markNotificationRead`, `exportProposalMarkdown` (Worker-safe, sin deps nativas).
-- **Cron diario** `iial-deadline-notifier-daily` (08:00 UTC) → `/api/public/hooks/deadlines` genera notificaciones bilingües para grants con deadline ≤ 14 días en `shortlisted/in_proposal/submitted` (idempotente: dedup 24h por `grant_id`).
-- **UI**: `/submissions` (listado + formulario de outcome con resultado, monto CAD, fecha de decisión, feedback); en `/proposals/$id` botones **Submit**, **Export Markdown** y **Run critic**.
-- **i18n EN/FR**: nuevas claves `nav.submissions`, `proposals.{submit,exportMd,submitPrompt,confirmationPrompt}`, `submissions.*` con `results.{won,lost,withdrawn,no_response}`.
-
-**Progreso global: 4 de 6 fases (~67%).**
-
----
-
-## Fase 5 — Observability + EDD Gates ✅
-
-### Entregables
-- **OTLP exporter real** (`src/lib/otel.ts`): emite log JSON estructurado y, cuando `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` está configurado, exporta vía OTLP/HTTP `/v1/logs` con semantic conventions GenAI estables (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.*`, `latency_ms`, `cost_usd`). Fire-and-forget — los fallos jamás rompen la request del usuario.
-- **Vista `agent_runs_daily`** (security_invoker): agregados por día y agente — runs, ok/error/degraded, tokens in/out, costo USD, latencia p50/p95 (ventana móvil de 30 días). EXECUTE revocado de `is_admin`/`has_role` (sólo el motor RLS los invoca).
-- **Server fn `getOpsMetrics`** (`src/lib/ops.functions.ts`): guard `assertAdmin` server-side (consulta `user_roles` con admin client), devuelve `{ daily, recent, pipeline }`.
-- **Ruta `/ops`** (admin-only): 4 stat cards (Runs 30d · Error rate · Cost 30d · Pipeline), tabla diaria por agente y feed de últimas 50 corridas. `errorComponent` muestra `forbidden` a no-admins.
-- **Gates EDD** (`src/evals/pairwise.test.ts`):
-  - Gate 4 (pairwise): `adversarial.fit_score_max ≤ 0.5 < positive.fit_score_min ≥ 0.7`.
-  - Gate 5 (adversarial): cobertura obligatoria de prompt-injection + jurisdicción + sector + stage; cada caso adversarial declara `must_not_contain`.
-  - Invariantes: IDs únicos, schema bien tipado.
-- **i18n EN/FR**: `ops.*` completo.
-- **Dashboard**: navegación rápida a `/grants`, `/proposals`, `/submissions`, `/ops`.
-
-### Verificación
-| Suite | Resultado |
-|---|---|
-| `bunx vitest run` | ✅ 22 passed (1 skipped), 5 archivos |
-| Migración 007 vista + helper | ✅ OK |
-| Migración 008 revoke EXECUTE | ✅ OK (sólo warnings pre-existentes de pgvector/pg_cron en public) |
-
-**Progreso global: 5 de 6 fases (~83%).**
-
-**Próximo paso — Fase 6 (Compliance + Launch readiness):** página de cumplimiento (PIPEDA / Quebec Law 25 / AIDA), consent ledger, DSAR endpoints (export + delete), evidence pack para auditoría (ADR registry + DPIA + system card bilingüe), pen-test checklist, runbook de incidentes y publicación.
-
-### Estado de gates EDD
-- Gate 1 (unit): 12 tests (schemas + writer validator) ✅
-- Gate 2 (golden regression): 2 (runner) ✅
-- Gate 3 (LLM-judge Evaluator): 4 + 1 skip placeholder ✅
-- Gate 4 (pairwise) y Gate 5 (adversarial Writer/Critic): pendientes Fase 5.
-
-### Verificación
-- `vitest run`: **17/17 pass** (1 skip placeholder).
-- Migración 005 OK; warnings restantes (vector/pg_net en `public`) son estándar Supabase.
-
-## Progreso: Fase 4 de 6 (~67%)
-
-### Próximo paso — Fase 4: Submission + Tracking + Outcomes
-- Estado `in_proposal → submitted → won/lost` con timestamps.
-- Exportación de propuesta a PDF/DOCX bilingüe.
-- Dashboard de métricas: pipeline por estado, fit_score promedio, win-rate, tokens/costo por agente (OTel + `agent_runs`).
-- Notificaciones (deadlines próximos vía pg_cron + email).
-- Gate 4 (pairwise A/B Writer): 2 prompts → preferencia LLM-judge.
-
----
-
-## Fase 6 — Compliance + Launch readiness ✅
-
-### Entregables
-- **Migración 009** — Append-only `consent_ledger` (consent_type · action · policy_version · language) y `dsar_requests` (kind: access/export/delete/rectify · status: pending/processing/completed/rejected). RLS: usuario ve/inserta los suyos; admins ven todo; sólo admins pueden actualizar el estado de DSAR.
-- **`src/lib/compliance.functions.ts`**: `recordConsent`, `listMyConsents`, `createDsarRequest`, `listMyDsarRequests`, `exportMyData` (bundle JSON `iial.dsar.export.v1` con profile + org + proposals + submissions + outcomes + consents + dsar + knowledge), `requestAccountDeletion`. Cada acción DSAR escribe en `audit_log` (PIPEDA / Law 25).
-- **`/compliance`** (público, bilingüe): página de confianza con data residency (CA), frameworks (PIPEDA · Law 25 · AIDA · TBS Directive), transparencia de IA (6 agentes, citas obligatorias, human-in-the-loop), derechos del titular y contacto del DPO. Marcado como "alignment, not certification" — sin afirmaciones de certificación tercera.
-- **`/privacy`** (autenticado, bilingüe): centro de confidencialidad — gestor de consentimientos por tipo (grant/revoke con versión), export JSON con descarga directa (Worker-safe), solicitudes DSAR (acceso, rectificación, eliminación) e historial.
-- **i18n EN/FR**: `compliance.*` y `privacy.*` (incluyendo tipos de consentimiento y kinds de DSAR) en FR-CA.
-- **Dashboard**: enlaces directos a `/privacy` y `/compliance`.
-
-### Verificación
-| Suite | Resultado |
-|---|---|
-| `bunx vitest run` | ✅ 22 passed (1 skipped), 5 archivos |
-| Migración 009 | ✅ OK (warnings pre-existentes de pgvector/pg_net) |
-
-**Progreso global: 6 de 6 fases (100%). 🎉**
-
-### Cierre
-- Stack completo: Discoverer → Enricher → Evaluator → Strategist → Writer → Critic + RAG híbrido + state machine + submissions/outcomes + observability OTLP + EDD gates 1–5 + compliance PIPEDA/Law 25/AIDA.
-- **Evidence pack** (`docs/evidence/`): README · ADR registry (9 ADRs) · DPIA · 4 System Cards bilingües (Discoverer · Evaluator · Writer · Critic) · pen-test checklist · incident runbook.
-- Hardening de seguridad aplicado (migración 010): RLS endurecida en `grant_events`, `audit_log` y `agent_runs`.
-- Publicado en https://text-teller-ace.lovable.app — listo para onboarding piloto.
+Ejecuto las 7 iteraciones seguidas y entrego el reporte final.
