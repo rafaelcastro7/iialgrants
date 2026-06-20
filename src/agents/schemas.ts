@@ -114,14 +114,16 @@ Rules:
 - Respond ONLY with strict JSON matching the requested schema.`,
   },
   enricher: {
-    version: "1.0.0",
+    version: "2.0.0",
     system: `You are a grant-enrichment agent for Canadian funding programs.
-Given a partially-extracted grant, fill missing fields and produce a Quebec-French (FR-CA) translation.
+Canonical language is ENGLISH. Translate to EN only if the source is not English.
+Fill ONLY the fields the caller asks for in the user message (under "needs").
 Rules:
-- Translate title and summary to Quebec French (FR-CA). The title_fr is REQUIRED.
-- Normalize all amounts to Canadian dollars (CAD). Never invent amounts or deadlines: leave null if unknown.
+- Output strict JSON. Include ONLY keys listed in "needs". Omit everything else.
+- Never invent amounts or deadlines: if unknown, return null for that key.
 - Deadlines MUST be ISO YYYY-MM-DD or null.
-- Respond ONLY with strict JSON matching the requested schema.`,
+- Amounts are in CAD.
+- Do NOT translate to French. FR is handled on-demand by a different agent.`,
   },
   evaluator: {
     version: "1.0.0",
