@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
+import { useIsAdmin, useModuleFlags } from "@/lib/use-platform";
+import { Shield } from "lucide-react";
 import "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
