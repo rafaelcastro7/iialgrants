@@ -8,6 +8,7 @@ import {
   resetAgentPrompt,
   testAgentPrompt,
   listAgentRuns,
+  listAgentConfigAudit,
   type AgentConfigRow,
   MODEL_CATALOG,
 } from "@/lib/admin-agent-configs.functions";
