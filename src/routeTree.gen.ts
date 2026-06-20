@@ -19,6 +19,7 @@ import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
+import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
@@ -83,6 +84,11 @@ const AuthenticatedOpsRoute = AuthenticatedOpsRouteImport.update({
 const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
   id: '/grants',
   path: '/grants',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedFitRulesRoute = AuthenticatedFitRulesRouteImport.update({
+  id: '/fit-rules',
+  path: '/fit-rules',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/compliance': typeof ComplianceRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
@@ -226,6 +234,7 @@ export interface FileRoutesById {
   '/compliance': typeof ComplianceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/compliance'
     | '/admin'
     | '/dashboard'
+    | '/fit-rules'
     | '/grants'
     | '/ops'
     | '/org'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compliance'
     | '/dashboard'
+    | '/fit-rules'
     | '/grants'
     | '/ops'
     | '/org'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/compliance'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/fit-rules'
     | '/_authenticated/grants'
     | '/_authenticated/ops'
     | '/_authenticated/org'
@@ -409,6 +421,13 @@ declare module '@tanstack/react-router' {
       path: '/grants'
       fullPath: '/grants'
       preLoaderRoute: typeof AuthenticatedGrantsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/fit-rules': {
+      id: '/_authenticated/fit-rules'
+      path: '/fit-rules'
+      fullPath: '/fit-rules'
+      preLoaderRoute: typeof AuthenticatedFitRulesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
@@ -568,6 +587,7 @@ const AuthenticatedProposalsRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRouteWithChildren
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
@@ -579,6 +599,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRouteWithChildren,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,

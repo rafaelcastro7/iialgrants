@@ -162,6 +162,7 @@ function GrantsPage() {
             <Link to="/grants" className="text-sm font-medium">{t("nav.grants")}</Link>
             <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">{t("nav.proposals")}</Link>
             <Link to="/org" className="text-sm text-muted-foreground hover:underline">{t("org.title")}</Link>
+            <Link to="/fit-rules" className="text-sm text-muted-foreground hover:underline">Fit Rules</Link>
 
           </nav>
           <div className="flex items-center gap-2">
