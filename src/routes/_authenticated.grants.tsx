@@ -78,6 +78,25 @@ function GrantsPage() {
       setEvalError(e instanceof Error ? e.message : String(e));
     } finally { setPending(null); }
   }
+  async function onDiscoverAll() {
+    setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
+    try {
+      const r = await discoverAll({});
+      setDiscoveryMsg(`Discovered ${r.totalInserted} new grant(s); enriched ${r.enriched}.`);
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally { setPending(null); }
+  }
+  async function onEnrich(grantId: string) {
+    setPending(grantId + ":enrich"); setEvalError(null);
+    try {
+      await enrichOne({ data: { grantId } });
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally { setPending(null); }
+  }
 
 
   const fmt = (n: number | null) =>
@@ -103,7 +122,16 @@ function GrantsPage() {
       </header>
 
       <section className="max-w-6xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">{t("nav.grants")}</h1>
+        <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold">{t("nav.grants")}</h1>
+          {isAdmin && (
+            <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"}>
+              {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
+            </Button>
+          )}
+        </div>
+        {discoveryMsg && <p className="text-sm text-muted-foreground mb-3">{discoveryMsg}</p>}
+        {evalError && <p className="text-sm text-destructive mb-3">{evalError}</p>}
         {data.grants.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
