@@ -11,15 +11,13 @@ import { runStrategist } from "@/agents/strategist.functions";
 import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
-import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
+import { GrantRow, sortByFit, type GrantRowData } from "@/components/grants/GrantRow";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
