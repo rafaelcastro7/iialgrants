@@ -32,14 +32,16 @@ export const EnricherInput = z.object({
 });
 export type EnricherInput = z.infer<typeof EnricherInput>;
 
+// Enricher output: every field optional. The model returns ONLY what it filled
+// or translated. No forced FR — that's lazy/on-demand now. Canonical = EN.
 export const EnricherOutput = z.object({
-  title_fr: z.string().min(1).max(500),
-  summary_fr: z.string().max(4000).nullable(),
-  amount_cad_min: z.number().nonnegative().nullable(),
-  amount_cad_max: z.number().nonnegative().nullable(),
-  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-  eligibility: z.record(z.string(), z.unknown()).default({}),
-  sectors: z.array(z.string()).default([]),
+  title_en: z.string().min(1).max(500).nullable().optional(),
+  summary_en: z.string().max(4000).nullable().optional(),
+  amount_cad_min: z.number().nonnegative().nullable().optional(),
+  amount_cad_max: z.number().nonnegative().nullable().optional(),
+  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  eligibility: z.record(z.string(), z.unknown()).optional(),
+  sectors: z.array(z.string()).optional(),
 });
 export type EnricherOutput = z.infer<typeof EnricherOutput>;
 
