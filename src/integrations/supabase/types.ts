@@ -439,6 +439,36 @@ export type Database = {
         }
         Relationships: []
       }
+      module_flags: {
+        Row: {
+          created_at: string
+          description: string
+          description_fr: string
+          enabled: boolean
+          module: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          description_fr?: string
+          enabled?: boolean
+          module: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          description_fr?: string
+          enabled?: boolean
+          module?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body_en: string
