@@ -25,7 +25,7 @@ export function NotebookLMBridge({ fr }: { fr: boolean }) {
   async function runExport(opts: { autoEnrich?: boolean; force?: boolean }) {
     setBusy("export"); setMsg(null); setPendingEnrich(null);
     try {
-      const r = await exportFn({ data: { status: "discovered", limit: 25, autoEnrich: !!opts.autoEnrich, force: !!opts.force } });
+      const r = await exportFn({ data: { status: "discovered", limit: 25, autoEnrich: !!opts.autoEnrich, force: !!opts.force, language: "auto" } });
       if (r.ok === false) {
         setPendingEnrich({ incompleteIds: r.incompleteIds, total: r.total });
         setMsg(r.message);
