@@ -218,7 +218,7 @@ export const listAgentEvents = createServerFn({ method: "GET" })
       .select("id, run_id, agent, status, model, latency_ms, input_tokens, output_tokens, error, metadata, grant_id, created_at")
       .order("created_at", { ascending: false })
       .limit(data.limit);
-    if (data.agent) q = q.eq("agent", data.agent);
+    if (data.agent) q = q.eq("agent", data.agent as "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic");
     if (data.status) q = q.eq("status", data.status);
     const { data: runs, error } = await q;
     if (error) throw new Error(error.message);
