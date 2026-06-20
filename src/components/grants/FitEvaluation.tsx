@@ -203,7 +203,10 @@ export function FitEvaluation(props: Props) {
                   {i < STAGE_ORDER.length - 1 && (
                     <div className={cn(
                       "h-0.5 flex-1 rounded transition-colors",
-                      stageReached(STAGE_ORDER[i + 1], props) !== "pending" ? "bg-emerald-500/60" : "bg-border",
+                      // Line only goes green if THIS stage is done — prevents
+                      // showing a complete pipeline when evaluation ran on raw
+                      // (un-enriched) data and the user thinks enrich succeeded.
+                      state === "done" ? "bg-emerald-500/60" : "bg-border",
                     )} />
                   )}
                 </div>
