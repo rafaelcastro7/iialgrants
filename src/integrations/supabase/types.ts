@@ -1302,6 +1302,7 @@ export type Database = {
           source: string
         }[]
       }
+      normalize_title_v2: { Args: { t: string }; Returns: string }
     }
     Enums: {
       agent_name:
