@@ -75,6 +75,25 @@ export async function evaluateGrantImpl(opts: {
     prompt_version: PROMPTS.evaluator.version, run_id: runId,
   }, { onConflict: "user_id,grant_id" });
 
+  // Record evidence for the verdict — the rationale itself + the grant fields
+  // it synthesizes from. Source is the grant's canonical URL.
+  try {
+    const { recordEvidence } = await import("@/agents/evidence.server");
+    const grantUrl = (g as { url?: string }).url ?? "";
+    await recordEvidence({
+      grantId: g.id, agent: "evaluator", field: "fit_score",
+      value: parsed.fit_score, sourceUrl: grantUrl,
+      snippet: parsed.rationale_en.slice(0, 1000),
+      method: "llm", model: "google/gemini-2.5-flash", runId,
+    });
+    await recordEvidence({
+      grantId: g.id, agent: "evaluator", field: "eligibility_pass",
+      value: parsed.eligibility_pass, sourceUrl: grantUrl,
+      snippet: parsed.rationale_en.slice(0, 1000),
+      method: "llm", model: "google/gemini-2.5-flash", runId,
+    });
+  } catch { /* evidence is non-blocking */ }
+
   // Eligibility-first gating: if we don't qualify, archive immediately and
   // stop spending tokens on enrichment/scoring downstream.
   if (!parsed.eligibility_pass) {
