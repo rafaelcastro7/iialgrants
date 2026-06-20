@@ -122,6 +122,13 @@ export const updateAgentConfig = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { invalidateAgentConfigCache } = await import("@/lib/agent-config.server");
     const { agent, ...patch } = data;
+
+    // Load current row so we can write a per-field audit diff.
+    const { data: before } = await supabaseAdmin
+      .from("agent_configs" as never)
+      .select("*").eq("agent", agent).maybeSingle();
+    const prev = (before ?? {}) as Record<string, unknown>;
+
     const update: Record<string, unknown> = { ...patch, updated_by: context.userId };
     const { error } = await supabaseAdmin
       .from("agent_configs" as never)
@@ -130,15 +137,62 @@ export const updateAgentConfig = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     invalidateAgentConfigCache(agent);
 
+    // Per-field audit rows (only when actually changed).
+    const auditRows: Array<Record<string, unknown>> = [];
+    for (const [field, newVal] of Object.entries(patch)) {
+      const oldVal = prev[field];
+      if (JSON.stringify(oldVal ?? null) === JSON.stringify(newVal ?? null)) continue;
+      auditRows.push({
+        agent, user_id: context.userId, field,
+        old_value: oldVal ?? null,
+        new_value: newVal ?? null,
+        is_prompt: field === "system_prompt",
+      });
+    }
+    if (auditRows.length > 0) {
+      await supabaseAdmin.from("agent_config_audit" as never).insert(auditRows as never);
+    }
+
     await supabaseAdmin.from("audit_log").insert({
       user_id: context.userId,
       action: "agent.config_update",
       resource_type: "agent_config",
       resource_id: agent,
-      metadata: patch as never,
+      metadata: { changed_fields: auditRows.map((r) => r.field) } as never,
     } as never);
-    return { ok: true };
+    return { ok: true, changed: auditRows.length };
   });
+
+export const listAgentConfigAudit = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ agent: z.enum(AGENTS), limit: z.number().int().min(1).max(100).optional() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("agent_config_audit" as never)
+      .select("id, agent, user_id, changed_at, field, old_value, new_value, is_prompt")
+      .eq("agent", data.agent)
+      .order("changed_at", { ascending: false })
+      .limit(data.limit ?? 50);
+    if (error) throw new Error(error.message);
+
+    // Resolve user emails for display.
+    const ids = Array.from(new Set(((rows ?? []) as Array<{ user_id: string | null }>).map((r) => r.user_id).filter(Boolean) as string[]));
+    const emailById = new Map<string, string>();
+    if (ids.length > 0) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      for (const uid of ids) {
+        const { data: u } = await supabaseAdmin.auth.admin.getUserById(uid);
+        if (u?.user?.email) emailById.set(uid, u.user.email);
+      }
+    }
+    return {
+      events: ((rows ?? []) as Array<{ id: string; user_id: string | null; changed_at: string; field: string; old_value: unknown; new_value: unknown; is_prompt: boolean }>).map((r) => ({
+        ...r,
+        user_email: r.user_id ? emailById.get(r.user_id) ?? null : null,
+      })),
+    };
+  });
+
 
 export const resetAgentPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
