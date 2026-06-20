@@ -20,6 +20,18 @@ const FitRulesInput = z.object({
   hard_fail_on_amount: z.boolean(),
   hard_fail_on_deadline: z.boolean(),
   auto_archive_on_fail: z.boolean(),
+  // SOP-IIAL
+  applicant_types_allowed: z.array(z.string().min(1).max(50)).max(20),
+  applicant_types_excluded: z.array(z.string().min(1).max(50)).max(20),
+  lead_min_weeks: z.number().int().min(0).max(520).nullable(),
+  partner_min_weeks: z.number().int().min(0).max(520).nullable(),
+  iial_capabilities: z.array(z.string().min(1).max(80)).max(40),
+  max_cost_share_pct_org_carries: z.number().min(0).max(100).nullable(),
+  require_match_verification: z.boolean(),
+  rolling_intake_passes_runway: z.boolean(),
+  hard_fail_on_applicant_type: z.boolean(),
+  hard_fail_on_runway: z.boolean(),
+  hard_fail_on_capability: z.boolean(),
 });
 
 export const getFitRules = createServerFn({ method: "GET" })
