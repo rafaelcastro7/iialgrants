@@ -184,6 +184,7 @@ function AgentEditor({ agent, models }: { agent: AgentRow; models: readonly Mode
             <TabsTrigger value="reliability">Reliability</TabsTrigger>
             <TabsTrigger value="playground">Playground</TabsTrigger>
             <TabsTrigger value="runs">Recent Runs</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="model" className="space-y-5 pt-4">
