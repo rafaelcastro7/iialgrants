@@ -1,16 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { verifyWebhookRequest } from "@/lib/webhook-auth.server";
 
 // Public cron endpoint — pg_cron calls every 15 minutes to enrich
-// recently discovered grants. Auth: Supabase publishable (anon) key.
+// recently discovered grants. Auth: HMAC-SHA256 + timestamp + nonce.
 export const Route = createFileRoute("/api/public/hooks/enrich")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.SUPABASE_PUBLISHABLE_KEY;
-        const provided = request.headers.get("apikey");
-        if (!expected || !provided || provided !== expected) {
-          return new Response("unauthorized", { status: 401 });
-        }
+        const { result } = await verifyWebhookRequest(request, "enrich");
+        if (!result.ok) return new Response(result.reason, { status: result.status });
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { runEnricher } = await import("@/agents/enricher.functions");
 

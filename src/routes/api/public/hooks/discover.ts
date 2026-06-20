@@ -1,17 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { verifyWebhookRequest } from "@/lib/webhook-auth.server";
 
 // Public cron endpoint — pg_cron calls this hourly to discover new grants.
-// Auth: Supabase publishable (anon) key in the `apikey` header — the
-// canonical Lovable Cloud pattern. No custom shared secrets.
+// Auth: HMAC-SHA256 signature with timestamp + single-use nonce.
+// See src/lib/webhook-auth.server.ts and docs/evidence/webhook-auth.md.
 export const Route = createFileRoute("/api/public/hooks/discover")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.SUPABASE_PUBLISHABLE_KEY;
-        const provided = request.headers.get("apikey");
-        if (!expected || !provided || provided !== expected) {
-          return new Response("unauthorized", { status: 401 });
-        }
+        const { result } = await verifyWebhookRequest(request, "discover");
+        if (!result.ok) return new Response(result.reason, { status: result.status });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { runDiscoverer } = await import("@/agents/discoverer.functions");
