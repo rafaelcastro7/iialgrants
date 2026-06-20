@@ -37,6 +37,12 @@ export async function evaluateGrantImpl(opts: {
   if (oerr) throw new Error(oerr.message);
   if (!org) throw new Error("org_profile_missing");
 
+  // Gate: never evaluate a grant that hasn't been enriched — its fields may
+  // be incomplete/missing and the LLM would synthesize a misleading verdict.
+  if (g.status === "discovered") {
+    throw new Error("grant_not_enriched_yet");
+  }
+
   const llm = await callLlm({
     model: "google/gemini-2.5-flash",
     agent: "evaluator",
@@ -68,6 +74,25 @@ export async function evaluateGrantImpl(opts: {
     model: "google/gemini-2.5-flash",
     prompt_version: PROMPTS.evaluator.version, run_id: runId,
   }, { onConflict: "user_id,grant_id" });
+
+  // Record evidence for the verdict — the rationale itself + the grant fields
+  // it synthesizes from. Source is the grant's canonical URL.
+  try {
+    const { recordEvidence } = await import("@/agents/evidence.server");
+    const grantUrl = (g as { url?: string }).url ?? "";
+    await recordEvidence({
+      grantId: g.id, agent: "evaluator", field: "fit_score",
+      value: parsed.fit_score, sourceUrl: grantUrl,
+      snippet: parsed.rationale_en.slice(0, 1000),
+      method: "llm", model: "google/gemini-2.5-flash", runId,
+    });
+    await recordEvidence({
+      grantId: g.id, agent: "evaluator", field: "eligibility_pass",
+      value: parsed.eligibility_pass, sourceUrl: grantUrl,
+      snippet: parsed.rationale_en.slice(0, 1000),
+      method: "llm", model: "google/gemini-2.5-flash", runId,
+    });
+  } catch { /* evidence is non-blocking */ }
 
   // Eligibility-first gating: if we don't qualify, archive immediately and
   // stop spending tokens on enrichment/scoring downstream.
