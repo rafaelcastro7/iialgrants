@@ -18,6 +18,7 @@ import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
+import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -175,7 +176,8 @@ function GrantsPage() {
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <h1 className="text-2xl font-bold">{t("nav.grants")}</h1>
           {isAdmin && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <NotebookLMBridge fr={fr} />
               <FunderSelector fr={fr} selected={selectedFunders} onChange={setSelectedFunders} />
               <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"}>
                 {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
