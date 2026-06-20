@@ -123,18 +123,12 @@ function GrantsPage() {
     setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
     try {
       const r = await discoverAll({});
-      if (!r || typeof r !== "object") {
-        setDiscoveryMsg("Discovery returned no payload (check Event log for per-funder status).");
+      if (r?.jobId) {
+        setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
+        setDiscoveryMsg(`Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s). Live progress below.`);
       } else {
-        const perFunder = Array.isArray(r.perFunder) ? r.perFunder : [];
-        const lines = [
-          `Discovered ${r.totalInserted ?? 0} new grant(s), ${r.totalSeenAgain ?? 0} already known, ${r.evaluated ?? 0} auto-evaluated.`,
-          ...perFunder.map((p) => `  · ${p.funder}: +${p.inserted ?? 0}${p.seenAgain ? ` (${p.seenAgain} repeat)` : ""}${p.engine ? ` [${p.engine}]` : ""}${p.error ? ` — error: ${p.error}` : ""}`),
-        ];
-        setDiscoveryMsg(lines.join("\n"));
+        setDiscoveryMsg("Discovery enqueued (no jobId returned).");
       }
-
-      await qc.invalidateQueries({ queryKey: ["grants"] });
       autoRan.current = false;
     } catch (e) {
       setEvalError(e instanceof Error ? e.message : String(e));
