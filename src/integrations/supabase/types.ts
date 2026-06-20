@@ -495,6 +495,9 @@ export type Database = {
           deadline: string | null
           discovered_at: string
           eligibility: Json
+          enrich_attempts: number
+          enrich_last_attempt_at: string | null
+          enrich_last_error: string | null
           enriched_at: string | null
           fit_score: number | null
           funder_id: string
@@ -523,6 +526,9 @@ export type Database = {
           deadline?: string | null
           discovered_at?: string
           eligibility?: Json
+          enrich_attempts?: number
+          enrich_last_attempt_at?: string | null
+          enrich_last_error?: string | null
           enriched_at?: string | null
           fit_score?: number | null
           funder_id: string
@@ -551,6 +557,9 @@ export type Database = {
           deadline?: string | null
           discovered_at?: string
           eligibility?: Json
+          enrich_attempts?: number
+          enrich_last_attempt_at?: string | null
+          enrich_last_error?: string | null
           enriched_at?: string | null
           fit_score?: number | null
           funder_id?: string
