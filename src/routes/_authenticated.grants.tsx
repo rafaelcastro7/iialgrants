@@ -52,6 +52,9 @@ function GrantsPage() {
   const [evalError, setEvalError] = useState<string | null>(null);
   const [discoveryMsg, setDiscoveryMsg] = useState<string | null>(null);
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
+  const [jurisdiction, setJurisdiction] = useState<string>("all");
+  const [eligibleOnly, setEligibleOnly] = useState(false);
+  const [onlyWithDeadline, setOnlyWithDeadline] = useState(false);
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
     queryFn: () => fetchGrants({ data: { limit: 50 } }),
