@@ -6,6 +6,12 @@ All `/api/public/hooks/*` endpoints require a signed request. The previous
 scheme (Supabase publishable key in the `apikey` header) was removed — the
 key is browser-readable and offered no replay protection.
 
+**Secret storage.** The HMAC secret lives in `public.webhook_config`
+(deny-by-default RLS, `service_role` only) — generated automatically on
+first migration with `gen_random_bytes(48)`. No environment variable, no
+user-managed secret. Both the worker verifier and `pg_cron` jobs read it
+from the database.
+
 ## Required headers
 
 | Header | Description |
@@ -26,36 +32,41 @@ key is browser-readable and offered no replay protection.
 Implementation: `src/lib/webhook-auth.server.ts`.
 Nonce store: `public.webhook_nonces` (service_role only; deny-by-default RLS).
 
-## Caller example (pg_cron, Node, bash)
+## Caller example (pg_cron via pg_net)
 
-```bash
-TS=$(date +%s)
-NONCE=$(openssl rand -hex 16)
-BODY='{}'
-SIG=$(printf "%s.%s.%s" "$TS" "$NONCE" "$BODY" \
-  | openssl dgst -sha256 -hmac "$WEBHOOK_HMAC_SECRET" -hex | awk '{print $2}')
-
-curl -X POST https://project--{id}.lovable.app/api/public/hooks/discover \
-  -H "x-iial-timestamp: $TS" \
-  -H "x-iial-nonce: $NONCE" \
-  -H "x-iial-signature: $SIG" \
-  -H "content-type: application/json" \
-  --data "$BODY"
+```sql
+DO $$
+DECLARE
+  ts text := extract(epoch from now())::bigint::text;
+  nonce text := encode(gen_random_bytes(16), 'hex');
+  body text := '{}';
+  secret text;
+  sig text;
+BEGIN
+  SELECT value INTO secret FROM public.webhook_config WHERE key = 'hmac_secret';
+  sig := encode(hmac(ts || '.' || nonce || '.' || body, secret, 'sha256'), 'hex');
+  PERFORM net.http_post(
+    url := 'https://project--{id}.lovable.app/api/public/hooks/discover',
+    headers := jsonb_build_object(
+      'content-type', 'application/json',
+      'x-iial-timestamp', ts,
+      'x-iial-nonce', nonce,
+      'x-iial-signature', sig
+    ),
+    body := body::jsonb
+  );
+END$$;
 ```
 
 ## Operational notes
 
-- **Secret rotation:** rotate `WEBHOOK_HMAC_SECRET` quarterly or after any
-  suspected exposure. After rotation, redeploy/restart the worker and update
-  every caller (pg_cron, external schedulers).
+- **Secret rotation:** `UPDATE public.webhook_config SET value = encode(gen_random_bytes(48),'hex'), rotated_at = now() WHERE key = 'hmac_secret';` — takes effect immediately; no redeploy needed.
 - **Clock skew:** callers should sync via NTP. The ±5-minute window
   tolerates typical drift without enabling long-window replay.
 - **Nonce collisions:** with 128 bits of entropy the birthday bound is
-  negligible. Callers MUST generate a fresh nonce per request
-  (`crypto.randomUUID()` or `openssl rand -hex 16`).
+  negligible. Callers MUST generate a fresh nonce per request.
 - **Body integrity:** signature is over the exact raw body. Any proxy that
-  re-serializes JSON will break verification — keep the body byte-identical
-  end-to-end.
+  re-serializes JSON will break verification.
 
 ## Failure-mode mapping (401 reasons)
 
