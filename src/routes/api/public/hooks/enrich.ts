@@ -17,6 +17,7 @@ export const Route = createFileRoute("/api/public/hooks/enrich")({
           .from("grants")
           .select("id, title")
           .eq("status", "discovered")
+          .lt("enrich_attempts", 3)
           .order("discovered_at", { ascending: true })
           .limit(10);
         if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });

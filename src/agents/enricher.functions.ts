@@ -17,13 +17,16 @@ export const runEnricher = createServerFn({ method: "POST" })
 
     const { data: g, error } = await supabaseAdmin
       .from("grants")
-      .select("id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors")
+      .select("id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, enrich_attempts")
       .eq("id", data.grantId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!g) throw new Error("grant_not_found");
     if (g.status !== "discovered") {
       return { ok: true, skipped: true, reason: `status=${g.status}`, runId };
+    }
+    if (((g as { enrich_attempts?: number }).enrich_attempts ?? 0) >= 3) {
+      return { ok: true, skipped: true, reason: "max_attempts_reached", runId };
     }
 
     const hasAmount = g.amount_cad_min != null || g.amount_cad_max != null;
@@ -78,12 +81,18 @@ export const runEnricher = createServerFn({ method: "POST" })
     try {
       parsed = EnricherOutput.parse(JSON.parse(llm.text));
     } catch (e) {
+      const errMsg = `schema_validation: ${e instanceof Error ? e.message : String(e)}`;
+      await supabaseAdmin.from("grants").update({
+        enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
+        enrich_last_error: errMsg.slice(0, 500),
+        enrich_last_attempt_at: new Date().toISOString(),
+      } as never).eq("id", g.id);
       await supabaseAdmin.from("agent_runs").insert({
         run_id: runId, agent: "enricher", status: "failed",
         model: "google/gemini-2.5-flash",
         input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,
         latency_ms: Date.now() - t0, grant_id: g.id,
-        error: `schema_validation: ${e instanceof Error ? e.message : String(e)}`,
+        error: errMsg,
       });
       return { ok: false, runId, error: "schema_validation" };
     }
