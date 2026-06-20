@@ -16,17 +16,22 @@ export function NotebookLMBridge({ fr }: { fr: boolean }) {
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<"export" | "curate" | null>(null);
-  const [bundle, setBundle] = useState<{ count: number; generatedAt: string; markdown: string } | null>(null);
+  const [bundle, setBundle] = useState<{ count: number; generatedAt: string; markdown: string; quality?: Record<string, unknown> } | null>(null);
   const [ids, setIds] = useState("");
   const [note, setNote] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [pendingEnrich, setPendingEnrich] = useState<{ incompleteIds: string[]; total: number } | null>(null);
 
-  async function onExport() {
-    setBusy("export"); setMsg(null);
+  async function runExport(opts: { autoEnrich?: boolean; force?: boolean }) {
+    setBusy("export"); setMsg(null); setPendingEnrich(null);
     try {
-      const r = await exportFn({ data: { status: "discovered", limit: 25 } });
-      setBundle({ count: r.count, generatedAt: r.generatedAt, markdown: r.markdown });
-      // Trigger download.
+      const r = await exportFn({ data: { status: "discovered", limit: 25, autoEnrich: !!opts.autoEnrich, force: !!opts.force } });
+      if (r.ok === false) {
+        setPendingEnrich({ incompleteIds: r.incompleteIds, total: r.total });
+        setMsg(r.message);
+        return;
+      }
+      setBundle({ count: r.count, generatedAt: r.generatedAt, markdown: r.markdown, quality: r.quality as Record<string, unknown> });
       const blob = new Blob([r.markdown], { type: "text/markdown;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -34,13 +39,17 @@ export function NotebookLMBridge({ fr }: { fr: boolean }) {
       a.download = `iial-curation-${r.generatedAt.slice(0, 10)}.md`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      setMsg(fr
+      const enrichSuffix = r.enrichment
+        ? (fr ? ` · Enrichi: ${r.enrichment.succeeded}/${r.enrichment.attempted}` : ` · Enriched: ${r.enrichment.succeeded}/${r.enrichment.attempted}`)
+        : "";
+      setMsg((fr
         ? `${r.count} subvention(s) exportée(s). Glissez le fichier .md dans NotebookLM.`
-        : `${r.count} grant(s) exported. Drag the .md into NotebookLM as a source.`);
+        : `${r.count} grant(s) exported. Drag the .md into NotebookLM as a source.`) + enrichSuffix);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally { setBusy(null); }
   }
+  const onExport = () => runExport({});
 
   async function onCurate() {
     setBusy("curate"); setMsg(null);
