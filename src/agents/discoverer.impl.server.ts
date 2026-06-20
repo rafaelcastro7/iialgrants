@@ -39,7 +39,16 @@ export type DiscoveryResult = {
   error?: string;
 };
 
-export async function discoverFunderImpl(funderId: string): Promise<DiscoveryResult> {
+export type DiscoverFunderOptions = {
+  jobId?: string;
+  attempt?: number;
+  funderName?: string;
+};
+
+export async function discoverFunderImpl(
+  funderId: string,
+  opts: DiscoverFunderOptions = {},
+): Promise<DiscoveryResult> {
   const { callLlm } = await import("@/agents/llm.server");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { newRunId } = await import("@/lib/otel");
@@ -48,6 +57,10 @@ export async function discoverFunderImpl(funderId: string): Promise<DiscoveryRes
 
   const runId = newRunId();
   const t0 = Date.now();
+  const baseMeta = {
+    job_id: opts.jobId ?? null,
+    attempt: opts.attempt ?? 1,
+  };
 
   const { data: funder, error: ferr } = await supabaseAdmin
     .from("funders")
@@ -154,6 +167,7 @@ export async function discoverFunderImpl(funderId: string): Promise<DiscoveryRes
       model: "google/gemini-2.5-flash",
       latency_ms: Date.now() - t0,
       metadata: {
+        ...baseMeta,
         funder_id: funder.id, funder_name: funder.name, engine: "firecrawl_v2",
         urls_mapped: mapped.size, urls_scraped: candidates.length,
         urls_skipped: skipped, inserted, seen_again: seenAgain,
@@ -188,7 +202,7 @@ export async function discoverFunderImpl(funderId: string): Promise<DiscoveryRes
       run_id: runId, agent: "discoverer", status: "degraded",
       model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
       error: "page_too_short",
-      metadata: { funder_id: funder.id, funder_name: funder.name, engine: "fallback" },
+      metadata: { ...baseMeta, funder_id: funder.id, funder_name: funder.name, engine: "fallback" },
     });
     return { ok: true, inserted: 0, runId, degraded: true, engine: "fallback" };
   }
@@ -214,7 +228,7 @@ export async function discoverFunderImpl(funderId: string): Promise<DiscoveryRes
       run_id: runId, agent: "discoverer", status: "failed",
       model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
       error: `schema_validation: ${e instanceof Error ? e.message : String(e)}`,
-      metadata: { funder_id: funder.id, funder_name: funder.name, engine: "fallback" },
+      metadata: { ...baseMeta, funder_id: funder.id, funder_name: funder.name, engine: "fallback" },
     });
     return { ok: false, inserted: 0, runId, error: "schema_validation", engine: "fallback" };
   }
@@ -255,7 +269,7 @@ export async function discoverFunderImpl(funderId: string): Promise<DiscoveryRes
     model: "google/gemini-2.5-flash",
     input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,
     latency_ms: Date.now() - t0,
-    metadata: { funder_id: funder.id, funder_name: funder.name, engine: "fallback", found: parsed.grants.length, inserted, seen_again: seenAgain },
+    metadata: { ...baseMeta, funder_id: funder.id, funder_name: funder.name, engine: "fallback", found: parsed.grants.length, inserted, seen_again: seenAgain },
   });
   return { ok: true, inserted, seenAgain, found: parsed.grants.length, runId, engine: "fallback" };
 }
