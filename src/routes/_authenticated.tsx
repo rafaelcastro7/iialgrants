@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Auth gate (Phase 0 scaffold). Protected routes live under this layout.
 // Naming: `_authenticated.<name>.tsx` -> URL `/<name>`, but route is gated here.
 export const Route = createFileRoute("/_authenticated")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
