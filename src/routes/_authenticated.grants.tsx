@@ -60,6 +60,7 @@ function GrantsPage() {
   const [jurisdiction, setJurisdiction] = useState<string>("all");
   const [eligibleOnly, setEligibleOnly] = useState(false);
   const [onlyWithDeadline, setOnlyWithDeadline] = useState(false);
+  const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
     queryFn: () => fetchGrants({ data: { limit: 50 } }),
