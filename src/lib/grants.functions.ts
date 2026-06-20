@@ -346,64 +346,182 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
     z.object({
       status: z.enum(["discovered", "enriched", "scored", "shortlisted"]).default("discovered"),
       limit: z.number().int().min(1).max(50).default(25),
+      // Curator escape hatches:
+      // - autoEnrich: run the Enricher synchronously for grants missing amount/deadline/sectors
+      // - force: bypass the completeness gate and export as-is
+      autoEnrich: z.boolean().default(false),
+      force: z.boolean().default(false),
     }).parse(i ?? {}),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
-      .from("grants")
-      .select("id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, language, url, status, sectors, funder:funders(name, jurisdiction)")
-      .eq("status", data.status)
-      .order("discovered_at", { ascending: false })
-      .limit(data.limit);
-    if (error) throw new Error(error.message);
+
+    const selectCols = "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, language, url, status, sectors, funder:funders(id, name, jurisdiction)";
+    type Row = {
+      id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
+      amount_cad_min: number | null; amount_cad_max: number | null; deadline: string | null;
+      language: string; url: string; status: string; sectors: string[] | null;
+      funder: { id: string; name: string; jurisdiction: string | null } | { id: string; name: string; jurisdiction: string | null }[] | null;
+    };
+
+    async function fetchRows(): Promise<Row[]> {
+      const { data: rows, error } = await supabaseAdmin
+        .from("grants")
+        .select(selectCols)
+        .eq("status", data.status)
+        .order("discovered_at", { ascending: false })
+        .limit(data.limit);
+      if (error) throw new Error(error.message);
+      return (rows ?? []) as unknown as Row[];
+    }
+
+    const isIncomplete = (r: Row) =>
+      (r.amount_cad_min == null && r.amount_cad_max == null) ||
+      !r.deadline ||
+      !r.sectors || r.sectors.length === 0;
+
+    let rows = await fetchRows();
+    const incompleteIds = rows.filter(isIncomplete).map((r) => r.id);
+
+    // Pre-export validation: if a meaningful share of rows is missing
+    // amount/deadline/sectors, refuse to export unless the curator forces it
+    // or asks us to auto-enrich first.
+    const INCOMPLETE_THRESHOLD = 0.5;
+    const incompleteRatio = rows.length > 0 ? incompleteIds.length / rows.length : 0;
+
+    let enrichmentReport: { attempted: number; succeeded: number; failed: number } | null = null;
+    if (incompleteIds.length > 0 && data.autoEnrich) {
+      const { runEnricher } = await import("@/agents/enricher.functions");
+      const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
+      await assertAgentEnabled("enricher");
+      let succeeded = 0; let failed = 0;
+      // Cap to keep the request bounded; the rest can be re-tried in a follow-up export.
+      const batch = incompleteIds.slice(0, 10);
+      for (const id of batch) {
+        try { await runEnricher({ data: { grantId: id } }); succeeded++; }
+        catch { failed++; }
+      }
+      enrichmentReport = { attempted: batch.length, succeeded, failed };
+      rows = await fetchRows();
+    } else if (incompleteRatio >= INCOMPLETE_THRESHOLD && !data.force) {
+      return {
+        ok: false as const,
+        needsEnrich: true as const,
+        reason: "incomplete_grants",
+        total: rows.length,
+        incompleteIds,
+        message: `${incompleteIds.length}/${rows.length} grants are missing amount, deadline or sectors. Enrich them first, or re-call with { force: true } to export as-is.`,
+      };
+    }
 
     const fmt = (n: number | null) => n == null ? "—" : `CAD ${n.toLocaleString("en-CA")}`;
+    const isValidHttpUrl = (u: string): boolean => {
+      try { const p = new URL(u); return p.protocol === "http:" || p.protocol === "https:"; }
+      catch { return false; }
+    };
+
     const parts: string[] = [
       `# IIAL Curation Bundle — ${new Date().toISOString().slice(0, 10)}`,
       ``,
-      `Status filter: \`${data.status}\` · Count: ${rows?.length ?? 0}`,
+      `Status filter: \`${data.status}\` · Count: ${rows.length}`,
       ``,
       `> Drop this markdown into NotebookLM as a single source. Each grant is delimited by \`---\`. Use the IDs below to mark curated items via the "Mark as curated" action in /grants.`,
       ``,
     ];
     const index: Array<{ id: string; title: string; url: string }> = [];
 
-    for (const g of rows ?? []) {
-      const r = g as unknown as {
-        id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
-        amount_cad_min: number | null; amount_cad_max: number | null; deadline: string | null;
-        language: string; url: string; status: string; sectors: string[] | null;
-        funder: { name: string; jurisdiction: string | null } | { name: string; jurisdiction: string | null }[] | null;
-      };
+    // Quality counters for the trailing summary.
+    let withAmount = 0, withDeadline = 0, withSectors = 0;
+    let invalidUrls = 0, missingFunder = 0;
+    const issues: string[] = [];
+    const funderCounts = new Map<string, number>();
+
+    for (const r of rows) {
       const funder = Array.isArray(r.funder) ? r.funder[0] : r.funder;
+      const funderName = funder?.name ?? null;
+      if (!funder || !funder.id || !funderName) {
+        missingFunder++;
+        issues.push(`- \`${r.id}\` — missing funder join`);
+      } else {
+        funderCounts.set(funderName, (funderCounts.get(funderName) ?? 0) + 1);
+      }
+      const urlOk = isValidHttpUrl(r.url);
+      if (!urlOk) { invalidUrls++; issues.push(`- \`${r.id}\` — invalid source URL: ${r.url}`); }
+
+      const hasAmount = r.amount_cad_min != null || r.amount_cad_max != null;
+      const hasDeadline = !!r.deadline;
+      const hasSectors = !!r.sectors && r.sectors.length > 0;
+      if (hasAmount) withAmount++;
+      if (hasDeadline) withDeadline++;
+      if (hasSectors) withSectors++;
+
+      // Cosmetic: only append title_fr when it actually differs from title.
+      const titleSuffix =
+        r.title_fr && r.title_fr.trim() && r.title_fr.trim() !== r.title.trim()
+          ? ` / ${r.title_fr}`
+          : "";
+
       index.push({ id: r.id, title: r.title, url: r.url });
       parts.push(
         `---`,
         ``,
-        `## ${r.title}${r.title_fr ? ` / ${r.title_fr}` : ""}`,
+        `## ${r.title}${titleSuffix}`,
         ``,
         `- **IIAL id**: \`${r.id}\``,
-        `- **Funder**: ${funder?.name ?? "—"}${funder?.jurisdiction ? ` (${funder.jurisdiction})` : ""}`,
+        `- **Funder**: ${funderName ?? "⚠ missing"}${funder?.jurisdiction ? ` (${funder.jurisdiction})` : ""}`,
         `- **Amount**: ${fmt(r.amount_cad_min)} – ${fmt(r.amount_cad_max)}`,
         `- **Deadline**: ${r.deadline ?? "—"}`,
         `- **Language**: ${r.language}`,
         `- **Sectors**: ${(r.sectors ?? []).join(", ") || "—"}`,
-        `- **Source**: ${r.url}`,
+        `- **Source**: ${urlOk ? r.url : `⚠ invalid (${r.url})`}`,
         ``,
         r.summary ? `${r.summary}` : "_(no summary)_",
-        r.summary_fr ? `\n\n_(FR)_ ${r.summary_fr}` : "",
+        r.summary_fr && r.summary_fr.trim() !== (r.summary ?? "").trim()
+          ? `\n\n_(FR)_ ${r.summary_fr}`
+          : "",
         ``,
       );
     }
 
+    // Trailing quality summary so the curator sees at a glance what's clean.
+    const total = rows.length || 1;
+    const pct = (n: number) => `${Math.round((n / total) * 100)}%`;
+    parts.push(
+      `---`,
+      ``,
+      `## Bundle quality summary`,
+      ``,
+      `- Total grants: ${rows.length}`,
+      `- With amount: ${withAmount} (${pct(withAmount)})`,
+      `- With deadline: ${withDeadline} (${pct(withDeadline)})`,
+      `- With sectors: ${withSectors} (${pct(withSectors)})`,
+      `- Invalid source URLs: ${invalidUrls}`,
+      `- Missing funder join: ${missingFunder}`,
+      ``,
+      `### Funders represented`,
+      ...[...funderCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, n]) => `- ${name}: ${n}`),
+      ``,
+      ...(issues.length > 0
+        ? [`### Issues`, ...issues, ``]
+        : [`_No structural issues detected._`, ``]),
+    );
+
     return {
-      ok: true,
+      ok: true as const,
       generatedAt: new Date().toISOString(),
-      count: rows?.length ?? 0,
+      count: rows.length,
       markdown: parts.join("\n"),
       index,
+      quality: {
+        withAmount, withDeadline, withSectors,
+        invalidUrls, missingFunder,
+        funders: Object.fromEntries(funderCounts),
+        incompleteRemaining: rows.filter(isIncomplete).map((r) => r.id),
+      },
+      enrichment: enrichmentReport,
     };
   });
 
