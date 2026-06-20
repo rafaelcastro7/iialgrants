@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
+import { EvidencePanel, EvidenceChip } from "@/components/grants/EvidencePanel";
 import { useState } from "react";
 import "@/i18n";
 
@@ -45,6 +46,8 @@ function GrantDetailPage() {
   const { data } = useSuspenseQuery(detailQuery(id));
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [evField, setEvField] = useState<string | null>(null);
+  const openEvidence = (f: string) => setEvField(f);
 
   const g = data.grant as unknown as {
     id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
@@ -100,11 +103,21 @@ function GrantDetailPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5" />{t("grants.amount")}</CardTitle></CardHeader>
-            <CardContent className="text-sm tabular-nums">{fmt(g.amount_cad_min)} – {fmt(g.amount_cad_max)}</CardContent>
+            <CardContent className="text-sm tabular-nums space-y-1.5">
+              <div>{fmt(g.amount_cad_min)} – {fmt(g.amount_cad_max)}</div>
+              {(g.amount_cad_min != null || g.amount_cad_max != null) && (
+                <EvidenceChip field="amount_cad_max" label={fr ? "Voir la source" : "View source"} onClick={openEvidence} />
+              )}
+            </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{t("grants.deadline")}</CardTitle></CardHeader>
-            <CardContent className="text-sm">{g.deadline ?? "—"}</CardContent>
+            <CardContent className="text-sm space-y-1.5">
+              <div>{g.deadline ?? "—"}</div>
+              {g.deadline && (
+                <EvidenceChip field="deadline" label={fr ? "Voir la source" : "View source"} onClick={openEvidence} />
+              )}
+            </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" />{fr ? "Langue" : "Language"}</CardTitle></CardHeader>
@@ -122,24 +135,36 @@ function GrantDetailPage() {
         {g.sectors && g.sectors.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-1.5"><Tag className="h-3.5 w-3.5" />{fr ? "Secteurs" : "Sectors"}</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 items-center">
               {g.sectors.map((s) => <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>)}
+              <EvidenceChip field="sectors" label={fr ? "Sources" : "Sources"} onClick={openEvidence} />
             </div>
           </div>
         )}
 
-        <FitEvaluation
-          status={g.status}
-          discoveredAt={g.discovered_at}
-          enrichedAt={g.enriched_at}
-          scoredAt={g.scored_at}
-          evaluation={data.evaluation as { fit_score: number; eligibility_pass: boolean; rationale_en: string; rationale_fr: string; created_at: string } | null}
-          fr={fr}
-        />
+        <div className="space-y-2">
+          <FitEvaluation
+            status={g.status}
+            discoveredAt={g.discovered_at}
+            enrichedAt={g.enriched_at}
+            scoredAt={g.scored_at}
+            evaluation={data.evaluation as { fit_score: number; eligibility_pass: boolean; rationale_en: string; rationale_fr: string; created_at: string } | null}
+            fr={fr}
+          />
+          {data.evaluation && (
+            <div className="flex gap-2 flex-wrap pl-2">
+              <EvidenceChip field="fit_score" label={fr ? "Pourquoi ce score ?" : "Why this score?"} onClick={openEvidence} />
+              <EvidenceChip field="eligibility_pass" label={fr ? "Pourquoi admissible ?" : "Why eligible?"} onClick={openEvidence} />
+            </div>
+          )}
+        </div>
 
         {g.eligibility && Object.keys(g.eligibility).length > 0 && (
           <Card>
-            <CardHeader><CardTitle className="text-base">{fr ? "Admissibilité" : "Eligibility"}</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">{fr ? "Admissibilité" : "Eligibility"}</CardTitle>
+              <EvidenceChip field="eligibility" label={fr ? "Sources" : "Sources"} onClick={openEvidence} />
+            </CardHeader>
             <CardContent>
               <pre className="text-xs whitespace-pre-wrap font-mono bg-muted/40 p-3 rounded">{JSON.stringify(g.eligibility, null, 2)}</pre>
             </CardContent>
