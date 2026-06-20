@@ -172,6 +172,68 @@ export type Database = {
         }
         Relationships: []
       }
+      discovery_sources: {
+        Row: {
+          content_hash: string | null
+          created_at: string
+          etag: string | null
+          first_seen_at: string
+          funder_id: string
+          grants_found: number
+          grants_inserted: number
+          http_status: number | null
+          id: string
+          last_fetched_at: string
+          last_modified: string | null
+          text_length: number | null
+          times_seen: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          content_hash?: string | null
+          created_at?: string
+          etag?: string | null
+          first_seen_at?: string
+          funder_id: string
+          grants_found?: number
+          grants_inserted?: number
+          http_status?: number | null
+          id?: string
+          last_fetched_at?: string
+          last_modified?: string | null
+          text_length?: number | null
+          times_seen?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          content_hash?: string | null
+          created_at?: string
+          etag?: string | null
+          first_seen_at?: string
+          funder_id?: string
+          grants_found?: number
+          grants_inserted?: number
+          http_status?: number | null
+          id?: string
+          last_fetched_at?: string
+          last_modified?: string | null
+          text_length?: number | null
+          times_seen?: number
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovery_sources_funder_id_fkey"
+            columns: ["funder_id"]
+            isOneToOne: false
+            referencedRelation: "funders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dsar_requests: {
         Row: {
           completed_at: string | null
@@ -218,6 +280,8 @@ export type Database = {
           created_at: string
           id: string
           jurisdiction: string | null
+          last_content_hash: string | null
+          last_discovered_at: string | null
           name: string
           name_fr: string | null
           source_type: Database["public"]["Enums"]["funder_source_type"]
@@ -231,6 +295,8 @@ export type Database = {
           created_at?: string
           id?: string
           jurisdiction?: string | null
+          last_content_hash?: string | null
+          last_discovered_at?: string | null
           name: string
           name_fr?: string | null
           source_type?: Database["public"]["Enums"]["funder_source_type"]
@@ -244,6 +310,8 @@ export type Database = {
           created_at?: string
           id?: string
           jurisdiction?: string | null
+          last_content_hash?: string | null
+          last_discovered_at?: string | null
           name?: string
           name_fr?: string | null
           source_type?: Database["public"]["Enums"]["funder_source_type"]
@@ -362,12 +430,14 @@ export type Database = {
           funder_id: string
           id: string
           language: string
+          last_seen_at: string
           scored_at: string | null
           sectors: string[]
           source_hash: string
           status: Database["public"]["Enums"]["grant_status"]
           summary: string | null
           summary_fr: string | null
+          times_seen: number
           title: string
           title_fr: string | null
           updated_at: string
@@ -387,12 +457,14 @@ export type Database = {
           funder_id: string
           id?: string
           language?: string
+          last_seen_at?: string
           scored_at?: string | null
           sectors?: string[]
           source_hash: string
           status?: Database["public"]["Enums"]["grant_status"]
           summary?: string | null
           summary_fr?: string | null
+          times_seen?: number
           title: string
           title_fr?: string | null
           updated_at?: string
@@ -412,12 +484,14 @@ export type Database = {
           funder_id?: string
           id?: string
           language?: string
+          last_seen_at?: string
           scored_at?: string | null
           sectors?: string[]
           source_hash?: string
           status?: Database["public"]["Enums"]["grant_status"]
           summary?: string | null
           summary_fr?: string | null
+          times_seen?: number
           title?: string
           title_fr?: string | null
           updated_at?: string
