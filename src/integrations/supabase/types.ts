@@ -884,6 +884,24 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_config: {
+        Row: {
+          key: string
+          rotated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          rotated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          rotated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       webhook_nonces: {
         Row: {
           endpoint: string
@@ -922,6 +940,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_webhook_secret: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
