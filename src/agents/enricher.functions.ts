@@ -128,7 +128,7 @@ export const runEnricher = createServerFn({ method: "POST" })
     if (!hasEligibility && parsed.eligibility) patch.eligibility = parsed.eligibility as never;
     if (!hasSectors && parsed.sectors?.length) patch.sectors = parsed.sectors;
 
-    const { error: uerr } = await supabaseAdmin.from("grants").update(patch).eq("id", g.id);
+    const { error: uerr } = await supabaseAdmin.from("grants").update(patch as never).eq("id", g.id);
     if (uerr) throw new Error(`grant_update_failed: ${uerr.message}`);
 
     await supabaseAdmin.from("agent_runs").insert({
