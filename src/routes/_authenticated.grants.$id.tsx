@@ -228,8 +228,10 @@ function GrantDetailPage() {
               }}>{busy === "draft" ? t("app.loading") : t("grants.draftProposal")}</Button>
             )}
           </div>
+          {g.status !== "discovered" && <OpportunityBriefPanel grantId={id} />}
         </div>
       </section>
+
 
       <EvidencePanel
         grantId={id}
