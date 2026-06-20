@@ -176,7 +176,15 @@ function GrantsPage() {
             </Button>
           )}
         </div>
-        {discoveryMsg && (
+        {activeJob && (
+          <DiscoveryProgress
+            jobId={activeJob.jobId}
+            queued={activeJob.queued}
+            fr={fr}
+            onClose={() => { setActiveJob(null); qc.invalidateQueries({ queryKey: ["grants"] }); }}
+          />
+        )}
+        {discoveryMsg && !activeJob && (
           <div className="mb-3 rounded-md border bg-muted/30 px-3 py-2">
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">{discoveryMsg}</pre>
           </div>
