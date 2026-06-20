@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_configs: {
+        Row: {
+          agent: string
+          concurrency: number
+          fallback_model: string | null
+          json_mode: boolean
+          max_output_tokens: number
+          max_retries: number
+          metadata: Json
+          model: string
+          prompt_version: string
+          system_prompt: string | null
+          temperature: number
+          timeout_ms: number
+          top_p: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent: string
+          concurrency?: number
+          fallback_model?: string | null
+          json_mode?: boolean
+          max_output_tokens?: number
+          max_retries?: number
+          metadata?: Json
+          model?: string
+          prompt_version?: string
+          system_prompt?: string | null
+          temperature?: number
+          timeout_ms?: number
+          top_p?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent?: string
+          concurrency?: number
+          fallback_model?: string | null
+          json_mode?: boolean
+          max_output_tokens?: number
+          max_retries?: number
+          metadata?: Json
+          model?: string
+          prompt_version?: string
+          system_prompt?: string | null
+          temperature?: number
+          timeout_ms?: number
+          top_p?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       agent_flags: {
         Row: {
           agent: string
