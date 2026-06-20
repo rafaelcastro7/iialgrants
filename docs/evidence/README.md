@@ -19,7 +19,8 @@ and TBS Directive on Automated Decision-Making (ADM) self-assessment.
 | 5 | [System Card — Writer](./system-card-writer.md) | Agent transparency (EN/FR) |
 | 6 | [System Card — Critic](./system-card-critic.md) | Agent transparency (EN/FR) |
 | 7 | [Pen-test checklist](./pentest-checklist.md) | Pre-launch security tests |
-| 8 | [Incident runbook](./incident-runbook.md) | Detection · containment · notification |
+| 8 | [Pen-test report 2026-06-20](./pentest-report-2026-06-20.md) | First production checklist run |
+| 9 | [Incident runbook](./incident-runbook.md) | Detection · containment · notification |
 
 ## Frameworks referenced
 
