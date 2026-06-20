@@ -207,17 +207,12 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     let llmInfo: { provider: string; model: string; inputTokens?: number; outputTokens?: number } | null = null;
 
     if (stillMissing.length > 0) {
+      await trace("llm_gap", `Missing fields after extractors: ${stillMissing.join(", ")} — invoking LLM cascade`, "start", { missing: stillMissing });
       const { callFreeLlm, freeProvidersAvailable } = await import("@/agents/llm-free.server");
-      const hasFree = freeProvidersAvailable().length > 0;
+      const available = freeProvidersAvailable();
+      const hasFree = available.length > 0;
       const { firecrawlAvailable, firecrawlScrape } = await import("@/lib/firecrawl.server");
-
-      // Tier order:
-      //   1) Free LLM cascade (Groq → Gemini → Cerebras) if any key set.
-      //   2) Firecrawl JSON extraction — LLM runs server-side on their plan
-      //      (no per-token cost beyond Firecrawl), uses FIRECRAWL_API_KEY only.
-      //   3) Lovable AI Gateway — last-resort, costs project credits.
-      // If none of the three are reachable, the enricher commits whatever the
-      // deterministic extractors produced and records "needs_review" metadata.
+      await trace("llm_providers", `Free providers available: ${available.join(", ") || "(none)"} · firecrawl=${firecrawlAvailable()}`, "info", { providers: available, firecrawl: firecrawlAvailable() });
 
       let llmResultText: string | null = null;
       let llmProvider = "none";
@@ -227,6 +222,8 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
 
       // Tier 1 — free LLM cascade
       if (hasFree) {
+        const tLlm = Date.now();
+        await trace("llm_cascade", "Calling free LLM cascade (Groq → Gemini → Cerebras)", "start");
         try {
           const llm = await callFreeLlm({
             agent: "enricher", runId, temperature: 0.1, responseFormat: "json",
@@ -245,7 +242,10 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
           });
           llmResultText = llm.text; llmProvider = llm.provider; llmModel = llm.model;
           llmInTok = llm.inputTokens; llmOutTok = llm.outputTokens;
-        } catch { /* fall through */ }
+          await trace("llm_cascade", `LLM responded via ${llm.provider}/${llm.model} (${llm.outputTokens ?? "?"} tokens, ${Date.now() - tLlm}ms)`, "done", { provider: llm.provider, model: llm.model, in: llm.inputTokens, out: llm.outputTokens });
+        } catch (e) {
+          await trace("llm_cascade", `All free providers failed — ${e instanceof Error ? e.message : String(e)}`, "warn");
+        }
       }
 
       // Tier 2 — Firecrawl JSON extraction (zero extra LLM cost)
