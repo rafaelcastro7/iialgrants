@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/public/hooks/enrich")({
         if (!result.ok) return new Response(result.reason, { status: result.status });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { runEnricher } = await import("@/agents/enricher.functions");
+        const { enrichGrantImpl } = await import("@/agents/enricher.functions");
 
         const { data: grants, error } = await supabaseAdmin
           .from("grants")
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/public/hooks/enrich")({
         const results: Array<{ id: string; ok: boolean; error?: string }> = [];
         for (const g of grants ?? []) {
           try {
-            await runEnricher({ data: { grantId: g.id } });
+            await enrichGrantImpl(g.id);
             results.push({ id: g.id, ok: true });
           } catch (e) {
             results.push({ id: g.id, ok: false, error: e instanceof Error ? e.message : String(e) });

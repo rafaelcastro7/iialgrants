@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EnricherOutput, PROMPTS } from "@/agents/schemas";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // Enricher v4 — Evidence-First, Free-Tier.
 //
@@ -14,9 +15,23 @@ import { EnricherOutput, PROMPTS } from "@/agents/schemas";
 //      with the markdown as context and REQUIRE literal quote citations.
 //   5) Reject any LLM-claimed value whose quote does not appear in the
 //      scraped markdown (anti-hallucination).
-export const runEnricher = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ grantId: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+//
+// Server-only implementation. Exported so cron hooks (HMAC-signed) and the
+// admin-gated `runEnricher` serverFn can both call it without exposing a
+// public unauthenticated RPC endpoint.
+export type EnricherResult = {
+  ok: boolean;
+  runId: string;
+  skipped?: boolean;
+  reason?: string;
+  error?: string;
+  filled?: string[];
+  deterministic_counts?: Record<string, number>;
+  provider?: string;
+};
+
+export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> {
+    const data = { grantId };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { newRunId } = await import("@/lib/otel");
     const { scrapeWithFallback } = await import("@/lib/web-fetch.server");
@@ -291,4 +306,19 @@ export const runEnricher = createServerFn({ method: "POST" })
       deterministic_counts: methodCounts,
       provider: llmInfo?.provider ?? "none",
     };
+}
+
+// Thin admin-only serverFn wrapper. Public RPC endpoint is auth-gated:
+// only signed-in admins can trigger ad-hoc enrichment, preventing anyone
+// from burning LLM credits via the public URL.
+export const runEnricher = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ grantId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
+      _user_id: context.userId, _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Forbidden: admin role required");
+    return enrichGrantImpl(data.grantId);
   });

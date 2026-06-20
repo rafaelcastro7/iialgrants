@@ -14,12 +14,68 @@ const MAX_PAGES_PER_RUN = 12;
 const MAX_MARKDOWN_LEN = 22_000;
 const SCRAPE_CONCURRENCY = 3;
 
+// Hard title normalization for canonical dedup. Strips:
+//   - parenthetical content "(IRAP)" / "(programme XYZ)"
+//   - generic suffix words: program/programme/initiative/fund/funding/grant/
+//     subsidy/subvention/aide/credit/crédit
+//   - all non-alphanumeric chars, then collapses whitespace.
+// Result: "NRC IRAP (Industrial Research Assistance Program)" and
+// "NRC IRAP - Industrial Research Assistance" both collapse to the same key.
+const GENERIC_STOPWORDS = new Set([
+  "program","programme","initiative","fund","funding","grant","grants",
+  "subsidy","subsidies","subvention","subventions","aide","aides",
+  "credit","crédit","credits","crédits","loan","loans","prêt","prets","prêts",
+  "scholarship","bourse","bourses","the","a","an","le","la","les","de","du","des",
+]);
+
 function normalizeTitle(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+  return s
+    .replace(/\([^)]*\)/g, " ")              // strip parentheticals
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")          // strip diacritics
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !GENERIC_STOPWORDS.has(w))
+    .join(" ");
 }
 function canonicalKey(funderId: string, title: string, minAmt: number | null, maxAmt: number | null): string {
   const band = `${minAmt ?? "_"}_${maxAmt ?? "_"}`;
   return createHash("sha256").update(`${funderId}|${normalizeTitle(title)}|${band}`).digest("hex");
+}
+
+// Reject titles that are too generic to be real programs.
+// E.g. "Funding", "Loans", "Programs and Initiatives", landing-page bait.
+function isGenericTitle(title: string): boolean {
+  const norm = normalizeTitle(title);
+  if (norm.length < 4) return true;
+  const words = norm.split(/\s+/).filter(Boolean);
+  if (words.length <= 2) return true; // After stopword removal, must have ≥3 meaningful words.
+  return false;
+}
+
+// Reject root-ish index URLs that aren't actual program pages.
+// Paths like /financement, /prets, /programmes, /grants, /funding are
+// listing pages that the Discoverer should NOT scrape as a single program.
+const ROOT_INDEX_PATHS = new Set([
+  "/financement","/financements","/funding","/funds","/fund",
+  "/prets","/prêts","/loans","/loan","/subventions","/subvention",
+  "/grants","/grant","/programmes","/programme","/programs","/program",
+  "/aides","/aide","/credits","/crédits","/credit","/crédit",
+  "/scholarships","/bourses","/services","/produits","/products",
+]);
+function isRootIndex(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.replace(/\/+$/, "").toLowerCase();
+    if (!path || path === "/") return true;
+    if (ROOT_INDEX_PATHS.has(path)) return true;
+    // Single-segment path with one of the generic words → also reject.
+    const segs = path.split("/").filter(Boolean);
+    if (segs.length === 1 && ROOT_INDEX_PATHS.has(`/${segs[0]}`)) return true;
+    return false;
+  } catch { return false; }
 }
 
 // Multi-grant page output: a page (index or program) may yield 0..N grants.
@@ -238,6 +294,9 @@ export async function discoverFunderImpl(
       perPageStats.push({ url, found: pageGrants.length, via });
 
       for (const g of pageGrants) {
+        if (isGenericTitle(g.title) || isRootIndex(g.url || url)) {
+          continue; // structural filter: skip landing-page / index-only entries
+        }
         const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
         const { data: existing } = await supabaseAdmin
           .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
@@ -357,6 +416,7 @@ export async function discoverFunderImpl(
   let inserted = 0;
   let seenAgain = 0;
   for (const g of parsed.grants) {
+    if (isGenericTitle(g.title) || isRootIndex(g.url)) continue;
     const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
     const { data: existing } = await supabaseAdmin
       .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
