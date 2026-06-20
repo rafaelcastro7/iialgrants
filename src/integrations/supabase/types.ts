@@ -920,6 +920,27 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_rate_limit: {
+        Row: {
+          client_ip: string
+          endpoint: string
+          id: number
+          seen_at: string
+        }
+        Insert: {
+          client_ip: string
+          endpoint: string
+          id?: number
+          seen_at?: string
+        }
+        Update: {
+          client_ip?: string
+          endpoint?: string
+          id?: number
+          seen_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       agent_runs_daily: {
