@@ -30,6 +30,8 @@ import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminHistoryRouteImport } from './routes/_authenticated.admin.history'
 import { Route as AuthenticatedAdminCandidatesRouteImport } from './routes/_authenticated.admin.candidates'
 import { Route as AuthenticatedAdminAgentsRouteImport } from './routes/_authenticated.admin.agents'
+import { Route as ApiPublicHooksSourceTierBRouteImport } from './routes/api/public/hooks/source-tier-b'
+import { Route as ApiPublicHooksSourceTierARouteImport } from './routes/api/public/hooks/source-tier-a'
 import { Route as ApiPublicHooksSourceCuratorRouteImport } from './routes/api/public/hooks/source-curator'
 import { Route as ApiPublicHooksRssPollRouteImport } from './routes/api/public/hooks/rss-poll'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
@@ -146,6 +148,18 @@ const AuthenticatedAdminAgentsRoute =
     path: '/agents',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicHooksSourceTierBRoute =
+  ApiPublicHooksSourceTierBRouteImport.update({
+    id: '/api/public/hooks/source-tier-b',
+    path: '/api/public/hooks/source-tier-b',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSourceTierARoute =
+  ApiPublicHooksSourceTierARouteImport.update({
+    id: '/api/public/hooks/source-tier-a',
+    path: '/api/public/hooks/source-tier-a',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSourceCuratorRoute =
   ApiPublicHooksSourceCuratorRouteImport.update({
     id: '/api/public/hooks/source-curator',
@@ -199,6 +213,8 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
   '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
+  '/api/public/hooks/source-tier-a': typeof ApiPublicHooksSourceTierARoute
+  '/api/public/hooks/source-tier-b': typeof ApiPublicHooksSourceTierBRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -225,6 +241,8 @@ export interface FileRoutesByTo {
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
   '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
+  '/api/public/hooks/source-tier-a': typeof ApiPublicHooksSourceTierARoute
+  '/api/public/hooks/source-tier-b': typeof ApiPublicHooksSourceTierBRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -254,6 +272,8 @@ export interface FileRoutesById {
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
   '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
+  '/api/public/hooks/source-tier-a': typeof ApiPublicHooksSourceTierARoute
+  '/api/public/hooks/source-tier-b': typeof ApiPublicHooksSourceTierBRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -283,6 +303,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
     | '/api/public/hooks/source-curator'
+    | '/api/public/hooks/source-tier-a'
+    | '/api/public/hooks/source-tier-b'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -309,6 +331,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
     | '/api/public/hooks/source-curator'
+    | '/api/public/hooks/source-tier-a'
+    | '/api/public/hooks/source-tier-b'
   id:
     | '__root__'
     | '/'
@@ -337,6 +361,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
     | '/api/public/hooks/source-curator'
+    | '/api/public/hooks/source-tier-a'
+    | '/api/public/hooks/source-tier-b'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -349,6 +375,8 @@ export interface RootRouteChildren {
   ApiPublicHooksEnrichRoute: typeof ApiPublicHooksEnrichRoute
   ApiPublicHooksRssPollRoute: typeof ApiPublicHooksRssPollRoute
   ApiPublicHooksSourceCuratorRoute: typeof ApiPublicHooksSourceCuratorRoute
+  ApiPublicHooksSourceTierARoute: typeof ApiPublicHooksSourceTierARoute
+  ApiPublicHooksSourceTierBRoute: typeof ApiPublicHooksSourceTierBRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -500,6 +528,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAgentsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/hooks/source-tier-b': {
+      id: '/api/public/hooks/source-tier-b'
+      path: '/api/public/hooks/source-tier-b'
+      fullPath: '/api/public/hooks/source-tier-b'
+      preLoaderRoute: typeof ApiPublicHooksSourceTierBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/source-tier-a': {
+      id: '/api/public/hooks/source-tier-a'
+      path: '/api/public/hooks/source-tier-a'
+      fullPath: '/api/public/hooks/source-tier-a'
+      preLoaderRoute: typeof ApiPublicHooksSourceTierARouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/source-curator': {
       id: '/api/public/hooks/source-curator'
       path: '/api/public/hooks/source-curator'
@@ -622,6 +664,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksEnrichRoute: ApiPublicHooksEnrichRoute,
   ApiPublicHooksRssPollRoute: ApiPublicHooksRssPollRoute,
   ApiPublicHooksSourceCuratorRoute: ApiPublicHooksSourceCuratorRoute,
+  ApiPublicHooksSourceTierARoute: ApiPublicHooksSourceTierARoute,
+  ApiPublicHooksSourceTierBRoute: ApiPublicHooksSourceTierBRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
