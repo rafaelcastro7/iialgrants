@@ -284,6 +284,10 @@ function AgentEditor({ agent, models }: { agent: AgentRow; models: readonly Mode
           <TabsContent value="runs" className="pt-4">
             <RecentRuns agent={agent.agent} />
           </TabsContent>
+
+          <TabsContent value="history" className="pt-4">
+            <ChangeHistory agent={agent.agent} />
+          </TabsContent>
         </Tabs>
 
         <div className="flex items-center justify-between pt-6 mt-4 border-t">
