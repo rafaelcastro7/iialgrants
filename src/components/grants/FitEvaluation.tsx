@@ -76,101 +76,59 @@ function ScoreGauge({ value }: { value: number }) {
 }
 
 const LABELS = {
-  en: {
-    stages: { discovered: "Discovered", enriched: "Enriched", evaluated: "Evaluated", verdict: "Verdict" },
-    stageDesc: {
-      discovered: "Sourced from funder",
-      enriched: "Bilingual + normalized",
-      evaluated: "AI fit analysis",
-      verdict: "Recommendation",
-    },
-    verdict: { strong: "Strong fit", partial: "Partial fit", poor: "Poor fit" },
-    eligiblePass: "Eligible",
-    eligibleFail: "Not eligible",
-    rationale: "Rationale",
-    waitingProfile: "Set up your organization profile to enable AI fit evaluation.",
-    waitingEnrich: "Waiting for enrichment…",
-    evaluating: "AI is evaluating fit…",
-    showDetails: "See what happened in each step",
-    hideDetails: "Hide step details",
-    at: "at",
-    detail: {
-      discovered: {
-        done: "We found this funding opportunity on the funder's website and saved it to your catalog. No AI interpretation yet — just the raw notice.",
-        active: "Scanning the funder's website for new programs…",
-        pending: "Not started yet.",
-      },
-      enriched: {
-        done: "The AI cleaned up the listing: translated the title and summary to Quebec French, parsed the deadline into a real date, and normalized amounts to Canadian dollars so it's comparable with other grants.",
-        active: "The AI is translating and standardizing the grant details right now…",
-        pending: "Will run automatically once the grant is discovered.",
-      },
-      evaluated: {
-        done: "The AI compared this grant's eligibility, sectors, jurisdiction and stage against your organization profile, then produced a fit score from 0 to 100 and a written rationale.",
-        active: "Comparing the grant requirements with your organization profile…",
-        pending: "Will run as soon as enrichment finishes (and you have an organization profile).",
-      },
-      verdict: {
-        done: "Final recommendation based on the fit score and the eligibility check. Read the rationale above to see the reasoning the AI gave.",
-        active: "Composing the final verdict…",
-        pending: "Waiting for evaluation to finish.",
-      },
-    },
+  stages: { discovered: "Discovered", enriched: "Enriched", evaluated: "Evaluated", verdict: "Verdict" },
+  stageDesc: {
+    discovered: "Sourced from funder",
+    enriched: "Normalized",
+    evaluated: "AI fit analysis",
+    verdict: "Recommendation",
   },
-  fr: {
-    stages: { discovered: "Découvert", enriched: "Enrichi", evaluated: "Évalué", verdict: "Verdict" },
-    stageDesc: {
-      discovered: "Source du bailleur",
-      enriched: "Bilingue + normalisé",
-      evaluated: "Analyse IA",
-      verdict: "Recommandation",
+  verdict: { strong: "Strong fit", partial: "Partial fit", poor: "Poor fit" },
+  eligiblePass: "Eligible",
+  eligibleFail: "Not eligible",
+  rationale: "Rationale",
+  waitingProfile: "Set up your organization profile to enable AI fit evaluation.",
+  waitingEnrich: "Waiting for enrichment…",
+  evaluating: "AI is evaluating fit…",
+  showDetails: "See what happened in each step",
+  hideDetails: "Hide step details",
+  at: "at",
+  detail: {
+    discovered: {
+      done: "We found this funding opportunity on the funder's website and saved it to your catalog. No AI interpretation yet — just the raw notice.",
+      active: "Scanning the funder's website for new programs…",
+      pending: "Not started yet.",
     },
-    verdict: { strong: "Excellente adéquation", partial: "Adéquation partielle", poor: "Faible adéquation" },
-    eligiblePass: "Admissible",
-    eligibleFail: "Non admissible",
-    rationale: "Justification",
-    waitingProfile: "Complétez votre profil d'organisation pour activer l'évaluation IA.",
-    waitingEnrich: "En attente d'enrichissement…",
-    evaluating: "L'IA évalue l'adéquation…",
-    showDetails: "Voir ce qui s'est passé à chaque étape",
-    hideDetails: "Masquer les détails",
-    at: "à",
-    detail: {
-      discovered: {
-        done: "Nous avons trouvé cette opportunité sur le site du bailleur et l'avons ajoutée à votre catalogue. Aucune interprétation IA à ce stade — uniquement l'avis brut.",
-        active: "Analyse du site du bailleur à la recherche de nouveaux programmes…",
-        pending: "Non commencé.",
-      },
-      enriched: {
-        done: "L'IA a nettoyé l'annonce : traduction du titre et du résumé en français québécois, conversion de l'échéance en date réelle, et normalisation des montants en dollars canadiens pour pouvoir comparer.",
-        active: "L'IA traduit et standardise les détails de la subvention…",
-        pending: "Démarre automatiquement après la découverte.",
-      },
-      evaluated: {
-        done: "L'IA a comparé l'admissibilité, les secteurs, la juridiction et le stade de cette subvention avec votre profil d'organisation, puis a produit un score de 0 à 100 et une justification.",
-        active: "Comparaison des exigences de la subvention avec votre profil…",
-        pending: "Démarrera après l'enrichissement (et si vous avez un profil d'organisation).",
-      },
-      verdict: {
-        done: "Recommandation finale basée sur le score et la vérification d'admissibilité. Lisez la justification ci-dessus pour voir le raisonnement de l'IA.",
-        active: "Composition du verdict final…",
-        pending: "En attente de la fin de l'évaluation.",
-      },
+    enriched: {
+      done: "The AI cleaned up the listing: parsed the deadline into a real date and normalized amounts to Canadian dollars so it's comparable with other grants.",
+      active: "The AI is standardizing the grant details right now…",
+      pending: "Will run automatically once the grant is discovered.",
+    },
+    evaluated: {
+      done: "The AI compared this grant's eligibility, sectors, jurisdiction and stage against your organization profile, then produced a fit score from 0 to 100 and a written rationale.",
+      active: "Comparing the grant requirements with your organization profile…",
+      pending: "Will run as soon as enrichment finishes (and you have an organization profile).",
+    },
+    verdict: {
+      done: "Final recommendation based on the fit score and the eligibility check. Read the rationale above to see the reasoning the AI gave.",
+      active: "Composing the final verdict…",
+      pending: "Waiting for evaluation to finish.",
     },
   },
 } as const;
 
-function formatTs(iso: string | null, fr: boolean) {
+function formatTs(iso: string | null) {
   if (!iso) return null;
   try {
-    return new Intl.DateTimeFormat(fr ? "fr-CA" : "en-CA", {
+    return new Intl.DateTimeFormat("en-CA", {
       dateStyle: "medium", timeStyle: "short",
     }).format(new Date(iso));
   } catch { return iso; }
 }
 
+
 export function FitEvaluation(props: Props) {
-  const L = props.fr ? LABELS.fr : LABELS.en;
+  const L = LABELS;
   const e = props.evaluation;
   const t = e ? tier(e.fit_score) : null;
   const VerdictIcon = t?.icon;
@@ -182,6 +140,7 @@ export function FitEvaluation(props: Props) {
     evaluated: e?.created_at ?? props.scoredAt,
     verdict: e?.created_at ?? null,
   };
+
 
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
@@ -246,7 +205,7 @@ export function FitEvaluation(props: Props) {
               </div>
               <p className="mt-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">{L.rationale}</p>
               <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">
-                {(props.fr ? e.rationale_fr : e.rationale_en) || e.rationale_en}
+                {e.rationale_en || e.rationale_fr || ""}
               </p>
             </div>
           </div>
@@ -291,7 +250,7 @@ export function FitEvaluation(props: Props) {
             {STAGE_ORDER.map((s) => {
               const state = stageReached(s, props);
               const Icon = STAGE_ICON[s];
-              const ts = formatTs(stageTs[s], !!props.fr);
+              const ts = formatTs(stageTs[s]);
               const text = L.detail[s][state];
               return (
                 <li key={s} className="flex gap-3">
