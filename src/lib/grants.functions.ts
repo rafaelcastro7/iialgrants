@@ -63,9 +63,11 @@ export const listGrants = createServerFn({ method: "GET" })
     };
   });
 
-// Admin-triggered orchestration: run Discoverer for every active funder, then
-// auto-Enrich every grant left in 'discovered' state. Mirrors the cron hook
-// but is callable from the UI for demos and manual re-syncs.
+// Admin-triggered orchestration: fire-and-forget. Returns a jobId immediately
+// so the UI doesn't depend on keeping the connection open during the entire
+// orchestration. Per-funder runs (with retries and timeouts) are logged into
+// agent_runs tagged with metadata.job_id. Query progress via
+// getDiscoveryJobStatus({ jobId }).
 export const discoverAllFunders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -74,59 +76,135 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
     await assertAgentEnabled("discoverer");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { discoverFunderImpl } = await import("@/agents/discoverer.impl.server");
-
     const { data: funders, error } = await supabaseAdmin
       .from("funders")
-      .select("id, name")
+      .select("id")
       .eq("active", true)
       .not("source_url", "is", null);
     if (error) throw new Error(error.message);
 
+    const jobId = crypto.randomUUID();
+    const queued = funders?.length ?? 0;
+
+    // Kick off background work without awaiting. The orchestrator logs every
+    // attempt, success and failure into agent_runs tagged with this job_id.
+    const { runDiscoveryJob } = await import("@/agents/discoverer-orchestrator.server");
+    void runDiscoveryJob(jobId, context.userId).catch((e) => {
+      console.error("[discoverAllFunders] background job crashed", e);
+    });
+
+    // Standardized payload: always includes totalInserted/totalProcessed even
+    // when delivered in queued mode (zero until the background job updates).
+    return {
+      ok: true,
+      jobId,
+      queued,
+      totalInserted: 0,
+      totalSeenAgain: 0,
+      totalProcessed: 0,
+      evaluated: 0,
+      perFunder: [] as Array<{ funder: string; inserted: number; seenAgain?: number; engine?: string; error?: string }>,
+      status: "queued" as const,
+    };
+  });
+
+// Aggregated status of a discovery job, computed from agent_runs rows tagged
+// with metadata.job_id. Used by the UI progress panel.
+export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ jobId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("agent_runs")
+      .select("run_id, status, error, latency_ms, metadata, created_at")
+      .eq("agent", "discoverer")
+      .filter("metadata->>job_id", "eq", data.jobId)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    if (error) throw new Error(error.message);
+
+    type Row = { run_id: string; status: string; error: string | null; latency_ms: number | null; metadata: Record<string, unknown> | null; created_at: string };
+    const all = (rows ?? []) as unknown as Row[];
+
+    let started_at: string | null = null;
+    let completed_at: string | null = null;
+    let status: "queued" | "running" | "completed" | "failed" = "queued";
     let totalInserted = 0;
     let totalSeenAgain = 0;
-    const perFunder: Array<{ funder: string; inserted: number; seenAgain?: number; engine?: string; error?: string }> = [];
+    let totalProcessed = 0;
+    let evaluated = 0;
+    let fundersQueued = 0;
 
-    for (const f of funders ?? []) {
-      try {
-        const r = await discoverFunderImpl(f.id);
-        totalInserted += r.inserted; totalSeenAgain += r.seenAgain ?? 0;
-        perFunder.push({ funder: f.name, inserted: r.inserted, seenAgain: r.seenAgain, engine: r.engine });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        perFunder.push({ funder: f.name, inserted: 0, error: msg });
-        try {
-          await supabaseAdmin.from("agent_runs").insert({
-            run_id: crypto.randomUUID(), agent: "discoverer", status: "failed",
-            model: "google/gemini-2.5-flash", error: msg,
-            metadata: { funder_id: f.id, funder_name: f.name, stage: "orchestrator" },
-          });
-        } catch { /* logging best-effort */ }
+    type FunderState = {
+      funder_id: string;
+      funder_name: string;
+      status: "queued" | "running" | "succeeded" | "failed" | "degraded";
+      attempts: number;
+      inserted: number;
+      seenAgain: number;
+      engine?: string;
+      lastError?: string;
+      latency_ms?: number;
+    };
+    const byFunder = new Map<string, FunderState>();
+
+    for (const r of all) {
+      const m = (r.metadata ?? {}) as Record<string, unknown>;
+      const stage = typeof m.stage === "string" ? m.stage : undefined;
+      if (stage === "orchestrator_started") {
+        started_at = r.created_at;
+        if (status === "queued") status = "running";
+        continue;
       }
+      if (stage === "orchestrator_completed") {
+        completed_at = r.created_at;
+        status = "completed";
+        totalInserted = Number(m.totalInserted ?? 0);
+        totalSeenAgain = Number(m.totalSeenAgain ?? 0);
+        totalProcessed = Number(m.totalProcessed ?? 0);
+        evaluated = Number(m.evaluated ?? 0);
+        fundersQueued = Number(m.funders_queued ?? 0);
+        continue;
+      }
+      const fid = typeof m.funder_id === "string" ? m.funder_id : null;
+      if (!fid) continue;
+      const fname = typeof m.funder_name === "string" ? m.funder_name : fid.slice(0, 8);
+      const prev = byFunder.get(fid) ?? {
+        funder_id: fid, funder_name: fname, status: "running" as const,
+        attempts: 0, inserted: 0, seenAgain: 0,
+      };
+      prev.attempts = Math.max(prev.attempts, Number(m.attempt ?? 1));
+      if (r.status === "succeeded") {
+        prev.status = "succeeded";
+        prev.inserted = Number(m.inserted ?? 0);
+        prev.seenAgain = Number(m.seen_again ?? 0);
+        prev.engine = typeof m.engine === "string" ? m.engine : prev.engine;
+        prev.latency_ms = r.latency_ms ?? prev.latency_ms;
+      } else if (r.status === "failed") {
+        prev.status = "failed";
+        prev.lastError = r.error ?? prev.lastError;
+      } else if (r.status === "degraded") {
+        prev.lastError = r.error ?? prev.lastError;
+        if (prev.status !== "succeeded") prev.status = "running";
+      }
+      byFunder.set(fid, prev);
     }
 
-    // Skip Enrich — auto-fit runs on 'discovered' directly. Enrich becomes
-    // background-only (cron) for FR-CA translation when shortlisted.
-
-    // Auto-evaluate fit for the admin who triggered this run (best effort).
-    let evaluated = 0;
-    try {
-      const { data: org } = await context.supabase
-        .from("org_profiles").select("user_id").eq("user_id", context.userId).maybeSingle();
-      if (org) {
-        const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
-        await assertAgentEnabled("evaluator");
-        const { evaluateGrantImpl } = await import("@/agents/evaluator.impl.server");
-        const { data: pending } = await supabaseAdmin
-          .from("grants").select("id").eq("status", "discovered").limit(15);
-        for (const g of pending ?? []) {
-          try { await evaluateGrantImpl({ grantId: g.id, userId: context.userId, userSupabase: context.supabase }); evaluated++; }
-          catch { /* keep going */ }
-        }
-      }
-    } catch { /* evaluator disabled */ }
-
-    return { ok: true, totalInserted, totalSeenAgain, evaluated, perFunder };
+    return {
+      jobId: data.jobId,
+      status,
+      started_at,
+      completed_at,
+      fundersQueued,
+      totalInserted,
+      totalSeenAgain,
+      totalProcessed,
+      evaluated,
+      perFunder: [...byFunder.values()],
+    };
   });
 
 // Admin-triggered enrichment of a single grant.
