@@ -80,7 +80,7 @@ export const runEvaluator = createServerFn({ method: "POST" })
 
     // Transition grant to 'scored' (admin write via service role).
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    if (g.status === "enriched") {
+    if (g.status === "discovered" || g.status === "enriched") {
       await supabaseAdmin.from("grants").update({
         status: "scored",
         scored_at: new Date().toISOString(),
