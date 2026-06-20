@@ -185,13 +185,21 @@ export const listAgentConfigAudit = createServerFn({ method: "GET" })
         if (u?.user?.email) emailById.set(uid, u.user.email);
       }
     }
-    return {
-      events: ((rows ?? []) as Array<{ id: string; user_id: string | null; changed_at: string; field: string; old_value: unknown; new_value: unknown; is_prompt: boolean }>).map((r) => ({
-        ...r,
-        user_email: r.user_id ? emailById.get(r.user_id) ?? null : null,
-      })),
-    };
+    type AuditRow = { id: string; user_id: string | null; changed_at: string; field: string; old_value: unknown; new_value: unknown; is_prompt: boolean };
+    type AuditEvent = { id: string; user_id: string | null; changed_at: string; field: string; old_value: string | null; new_value: string | null; is_prompt: boolean; user_email: string | null };
+    const events: AuditEvent[] = ((rows ?? []) as AuditRow[]).map((r) => ({
+      id: r.id,
+      user_id: r.user_id,
+      changed_at: r.changed_at,
+      field: r.field,
+      old_value: r.old_value == null ? null : typeof r.old_value === "string" ? r.old_value : JSON.stringify(r.old_value),
+      new_value: r.new_value == null ? null : typeof r.new_value === "string" ? r.new_value : JSON.stringify(r.new_value),
+      is_prompt: r.is_prompt,
+      user_email: r.user_id ? emailById.get(r.user_id) ?? null : null,
+    }));
+    return { events };
   });
+
 
 
 export const resetAgentPrompt = createServerFn({ method: "POST" })
