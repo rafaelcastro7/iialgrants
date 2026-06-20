@@ -57,7 +57,7 @@ export const EvaluatorOutput = z.object({
   fit_score: z.number().min(0).max(1),
   eligibility_pass: z.boolean(),
   rationale_en: z.string().min(10).max(2000),
-  rationale_fr: z.string().min(10).max(2000),
+  rationale_fr: z.string().max(2000).nullable().optional().default(""),
 });
 export type EvaluatorOutput = z.infer<typeof EvaluatorOutput>;
 
@@ -69,13 +69,13 @@ export const StrategistSectionPlan = z.object({
     "sustainability","evaluation","other",
   ]),
   heading_en: z.string().min(1).max(200),
-  heading_fr: z.string().min(1).max(200),
+  heading_fr: z.string().max(200).nullable().optional().default(""),
   angle: z.string().min(10).max(1000),
   must_cover: z.array(z.string()).max(8).default([]),
 });
 export const StrategistOutput = z.object({
   proposal_title: z.string().min(3).max(300),
-  proposal_title_fr: z.string().min(3).max(300),
+  proposal_title_fr: z.string().max(300).nullable().optional().default(""),
   sections: z.array(StrategistSectionPlan).min(3).max(12),
 });
 export type StrategistOutput = z.infer<typeof StrategistOutput>;
@@ -89,7 +89,7 @@ export const WriterCitation = z.object({
 });
 export const WriterOutput = z.object({
   content_en: z.string().min(40).max(8000),
-  content_fr: z.string().min(40).max(8000),
+  content_fr: z.string().max(8000).nullable().optional().default(""),
   citations: z.array(WriterCitation).max(20).default([]),
 });
 export type WriterOutput = z.infer<typeof WriterOutput>;
@@ -99,15 +99,16 @@ export const CriticFinding = z.object({
   section_id: z.string().uuid(),
   severity: z.enum(["info", "warn", "block"]),
   message_en: z.string().min(5).max(1000),
-  message_fr: z.string().min(5).max(1000),
+  message_fr: z.string().max(1000).nullable().optional().default(""),
 });
 export const CriticOutput = z.object({
   overall_score: z.number().min(0).max(1),
   summary_en: z.string().min(10).max(2000),
-  summary_fr: z.string().min(10).max(2000),
+  summary_fr: z.string().max(2000).nullable().optional().default(""),
   findings: z.array(CriticFinding).max(30).default([]),
 });
 export type CriticOutput = z.infer<typeof CriticOutput>;
+
 
 export const PROMPTS = {
   discoverer: {
