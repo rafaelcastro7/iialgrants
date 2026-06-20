@@ -884,6 +884,24 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_nonces: {
+        Row: {
+          endpoint: string
+          nonce: string
+          seen_at: string
+        }
+        Insert: {
+          endpoint: string
+          nonce: string
+          seen_at?: string
+        }
+        Update: {
+          endpoint?: string
+          nonce?: string
+          seen_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       agent_runs_daily: {
