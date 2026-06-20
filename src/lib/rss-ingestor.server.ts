@@ -159,6 +159,7 @@ export async function ingestRssFeeds(opts: { feeds?: string[] } = {}): Promise<I
       feeds: feeds.length,
       items_parsed: itemsParsed,
       items_relevant: relevant.length,
+      urls_touched: urlsTouched,
       funders_matched: matchedNames,
     },
   });
