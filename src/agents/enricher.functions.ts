@@ -71,7 +71,10 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     const eligObj = (g.eligibility ?? {}) as Record<string, unknown>;
     const hasEligibility = Object.keys(eligObj).length > 0;
 
+    await trace("inventory", `Existing fields: ${[hasAmount && "amount", hasDeadline && "deadline", hasSectors && "sectors", hasEligibility && "eligibility"].filter(Boolean).join(", ") || "(none)"}`, "info", { hasAmount, hasDeadline, hasSectors, hasEligibility });
+
     if (hasAmount && hasDeadline && hasSectors && hasEligibility) {
+      await trace("done", "Grant already complete — marking enriched without scraping", "done");
       await supabaseAdmin.from("grants").update({
         status: "enriched", enriched_at: new Date().toISOString(),
       } as never).eq("id", g.id);
@@ -85,9 +88,12 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     }
 
     // ----- Step 2: Scrape the page -----
+    await trace("scrape", `Fetching ${g.url}`, "start");
+    const tScrape = Date.now();
     const scraped = await scrapeWithFallback(g.url);
     if (!scraped.ok) {
       const msg = `scrape_failed: ${scraped.error}`;
+      await trace("scrape", msg, "error", { via: scraped.via, duration_ms: Date.now() - tScrape });
       await supabaseAdmin.from("grants").update({
         enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
         enrich_last_error: msg.slice(0, 500),
@@ -102,8 +108,10 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     }
     const markdown = scraped.markdown;
     const language = (g.language as "en" | "fr") ?? "en";
+    await trace("scrape", `Scraped ${markdown.length} chars via ${scraped.via}`, "done", { via: scraped.via, chars: markdown.length, duration_ms: Date.now() - tScrape });
 
     // ----- Step 3: Deterministic extraction with evidence -----
+    await trace("extractors", "Running deterministic extractors (regex / chrono / rules)", "start");
     const patch: Record<string, unknown> = {};
     const methodCounts = { regex: 0, chrono: 0, rule: 0, llm: 0 };
 
@@ -113,6 +121,7 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
         if (am.min != null) patch.amount_cad_min = am.min;
         if (am.max != null) patch.amount_cad_max = am.max;
         methodCounts.regex++;
+        await trace("regex_amount", `Found amount: $${am.min ?? "?"} – $${am.max ?? "?"}`, "ok", { snippet: am.snippet.slice(0, 200) });
         if (am.max != null) {
           await recordEvidence({
             grantId: g.id, agent: "enricher", field: "amount_cad_max",
@@ -127,6 +136,8 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
             snippetOffset: am.matchOffset, method: "regex", runId,
           });
         }
+      } else {
+        await trace("regex_amount", "No amount detected by regex", "info");
       }
     }
 
@@ -135,11 +146,14 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
       if (dm) {
         patch.deadline = dm.iso;
         methodCounts.chrono++;
+        await trace("chrono_deadline", `Found deadline: ${dm.iso}`, "ok", { snippet: dm.snippet.slice(0, 200) });
         await recordEvidence({
           grantId: g.id, agent: "enricher", field: "deadline",
           value: dm.iso, sourceUrl: g.url, snippet: dm.snippet,
           snippetOffset: dm.matchOffset, method: "chrono", runId,
         });
+      } else {
+        await trace("chrono_deadline", "No deadline detected", "info");
       }
     }
 
@@ -157,6 +171,9 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
           });
         }
         patch.eligibility = elig as never;
+        await trace("rule_eligibility", `Matched eligibility tags: ${em.map(e => e.tag).join(", ")}`, "ok", { tags: em.map(e => e.tag) });
+      } else {
+        await trace("rule_eligibility", "No eligibility tags matched", "info");
       }
     }
 
@@ -172,8 +189,12 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
             snippetOffset: s.matchOffset, method: "rule", runId,
           });
         }
+        await trace("rule_sectors", `Detected sectors: ${sm.map(s => s.sector).join(", ")}`, "ok", { sectors: sm.map(s => s.sector) });
+      } else {
+        await trace("rule_sectors", "No sectors detected", "info");
       }
     }
+    await trace("extractors", `Deterministic done — regex:${methodCounts.regex} chrono:${methodCounts.chrono} rule:${methodCounts.rule}`, "done", methodCounts);
 
     // ----- Step 4: LLM gap-fill (only if still missing fields) -----
     const stillMissing: string[] = [];
