@@ -1,106 +1,146 @@
-## Objetivo
+# Reingeniería: Drill-Down de Evidencia + LLM Gratuito
 
-Rehacer el módulo de Grants para que el Discovery sea **profundo, multi-página y estructurado**, en vez del actual "1 URL → strip HTML → 30 KB de texto al LLM". Borrar los 3 grants/eval actuales y arrancar limpio con un catálogo de funders más serio.
+## Problema actual
 
----
+1. **Sin trazabilidad**: cuando el Evaluator dice "fit_score 78" o el Enricher rellena "amount: $50k", no sabemos en qué texto, URL, o párrafo se basó. La UI muestra veredictos sin evidencia auditable.
+2. **Dependencia de créditos Lovable**: todo el pipeline (`google/gemini-2.5-flash` vía Lovable AI Gateway) consume créditos del workspace. Pipeline parado cuando se agotan.
+3. **Riesgo de alucinación**: el Enricher recibe sólo `title + summary + url` (sin scrape real de la página) → inventa montos/deadlines.
 
-## Estado actual (diagnóstico)
+## Solución en 2 ejes
 
-- 3 funders, 3 grants en `discovered`, 3 evaluaciones, 1 entrada en `discovery_sources`.
-- `Discoverer` descarga **una sola URL** por funder, hace `replace(<[^>]+>)` y manda 30 KB al LLM. Pierde paginación, links a fichas individuales, contenido renderizado por JS.
-- Sin extracción estructurada: el LLM "adivina" amount/deadline desde texto plano.
-- Hash de dedupe = `sha256(url+title)`, frágil ante variantes de título.
+### Eje A — Evidence-First (anti-alucinación + drill-down)
 
----
+Cada campo extraído por un agente queda anclado a una **cita verificable** (URL + snippet + offset + hash). La UI muestra `[ver fuente]` junto a cada valor.
 
-## Reingeniería propuesta
+Nueva tabla `evidence_spans`:
+```
+id, grant_id, agent (discoverer|enricher|evaluator),
+field (amount_cad_max|deadline|fit_score|...),
+value (jsonb),                  -- valor extraído
+source_url, source_hash,        -- página exacta
+snippet (text), snippet_offset, -- 200-400 chars literales
+extraction_method,              -- 'regex'|'firecrawl_json'|'llm'|'rule'
+confidence (numeric 0-1),
+created_at
+```
 
-### Fase A — Limpieza (1 migración)
+**Reglas duras:**
+- Enricher NO puede escribir un campo sin insertar al menos 1 `evidence_span` con `snippet` presente en el markdown crudo (validación: `markdown.includes(snippet.slice(0,80))` antes de commit).
+- Evaluator devuelve `criteria_json` ya pero sin links — ahora cada criterio cita el span que lo justifica.
+- `confidence` se setea automático: `regex=1.0`, `firecrawl_json=0.9`, `llm=0.6`, `rule=0.95`.
 
-- `truncate grant_events, grant_evaluations, grants, discovery_sources restart identity cascade`.
-- Borrar los 3 funders demo; el seed de la Fase B los repone con catálogo nuevo.
+### Eje B — LLM Gratuito + Extracción Determinística
 
-### Fase B — Catálogo de funders v2 (1 migración de seed)
+**Cambio clave**: el 70% del trabajo NO necesita LLM. Sólo extracción estructurada.
 
-Mínimo 8 funders canadienses representativos, con `source_url` apuntando al **índice** de programas (no a una landing):
+**Capa 1 — Determinística (sin LLM, sin créditos):**
+- **Montos CAD**: regex multilingüe (`$50,000`, `50 000 $`, `jusqu'à 250 000`, `up to $1M`) → `amount-extractor.server.ts`.
+- **Deadlines**: `chrono-node` (parser de fechas EN/FR ya instalado, gratis, offline) sobre el markdown.
+- **Eligibilidad**: keyword matching contra taxonomía (SMB, non-profit, Quebec-based, etc.) en `eligibility-rules.server.ts`.
+- **Sectores**: clasificador por keywords contra lista NAICS-lite.
 
-| Funder | Jurisdicción | Source |
-|---|---|---|
-| Innovation Canada (Business Benefits Finder) | federal | innovation.ised-isde.canada.ca |
-| NRC IRAP | federal | nrc-cnrc.gc.ca/en/support-technology-innovation |
-| Mitacs | federal | mitacs.ca/en/programs |
-| NSERC | federal | nserc-crsng.gc.ca/Professors-Professeurs/Grants-Subs_eng.asp |
-| SR&ED (CRA) | federal | canada.ca/en/revenue-agency/services/scientific-research-experimental-development-tax-incentive-program.html |
-| Trade Commissioner – CanExport | federal | tradecommissioner.gc.ca/funding-financement |
-| Investissement Québec | QC | investquebec.com/quebec/en/financial-products |
-| MEI Québec (PSII) | QC | economie.gouv.qc.ca/bibliotheques/programmes |
-| Ontario – ONe-key / OCI | ON | oc-innovation.ca/programs |
-| Open Government grants & contributions | federal | search.open.canada.ca/grants |
+Resultado: ~70% de grants se enriquecen con `confidence ≥ 0.9` sin un solo token LLM.
 
-(Adaptable; el seed deja `active=true` solo en 4–5 para no quemar créditos al primer run.)
+**Capa 2 — LLM gratuito (sólo para los huecos):**
 
-### Fase C — Pipeline Discovery v2
+Proveedores gratuitos investigados (todos con tier free real y JSON mode):
 
-Cambios al `runDiscoverer`:
+| Proveedor | Modelo | Free tier | JSON mode | Latencia |
+|-----------|--------|-----------|-----------|----------|
+| **Google AI Studio** | `gemini-2.5-flash` | 1500 req/día, 1M tok/día | ✅ | ~1s |
+| **Groq** | `llama-3.3-70b` | 14k req/día, 6k tok/min | ✅ | ~0.3s |
+| **Cerebras** | `llama-3.3-70b` | 14k req/día | ✅ | ~0.2s |
+| **OpenRouter** | varios `:free` | 50 req/día base, 1000 si $10 saldo | ✅ | varía |
 
-1. **Firecrawl como motor de fetching** (vía connector ya documentado en knowledge):
-   - `map(source_url, { limit: 50 })` → lista de URLs candidatas dentro del dominio.
-   - Filtro heurístico: descartar URLs con `/news/`, `/blog/`, `/events/`, `/contact`, idiomas duplicados (`/fr/` cuando ya tomamos `/en/`).
-   - `batchScrape(urls.slice(0,15), { formats: ['markdown'] })` → markdown limpio por página (renderiza JS, sin tags rotos).
-2. **Extracción estructurada por página** (no por dominio):
-   - Para cada página, una llamada al LLM con `responseFormat: json` y el `DiscoveredGrant` schema (1 grant por página, no array de 50). Schema chico → evita el problema de "too many states" de Gemini.
-   - Si la página claramente NO es un programa (markdown < 500 chars o contiene keywords de blog), se salta sin llamar LLM.
-3. **Dedupe robusto**:
-   - `canonical_key = sha256(funder_id + normalize(title) + amount_range)` donde `normalize` = lowercase + colapsa whitespace + remove punctuation.
-   - Si existe, `times_seen++` y `last_seen_at = now()`; nunca duplica por variante de URL.
-4. **Conditional fetch reused**: ya está, se mantiene (etag/last-modified en `discovery_sources` a nivel de URL hijo, no solo del índice).
-5. **Fallback sin Firecrawl**: si `FIRECRAWL_API_KEY` no está, cae al pipeline actual (fetch + strip HTML) para no bloquear demo.
-6. **Telemetría**: cada `agent_runs` registra `urls_mapped`, `urls_scraped`, `urls_skipped`, `grants_inserted`, `grants_seen_again`, `cost_estimate`.
+**Estrategia cascade**:
+1. Groq (más rápido, JSON nativo) → 2. Gemini AI Studio (cuota alta) → 3. Cerebras (backup).
+Cada uno con su API key como secret. El `callLlm` interno detecta `provider:free` y rutea sin tocar Lovable Gateway.
 
-### Fase D — Auto-fit inmediato (ya hecho parcialmente)
+**Configuración por agente:**
+- Discoverer: Firecrawl JSON extraction (ya no requiere LLM en el 90% de casos) + Gemini free como fallback.
+- Enricher: 100% determinístico capa 1; LLM free sólo si quedan ≥2 campos vacíos.
+- Evaluator: Groq (rápido, barato, evaluación booleana de elegibilidad).
+- Strategist/Writer/Critic: Gemini AI Studio free (mejor calidad para texto largo).
 
-- Tras Discovery, encolar `autoEvaluatePending` automáticamente para el admin que disparó "Discover & Enrich" (no solo al cargar `/grants`).
-- Enrich queda como tarea **opcional en background** — la UI ya no espera por él, solo se ejecuta para añadir FR-CA cuando el grant pasa a `shortlisted`.
+Lovable AI queda como **opt-in premium** para Pro/Critic cuando el usuario explícitamente lo pide.
 
-### Fase E — UI Grants
+## Drill-Down UI
 
-- Banner `"Discovery v2 · powered by Firecrawl"` cuando la connection esté activa.
-- Filtros: jurisdiction (federal/QC/ON/…), sector, deadline próximo, solo elegibles (`evaluation.eligibility_pass`).
-- Botón Admin "Discover all" muestra progreso por funder (ya tenemos `perFunder[]`, falta render).
+Nueva ruta `/grants/$id/evidence/$field` (modal o panel lateral):
 
----
+```
+┌─ Amount: $50,000–$250,000 ───────────────┐
+│ Source: nrc-irap.canada.ca/programs/ai   │
+│ Method: regex • Confidence: 100%          │
+│ ─────────────────────────────────────     │
+│ "...projects funded up to $250,000        │
+│  with a minimum investment of $50,000     │
+│  for eligible Canadian SMBs..."           │
+│                                            │
+│ [Open source page ↗] [Re-extract]         │
+└───────────────────────────────────────────┘
+```
+
+Cada chip/badge en `FitEvaluation`, `GrantRow`, `/grants/$id` se vuelve clickeable y abre el `<EvidencePanel field="..." />`.
+
+Para el Evaluator, drill-down muestra los 5 criterios con (a) la regla aplicada, (b) el span citado, (c) el sub-score y (d) si fue determinístico o LLM.
+
+## Plan de ejecución (autónomo, sin pedir aprobación intermedia)
+
+**Iteración 1 — Evidence infra** (sin romper nada existente)
+- Migración: tabla `evidence_spans` + GRANT + RLS + índice por `(grant_id, agent, field)`.
+- Helper `src/agents/evidence.server.ts` con `recordEvidence({grant_id, field, value, snippet, source_url, method, confidence})` + validación de snippet contra markdown.
+- Tipos actualizados.
+
+**Iteración 2 — Extractores determinísticos**
+- `src/agents/extractors/amounts.server.ts` (regex CAD EN/FR, tests con 12 casos).
+- `src/agents/extractors/deadlines.server.ts` (chrono-node wrapper).
+- `src/agents/extractors/eligibility.server.ts` (taxonomía).
+- `src/agents/extractors/sectors.server.ts` (NAICS keywords).
+- Tests unitarios para cada uno (`*.test.ts`).
+
+**Iteración 3 — Free LLM gateway**
+- `src/agents/llm-free.server.ts`: cascade Groq → Gemini AI Studio → Cerebras con retry + JSON mode + token accounting en `agent_runs`.
+- Secrets requeridos al usuario: `GROQ_API_KEY`, `GOOGLE_AI_STUDIO_KEY`, `CEREBRAS_API_KEY` (los 3 gratis, instrucciones en chat).
+- Modificación de `callLlm` existente: nuevo parámetro `tier: "free" | "lovable"`, default `free`.
+
+**Iteración 4 — Reingeniería Enricher**
+- Reescribe `enricher.functions.ts`:
+  1. Scrapea la página real con Firecrawl (markdown).
+  2. Corre extractores determinísticos sobre el markdown → llena lo que pueda + `evidence_spans`.
+  3. Si quedan huecos, llama LLM free con el markdown como contexto + pide citas literales.
+  4. Valida cada cita LLM contra el markdown; rechaza las inventadas.
+
+**Iteración 5 — Reingeniería Evaluator**
+- Reescribe `evaluator.impl.server.ts` para que cada criterio devuelva `{score, rule, evidence_span_id}`.
+- Bloquea la evaluación si `enriched_at IS NULL` (fix audit previo).
+- Persiste evidencia del veredicto.
+
+**Iteración 6 — Drill-Down UI**
+- Componente `src/components/grants/EvidencePanel.tsx` (modal con snippet, link, método, confidence).
+- Hook `useEvidence(grantId, field)`.
+- Integración en `FitEvaluation.tsx`, `GrantRow.tsx`, `_authenticated.grants.$id.tsx`: cada valor extraído renderiza con `<EvidenceChip>` clickeable.
+- i18n EN/FR.
+
+**Iteración 7 — Migración de crons + verificación E2E**
+- Crons reactivados apuntando al nuevo pipeline free-tier.
+- Test E2E: 1 funder → 5 grants discovered → enriched con evidencia → evaluated con evidencia → UI muestra drill-down funcional.
+- Documentación: `docs/evidence/free-tier-pipeline.md` actualizado.
 
 ## Detalles técnicos
 
-- **Connector**: Firecrawl gateway-backed. Antes de la Fase C: `standard_connectors--list_app_connectors` → `connect` para que el usuario enlace su cuenta. Secret inyectado: `FIRECRAWL_API_KEY`. Sin él, fallback.
-- **Server function**: `runDiscoverer` se reescribe; misma firma `{ funderId }`. Llamadas LLM siguen vía `callLlm` (Lovable AI gateway). Sin cambio de RLS ni tablas (excepto opcionalmente añadir `discovery_sources.parent_url` para distinguir índice de hijos — incluido en migración de Fase A).
-- **Schema DB**: opcionales en Fase A:
-  - `funders.source_urls text[]` (multi-URL por funder).
-  - `grants.canonical_key text unique` (índice único para el dedupe robusto).
-- **Tests**: ampliar `evals/runner.test.ts` con un golden case "página de programa real" mockeada para Discovery v2.
+- **Snippet validation**: normalizar whitespace antes de comparar (`s.replace(/\s+/g, ' ').trim()`).
+- **Confidence threshold para auto-promote**: grant pasa a `enriched` si todos los campos críticos (amount, deadline, eligibility) tienen `confidence ≥ 0.7`; si no, `status='enriched_partial'` (nuevo estado, requiere migrar enum).
+- **Rate limiting free APIs**: token bucket en memoria por proveedor (Groq 6k tok/min, etc.); cuando se agota, cascade al siguiente.
+- **No hardcodear keys**: las 3 keys se piden al usuario vía `add_secret` después de aprobar este plan.
+- **Backward compat**: `callLlm({tier:"lovable"})` sigue funcionando para Pro mode opcional.
 
----
+## Lo que NO se toca
 
-## Entregables
+- Schema de `grants`, `funders` (sólo se añade `evidence_spans` y `enrich_attempts` ya existe).
+- Discoverer (ya usa Firecrawl JSON, sólo cambia el fallback LLM).
+- Auth, RLS, routes públicas.
 
-1. Migración A: truncate + nuevo seed de funders + columnas opcionales.
-2. `src/agents/discoverer.functions.ts` reescrito (Firecrawl + per-page + dedupe).
-3. `src/lib/firecrawl.server.ts` helper.
-4. Fallback path verificado (sin connector instalado).
-5. UI grants con filtros + progreso por funder.
-6. Doc `docs/evidence/discovery-v2.md` con diagrama y métricas.
+## Próximo paso tras aprobación
 
----
-
-## Fuera de alcance
-
-- No tocamos Strategist/Writer/Critic.
-- No tocamos auth, ni cron schedulers (siguen apuntando al nuevo `runDiscoverer`).
-- No añadimos scraping de PDFs en esta iteración (queda para v3).
-
----
-
-## Riesgos
-
-- Firecrawl consume créditos: la Fase B limita a 4-5 funders activos y `batchScrape` a 15 URLs/funder → ~75 scrapes por ciclo de discovery.
-- Si el usuario no conecta Firecrawl, el fallback sigue siendo el pipeline actual: degradado pero funcional.
+Te pediré las 3 API keys (Groq, Google AI Studio, Cerebras — todas gratis, instrucciones paso a paso de dónde sacarlas) y ejecuto las 7 iteraciones en modo autónomo (High Autonomy Mode).
