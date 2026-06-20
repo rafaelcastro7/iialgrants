@@ -202,18 +202,25 @@ function GrantDetailPage() {
           </a>
           <div className="flex gap-2 flex-wrap">
             {isAdmin && g.status === "discovered" && (
-              <Button size="sm" variant="outline" disabled={busy === "enrich"} onClick={() => run("enrich", () => enrichOne({ data: { grantId: id } }))}>
+              <Button size="sm" variant="outline" disabled={busy === "enrich"} onClick={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}>
                 {busy === "enrich" ? t("app.loading") : "Enrich"}
               </Button>
             )}
-            <Button size="sm" variant="secondary" disabled={busy === "eval"} onClick={() => run("eval", () => evaluate({ data: { grantId: id } }))}>
+            <Button size="sm" variant="secondary" disabled={busy === "eval"} onClick={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}>
               {busy === "eval" ? t("app.loading") : (data.evaluation ? (fr ? "Réévaluer" : "Re-evaluate") : t("grants.evaluate"))}
             </Button>
+            {traceRun && (
+              <Button size="sm" variant="ghost" onClick={() => setTraceRun({ ...traceRun })} title={fr ? "Voir le raisonnement en direct" : "View live reasoning"}>
+                <Activity className="h-3.5 w-3.5 mr-1" />
+                {fr ? "Voir raisonnement" : "View reasoning"}
+              </Button>
+            )}
             {(g.status === "scored" || g.status === "shortlisted" || g.status === "in_proposal") && (
               <Button size="sm" disabled={busy === "draft"} onClick={async () => {
                 setBusy("draft"); setErr(null);
                 try {
                   const r = await strategize({ data: { grantId: id } });
+                  if (r.runId) setTraceRun({ runId: r.runId, agent: "strategist" });
                   await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
                 } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
                 finally { setBusy(null); }
@@ -228,6 +235,13 @@ function GrantDetailPage() {
         field={evField}
         open={!!evField}
         onOpenChange={(o) => !o && setEvField(null)}
+      />
+      <AgentTracePanel
+        runId={traceRun?.runId ?? null}
+        agentLabel={traceRun?.agent ?? ""}
+        open={!!traceRun}
+        onOpenChange={(o) => !o && setTraceRun(null)}
+        fr={!!fr}
       />
     </main>
   );
