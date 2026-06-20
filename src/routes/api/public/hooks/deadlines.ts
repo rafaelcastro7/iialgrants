@@ -1,17 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { verifyWebhookRequest } from "@/lib/webhook-auth.server";
 
 // Daily cron — generates bilingual deadline reminders for grants
-// that are active in a user's pipeline and due within 14 days.
-// Auth: Lovable Cloud publishable key (apikey header).
+// active in a user's pipeline and due within 14 days.
+// Auth: HMAC-SHA256 + timestamp + single-use nonce.
 export const Route = createFileRoute("/api/public/hooks/deadlines")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.SUPABASE_PUBLISHABLE_KEY;
-        const provided = request.headers.get("apikey");
-        if (!expected || !provided || provided !== expected) {
-          return new Response("unauthorized", { status: 401 });
-        }
+        const { result } = await verifyWebhookRequest(request, "deadlines");
+        if (!result.ok) return new Response(result.reason, { status: result.status });
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         const today = new Date();
@@ -19,7 +18,6 @@ export const Route = createFileRoute("/api/public/hooks/deadlines")({
           .toISOString()
           .slice(0, 10);
 
-        // Find proposals owned by users with grants in active pipeline + near deadline.
         const { data: rows, error } = await supabaseAdmin
           .from("proposals")
           .select("user_id, grant:grants!inner(id, title, title_fr, deadline, status)")
@@ -33,7 +31,6 @@ export const Route = createFileRoute("/api/public/hooks/deadlines")({
           const g = row.grant as { id: string; title: string; title_fr: string | null; deadline: string };
           if (!g?.deadline) continue;
 
-          // Idempotency: skip if a deadline notif for this grant was created in last 24h.
           const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
           const { data: existing } = await supabaseAdmin
             .from("notifications")
