@@ -26,10 +26,13 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticated.grants.$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
+import { Route as AuthenticatedAdminSourcesRouteImport } from './routes/_authenticated.admin.sources'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
 import { Route as AuthenticatedAdminHistoryRouteImport } from './routes/_authenticated.admin.history'
 import { Route as AuthenticatedAdminCandidatesRouteImport } from './routes/_authenticated.admin.candidates'
 import { Route as AuthenticatedAdminAgentsRouteImport } from './routes/_authenticated.admin.agents'
+import { Route as ApiPublicHooksSourceTierBRouteImport } from './routes/api/public/hooks/source-tier-b'
+import { Route as ApiPublicHooksSourceTierARouteImport } from './routes/api/public/hooks/source-tier-a'
 import { Route as ApiPublicHooksSourceCuratorRouteImport } from './routes/api/public/hooks/source-curator'
 import { Route as ApiPublicHooksRssPollRouteImport } from './routes/api/public/hooks/rss-poll'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
@@ -122,6 +125,12 @@ const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminSourcesRoute =
+  AuthenticatedAdminSourcesRouteImport.update({
+    id: '/sources',
+    path: '/sources',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminModulesRoute =
   AuthenticatedAdminModulesRouteImport.update({
     id: '/modules',
@@ -145,6 +154,18 @@ const AuthenticatedAdminAgentsRoute =
     id: '/agents',
     path: '/agents',
     getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const ApiPublicHooksSourceTierBRoute =
+  ApiPublicHooksSourceTierBRouteImport.update({
+    id: '/api/public/hooks/source-tier-b',
+    path: '/api/public/hooks/source-tier-b',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSourceTierARoute =
+  ApiPublicHooksSourceTierARouteImport.update({
+    id: '/api/public/hooks/source-tier-a',
+    path: '/api/public/hooks/source-tier-a',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksSourceCuratorRoute =
   ApiPublicHooksSourceCuratorRouteImport.update({
@@ -190,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
+  '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -199,6 +221,8 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
   '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
+  '/api/public/hooks/source-tier-a': typeof ApiPublicHooksSourceTierARoute
+  '/api/public/hooks/source-tier-b': typeof ApiPublicHooksSourceTierBRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -216,6 +240,7 @@ export interface FileRoutesByTo {
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
+  '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -225,6 +250,8 @@ export interface FileRoutesByTo {
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
   '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
+  '/api/public/hooks/source-tier-a': typeof ApiPublicHooksSourceTierARoute
+  '/api/public/hooks/source-tier-b': typeof ApiPublicHooksSourceTierBRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -245,6 +272,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/_authenticated/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
+  '/_authenticated/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -254,6 +282,8 @@ export interface FileRoutesById {
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
   '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
+  '/api/public/hooks/source-tier-a': typeof ApiPublicHooksSourceTierARoute
+  '/api/public/hooks/source-tier-b': typeof ApiPublicHooksSourceTierBRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -274,6 +304,7 @@ export interface FileRouteTypes {
     | '/admin/candidates'
     | '/admin/history'
     | '/admin/modules'
+    | '/admin/sources'
     | '/admin/users'
     | '/grants/$id'
     | '/proposals/$id'
@@ -283,6 +314,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
     | '/api/public/hooks/source-curator'
+    | '/api/public/hooks/source-tier-a'
+    | '/api/public/hooks/source-tier-b'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -300,6 +333,7 @@ export interface FileRouteTypes {
     | '/admin/candidates'
     | '/admin/history'
     | '/admin/modules'
+    | '/admin/sources'
     | '/admin/users'
     | '/grants/$id'
     | '/proposals/$id'
@@ -309,6 +343,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
     | '/api/public/hooks/source-curator'
+    | '/api/public/hooks/source-tier-a'
+    | '/api/public/hooks/source-tier-b'
   id:
     | '__root__'
     | '/'
@@ -328,6 +364,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/candidates'
     | '/_authenticated/admin/history'
     | '/_authenticated/admin/modules'
+    | '/_authenticated/admin/sources'
     | '/_authenticated/admin/users'
     | '/_authenticated/grants/$id'
     | '/_authenticated/proposals/$id'
@@ -337,6 +374,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
     | '/api/public/hooks/source-curator'
+    | '/api/public/hooks/source-tier-a'
+    | '/api/public/hooks/source-tier-b'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -349,6 +388,8 @@ export interface RootRouteChildren {
   ApiPublicHooksEnrichRoute: typeof ApiPublicHooksEnrichRoute
   ApiPublicHooksRssPollRoute: typeof ApiPublicHooksRssPollRoute
   ApiPublicHooksSourceCuratorRoute: typeof ApiPublicHooksSourceCuratorRoute
+  ApiPublicHooksSourceTierARoute: typeof ApiPublicHooksSourceTierARoute
+  ApiPublicHooksSourceTierBRoute: typeof ApiPublicHooksSourceTierBRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -472,6 +513,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/sources': {
+      id: '/_authenticated/admin/sources'
+      path: '/sources'
+      fullPath: '/admin/sources'
+      preLoaderRoute: typeof AuthenticatedAdminSourcesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/modules': {
       id: '/_authenticated/admin/modules'
       path: '/modules'
@@ -499,6 +547,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/agents'
       preLoaderRoute: typeof AuthenticatedAdminAgentsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/hooks/source-tier-b': {
+      id: '/api/public/hooks/source-tier-b'
+      path: '/api/public/hooks/source-tier-b'
+      fullPath: '/api/public/hooks/source-tier-b'
+      preLoaderRoute: typeof ApiPublicHooksSourceTierBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/source-tier-a': {
+      id: '/api/public/hooks/source-tier-a'
+      path: '/api/public/hooks/source-tier-a'
+      fullPath: '/api/public/hooks/source-tier-a'
+      preLoaderRoute: typeof ApiPublicHooksSourceTierARouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/source-curator': {
       id: '/api/public/hooks/source-curator'
@@ -543,6 +605,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCandidatesRoute: typeof AuthenticatedAdminCandidatesRoute
   AuthenticatedAdminHistoryRoute: typeof AuthenticatedAdminHistoryRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
+  AuthenticatedAdminSourcesRoute: typeof AuthenticatedAdminSourcesRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
@@ -552,6 +615,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCandidatesRoute: AuthenticatedAdminCandidatesRoute,
   AuthenticatedAdminHistoryRoute: AuthenticatedAdminHistoryRoute,
   AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
+  AuthenticatedAdminSourcesRoute: AuthenticatedAdminSourcesRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
@@ -622,17 +686,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksEnrichRoute: ApiPublicHooksEnrichRoute,
   ApiPublicHooksRssPollRoute: ApiPublicHooksRssPollRoute,
   ApiPublicHooksSourceCuratorRoute: ApiPublicHooksSourceCuratorRoute,
+  ApiPublicHooksSourceTierARoute: ApiPublicHooksSourceTierARoute,
+  ApiPublicHooksSourceTierBRoute: ApiPublicHooksSourceTierBRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

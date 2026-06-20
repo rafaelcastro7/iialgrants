@@ -366,10 +366,77 @@ export type Database = {
             foreignKeyName: "discovery_sources_funder_id_fkey"
             columns: ["funder_id"]
             isOneToOne: false
+            referencedRelation: "funder_source_yield"
+            referencedColumns: ["funder_id"]
+          },
+          {
+            foreignKeyName: "discovery_sources_funder_id_fkey"
+            columns: ["funder_id"]
+            isOneToOne: false
             referencedRelation: "funders"
             referencedColumns: ["id"]
           },
         ]
+      }
+      discovery_sources_registry: {
+        Row: {
+          auto_approved_30d: number
+          cadence_cron: string | null
+          candidates_30d: number
+          created_at: string
+          dataset_key: string
+          enabled: boolean
+          format: string
+          id: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_status: string | null
+          notes: string | null
+          rows_30d: number
+          source_url: string | null
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          auto_approved_30d?: number
+          cadence_cron?: string | null
+          candidates_30d?: number
+          created_at?: string
+          dataset_key: string
+          enabled?: boolean
+          format: string
+          id?: string
+          label: string
+          last_error?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          notes?: string | null
+          rows_30d?: number
+          source_url?: string | null
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          auto_approved_30d?: number
+          cadence_cron?: string | null
+          candidates_30d?: number
+          created_at?: string
+          dataset_key?: string
+          enabled?: boolean
+          format?: string
+          id?: string
+          label?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          notes?: string | null
+          rows_30d?: number
+          source_url?: string | null
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       dsar_requests: {
         Row: {
@@ -871,6 +938,13 @@ export type Database = {
           url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "grants_funder_id_fkey"
+            columns: ["funder_id"]
+            isOneToOne: false
+            referencedRelation: "funder_source_yield"
+            referencedColumns: ["funder_id"]
+          },
           {
             foreignKeyName: "grants_funder_id_fkey"
             columns: ["funder_id"]
@@ -1511,8 +1585,40 @@ export type Database = {
         }
         Relationships: []
       }
+      funder_source_yield: {
+        Row: {
+          funder_id: string | null
+          grants_30d: number | null
+          grants_total: number | null
+          last_grant_at: string | null
+          name: string | null
+          source_type: Database["public"]["Enums"]["funder_source_type"] | null
+        }
+        Relationships: []
+      }
+      source_health_summary: {
+        Row: {
+          auto_approved_total: number | null
+          avg_latency_ms: number | null
+          candidates_total: number | null
+          dataset: string | null
+          errors_total: number | null
+          last_run_at: string | null
+          rows_in_total: number | null
+          runs: number | null
+          success_rate: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      auto_promote_stale_candidates: {
+        Args: never
+        Returns: {
+          name: string
+          promoted_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -1,7 +1,7 @@
-// Monthly pg_cron → Source Curator. Auth via Supabase publishable key (apikey header).
+// Daily Tier A discovery hook (RSS bundle).
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/api/public/hooks/source-curator")({
+export const Route = createFileRoute("/api/public/hooks/source-tier-a")({
   server: {
     handlers: {
       POST: async ({ request }) => {
@@ -15,7 +15,8 @@ export const Route = createFileRoute("/api/public/hooks/source-curator")({
         try {
           const { runSourceCurator } = await import("@/lib/source-curator/orchestrator.server");
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const result = await runSourceCurator("C");
+          const result = await runSourceCurator("A");
+          // Also promote any stale candidates while we're here (cheap, idempotent).
           await supabaseAdmin.rpc("auto_promote_stale_candidates");
           return new Response(JSON.stringify({ ok: true, ...result }), {
             status: 200, headers: { "Content-Type": "application/json" },
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/api/public/hooks/source-curator")({
           });
         }
       },
-      GET: async () => new Response(JSON.stringify({ status: "ok", hook: "source-curator" }), {
+      GET: async () => new Response(JSON.stringify({ status: "ok", hook: "source-tier-a" }), {
         status: 200, headers: { "Content-Type": "application/json" },
       }),
     },
