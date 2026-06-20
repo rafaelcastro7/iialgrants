@@ -49,6 +49,26 @@ export async function evaluateGrantImpl(opts: {
     throw new Error("grant_not_enriched_yet");
   }
 
+  // Load user fit-rules (deterministic gate + score blend)
+  await trace("rules_load", "Loading user fit rules", "info");
+  const { data: rulesRow } = await userSupabase
+    .from("fit_rules").select("*").eq("user_id", userId).maybeSingle();
+  const { DEFAULT_RULES, evaluateRules } = await import("@/agents/fit-rules.server");
+  const rules = (rulesRow as Parameters<typeof evaluateRules>[0] | null) ?? DEFAULT_RULES;
+  const rulesResult = evaluateRules(rules, g as Parameters<typeof evaluateRules>[1]);
+  for (const c of rulesResult.checks) {
+    await trace(
+      `rule:${c.id}`,
+      `${c.label}: ${c.status.toUpperCase()} — ${c.detail}${c.hard ? " [hard]" : ""}`,
+      c.status === "pass" ? "ok" : c.status === "fail" ? (c.hard ? "error" : "warn") : "info",
+      { check: c.id, status: c.status, hard: c.hard },
+    );
+  }
+  await trace("rules_summary",
+    `rule_score=${rulesResult.rule_score}/100 · hard_fail=${rulesResult.hard_fail} · weight_llm=${rules.weight_llm}`,
+    rulesResult.hard_fail ? "warn" : "ok",
+    { rule_score: rulesResult.rule_score, hard_fail: rulesResult.hard_fail });
+
   await trace("llm_call", "Calling Gemini 2.5 Flash for fit verdict", "start");
   const tLlm = Date.now();
   const llm = await callLlm({
@@ -75,6 +95,18 @@ export async function evaluateGrantImpl(opts: {
     });
     throw new Error("evaluator_schema_validation");
   }
+
+  // Combine LLM verdict with deterministic rules
+  const llm_fit = parsed.fit_score;
+  const combined_fit = rulesResult.combined_score(llm_fit);
+  const eligibility_pass = !rulesResult.hard_fail && parsed.eligibility_pass && combined_fit >= rules.threshold_fit_pass;
+  parsed.fit_score = combined_fit;
+  parsed.eligibility_pass = eligibility_pass;
+  await trace("combine",
+    `LLM=${llm_fit} · rules=${rulesResult.rule_score} · combined=${combined_fit} · threshold=${rules.threshold_fit_pass} · pass=${eligibility_pass}`,
+    eligibility_pass ? "ok" : "warn",
+    { llm_fit, rule_score: rulesResult.rule_score, combined_fit, threshold: rules.threshold_fit_pass, pass: eligibility_pass });
+
   await trace("parse", `Verdict: fit=${parsed.fit_score}/100 · eligible=${parsed.eligibility_pass}`, "ok", { fit_score: parsed.fit_score, eligibility_pass: parsed.eligibility_pass });
   await trace("rationale", parsed.rationale_en.slice(0, 600), "info");
 
@@ -105,11 +137,16 @@ export async function evaluateGrantImpl(opts: {
   } catch { /* evidence is non-blocking */ }
 
   if (!parsed.eligibility_pass) {
-    await trace("gate", "Not eligible → archiving grant to stop downstream spend", "warn");
-    if (g.status === "discovered" || g.status === "enriched" || g.status === "scored") {
-      await supabaseAdmin.from("grants").update({
-        status: "archived", fit_score: parsed.fit_score,
-      } as never).eq("id", g.id);
+    if (rules.auto_archive_on_fail) {
+      await trace("gate", "Not eligible → archiving grant (auto_archive_on_fail=true)", "warn");
+      if (g.status === "discovered" || g.status === "enriched" || g.status === "scored") {
+        await supabaseAdmin.from("grants").update({
+          status: "archived", fit_score: parsed.fit_score,
+        } as never).eq("id", g.id);
+      }
+    } else {
+      await trace("gate", "Not eligible — keeping status (auto_archive_on_fail=false)", "warn");
+      await supabaseAdmin.from("grants").update({ fit_score: parsed.fit_score } as never).eq("id", g.id);
     }
   } else if (g.status === "discovered" || g.status === "enriched") {
     await trace("commit", `Eligible → status = scored, fit = ${parsed.fit_score}`, "ok");
@@ -120,6 +157,7 @@ export async function evaluateGrantImpl(opts: {
     await trace("commit", `Updated fit_score = ${parsed.fit_score}`, "ok");
     await supabaseAdmin.from("grants").update({ fit_score: parsed.fit_score } as never).eq("id", g.id);
   }
+
 
   await trace("done", `Evaluation complete in ${Date.now() - t0}ms`, "done", { total_ms: Date.now() - t0 });
 
