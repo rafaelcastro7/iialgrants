@@ -103,6 +103,53 @@ export type Database = {
           },
         ]
       }
+      agent_trace_steps: {
+        Row: {
+          agent: string
+          created_at: string
+          duration_ms: number | null
+          grant_id: string | null
+          id: string
+          message: string | null
+          payload: Json | null
+          run_id: string
+          status: string
+          step: string
+        }
+        Insert: {
+          agent: string
+          created_at?: string
+          duration_ms?: number | null
+          grant_id?: string | null
+          id?: string
+          message?: string | null
+          payload?: Json | null
+          run_id: string
+          status?: string
+          step: string
+        }
+        Update: {
+          agent?: string
+          created_at?: string
+          duration_ms?: number | null
+          grant_id?: string | null
+          id?: string
+          message?: string | null
+          payload?: Json | null
+          run_id?: string
+          status?: string
+          step?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_trace_steps_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
