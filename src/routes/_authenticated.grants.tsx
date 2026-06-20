@@ -121,11 +121,17 @@ function GrantsPage() {
     setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
     try {
       const r = await discoverAll({});
-      const lines = [
-        `Discovered ${r.totalInserted} new grant(s), ${r.totalSeenAgain ?? 0} already known, ${r.evaluated ?? 0} auto-evaluated.`,
-        ...r.perFunder.map((p) => `  · ${p.funder}: +${p.inserted}${p.seenAgain ? ` (${p.seenAgain} repeat)` : ""}${p.engine ? ` [${p.engine}]` : ""}${p.error ? ` — error: ${p.error}` : ""}`),
-      ];
-      setDiscoveryMsg(lines.join("\n"));
+      if (!r || typeof r !== "object") {
+        setDiscoveryMsg("Discovery returned no payload (check Event log for per-funder status).");
+      } else {
+        const perFunder = Array.isArray(r.perFunder) ? r.perFunder : [];
+        const lines = [
+          `Discovered ${r.totalInserted ?? 0} new grant(s), ${r.totalSeenAgain ?? 0} already known, ${r.evaluated ?? 0} auto-evaluated.`,
+          ...perFunder.map((p) => `  · ${p.funder}: +${p.inserted ?? 0}${p.seenAgain ? ` (${p.seenAgain} repeat)` : ""}${p.engine ? ` [${p.engine}]` : ""}${p.error ? ` — error: ${p.error}` : ""}`),
+        ];
+        setDiscoveryMsg(lines.join("\n"));
+      }
+
       await qc.invalidateQueries({ queryKey: ["grants"] });
       autoRan.current = false;
     } catch (e) {
