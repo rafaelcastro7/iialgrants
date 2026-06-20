@@ -42,7 +42,7 @@ type SourceRow = {
 };
 
 type HealthRow = {
-  dataset: string;
+  dataset: string | null;
   runs: number | null;
   success_rate: number | null;
   rows_in_total: number | null;
@@ -85,7 +85,7 @@ function SourcesPage() {
 
   const sources: SourceRow[] = q.data?.sources ?? [];
   const health: HealthRow[] = q.data?.health ?? [];
-  const healthMap = new Map(health.map((h) => [h.dataset, h]));
+  const healthMap = new Map(health.map((h) => [h.dataset ?? "", h]));
 
   const byTier = sources.reduce<Record<string, SourceRow[]>>((acc, s) => {
     (acc[s.tier] ??= []).push(s); return acc;

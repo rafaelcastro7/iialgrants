@@ -26,6 +26,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticated.grants.$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
+import { Route as AuthenticatedAdminSourcesRouteImport } from './routes/_authenticated.admin.sources'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
 import { Route as AuthenticatedAdminHistoryRouteImport } from './routes/_authenticated.admin.history'
 import { Route as AuthenticatedAdminCandidatesRouteImport } from './routes/_authenticated.admin.candidates'
@@ -124,6 +125,12 @@ const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminSourcesRoute =
+  AuthenticatedAdminSourcesRouteImport.update({
+    id: '/sources',
+    path: '/sources',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminModulesRoute =
   AuthenticatedAdminModulesRouteImport.update({
     id: '/modules',
@@ -204,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
+  '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -232,6 +240,7 @@ export interface FileRoutesByTo {
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
+  '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -263,6 +272,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/_authenticated/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
+  '/_authenticated/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/admin/candidates'
     | '/admin/history'
     | '/admin/modules'
+    | '/admin/sources'
     | '/admin/users'
     | '/grants/$id'
     | '/proposals/$id'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/admin/candidates'
     | '/admin/history'
     | '/admin/modules'
+    | '/admin/sources'
     | '/admin/users'
     | '/grants/$id'
     | '/proposals/$id'
@@ -352,6 +364,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/candidates'
     | '/_authenticated/admin/history'
     | '/_authenticated/admin/modules'
+    | '/_authenticated/admin/sources'
     | '/_authenticated/admin/users'
     | '/_authenticated/grants/$id'
     | '/_authenticated/proposals/$id'
@@ -500,6 +513,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/sources': {
+      id: '/_authenticated/admin/sources'
+      path: '/sources'
+      fullPath: '/admin/sources'
+      preLoaderRoute: typeof AuthenticatedAdminSourcesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/modules': {
       id: '/_authenticated/admin/modules'
       path: '/modules'
@@ -585,6 +605,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCandidatesRoute: typeof AuthenticatedAdminCandidatesRoute
   AuthenticatedAdminHistoryRoute: typeof AuthenticatedAdminHistoryRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
+  AuthenticatedAdminSourcesRoute: typeof AuthenticatedAdminSourcesRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
@@ -594,6 +615,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCandidatesRoute: AuthenticatedAdminCandidatesRoute,
   AuthenticatedAdminHistoryRoute: AuthenticatedAdminHistoryRoute,
   AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
+  AuthenticatedAdminSourcesRoute: AuthenticatedAdminSourcesRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
