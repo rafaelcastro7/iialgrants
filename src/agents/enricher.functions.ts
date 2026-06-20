@@ -387,6 +387,7 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     // Schema check on the structural shape we built
     const built = EnricherOutput.partial().safeParse(patch);
     if (!built.success) {
+      await trace("schema", `Schema validation failed: ${built.error.message}`, "error");
       await supabaseAdmin.from("grants").update({
         enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
         enrich_last_error: `schema_validation: ${built.error.message}`.slice(0, 500),
@@ -399,6 +400,9 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     patch.enriched_at = new Date().toISOString();
     const { error: uerr } = await supabaseAdmin.from("grants").update(patch as never).eq("id", g.id);
     if (uerr) throw new Error(`grant_update_failed: ${uerr.message}`);
+
+    const filled = Object.keys(patch).filter((k) => k !== "status" && k !== "enriched_at");
+    await trace("commit", `Grant marked enriched — fields filled: ${filled.join(", ") || "(none)"} · total ${Date.now() - t0}ms`, "done", { filled, total_ms: Date.now() - t0 });
 
     await supabaseAdmin.from("agent_runs").insert({
       run_id: runId, agent: "enricher", status: "succeeded",
@@ -414,8 +418,7 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
       },
     });
     return {
-      ok: true, runId,
-      filled: Object.keys(patch).filter((k) => k !== "status" && k !== "enriched_at"),
+      ok: true, runId, filled,
       deterministic_counts: methodCounts,
       provider: llmInfo?.provider ?? "none",
     };
