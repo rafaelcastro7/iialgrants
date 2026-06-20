@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
+import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -52,6 +53,9 @@ function GrantsPage() {
   const [evalError, setEvalError] = useState<string | null>(null);
   const [discoveryMsg, setDiscoveryMsg] = useState<string | null>(null);
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
+  const [jurisdiction, setJurisdiction] = useState<string>("all");
+  const [eligibleOnly, setEligibleOnly] = useState(false);
+  const [onlyWithDeadline, setOnlyWithDeadline] = useState(false);
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
     queryFn: () => fetchGrants({ data: { limit: 50 } }),
@@ -116,9 +120,13 @@ function GrantsPage() {
     setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
     try {
       const r = await discoverAll({});
-      setDiscoveryMsg(`Discovered ${r.totalInserted} new grant(s); enriched ${r.enriched}.`);
+      const lines = [
+        `Discovered ${r.totalInserted} new grant(s), ${r.totalSeenAgain ?? 0} already known, ${r.evaluated ?? 0} auto-evaluated.`,
+        ...r.perFunder.map((p) => `  · ${p.funder}: +${p.inserted}${p.seenAgain ? ` (${p.seenAgain} repeat)` : ""}${p.engine ? ` [${p.engine}]` : ""}${p.error ? ` — error: ${p.error}` : ""}`),
+      ];
+      setDiscoveryMsg(lines.join("\n"));
       await qc.invalidateQueries({ queryKey: ["grants"] });
-      autoRan.current = false; // allow auto-eval to re-run for new grants
+      autoRan.current = false;
     } catch (e) {
       setEvalError(e instanceof Error ? e.message : String(e));
     } finally { setPending(null); }
@@ -165,18 +173,32 @@ function GrantsPage() {
             </Button>
           )}
         </div>
-        {discoveryMsg && <p className="text-sm text-muted-foreground mb-3">{discoveryMsg}</p>}
+        {discoveryMsg && <pre className="text-xs text-muted-foreground mb-3 whitespace-pre-wrap font-sans">{discoveryMsg}</pre>}
         {autoMsg && <p className="text-sm text-muted-foreground mb-3">{autoMsg}</p>}
         {evalError && <p className="text-sm text-destructive mb-3">{evalError}</p>}
-        {data.grants.length === 0 ? (
+
+        <GrantFilters
+          grants={data.grants}
+          fr={fr}
+          jurisdiction={jurisdiction} setJurisdiction={setJurisdiction}
+          eligibleOnly={eligibleOnly} setEligibleOnly={setEligibleOnly}
+          onlyWithDeadline={onlyWithDeadline} setOnlyWithDeadline={setOnlyWithDeadline}
+        />
+        {(() => {
+          const filtered = applyGrantFilters(data.grants, { jurisdiction, eligibleOnly, onlyWithDeadline });
+          return data.grants.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
               {t("grants.empty")}
             </CardContent>
           </Card>
+        ) : filtered.length === 0 ? (
+          <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">
+            {fr ? "Aucune subvention ne correspond aux filtres." : "No grants match the current filters."}
+          </CardContent></Card>
         ) : (
           <div className="grid gap-4">
-            {data.grants.map((g) => {
+            {filtered.map((g) => {
               const funder = Array.isArray(g.funder) ? g.funder[0] : g.funder;
               const title = (fr && g.title_fr) ? g.title_fr : g.title;
               const summary = (fr && g.summary_fr) ? g.summary_fr : g.summary;
@@ -238,7 +260,8 @@ function GrantsPage() {
             })}
             {evalError && <p className="text-sm text-destructive">{evalError}</p>}
           </div>
-        )}
+        );
+        })()}
       </section>
     </main>
   );

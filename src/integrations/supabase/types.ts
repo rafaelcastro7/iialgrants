@@ -185,6 +185,7 @@ export type Database = {
           id: string
           last_fetched_at: string
           last_modified: string | null
+          parent_url: string | null
           text_length: number | null
           times_seen: number
           updated_at: string
@@ -202,6 +203,7 @@ export type Database = {
           id?: string
           last_fetched_at?: string
           last_modified?: string | null
+          parent_url?: string | null
           text_length?: number | null
           times_seen?: number
           updated_at?: string
@@ -219,6 +221,7 @@ export type Database = {
           id?: string
           last_fetched_at?: string
           last_modified?: string | null
+          parent_url?: string | null
           text_length?: number | null
           times_seen?: number
           updated_at?: string
@@ -286,6 +289,7 @@ export type Database = {
           name_fr: string | null
           source_type: Database["public"]["Enums"]["funder_source_type"]
           source_url: string | null
+          source_urls: string[]
           updated_at: string
           website: string | null
         }
@@ -301,6 +305,7 @@ export type Database = {
           name_fr?: string | null
           source_type?: Database["public"]["Enums"]["funder_source_type"]
           source_url?: string | null
+          source_urls?: string[]
           updated_at?: string
           website?: string | null
         }
@@ -316,6 +321,7 @@ export type Database = {
           name_fr?: string | null
           source_type?: Database["public"]["Enums"]["funder_source_type"]
           source_url?: string | null
+          source_urls?: string[]
           updated_at?: string
           website?: string | null
         }
@@ -419,6 +425,7 @@ export type Database = {
         Row: {
           amount_cad_max: number | null
           amount_cad_min: number | null
+          canonical_key: string | null
           country: string
           created_at: string
           currency: string
@@ -446,6 +453,7 @@ export type Database = {
         Insert: {
           amount_cad_max?: number | null
           amount_cad_min?: number | null
+          canonical_key?: string | null
           country?: string
           created_at?: string
           currency?: string
@@ -473,6 +481,7 @@ export type Database = {
         Update: {
           amount_cad_max?: number | null
           amount_cad_min?: number | null
+          canonical_key?: string | null
           country?: string
           created_at?: string
           currency?: string
