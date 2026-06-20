@@ -20,6 +20,7 @@ import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.or
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
@@ -80,6 +81,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedProposalsIdRoute =
   AuthenticatedProposalsIdRouteImport.update({
     id: '/$id',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/ops': typeof AuthenticatedOpsRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/ops': typeof AuthenticatedOpsRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/compliance'
+    | '/admin'
     | '/dashboard'
     | '/grants'
     | '/ops'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/compliance'
+    | '/admin'
     | '/dashboard'
     | '/grants'
     | '/ops'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/compliance'
+    | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/grants'
     | '/_authenticated/ops'
@@ -293,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/proposals/$id': {
       id: '/_authenticated/proposals/$id'
       path: '/$id'
@@ -339,6 +358,7 @@ const AuthenticatedProposalsRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
@@ -349,6 +369,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
