@@ -17,6 +17,7 @@ import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
 import { EvidencePanel, EvidenceChip } from "@/components/grants/EvidencePanel";
 import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
+import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { useState } from "react";
 import { Activity } from "lucide-react";
 import "@/i18n";
