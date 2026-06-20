@@ -29,7 +29,7 @@ export const Route = createFileRoute("/compliance")({
 function ComplianceRoute() {
   const { t, i18n } = useTranslation();
   useEffect(() => { syncClientLocale(); }, []);
-  const fr = i18n.language?.startsWith("fr");
+  const fr = false /* EN-only */;
 
   return (
     <main className="min-h-screen bg-background text-foreground p-6 max-w-3xl mx-auto">
