@@ -85,37 +85,44 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     let totalInserted = 0;
-    const perFunder: Array<{ funder: string; inserted: number; error?: string }> = [];
+    let totalSeenAgain = 0;
+    const perFunder: Array<{ funder: string; inserted: number; seenAgain?: number; engine?: string; error?: string }> = [];
 
     for (const f of funders ?? []) {
       try {
         const r = await runDiscoverer({ data: { funderId: f.id } });
         const ins = typeof r === "object" && r && "inserted" in r ? Number(r.inserted) : 0;
-        totalInserted += ins;
-        perFunder.push({ funder: f.name, inserted: ins });
+        const sa = typeof r === "object" && r && "seenAgain" in r ? Number(r.seenAgain) : 0;
+        const eng = typeof r === "object" && r && "engine" in r ? String(r.engine) : undefined;
+        totalInserted += ins; totalSeenAgain += sa;
+        perFunder.push({ funder: f.name, inserted: ins, seenAgain: sa, engine: eng });
       } catch (e) {
         perFunder.push({ funder: f.name, inserted: 0, error: e instanceof Error ? e.message : String(e) });
       }
     }
 
-    // Auto-enrich anything still 'discovered' (best effort; skip on failure).
-    let enriched = 0;
-    try {
-      await assertAgentEnabled("enricher");
-      const { data: pending } = await supabaseAdmin
-        .from("grants")
-        .select("id")
-        .eq("status", "discovered")
-        .limit(50);
-      for (const g of pending ?? []) {
-        try {
-          await runEnricher({ data: { grantId: g.id } });
-          enriched++;
-        } catch { /* keep going */ }
-      }
-    } catch { /* enricher disabled or unavailable */ }
+    // Skip Enrich — auto-fit runs on 'discovered' directly. Enrich becomes
+    // background-only (cron) for FR-CA translation when shortlisted.
 
-    return { ok: true, totalInserted, enriched, perFunder };
+    // Auto-evaluate fit for the admin who triggered this run (best effort).
+    let evaluated = 0;
+    try {
+      const { data: org } = await context.supabase
+        .from("org_profiles").select("user_id").eq("user_id", context.userId).maybeSingle();
+      if (org) {
+        const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
+        await assertAgentEnabled("evaluator");
+        const { runEvaluator } = await import("@/agents/evaluator.functions");
+        const { data: pending } = await supabaseAdmin
+          .from("grants").select("id").eq("status", "discovered").limit(15);
+        for (const g of pending ?? []) {
+          try { await runEvaluator({ data: { grantId: g.id } }); evaluated++; }
+          catch { /* keep going */ }
+        }
+      }
+    } catch { /* evaluator disabled */ }
+
+    return { ok: true, totalInserted, totalSeenAgain, evaluated, perFunder };
   });
 
 // Admin-triggered enrichment of a single grant.
