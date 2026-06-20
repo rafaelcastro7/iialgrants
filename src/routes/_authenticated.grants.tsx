@@ -11,15 +11,13 @@ import { runStrategist } from "@/agents/strategist.functions";
 import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
-import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
+import { GrantRow, sortByFit, type GrantRowData } from "@/components/grants/GrantRow";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -216,81 +214,43 @@ function GrantsPage() {
         />
         {(() => {
           const filtered = applyGrantFilters(data.grants, { jurisdiction, eligibleOnly, onlyWithDeadline });
+          const sorted = [...filtered].sort(sortByFit);
           return data.grants.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
               {t("grants.empty")}
             </CardContent>
           </Card>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">
             {fr ? "Aucune subvention ne correspond aux filtres." : "No grants match the current filters."}
           </CardContent></Card>
         ) : (
-          <div className="grid gap-4">
-            {filtered.map((g) => {
-              const funder = Array.isArray(g.funder) ? g.funder[0] : g.funder;
-              const title = (fr && g.title_fr) ? g.title_fr : g.title;
-              const summary = (fr && g.summary_fr) ? g.summary_fr : g.summary;
-              return (
-                <Card key={g.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <CardTitle className="text-base">{title}</CardTitle>
-                      <Badge variant={g.status === "shortlisted" ? "default" : "secondary"}>
-                        {t(`grants.status.${g.status}`)}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {funder ? (fr && funder.name_fr ? funder.name_fr : funder.name) : "—"}
-                      {funder?.jurisdiction ? ` · ${funder.jurisdiction}` : ""}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <FreshnessBadges discoveredAt={g.discovered_at} deadline={g.deadline} fr={fr} />
-                    {summary && <p className="text-sm text-muted-foreground line-clamp-3">{summary}</p>}
-                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                      <span>{t("grants.amount")}: {fmt(g.amount_cad_min)} – {fmt(g.amount_cad_max)}</span>
-                      <span>{t("grants.deadline")}: {g.deadline ?? "—"}</span>
-                    </div>
-
-                    <FitEvaluation
-                      status={g.status}
-                      discoveredAt={g.discovered_at}
-                      enrichedAt={g.enriched_at}
-                      scoredAt={g.scored_at}
-                      evaluation={g.evaluation}
-                      isEvaluating={evaluatingIds.has(g.id)}
-                      fr={fr}
-                    />
-
-                    <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
-                      <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
-                        {t("grants.source")} →
-                      </a>
-                      <div className="flex gap-2 flex-wrap">
-                        {isAdmin && g.status === "discovered" && (
-                          <Button size="sm" variant="outline" disabled={pending === g.id + ":enrich"} onClick={() => onEnrich(g.id)}>
-                            {pending === g.id + ":enrich" ? t("app.loading") : "Enrich"}
-                          </Button>
-                        )}
-                        <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
-                          {pending === g.id ? t("app.loading") : (g.evaluation ? (fr ? "Réévaluer" : "Re-evaluate") : t("grants.evaluate"))}
-                        </Button>
-                        {(g.status === "scored" || g.status === "shortlisted" || g.status === "in_proposal") && (
-                          <Button size="sm" disabled={pending === g.id + ":draft"} onClick={() => onDraft(g.id)}>
-                            {pending === g.id + ":draft" ? t("app.loading") : t("grants.draftProposal")}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {evalError && <p className="text-sm text-destructive">{evalError}</p>}
-          </div>
+          <>
+            <p className="text-xs text-muted-foreground mb-2">
+              {fr
+                ? `${sorted.length} subvention(s) · triées par adéquation puis échéance`
+                : `${sorted.length} grant(s) · sorted by fit, then deadline`}
+            </p>
+            <div className="grid gap-2">
+              {sorted.map((g) => (
+                <GrantRow
+                  key={g.id}
+                  g={g as GrantRowData}
+                  fr={fr}
+                  fmt={fmt}
+                  isEvaluating={evaluatingIds.has(g.id)}
+                  pending={pending}
+                  onEnrich={onEnrich}
+                  onEvaluate={onEvaluate}
+                  onDraft={onDraft}
+                  isAdmin={isAdmin}
+                  t={t}
+                />
+              ))}
+              {evalError && <p className="text-sm text-destructive">{evalError}</p>}
+            </div>
+          </>
         );
         })()}
         {isAdmin && <EventLog fr={fr} />}
