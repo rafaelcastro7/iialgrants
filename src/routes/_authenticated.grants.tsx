@@ -116,9 +116,13 @@ function GrantsPage() {
     setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
     try {
       const r = await discoverAll({});
-      setDiscoveryMsg(`Discovered ${r.totalInserted} new grant(s); enriched ${r.enriched}.`);
+      const lines = [
+        `Discovered ${r.totalInserted} new grant(s), ${r.totalSeenAgain ?? 0} already known, ${r.evaluated ?? 0} auto-evaluated.`,
+        ...r.perFunder.map((p) => `  · ${p.funder}: +${p.inserted}${p.seenAgain ? ` (${p.seenAgain} repeat)` : ""}${p.engine ? ` [${p.engine}]` : ""}${p.error ? ` — error: ${p.error}` : ""}`),
+      ];
+      setDiscoveryMsg(lines.join("\n"));
       await qc.invalidateQueries({ queryKey: ["grants"] });
-      autoRan.current = false; // allow auto-eval to re-run for new grants
+      autoRan.current = false;
     } catch (e) {
       setEvalError(e instanceof Error ? e.message : String(e));
     } finally { setPending(null); }
