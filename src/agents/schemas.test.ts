@@ -32,14 +32,13 @@ describe("agents/schemas", () => {
     expect(() => DiscovererOutput.parse(bad)).toThrow();
   });
 
-  it("enricher requires french title", () => {
-    expect(() =>
-      EnricherOutput.parse({
-        title_fr: "",
-        summary_fr: null,
-        amount_cad_min: null, amount_cad_max: null, deadline: null,
-      }),
-    ).toThrow();
+  it("enricher accepts partial output (v2: all keys optional)", () => {
+    // v2: model returns only the keys requested in "needs". Empty object is valid.
+    expect(() => EnricherOutput.parse({})).not.toThrow();
+    expect(() => EnricherOutput.parse({ title_en: "Funding X" })).not.toThrow();
+    // But invalid values still fail.
+    expect(() => EnricherOutput.parse({ deadline: "2026/06/20" })).toThrow();
+    expect(() => EnricherOutput.parse({ amount_cad_min: -1 })).toThrow();
   });
 
   it("evaluator score must be within 0..1", () => {
