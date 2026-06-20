@@ -1,7 +1,7 @@
-// Monthly pg_cron → Source Curator. Auth via Supabase publishable key (apikey header).
+// Weekly Tier B + Scout discovery hook.
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/api/public/hooks/source-curator")({
+export const Route = createFileRoute("/api/public/hooks/source-tier-b")({
   server: {
     handlers: {
       POST: async ({ request }) => {
@@ -14,10 +14,9 @@ export const Route = createFileRoute("/api/public/hooks/source-curator")({
         }
         try {
           const { runSourceCurator } = await import("@/lib/source-curator/orchestrator.server");
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const result = await runSourceCurator("C");
-          await supabaseAdmin.rpc("auto_promote_stale_candidates");
-          return new Response(JSON.stringify({ ok: true, ...result }), {
+          const tierB = await runSourceCurator("B");
+          const scout = await runSourceCurator("scout");
+          return new Response(JSON.stringify({ ok: true, tier_b: tierB, scout }), {
             status: 200, headers: { "Content-Type": "application/json" },
           });
         } catch (e) {
@@ -26,7 +25,7 @@ export const Route = createFileRoute("/api/public/hooks/source-curator")({
           });
         }
       },
-      GET: async () => new Response(JSON.stringify({ status: "ok", hook: "source-curator" }), {
+      GET: async () => new Response(JSON.stringify({ status: "ok", hook: "source-tier-b" }), {
         status: 200, headers: { "Content-Type": "application/json" },
       }),
     },
