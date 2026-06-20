@@ -3,8 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertAdmin(supabase: ReturnType<typeof requireSupabaseAuth> extends never ? never : Awaited<ReturnType<NonNullable<unknown>>>, userId: string): Promise<void> {
-  const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+async function ensureAdmin(context: { supabase: { rpc: (n: string, p: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> }; userId: string }): Promise<void> {
+  const { data, error } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
   if (error || !data) throw new Error("Forbidden");
 }
 
