@@ -54,7 +54,7 @@ export const listAgentConfigs = createServerFn({ method: "GET" })
     const { data: runs } = await context.supabase
       .from("agent_runs")
       .select("agent, status, latency_ms, input_tokens, output_tokens")
-      .gte("started_at", since);
+      .gte("created_at", since);
     const statsBy = new Map<string, { n: number; ok: number; lat: number; tok: number }>();
     for (const r of ((runs ?? []) as Array<{ agent: string; status: string; latency_ms: number | null; input_tokens: number | null; output_tokens: number | null }>)) {
       const s = statsBy.get(r.agent) ?? { n: 0, ok: 0, lat: 0, tok: 0 };
@@ -206,9 +206,9 @@ export const listAgentRuns = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("agent_runs")
-      .select("run_id, agent, status, model, input_tokens, output_tokens, latency_ms, started_at, grant_id, metadata")
+      .select("run_id, agent, status, model, input_tokens, output_tokens, latency_ms, created_at, grant_id, metadata")
       .eq("agent", data.agent)
-      .order("started_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(data.limit ?? 20);
     if (error) throw new Error(error.message);
     return { runs: rows ?? [] };
