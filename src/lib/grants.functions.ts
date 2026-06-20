@@ -379,12 +379,14 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
     };
 
     async function fetchRows(): Promise<Row[]> {
-      const { data: rows, error } = await supabaseAdmin
+      let q = supabaseAdmin
         .from("grants")
         .select(selectCols)
         .eq("status", data.status)
         .order("discovered_at", { ascending: false })
         .limit(data.limit);
+      if (lang !== "all") q = q.eq("language", lang);
+      const { data: rows, error } = await q;
       if (error) throw new Error(error.message);
       return (rows ?? []) as unknown as Row[];
     }
