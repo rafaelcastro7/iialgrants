@@ -217,6 +217,65 @@ function FitRulesPage() {
 
               <Separator />
 
+              {/* SOP-IIAL */}
+              <section className="space-y-4 rounded-md border-2 border-primary/30 bg-primary/5 p-4">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-primary">SOP IIAL — Grant Finding v2</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Filtros del proceso estándar de IIAL (Stages 1+2 automatizables).</p>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">F1 · Tipos de aplicante <strong>excluidos</strong> (si el programa los restringe → no-go)</Label>
+                  <Chips value={r.applicant_types_excluded} onChange={(v) => set("applicant_types_excluded", v)} placeholder="charity_only" />
+                </div>
+                <div className="flex items-center justify-between rounded border p-2">
+                  <Label className="text-xs">Hard-fail si el programa está restringido a un tipo excluido</Label>
+                  <Switch checked={r.hard_fail_on_applicant_type} onCheckedChange={(v) => set("hard_fail_on_applicant_type", v)} />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">F4 · Capacidades estratégicas IIAL (keywords que indican fit)</Label>
+                  <Chips value={r.iial_capabilities} onChange={(v) => set("iial_capabilities", v)} placeholder="supply chain" />
+                </div>
+                <div className="flex items-center justify-between rounded border p-2">
+                  <Label className="text-xs">Hard-fail si ninguna capacidad IIAL aparece</Label>
+                  <Switch checked={r.hard_fail_on_capability} onCheckedChange={(v) => set("hard_fail_on_capability", v)} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">F5 · Min weeks si IIAL es Lead</Label>
+                    <Input type="number" min="0" value={r.lead_min_weeks ?? ""} placeholder="4"
+                      onChange={(e) => set("lead_min_weeks", e.target.value ? Number(e.target.value) : null)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">F5 · Min weeks si IIAL es Partner</Label>
+                    <Input type="number" min="0" value={r.partner_min_weeks ?? ""} placeholder="8"
+                      onChange={(e) => set("partner_min_weeks", e.target.value ? Number(e.target.value) : null)} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between rounded border p-2">
+                  <Label className="text-xs">Rolling intake pasa runway automáticamente</Label>
+                  <Switch checked={r.rolling_intake_passes_runway} onCheckedChange={(v) => set("rolling_intake_passes_runway", v)} />
+                </div>
+                <div className="flex items-center justify-between rounded border p-2">
+                  <Label className="text-xs">Hard-fail si no hay runway suficiente</Label>
+                  <Switch checked={r.hard_fail_on_runway} onCheckedChange={(v) => set("hard_fail_on_runway", v)} />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">F3 · Máx % de cost-share que la org puede cubrir</Label>
+                  <Input type="number" min="0" max="100" value={r.max_cost_share_pct_org_carries ?? ""} placeholder="50"
+                    onChange={(e) => set("max_cost_share_pct_org_carries", e.target.value ? Number(e.target.value) : null)} />
+                </div>
+                <div className="flex items-center justify-between rounded border p-2">
+                  <Label className="text-xs">F3 · Exigir verificación manual del cash match</Label>
+                  <Switch checked={r.require_match_verification} onCheckedChange={(v) => set("require_match_verification", v)} />
+                </div>
+              </section>
+
+              <Separator />
+
               {/* Behavior */}
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Comportamiento al fallar</h3>
