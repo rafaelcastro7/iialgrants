@@ -31,7 +31,7 @@ type Dsar = { id: string; kind: string; status: string; created_at: string; comp
 
 function PrivacyCenter() {
   const { t, i18n } = useTranslation();
-  const lang = (i18n.language?.startsWith("fr") ? "fr" : "en") as "en" | "fr";
+  const lang = (false /* EN-only */ ? "fr" : "en") as "en" | "fr";
   const [consents, setConsents] = useState<Consent[]>([]);
   const [dsars, setDsars] = useState<Dsar[]>([]);
   const [busy, setBusy] = useState(false);

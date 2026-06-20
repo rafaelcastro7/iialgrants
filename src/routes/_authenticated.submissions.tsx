@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/submissions")({
 
 function SubmissionsPage() {
   const { t, i18n } = useTranslation();
-  const fr = i18n.language?.startsWith("fr");
+  const fr = false /* EN-only */;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchSubs = useServerFn(listSubmissions);
