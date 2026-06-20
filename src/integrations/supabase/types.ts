@@ -276,11 +276,70 @@ export type Database = {
         }
         Relationships: []
       }
+      funder_candidates: {
+        Row: {
+          bn_number: string | null
+          discovered_at: string
+          funder_type: string | null
+          id: string
+          name: string
+          name_fr: string | null
+          province: string | null
+          raw_metadata: Json
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          score: number
+          source_signals: string[]
+          status: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          bn_number?: string | null
+          discovered_at?: string
+          funder_type?: string | null
+          id?: string
+          name: string
+          name_fr?: string | null
+          province?: string | null
+          raw_metadata?: Json
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          score?: number
+          source_signals?: string[]
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          bn_number?: string | null
+          discovered_at?: string
+          funder_type?: string | null
+          id?: string
+          name?: string
+          name_fr?: string | null
+          province?: string | null
+          raw_metadata?: Json
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          score?: number
+          source_signals?: string[]
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       funders: {
         Row: {
           active: boolean
+          bn_number: string | null
           country: string
           created_at: string
+          disbursed_annual: number | null
           id: string
           jurisdiction: string | null
           last_content_hash: string | null
@@ -295,8 +354,10 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          bn_number?: string | null
           country?: string
           created_at?: string
+          disbursed_annual?: number | null
           id?: string
           jurisdiction?: string | null
           last_content_hash?: string | null
@@ -311,8 +372,10 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          bn_number?: string | null
           country?: string
           created_at?: string
+          disbursed_annual?: number | null
           id?: string
           jurisdiction?: string | null
           last_content_hash?: string | null
@@ -945,6 +1008,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      source_ingest_runs: {
+        Row: {
+          auto_approved: number
+          candidates_out: number
+          dataset: string
+          duplicates: number
+          error_message: string | null
+          errors: number
+          id: string
+          latency_ms: number | null
+          metadata: Json
+          rows_in: number
+          run_at: string
+          status: string
+        }
+        Insert: {
+          auto_approved?: number
+          candidates_out?: number
+          dataset: string
+          duplicates?: number
+          error_message?: string | null
+          errors?: number
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json
+          rows_in?: number
+          run_at?: string
+          status?: string
+        }
+        Update: {
+          auto_approved?: number
+          candidates_out?: number
+          dataset?: string
+          duplicates?: number
+          error_message?: string | null
+          errors?: number
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json
+          rows_in?: number
+          run_at?: string
+          status?: string
+        }
+        Relationships: []
       }
       submissions: {
         Row: {
