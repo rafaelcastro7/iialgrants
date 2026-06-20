@@ -26,6 +26,29 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY missing in environment");
+
+  // Resolve per-agent config (model, temp, max tokens, json mode) from the
+  // agent console. The console-stored value wins over caller-passed values,
+  // so admin edits in /admin/agents take effect within ~30s (cache TTL).
+  let resolvedModel = opts.model;
+  let resolvedTemp = opts.temperature ?? 0.2;
+  let resolvedMax = opts.maxOutputTokens;
+  let resolvedJson = opts.responseFormat === "json";
+  let fallbackModel: string | null = null;
+  let maxRetries = 2;
+  try {
+    const { resolveAgentConfig } = await import("@/lib/agent-config.server");
+    const cfg = await resolveAgentConfig(opts.agent);
+    resolvedModel = cfg.model;
+    resolvedTemp = cfg.temperature;
+    resolvedMax = cfg.max_output_tokens;
+    resolvedJson = cfg.json_mode || resolvedJson;
+    fallbackModel = cfg.fallback_model;
+    maxRetries = cfg.max_retries;
+  } catch {
+    // If config table unreachable, fall back to caller values.
+  }
+
   const runId = opts.runId ?? newRunId();
   const t0 = Date.now();
   let ok = false;
@@ -33,15 +56,23 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
   let text = "";
+  let usedModel = resolvedModel;
 
-  try {
+  const doCall = async (model: string) => {
     const body: Record<string, unknown> = {
-      model: opts.model,
+      model,
       messages: opts.messages,
-      temperature: opts.temperature ?? 0.2,
+      temperature: resolvedTemp,
     };
-    if (opts.maxOutputTokens) body.max_tokens = opts.maxOutputTokens;
-    if (opts.responseFormat === "json") body.response_format = { type: "json_object" };
+    if (resolvedMax) body.max_tokens = resolvedMax;
+    if (resolvedJson) body.response_format = { type: "json_object" };
+    return fetch(GATEWAY_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  };
+
 
     const res = await fetch(GATEWAY_URL, {
       method: "POST",
