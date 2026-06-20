@@ -276,6 +276,65 @@ export type Database = {
         }
         Relationships: []
       }
+      evidence_spans: {
+        Row: {
+          agent: string
+          confidence: number
+          created_at: string
+          extraction_method: string
+          field: string
+          grant_id: string
+          id: string
+          model: string | null
+          run_id: string | null
+          snippet: string
+          snippet_offset: number | null
+          source_hash: string | null
+          source_url: string
+          value: Json | null
+        }
+        Insert: {
+          agent: string
+          confidence?: number
+          created_at?: string
+          extraction_method: string
+          field: string
+          grant_id: string
+          id?: string
+          model?: string | null
+          run_id?: string | null
+          snippet: string
+          snippet_offset?: number | null
+          source_hash?: string | null
+          source_url: string
+          value?: Json | null
+        }
+        Update: {
+          agent?: string
+          confidence?: number
+          created_at?: string
+          extraction_method?: string
+          field?: string
+          grant_id?: string
+          id?: string
+          model?: string | null
+          run_id?: string | null
+          snippet?: string
+          snippet_offset?: number | null
+          source_hash?: string | null
+          source_url?: string
+          value?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_spans_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funder_candidates: {
         Row: {
           bn_number: string | null
