@@ -23,6 +23,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
+import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticated.grants.$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
 import { Route as AuthenticatedAdminHistoryRouteImport } from './routes/_authenticated.admin.history'
@@ -103,6 +104,11 @@ const AuthenticatedProposalsIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedProposalsRoute,
   } as any)
+const AuthenticatedGrantsIdRoute = AuthenticatedGrantsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedGrantsRoute,
+} as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -153,7 +159,7 @@ export interface FileRoutesByFullPath {
   '/compliance': typeof ComplianceRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/grants': typeof AuthenticatedGrantsRoute
+  '/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
@@ -175,7 +182,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/grants': typeof AuthenticatedGrantsRoute
+  '/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
@@ -185,6 +192,7 @@ export interface FileRoutesByTo {
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
@@ -200,7 +208,7 @@ export interface FileRoutesById {
   '/compliance': typeof ComplianceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/grants': typeof AuthenticatedGrantsRoute
+  '/_authenticated/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/grants/$id': typeof AuthenticatedGrantsIdRoute
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/admin/history'
     | '/admin/modules'
     | '/admin/users'
+    | '/grants/$id'
     | '/proposals/$id'
     | '/admin/'
     | '/api/public/hooks/deadlines'
@@ -257,6 +267,7 @@ export interface FileRouteTypes {
     | '/admin/history'
     | '/admin/modules'
     | '/admin/users'
+    | '/grants/$id'
     | '/proposals/$id'
     | '/admin'
     | '/api/public/hooks/deadlines'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/history'
     | '/_authenticated/admin/modules'
     | '/_authenticated/admin/users'
+    | '/_authenticated/grants/$id'
     | '/_authenticated/proposals/$id'
     | '/_authenticated/admin/'
     | '/api/public/hooks/deadlines'
@@ -400,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProposalsIdRouteImport
       parentRoute: typeof AuthenticatedProposalsRoute
     }
+    '/_authenticated/grants/$id': {
+      id: '/_authenticated/grants/$id'
+      path: '/$id'
+      fullPath: '/grants/$id'
+      preLoaderRoute: typeof AuthenticatedGrantsIdRouteImport
+      parentRoute: typeof AuthenticatedGrantsRoute
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -478,6 +497,17 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
+interface AuthenticatedGrantsRouteChildren {
+  AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRoute
+}
+
+const AuthenticatedGrantsRouteChildren: AuthenticatedGrantsRouteChildren = {
+  AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRoute,
+}
+
+const AuthenticatedGrantsRouteWithChildren =
+  AuthenticatedGrantsRoute._addFileChildren(AuthenticatedGrantsRouteChildren)
+
 interface AuthenticatedProposalsRouteChildren {
   AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
 }
@@ -495,7 +525,7 @@ const AuthenticatedProposalsRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
+  AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRouteWithChildren
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
@@ -506,7 +536,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
+  AuthenticatedGrantsRoute: AuthenticatedGrantsRouteWithChildren,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
