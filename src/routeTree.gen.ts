@@ -27,7 +27,9 @@ import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
 import { Route as AuthenticatedAdminHistoryRouteImport } from './routes/_authenticated.admin.history'
+import { Route as AuthenticatedAdminCandidatesRouteImport } from './routes/_authenticated.admin.candidates'
 import { Route as AuthenticatedAdminAgentsRouteImport } from './routes/_authenticated.admin.agents'
+import { Route as ApiPublicHooksSourceCuratorRouteImport } from './routes/api/public/hooks/source-curator'
 import { Route as ApiPublicHooksRssPollRouteImport } from './routes/api/public/hooks/rss-poll'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
@@ -126,11 +128,23 @@ const AuthenticatedAdminHistoryRoute =
     path: '/history',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminCandidatesRoute =
+  AuthenticatedAdminCandidatesRouteImport.update({
+    id: '/candidates',
+    path: '/candidates',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminAgentsRoute =
   AuthenticatedAdminAgentsRouteImport.update({
     id: '/agents',
     path: '/agents',
     getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const ApiPublicHooksSourceCuratorRoute =
+  ApiPublicHooksSourceCuratorRouteImport.update({
+    id: '/api/public/hooks/source-curator',
+    path: '/api/public/hooks/source-curator',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksRssPollRoute = ApiPublicHooksRssPollRouteImport.update({
   id: '/api/public/hooks/rss-poll',
@@ -166,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
+  '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -176,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
+  '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -189,6 +205,7 @@ export interface FileRoutesByTo {
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
+  '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -199,6 +216,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
+  '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -215,6 +233,7 @@ export interface FileRoutesById {
   '/_authenticated/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
   '/_authenticated/admin/agents': typeof AuthenticatedAdminAgentsRoute
+  '/_authenticated/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/_authenticated/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -225,6 +244,7 @@ export interface FileRoutesById {
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
   '/api/public/hooks/rss-poll': typeof ApiPublicHooksRssPollRoute
+  '/api/public/hooks/source-curator': typeof ApiPublicHooksSourceCuratorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -241,6 +261,7 @@ export interface FileRouteTypes {
     | '/proposals'
     | '/submissions'
     | '/admin/agents'
+    | '/admin/candidates'
     | '/admin/history'
     | '/admin/modules'
     | '/admin/users'
@@ -251,6 +272,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
+    | '/api/public/hooks/source-curator'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -264,6 +286,7 @@ export interface FileRouteTypes {
     | '/proposals'
     | '/submissions'
     | '/admin/agents'
+    | '/admin/candidates'
     | '/admin/history'
     | '/admin/modules'
     | '/admin/users'
@@ -274,6 +297,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
+    | '/api/public/hooks/source-curator'
   id:
     | '__root__'
     | '/'
@@ -289,6 +313,7 @@ export interface FileRouteTypes {
     | '/_authenticated/proposals'
     | '/_authenticated/submissions'
     | '/_authenticated/admin/agents'
+    | '/_authenticated/admin/candidates'
     | '/_authenticated/admin/history'
     | '/_authenticated/admin/modules'
     | '/_authenticated/admin/users'
@@ -299,6 +324,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
     | '/api/public/hooks/rss-poll'
+    | '/api/public/hooks/source-curator'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -310,6 +336,7 @@ export interface RootRouteChildren {
   ApiPublicHooksDiscoverRoute: typeof ApiPublicHooksDiscoverRoute
   ApiPublicHooksEnrichRoute: typeof ApiPublicHooksEnrichRoute
   ApiPublicHooksRssPollRoute: typeof ApiPublicHooksRssPollRoute
+  ApiPublicHooksSourceCuratorRoute: typeof ApiPublicHooksSourceCuratorRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -440,12 +467,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminHistoryRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/candidates': {
+      id: '/_authenticated/admin/candidates'
+      path: '/candidates'
+      fullPath: '/admin/candidates'
+      preLoaderRoute: typeof AuthenticatedAdminCandidatesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/agents': {
       id: '/_authenticated/admin/agents'
       path: '/agents'
       fullPath: '/admin/agents'
       preLoaderRoute: typeof AuthenticatedAdminAgentsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/hooks/source-curator': {
+      id: '/api/public/hooks/source-curator'
+      path: '/api/public/hooks/source-curator'
+      fullPath: '/api/public/hooks/source-curator'
+      preLoaderRoute: typeof ApiPublicHooksSourceCuratorRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/rss-poll': {
       id: '/api/public/hooks/rss-poll'
@@ -480,6 +521,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAgentsRoute: typeof AuthenticatedAdminAgentsRoute
+  AuthenticatedAdminCandidatesRoute: typeof AuthenticatedAdminCandidatesRoute
   AuthenticatedAdminHistoryRoute: typeof AuthenticatedAdminHistoryRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
@@ -488,6 +530,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAgentsRoute: AuthenticatedAdminAgentsRoute,
+  AuthenticatedAdminCandidatesRoute: AuthenticatedAdminCandidatesRoute,
   AuthenticatedAdminHistoryRoute: AuthenticatedAdminHistoryRoute,
   AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
@@ -557,6 +600,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksDiscoverRoute: ApiPublicHooksDiscoverRoute,
   ApiPublicHooksEnrichRoute: ApiPublicHooksEnrichRoute,
   ApiPublicHooksRssPollRoute: ApiPublicHooksRssPollRoute,
+  ApiPublicHooksSourceCuratorRoute: ApiPublicHooksSourceCuratorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
