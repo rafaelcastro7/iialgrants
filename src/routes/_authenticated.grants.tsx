@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { listGrants, discoverAllFunders, enrichGrant } from "@/lib/grants.functions";
+import { listGrants, discoverAllFunders, enrichGrant, autoEvaluatePending } from "@/lib/grants.functions";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
 import { useIsAdmin } from "@/lib/use-platform";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -43,11 +44,14 @@ function GrantsPage() {
   const strategize = useServerFn(runStrategist);
   const discoverAll = useServerFn(discoverAllFunders);
   const enrichOne = useServerFn(enrichGrant);
+  const autoEvaluate = useServerFn(autoEvaluatePending);
 
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
+  const [evaluatingIds, setEvaluatingIds] = useState<Set<string>>(new Set());
   const [evalError, setEvalError] = useState<string | null>(null);
   const [discoveryMsg, setDiscoveryMsg] = useState<string | null>(null);
+  const [autoMsg, setAutoMsg] = useState<string | null>(null);
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
     queryFn: () => fetchGrants({ data: { limit: 50 } }),
@@ -55,18 +59,48 @@ function GrantsPage() {
 
   useEffect(() => { syncClientLocale(); }, []);
 
+  // Auto-evaluate every enriched grant the user hasn't scored yet, on mount.
+  // Mark them as evaluating so the pipeline stepper animates in real time.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+    const pendingIds = data.grants
+      .filter((g) => !g.evaluation && (g.status === "enriched" || g.status === "scored" || g.status === "shortlisted"))
+      .map((g) => g.id);
+    if (pendingIds.length === 0) return;
+    setEvaluatingIds(new Set(pendingIds));
+    autoEvaluate({ data: { limit: 10 } })
+      .then(async (r) => {
+        if (r.evaluated > 0) {
+          setAutoMsg(fr ? `${r.evaluated} subvention(s) évaluée(s) automatiquement.` : `${r.evaluated} grant(s) auto-evaluated.`);
+        } else if ("reason" in r && r.reason === "org_profile_missing") {
+          setAutoMsg(fr
+            ? "Complétez votre profil d'organisation pour activer l'évaluation IA."
+            : "Complete your organization profile to enable AI fit evaluation.");
+        }
+        await qc.invalidateQueries({ queryKey: ["grants"] });
+      })
+      .catch((e) => setEvalError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setEvaluatingIds(new Set()));
+  }, [data.grants, autoEvaluate, fr, qc]);
+
   async function signOut() {
     await supabase.auth.signOut();
     await navigate({ to: "/" });
   }
   async function onEvaluate(grantId: string) {
     setPending(grantId); setEvalError(null);
+    setEvaluatingIds((s) => new Set(s).add(grantId));
     try {
       await evaluate({ data: { grantId } });
       await qc.invalidateQueries({ queryKey: ["grants"] });
     } catch (e) {
       setEvalError(e instanceof Error ? e.message : String(e));
-    } finally { setPending(null); }
+    } finally {
+      setPending(null);
+      setEvaluatingIds((s) => { const n = new Set(s); n.delete(grantId); return n; });
+    }
   }
   async function onDraft(grantId: string) {
     setPending(grantId + ":draft"); setEvalError(null);
@@ -84,6 +118,7 @@ function GrantsPage() {
       const r = await discoverAll({});
       setDiscoveryMsg(`Discovered ${r.totalInserted} new grant(s); enriched ${r.enriched}.`);
       await qc.invalidateQueries({ queryKey: ["grants"] });
+      autoRan.current = false; // allow auto-eval to re-run for new grants
     } catch (e) {
       setEvalError(e instanceof Error ? e.message : String(e));
     } finally { setPending(null); }
@@ -131,6 +166,7 @@ function GrantsPage() {
           )}
         </div>
         {discoveryMsg && <p className="text-sm text-muted-foreground mb-3">{discoveryMsg}</p>}
+        {autoMsg && <p className="text-sm text-muted-foreground mb-3">{autoMsg}</p>}
         {evalError && <p className="text-sm text-destructive mb-3">{evalError}</p>}
         {data.grants.length === 0 ? (
           <Card>
@@ -158,14 +194,24 @@ function GrantsPage() {
                       {funder?.jurisdiction ? ` · ${funder.jurisdiction}` : ""}
                     </p>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-3">
                     {summary && <p className="text-sm text-muted-foreground line-clamp-3">{summary}</p>}
                     <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                       <span>{t("grants.amount")}: {fmt(g.amount_cad_min)} – {fmt(g.amount_cad_max)}</span>
                       <span>{t("grants.deadline")}: {g.deadline ?? "—"}</span>
-                      {g.fit_score != null && <span>{t("grants.fit")}: {(g.fit_score * 100).toFixed(0)}%</span>}
                     </div>
-                    <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
+
+                    <FitEvaluation
+                      status={g.status}
+                      discoveredAt={g.discovered_at}
+                      enrichedAt={g.enriched_at}
+                      scoredAt={g.scored_at}
+                      evaluation={g.evaluation}
+                      isEvaluating={evaluatingIds.has(g.id)}
+                      fr={fr}
+                    />
+
+                    <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
                       <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
                         {t("grants.source")} →
                       </a>
@@ -176,7 +222,7 @@ function GrantsPage() {
                           </Button>
                         )}
                         <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
-                          {pending === g.id ? t("app.loading") : t("grants.evaluate")}
+                          {pending === g.id ? t("app.loading") : (g.evaluation ? (fr ? "Réévaluer" : "Re-evaluate") : t("grants.evaluate"))}
                         </Button>
                         {(g.status === "scored" || g.status === "shortlisted" || g.status === "in_proposal") && (
                           <Button size="sm" disabled={pending === g.id + ":draft"} onClick={() => onDraft(g.id)}>
