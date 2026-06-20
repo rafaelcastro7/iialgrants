@@ -2,7 +2,7 @@
 // Uses Firecrawl JSON extraction (LLM-on-server) to pull a structured list.
 // Falls back to empty array if Firecrawl is unavailable.
 
-import type { RawCandidate } from "./scoring";
+import type { RawCandidate } from "./scoring.server";
 
 const PFC_URL = "https://pfc.ca/memberslist/";
 

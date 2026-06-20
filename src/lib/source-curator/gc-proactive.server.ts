@@ -5,7 +5,7 @@
 // combinations and propose recipients as funder candidates ONLY when their
 // org type suggests they are themselves grantmakers (foundations, councils).
 
-import type { RawCandidate } from "./scoring";
+import type { RawCandidate } from "./scoring.server";
 
 // Datastore resource for the "grants" CSV (updated daily).
 // Verified June 2026: https://open.canada.ca/data/en/dataset/432527ab-7aac-45b5-81d6-7597107a7013

@@ -8,7 +8,7 @@ import {
   findDuplicate,
   scoreCandidate,
   type RawCandidate,
-} from "./scoring";
+} from "./scoring.server";
 
 export type CuratorResult = {
   runId: string;
