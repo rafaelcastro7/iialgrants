@@ -7,8 +7,8 @@ export const runCritic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ proposalId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
-    await assertModuleEnabled("critic");
+    const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
+    await assertAgentEnabled("critic");
     const { callLlm } = await import("@/agents/llm.server");
     const { newRunId } = await import("@/lib/otel");
     const runId = newRunId();

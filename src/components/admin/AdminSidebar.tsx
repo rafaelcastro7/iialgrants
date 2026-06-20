@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, ToggleLeft, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Users, ToggleLeft, Bot, ArrowLeft } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +15,7 @@ const items = [
   { title: "Overview", url: "/admin", icon: LayoutDashboard },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Modules", url: "/admin/modules", icon: ToggleLeft },
+  { title: "AI Agents", url: "/admin/agents", icon: Bot },
 ];
 
 export function AdminSidebar() {

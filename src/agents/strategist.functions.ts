@@ -13,8 +13,8 @@ export const runStrategist = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
-    await assertModuleEnabled("strategist");
+    const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
+    await assertAgentEnabled("strategist");
     const { callLlm } = await import("@/agents/llm.server");
     const { newRunId } = await import("@/lib/otel");
     const runId = newRunId();

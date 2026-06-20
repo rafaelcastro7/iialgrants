@@ -60,10 +60,10 @@ function Dashboard() {
           <p className="text-sm text-muted-foreground">{email ?? "—"}</p>
           <p className="mt-4 text-sm">{t("app.tagline")}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {on("grants_discovery") && <Link to="/grants"><Button>{t("nav.grants")} →</Button></Link>}
-            <Link to="/proposals"><Button variant="outline">{t("nav.proposals")}</Button></Link>
+            {on("grants") && <Link to="/grants"><Button>{t("nav.grants")} →</Button></Link>}
+            {on("proposals") && <Link to="/proposals"><Button variant="outline">{t("nav.proposals")}</Button></Link>}
             {on("submissions") && <Link to="/submissions"><Button variant="outline">{t("nav.submissions")}</Button></Link>}
-            {isAdmin && <Link to="/ops"><Button variant="ghost">{t("ops.title")}</Button></Link>}
+            {isAdmin && on("analytics") && <Link to="/ops"><Button variant="ghost">{t("ops.title")}</Button></Link>}
             <Link to="/privacy"><Button variant="ghost">{t("privacy.link")}</Button></Link>
             <Link to="/compliance"><Button variant="ghost">{t("compliance.link")}</Button></Link>
           </div>
