@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
+import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
