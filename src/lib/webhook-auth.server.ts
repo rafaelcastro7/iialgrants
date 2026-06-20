@@ -58,8 +58,6 @@ export async function verifyWebhookRequest(
   await supabaseAdmin.from("webhook_rate_limit").delete().lt("seen_at", rlCutoff);
 
 
-
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: cfg, error: cfgErr } = await supabaseAdmin
     .from("webhook_config")
     .select("value")
