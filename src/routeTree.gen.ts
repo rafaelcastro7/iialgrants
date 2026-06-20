@@ -21,6 +21,7 @@ import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.op
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
@@ -86,6 +87,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedProposalsIdRoute =
   AuthenticatedProposalsIdRouteImport.update({
     id: '/$id',
@@ -112,7 +118,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/ops': typeof AuthenticatedOpsRoute
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
@@ -129,7 +136,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
-  '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/ops': typeof AuthenticatedOpsRoute
@@ -138,6 +144,7 @@ export interface FileRoutesByTo {
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
@@ -148,7 +155,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
@@ -157,6 +164,7 @@ export interface FileRoutesById {
   '/_authenticated/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
@@ -176,6 +184,7 @@ export interface FileRouteTypes {
     | '/proposals'
     | '/submissions'
     | '/proposals/$id'
+    | '/admin/'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
@@ -184,7 +193,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/compliance'
-    | '/admin'
     | '/dashboard'
     | '/grants'
     | '/ops'
@@ -193,6 +201,7 @@ export interface FileRouteTypes {
     | '/proposals'
     | '/submissions'
     | '/proposals/$id'
+    | '/admin'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/_authenticated/proposals'
     | '/_authenticated/submissions'
     | '/_authenticated/proposals/$id'
+    | '/_authenticated/admin/'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
@@ -312,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/proposals/$id': {
       id: '/_authenticated/proposals/$id'
       path: '/$id'
@@ -343,6 +360,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedProposalsRouteChildren {
   AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
 }
@@ -358,7 +386,7 @@ const AuthenticatedProposalsRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
@@ -369,7 +397,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
