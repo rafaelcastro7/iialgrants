@@ -19,7 +19,18 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // Server-only implementation. Exported so cron hooks (HMAC-signed) and the
 // admin-gated `runEnricher` serverFn can both call it without exposing a
 // public unauthenticated RPC endpoint.
-export async function enrichGrantImpl(grantId: string): Promise<unknown> {
+export type EnricherResult = {
+  ok: boolean;
+  runId: string;
+  skipped?: boolean;
+  reason?: string;
+  error?: string;
+  filled?: string[];
+  deterministic_counts?: Record<string, number>;
+  provider?: string;
+};
+
+export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> {
     const data = { grantId };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { newRunId } = await import("@/lib/otel");
