@@ -76,6 +76,7 @@ export type IngestResult = {
   feedsPolled: number;
   itemsParsed: number;
   itemsRelevant: number;
+  urlsTouched: number;
   fundersMatched: string[];
   jobId: string | null;
 };
@@ -100,6 +101,27 @@ export async function ingestRssFeeds(opts: { feeds?: string[] } = {}): Promise<I
       itemsParsed += items.length;
       for (const it of items) if (looksLikeFundingNews(it)) relevant.push(it);
     } catch { /* skip bad feed */ }
+  }
+
+  // Refresh `last_seen_at` for any existing grant whose URL was re-announced
+  // in an RSS item. Prevents the decay job from expiring grants that are
+  // still being broadcast by official feeds.
+  let urlsTouched = 0;
+  if (relevant.length > 0) {
+    const urls = [...new Set(relevant.map((r) => r.link).filter(Boolean))].slice(0, 200);
+    const { data: hits } = await supabaseAdmin
+      .from("grants")
+      .select("id")
+      .in("url", urls)
+      .neq("status", "archived");
+    const ids = (hits ?? []).map((h) => (h as { id: string }).id);
+    if (ids.length > 0) {
+      const { error: tErr } = await supabaseAdmin
+        .from("grants")
+        .update({ last_seen_at: new Date().toISOString() } as never)
+        .in("id", ids);
+      if (!tErr) urlsTouched = ids.length;
+    }
   }
 
   // Match relevant items to active funders by registered domain.
@@ -138,6 +160,7 @@ export async function ingestRssFeeds(opts: { feeds?: string[] } = {}): Promise<I
       feeds: feeds.length,
       items_parsed: itemsParsed,
       items_relevant: relevant.length,
+      urls_touched: urlsTouched,
       funders_matched: matchedNames,
     },
   });
@@ -157,6 +180,7 @@ export async function ingestRssFeeds(opts: { feeds?: string[] } = {}): Promise<I
     feedsPolled: feeds.length,
     itemsParsed,
     itemsRelevant: relevant.length,
+    urlsTouched,
     fundersMatched: matchedNames,
     jobId,
   };
