@@ -32,14 +32,16 @@ export const EnricherInput = z.object({
 });
 export type EnricherInput = z.infer<typeof EnricherInput>;
 
+// Enricher output: every field optional. The model returns ONLY what it filled
+// or translated. No forced FR — that's lazy/on-demand now. Canonical = EN.
 export const EnricherOutput = z.object({
-  title_fr: z.string().min(1).max(500),
-  summary_fr: z.string().max(4000).nullable(),
-  amount_cad_min: z.number().nonnegative().nullable(),
-  amount_cad_max: z.number().nonnegative().nullable(),
-  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-  eligibility: z.record(z.string(), z.unknown()).default({}),
-  sectors: z.array(z.string()).default([]),
+  title_en: z.string().min(1).max(500).nullable().optional(),
+  summary_en: z.string().max(4000).nullable().optional(),
+  amount_cad_min: z.number().nonnegative().nullable().optional(),
+  amount_cad_max: z.number().nonnegative().nullable().optional(),
+  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  eligibility: z.record(z.string(), z.unknown()).optional(),
+  sectors: z.array(z.string()).optional(),
 });
 export type EnricherOutput = z.infer<typeof EnricherOutput>;
 
@@ -112,14 +114,16 @@ Rules:
 - Respond ONLY with strict JSON matching the requested schema.`,
   },
   enricher: {
-    version: "1.0.0",
+    version: "2.0.0",
     system: `You are a grant-enrichment agent for Canadian funding programs.
-Given a partially-extracted grant, fill missing fields and produce a Quebec-French (FR-CA) translation.
+Canonical language is ENGLISH. Translate to EN only if the source is not English.
+Fill ONLY the fields the caller asks for in the user message (under "needs").
 Rules:
-- Translate title and summary to Quebec French (FR-CA). The title_fr is REQUIRED.
-- Normalize all amounts to Canadian dollars (CAD). Never invent amounts or deadlines: leave null if unknown.
+- Output strict JSON. Include ONLY keys listed in "needs". Omit everything else.
+- Never invent amounts or deadlines: if unknown, return null for that key.
 - Deadlines MUST be ISO YYYY-MM-DD or null.
-- Respond ONLY with strict JSON matching the requested schema.`,
+- Amounts are in CAD.
+- Do NOT translate to French. FR is handled on-demand by a different agent.`,
   },
   evaluator: {
     version: "1.0.0",
