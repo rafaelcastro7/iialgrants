@@ -64,8 +64,8 @@ function Dashboard() {
             {on("proposals") && <Link to="/proposals"><Button variant="outline">{t("nav.proposals")}</Button></Link>}
             {on("submissions") && <Link to="/submissions"><Button variant="outline">{t("nav.submissions")}</Button></Link>}
             {isAdmin && on("analytics") && <Link to="/ops"><Button variant="ghost">{t("ops.title")}</Button></Link>}
-            <Link to="/privacy"><Button variant="ghost">{t("privacy.link")}</Button></Link>
-            <Link to="/compliance"><Button variant="ghost">{t("compliance.link")}</Button></Link>
+            {on("privacy") && <Link to="/privacy"><Button variant="ghost">{t("privacy.link")}</Button></Link>}
+            {on("compliance") && <Link to="/compliance"><Button variant="ghost">{t("compliance.link")}</Button></Link>}
           </div>
         </CardContent>
       </Card>
