@@ -17,6 +17,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
 import { EventLog } from "@/components/grants/EventLog";
+import { FunderSelector } from "@/components/grants/FunderSelector";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -59,6 +60,7 @@ function GrantsPage() {
   const [jurisdiction, setJurisdiction] = useState<string>("all");
   const [eligibleOnly, setEligibleOnly] = useState(false);
   const [onlyWithDeadline, setOnlyWithDeadline] = useState(false);
+  const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
     queryFn: () => fetchGrants({ data: { limit: 50 } }),
@@ -122,10 +124,12 @@ function GrantsPage() {
   async function onDiscoverAll() {
     setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
     try {
-      const r = await discoverAll({});
+      const funderIds = selectedFunders.size > 0 ? [...selectedFunders] : undefined;
+      const r = await discoverAll({ data: { funderIds } });
       if (r?.jobId) {
         setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
-        setDiscoveryMsg(`Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s). Live progress below.`);
+        const scope = funderIds ? ` (${funderIds.length} selected)` : "";
+        setDiscoveryMsg(`Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s)${scope}. Live progress below.`);
       } else {
         setDiscoveryMsg("Discovery enqueued (no jobId returned).");
       }
@@ -171,9 +175,12 @@ function GrantsPage() {
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <h1 className="text-2xl font-bold">{t("nav.grants")}</h1>
           {isAdmin && (
-            <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"}>
-              {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <FunderSelector fr={fr} selected={selectedFunders} onChange={setSelectedFunders} />
+              <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"}>
+                {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
+              </Button>
+            </div>
           )}
         </div>
         {activeJob && (
