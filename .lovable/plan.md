@@ -161,4 +161,6 @@
 
 ### Cierre
 - Stack completo: Discoverer → Enricher → Evaluator → Strategist → Writer → Critic + RAG híbrido + state machine + submissions/outcomes + observability OTLP + EDD gates 1–5 + compliance PIPEDA/Law 25/AIDA.
-- Listo para publish y onboarding piloto.
+- **Evidence pack** (`docs/evidence/`): README · ADR registry (9 ADRs) · DPIA · 4 System Cards bilingües (Discoverer · Evaluator · Writer · Critic) · pen-test checklist · incident runbook.
+- Hardening de seguridad aplicado (migración 010): RLS endurecida en `grant_events`, `audit_log` y `agent_runs`.
+- Publicado en https://text-teller-ace.lovable.app — listo para onboarding piloto.
