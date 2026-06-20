@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EnricherOutput, PROMPTS } from "@/agents/schemas";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // Enricher v4 — Evidence-First, Free-Tier.
 //
@@ -14,9 +15,12 @@ import { EnricherOutput, PROMPTS } from "@/agents/schemas";
 //      with the markdown as context and REQUIRE literal quote citations.
 //   5) Reject any LLM-claimed value whose quote does not appear in the
 //      scraped markdown (anti-hallucination).
-export const runEnricher = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ grantId: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+//
+// Server-only implementation. Exported so cron hooks (HMAC-signed) and the
+// admin-gated `runEnricher` serverFn can both call it without exposing a
+// public unauthenticated RPC endpoint.
+export async function enrichGrantImpl(grantId: string): Promise<unknown> {
+    const data = { grantId };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { newRunId } = await import("@/lib/otel");
     const { scrapeWithFallback } = await import("@/lib/web-fetch.server");
