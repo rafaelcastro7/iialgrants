@@ -116,11 +116,11 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
       if (org) {
         const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
         await assertAgentEnabled("evaluator");
-        const { runEvaluator } = await import("@/agents/evaluator.functions");
+        const { evaluateGrantImpl } = await import("@/agents/evaluator.impl.server");
         const { data: pending } = await supabaseAdmin
           .from("grants").select("id").eq("status", "discovered").limit(15);
         for (const g of pending ?? []) {
-          try { await runEvaluator({ data: { grantId: g.id } }); evaluated++; }
+          try { await evaluateGrantImpl({ grantId: g.id, userId: context.userId, userSupabase: context.supabase }); evaluated++; }
           catch { /* keep going */ }
         }
       }
@@ -185,12 +185,12 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
 
     if (todo.length === 0) return { ok: true, evaluated: 0, skipped: 0 };
 
-    const { runEvaluator } = await import("@/agents/evaluator.functions");
+    const { evaluateGrantImpl } = await import("@/agents/evaluator.impl.server");
     let evaluated = 0;
     let skipped = 0;
     for (const grantId of todo) {
       try {
-        await runEvaluator({ data: { grantId } });
+        await evaluateGrantImpl({ grantId, userId: context.userId, userSupabase: context.supabase });
         evaluated++;
       } catch {
         skipped++;
