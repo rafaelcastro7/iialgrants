@@ -49,6 +49,7 @@ function GrantDetailPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [evField, setEvField] = useState<string | null>(null);
+  const [traceRun, setTraceRun] = useState<{ runId: string; agent: string } | null>(null);
   const openEvidence = (f: string) => setEvField(f);
 
   const g = data.grant as unknown as {
@@ -66,10 +67,14 @@ function GrantDetailPage() {
   const fmt = (n: number | null) =>
     n == null ? "—" : new Intl.NumberFormat(fr ? "fr-CA" : "en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
 
-  async function run(label: string, fn: () => Promise<unknown>) {
+  async function run(label: string, agent: string, fn: () => Promise<unknown>) {
     setBusy(label); setErr(null);
-    try { await fn(); await qc.invalidateQueries({ queryKey: ["grant-detail", id] }); }
-    catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    try {
+      const result = await fn();
+      const runId = (result as { runId?: string } | undefined)?.runId;
+      if (runId) setTraceRun({ runId, agent });
+      await qc.invalidateQueries({ queryKey: ["grant-detail", id] });
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(null); }
   }
 
