@@ -13,7 +13,9 @@ export type AgentConfig = {
   top_p: number;
   max_output_tokens: number;
   json_mode: boolean;
-  system_prompt: string | null;
+  system_prompt: string;       // resolved (override OR built-in)
+  builtin_prompt: string;      // built-in for diff/reset
+  has_override: boolean;
   prompt_version: string;
   timeout_ms: number;
   max_retries: number;
@@ -41,36 +43,27 @@ export async function resolveAgentConfig(agent: AgentName): Promise<AgentConfig>
     .maybeSingle();
   if (error) throw new Error(`agent_config_load: ${error.message}`);
 
-  const row = (data ?? {}) as Partial<AgentConfig>;
-  const builtin = PROMPTS[agent]?.system ?? "";
+  const row = (data ?? {}) as Record<string, unknown>;
+  const builtin = (PROMPTS as Record<string, { system: string; version: string }>)[agent]?.system ?? "";
+  const override = typeof row.system_prompt === "string" && row.system_prompt.trim().length > 0
+    ? (row.system_prompt as string) : null;
+
   const cfg: AgentConfig = {
     agent,
-    model: row.model ?? "google/gemini-2.5-flash",
-    fallback_model: row.fallback_model ?? null,
-    temperature: row.temperature ?? 0.2,
-    top_p: row.top_p ?? 1.0,
-    max_output_tokens: row.max_output_tokens ?? 2048,
-    json_mode: row.json_mode ?? true,
-    system_prompt: row.system_prompt && row.system_prompt.trim().length > 0 ? row.system_prompt : builtin,
-    prompt_version: row.prompt_version ?? (PROMPTS[agent]?.version ?? "1.0.0"),
-    timeout_ms: row.timeout_ms ?? 60000,
-    max_retries: row.max_retries ?? 2,
-    concurrency: row.concurrency ?? 4,
+    model: (row.model as string) ?? "google/gemini-2.5-flash",
+    fallback_model: (row.fallback_model as string) ?? null,
+    temperature: Number(row.temperature ?? 0.2),
+    top_p: Number(row.top_p ?? 1.0),
+    max_output_tokens: Number(row.max_output_tokens ?? 2048),
+    json_mode: (row.json_mode as boolean) ?? true,
+    system_prompt: override ?? builtin,
+    builtin_prompt: builtin,
+    has_override: !!override,
+    prompt_version: (row.prompt_version as string) ?? "1.0.0",
+    timeout_ms: Number(row.timeout_ms ?? 60000),
+    max_retries: Number(row.max_retries ?? 2),
+    concurrency: Number(row.concurrency ?? 4),
   };
   cache.set(agent, { value: cfg, expires: Date.now() + TTL_MS });
   return cfg;
-}
-
-// Merge agent config into a partial LlmCallOptions. Caller-provided values win.
-export async function applyAgentOverrides<T extends { agent: AgentName; model?: string; temperature?: number; maxOutputTokens?: number }>(
-  opts: T,
-): Promise<T & { _resolved: AgentConfig }> {
-  const cfg = await resolveAgentConfig(opts.agent);
-  return {
-    ...opts,
-    model: opts.model ?? cfg.model,
-    temperature: opts.temperature ?? cfg.temperature,
-    maxOutputTokens: opts.maxOutputTokens ?? cfg.max_output_tokens,
-    _resolved: cfg,
-  };
 }
