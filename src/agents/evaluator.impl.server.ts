@@ -16,9 +16,15 @@ export async function evaluateGrantImpl(opts: {
   const { callLlm } = await import("@/agents/llm.server");
   const { newRunId } = await import("@/lib/otel");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { traceStep } = await import("@/agents/trace.server");
 
   const runId = newRunId();
   const t0 = Date.now();
+  const trace = (step: string, message: string, status: "info" | "ok" | "warn" | "error" | "start" | "done" = "info", payload?: Record<string, unknown>) =>
+    traceStep({ runId, grantId, agent: "evaluator", step, status, message, payload });
+
+  await trace("init", `Starting fit evaluation for grant ${grantId.slice(0, 8)}`, "start");
+  await trace("load", "Loading grant + organization profile", "info");
 
   const [{ data: g, error: gerr }, { data: org, error: oerr }] = await Promise.all([
     userSupabase
@@ -33,16 +39,18 @@ export async function evaluateGrantImpl(opts: {
       .maybeSingle(),
   ]);
   if (gerr) throw new Error(gerr.message);
-  if (!g) throw new Error("grant_not_found");
+  if (!g) { await trace("load", "Grant not found", "error"); throw new Error("grant_not_found"); }
   if (oerr) throw new Error(oerr.message);
-  if (!org) throw new Error("org_profile_missing");
+  if (!org) { await trace("load", "Organization profile missing — fill /org first", "error"); throw new Error("org_profile_missing"); }
+  await trace("load", `Loaded grant "${g.title?.slice(0, 60)}" + org "${(org as { org_name?: string }).org_name ?? "(unnamed)"}"`, "ok");
 
-  // Gate: never evaluate a grant that hasn't been enriched — its fields may
-  // be incomplete/missing and the LLM would synthesize a misleading verdict.
   if (g.status === "discovered") {
+    await trace("gate", `Refusing to evaluate — grant is still in "discovered" state (no enriched data)`, "error");
     throw new Error("grant_not_enriched_yet");
   }
 
+  await trace("llm_call", "Calling Gemini 2.5 Flash for fit verdict", "start");
+  const tLlm = Date.now();
   const llm = await callLlm({
     model: "google/gemini-2.5-flash",
     agent: "evaluator",
@@ -52,6 +60,7 @@ export async function evaluateGrantImpl(opts: {
       { role: "user", content: JSON.stringify({ grant: g, organization: org }) },
     ],
   });
+  await trace("llm_call", `Verdict received (${llm.outputTokens ?? "?"} tokens, ${Date.now() - tLlm}ms)`, "done", { in: llm.inputTokens, out: llm.outputTokens });
 
   let parsed: ReturnType<typeof EvaluatorOutput.parse>;
   try { parsed = EvaluatorOutput.parse(JSON.parse(llm.text)); }
