@@ -8,6 +8,8 @@ import {
   resetAgentPrompt,
   testAgentPrompt,
   listAgentRuns,
+  type AgentConfigRow,
+  MODEL_CATALOG,
 } from "@/lib/admin-agent-configs.functions";
 import { toggleAgentFlag } from "@/lib/admin-agents.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,8 +33,8 @@ export const Route = createFileRoute("/_authenticated/admin/agents")({
   component: AgentsPage,
 });
 
-type AgentRow = Awaited<ReturnType<typeof listAgentConfigs>>["agents"][number];
-type ModelInfo = Awaited<ReturnType<typeof listAgentConfigs>>["models"][number];
+type AgentRow = AgentConfigRow;
+type ModelInfo = (typeof MODEL_CATALOG)[number];
 
 function AgentsPage() {
   const fetchAll = useServerFn(listAgentConfigs);
