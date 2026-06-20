@@ -311,46 +311,47 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
 
       if (llmResultText) try {
         const llm = { text: llmResultText, model: llmModel };
+        await trace("llm_validate", "Validating LLM output: per-field schema + grounded-quote check", "start");
 
-        // Per-field validation. A bad quote on ONE field must not discard
-        // the entire LLM response — accept the good fields and drop the rest.
         const FieldShape = z.object({
           value: z.unknown(),
           quote: z.string().min(4).max(1500),
         });
         const rawJson = JSON.parse(llm.text) as { fields?: Record<string, unknown> };
         const fieldsObj = rawJson.fields ?? {};
+        const accepted: string[] = [];
+        const rejected: string[] = [];
         for (const [field, raw] of Object.entries(fieldsObj)) {
           const parsedField = FieldShape.safeParse(raw);
-          if (!parsedField.success) continue; // skip this field, keep going
+          if (!parsedField.success) { rejected.push(`${field}(shape)`); continue; }
           const payload = parsedField.data;
-          if (!stillMissing.includes(field) && !field.startsWith("eligibility") && !field.startsWith("sectors")) continue;
-          if (!snippetIsGrounded(payload.quote, markdown)) continue; // hallucination — drop
-          // Coerce per-field
+          if (!stillMissing.includes(field) && !field.startsWith("eligibility") && !field.startsWith("sectors")) { rejected.push(`${field}(not_needed)`); continue; }
+          if (!snippetIsGrounded(payload.quote, markdown)) { rejected.push(`${field}(hallucination)`); continue; }
           if (field === "amount_cad_max" || field === "amount_cad_min") {
             const n = Number(payload.value);
             if (Number.isFinite(n) && n > 0) {
               (patch as Record<string, unknown>)[field] = n;
+              accepted.push(field);
               await recordEvidence({
                 grantId: g.id, agent: "enricher", field, value: n,
                 sourceUrl: g.url, snippet: payload.quote,
                 method: "llm", sourceMarkdown: markdown,
                 model: llm.model, runId,
               });
-            }
+            } else rejected.push(`${field}(not_number)`);
           } else if (field === "deadline") {
             const s = String(payload.value);
             if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-              patch.deadline = s;
+              patch.deadline = s; accepted.push(field);
               await recordEvidence({
                 grantId: g.id, agent: "enricher", field: "deadline", value: s,
                 sourceUrl: g.url, snippet: payload.quote, method: "llm",
                 sourceMarkdown: markdown, model: llm.model, runId,
               });
-            }
+            } else rejected.push(`${field}(bad_date)`);
           } else if (field === "eligibility") {
             if (payload.value && typeof payload.value === "object") {
-              patch.eligibility = payload.value as never;
+              patch.eligibility = payload.value as never; accepted.push(field);
               await recordEvidence({
                 grantId: g.id, agent: "enricher", field: "eligibility", value: payload.value,
                 sourceUrl: g.url, snippet: payload.quote, method: "llm",
@@ -359,7 +360,7 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
             }
           } else if (field === "sectors") {
             if (Array.isArray(payload.value)) {
-              patch.sectors = payload.value.map(String);
+              patch.sectors = payload.value.map(String); accepted.push(field);
               await recordEvidence({
                 grantId: g.id, agent: "enricher", field: "sectors", value: payload.value,
                 sourceUrl: g.url, snippet: payload.quote, method: "llm",
@@ -368,9 +369,10 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
             }
           }
         }
+        await trace("llm_validate", `Accepted: ${accepted.join(", ") || "(none)"} · Rejected: ${rejected.join(", ") || "(none)"}`, accepted.length ? "done" : "warn", { accepted, rejected });
       } catch (e) {
         const msg = `llm_gap_fill_failed: ${e instanceof Error ? e.message : String(e)}`;
-        // Non-fatal: deterministic results may already be in `patch`.
+        await trace("llm_validate", msg, "error");
         await supabaseAdmin.from("agent_runs").insert({
           run_id: runId, agent: "enricher", status: "degraded",
           model: llmInfo?.model ?? "free-cascade",
