@@ -37,6 +37,12 @@ export async function evaluateGrantImpl(opts: {
   if (oerr) throw new Error(oerr.message);
   if (!org) throw new Error("org_profile_missing");
 
+  // Gate: never evaluate a grant that hasn't been enriched — its fields may
+  // be incomplete/missing and the LLM would synthesize a misleading verdict.
+  if (g.status === "discovered") {
+    throw new Error("grant_not_enriched_yet");
+  }
+
   const llm = await callLlm({
     model: "google/gemini-2.5-flash",
     agent: "evaluator",
