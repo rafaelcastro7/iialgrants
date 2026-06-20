@@ -19,6 +19,7 @@ import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilter
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
+import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -246,6 +247,7 @@ function GrantsPage() {
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    <FreshnessBadges discoveredAt={g.discovered_at} deadline={g.deadline} fr={fr} />
                     {summary && <p className="text-sm text-muted-foreground line-clamp-3">{summary}</p>}
                     <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                       <span>{t("grants.amount")}: {fmt(g.amount_cad_min)} – {fmt(g.amount_cad_max)}</span>
