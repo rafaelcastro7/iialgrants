@@ -74,7 +74,7 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
     await assertAgentEnabled("discoverer");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { runDiscoverer } = await import("@/agents/discoverer.functions");
+    const { discoverFunderImpl } = await import("@/agents/discoverer.impl.server");
 
     const { data: funders, error } = await supabaseAdmin
       .from("funders")
@@ -89,14 +89,19 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
 
     for (const f of funders ?? []) {
       try {
-        const r = await runDiscoverer({ data: { funderId: f.id } });
-        const ins = typeof r === "object" && r && "inserted" in r ? Number(r.inserted) : 0;
-        const sa = typeof r === "object" && r && "seenAgain" in r ? Number(r.seenAgain) : 0;
-        const eng = typeof r === "object" && r && "engine" in r ? String(r.engine) : undefined;
-        totalInserted += ins; totalSeenAgain += sa;
-        perFunder.push({ funder: f.name, inserted: ins, seenAgain: sa, engine: eng });
+        const r = await discoverFunderImpl(f.id);
+        totalInserted += r.inserted; totalSeenAgain += r.seenAgain ?? 0;
+        perFunder.push({ funder: f.name, inserted: r.inserted, seenAgain: r.seenAgain, engine: r.engine });
       } catch (e) {
-        perFunder.push({ funder: f.name, inserted: 0, error: e instanceof Error ? e.message : String(e) });
+        const msg = e instanceof Error ? e.message : String(e);
+        perFunder.push({ funder: f.name, inserted: 0, error: msg });
+        try {
+          await supabaseAdmin.from("agent_runs").insert({
+            run_id: crypto.randomUUID(), agent: "discoverer", status: "failed",
+            model: "google/gemini-2.5-flash", error: msg,
+            metadata: { funder_id: f.id, funder_name: f.name, stage: "orchestrator" },
+          });
+        } catch { /* logging best-effort */ }
       }
     }
 
@@ -111,11 +116,11 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
       if (org) {
         const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
         await assertAgentEnabled("evaluator");
-        const { runEvaluator } = await import("@/agents/evaluator.functions");
+        const { evaluateGrantImpl } = await import("@/agents/evaluator.impl.server");
         const { data: pending } = await supabaseAdmin
           .from("grants").select("id").eq("status", "discovered").limit(15);
         for (const g of pending ?? []) {
-          try { await runEvaluator({ data: { grantId: g.id } }); evaluated++; }
+          try { await evaluateGrantImpl({ grantId: g.id, userId: context.userId, userSupabase: context.supabase }); evaluated++; }
           catch { /* keep going */ }
         }
       }
@@ -180,16 +185,49 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
 
     if (todo.length === 0) return { ok: true, evaluated: 0, skipped: 0 };
 
-    const { runEvaluator } = await import("@/agents/evaluator.functions");
+    const { evaluateGrantImpl } = await import("@/agents/evaluator.impl.server");
     let evaluated = 0;
     let skipped = 0;
     for (const grantId of todo) {
       try {
-        await runEvaluator({ data: { grantId } });
+        await evaluateGrantImpl({ grantId, userId: context.userId, userSupabase: context.supabase });
         evaluated++;
       } catch {
         skipped++;
       }
     }
     return { ok: true, evaluated, skipped };
+  });
+
+// List recent agent_runs (and recent grant_events) for the live event panel.
+// Admin-only because it includes failure messages and tokens.
+export const listAgentEvents = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      limit: z.number().int().min(1).max(200).default(50),
+      agent: z.string().optional(),
+      status: z.enum(["succeeded", "failed", "degraded", "running"]).optional(),
+    }).parse(i ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin
+      .from("agent_runs")
+      .select("id, run_id, agent, status, model, latency_ms, input_tokens, output_tokens, error, metadata, grant_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+    if (data.agent) q = q.eq("agent", data.agent as "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic");
+    if (data.status) q = q.eq("status", data.status);
+    const { data: runs, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const { data: events } = await supabaseAdmin
+      .from("grant_events")
+      .select("id, grant_id, from_status, to_status, metadata, created_at")
+      .order("created_at", { ascending: false })
+      .limit(25);
+
+    return { runs: runs ?? [], events: events ?? [] };
   });

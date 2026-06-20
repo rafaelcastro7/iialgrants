@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
+import { EventLog } from "@/components/grants/EventLog";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -173,9 +174,18 @@ function GrantsPage() {
             </Button>
           )}
         </div>
-        {discoveryMsg && <pre className="text-xs text-muted-foreground mb-3 whitespace-pre-wrap font-sans">{discoveryMsg}</pre>}
+        {discoveryMsg && (
+          <div className="mb-3 rounded-md border bg-muted/30 px-3 py-2">
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">{discoveryMsg}</pre>
+          </div>
+        )}
         {autoMsg && <p className="text-sm text-muted-foreground mb-3">{autoMsg}</p>}
-        {evalError && <p className="text-sm text-destructive mb-3">{evalError}</p>}
+        {evalError && (
+          <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 flex items-start justify-between gap-3">
+            <p className="text-sm text-destructive break-words">{evalError}</p>
+            <button type="button" onClick={() => setEvalError(null)} className="text-xs text-muted-foreground hover:text-foreground shrink-0">✕</button>
+          </div>
+        )}
 
         <GrantFilters
           grants={data.grants}
@@ -262,6 +272,7 @@ function GrantsPage() {
           </div>
         );
         })()}
+        {isAdmin && <EventLog fr={fr} />}
       </section>
     </main>
   );
