@@ -20,7 +20,11 @@ and TBS Directive on Automated Decision-Making (ADM) self-assessment.
 | 6 | [System Card — Critic](./system-card-critic.md) | Agent transparency (EN/FR) |
 | 7 | [Pen-test checklist](./pentest-checklist.md) | Pre-launch security tests |
 | 8 | [Pen-test report 2026-06-20](./pentest-report-2026-06-20.md) | First production checklist run |
-| 9 | [Incident runbook](./incident-runbook.md) | Detection · containment · notification |
+| 9 | [Hardening summary](./hardening-summary.md) | Post-pen-test remediation log + pre-pilot gate |
+| 10 | [Security headers](./security-headers.md) | CSP, HSTS, X-Frame-Options, etc. |
+| 11 | [Webhook auth (HMAC)](./webhook-auth.md) | Signed-request scheme for `/api/public/hooks/*` |
+| 12 | [Webhook rate limit](./webhook-rate-limit.md) | Per-IP, per-endpoint sliding window |
+| 13 | [Incident runbook](./incident-runbook.md) | Detection · containment · notification |
 
 ## Frameworks referenced
 
