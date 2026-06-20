@@ -10,8 +10,9 @@ import { z } from "zod";
 import { createHash } from "crypto";
 import { DiscoveredGrant, PROMPTS } from "@/agents/schemas";
 
-const MAX_PAGES_PER_RUN = 8;
-const MAX_MARKDOWN_LEN = 18_000;
+const MAX_PAGES_PER_RUN = 12;
+const MAX_MARKDOWN_LEN = 22_000;
+const SCRAPE_CONCURRENCY = 3;
 
 function normalizeTitle(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
@@ -21,10 +22,48 @@ function canonicalKey(funderId: string, title: string, minAmt: number | null, ma
   return createHash("sha256").update(`${funderId}|${normalizeTitle(title)}|${band}`).digest("hex");
 }
 
-const SinglePageOutput = z.object({
-  is_program: z.boolean(),
-  grant: DiscoveredGrant.optional().nullable(),
+// Multi-grant page output: a page (index or program) may yield 0..N grants.
+const MultiPageOutput = z.object({
+  grants: z.array(DiscoveredGrant).max(25).default([]),
 });
+
+// Schema sent to Firecrawl's JSON extractor. Looser than our internal Zod
+// because Firecrawl's model occasionally returns extra fields or omits some;
+// we re-validate with DiscoveredGrant before insert.
+const FIRECRAWL_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    grants: {
+      type: "array",
+      maxItems: 25,
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Official program name" },
+          title_fr: { type: ["string", "null"], description: "French (Quebec) title if present" },
+          summary: { type: ["string", "null"], description: "1-3 sentence description" },
+          summary_fr: { type: ["string", "null"] },
+          amount_cad_min: { type: ["number", "null"], description: "Min funding in CAD" },
+          amount_cad_max: { type: ["number", "null"], description: "Max funding in CAD" },
+          deadline: { type: ["string", "null"], description: "ISO YYYY-MM-DD or null" },
+          eligibility: { type: "object" },
+          sectors: { type: "array", items: { type: "string" } },
+          language: { type: "string", enum: ["en", "fr"] },
+          url: { type: "string", description: "Canonical program URL" },
+        },
+        required: ["title", "language", "url"],
+      },
+    },
+  },
+  required: ["grants"],
+} as const;
+
+const JSON_PROMPT =
+  "Extract every distinct Canadian funding program described on this page. " +
+  "If the page is an index that lists multiple programs with links, extract one entry per listed program using the link as `url`. " +
+  "Use Canadian dollars; never invent amounts or deadlines (null if unknown). " +
+  "Deadlines must be ISO YYYY-MM-DD or null. Detect language ('en' or 'fr') from the text.";
+
 
 export type DiscoveryResult = {
   ok: boolean;
@@ -69,119 +108,181 @@ export async function discoverFunderImpl(
     .maybeSingle();
   if (ferr) throw new Error(`funder_lookup_failed: ${ferr.message}`);
   if (!funder?.source_url) throw new Error("funder_has_no_source_url");
+  const F = funder as { id: string; name: string; source_url: string; source_urls?: string[]; source_type?: string };
 
   // ----- Path A: Firecrawl available → multi-page structured extraction -----
   if (firecrawlAvailable()) {
-    const indexUrls: string[] = [funder.source_url, ...((funder as { source_urls?: string[] }).source_urls ?? [])];
+    const indexUrls: string[] = [F.source_url, ...(F.source_urls ?? [])];
     const mapped = new Set<string>();
+    // First pass: search-focused map (Firecrawl ranks results by relevance).
     for (const idx of indexUrls) {
-      const m = await firecrawlMap(idx, 50);
+      const m = await firecrawlMap(idx, 100, "program funding grant subvention financement");
       if (m.ok) m.links.forEach((l) => mapped.add(l));
+    }
+    // Fallback pass: plain map for any funder whose search returned nothing.
+    if (mapped.size < 5) {
+      for (const idx of indexUrls) {
+        const m = await firecrawlMap(idx, 100);
+        if (m.ok) m.links.forEach((l) => mapped.add(l));
+      }
     }
     indexUrls.forEach((u) => mapped.add(u));
 
-    const origin = new URL(funder.source_url).origin;
+    const origin = new URL(F.source_url).origin;
     const candidates = filterProgramUrls([...mapped], origin).slice(0, MAX_PAGES_PER_RUN);
 
     let inserted = 0;
     let seenAgain = 0;
     let skipped = 0;
+    let foundTotal = 0;
+    let inputTokens = 0;
+    let outputTokens = 0;
+    const perPageStats: Array<{ url: string; found: number; via: "firecrawl_json" | "llm" | "skipped"; reason?: string }> = [];
 
-    for (const url of candidates) {
-      const scrape = await firecrawlScrape(url);
-      if (!scrape.ok) { skipped++; continue; }
-      const md = scrape.markdown.slice(0, MAX_MARKDOWN_LEN);
-      if (md.length < 400) { skipped++; continue; }
-
-      const llm = await callLlm({
-        model: "google/gemini-2.5-flash",
-        agent: "discoverer",
-        runId,
-        temperature: 0.1,
-        responseFormat: "json",
-        messages: [
-          { role: "system", content:
-            `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}\n` +
-            `You will analyze ONE web page and decide whether it describes ONE distinct ` +
-            `Canadian funding program. If it does, extract it. If it is a directory, news ` +
-            `or unrelated content, set is_program=false.` },
-          { role: "user", content:
-            `Funder: ${funder.name}\nPage URL: ${url}\nPage title: ${scrape.title ?? ""}\n\n` +
-            `Markdown:\n${md}\n\n` +
-            `Return JSON: { "is_program": boolean, "grant": { "title", "title_fr"?, "summary"?, ` +
-            `"summary_fr"?, "amount_cad_min"?, "amount_cad_max"?, "deadline"?, "eligibility"?, ` +
-            `"sectors"?, "language", "url" } | null }` },
-        ],
+    // Scrape pages in parallel (bounded). Firecrawl JSON mode handles many
+    // pages cheaply and returns multiple grants per index page.
+    async function processOne(url: string): Promise<void> {
+      const scrape = await firecrawlScrape(url, {
+        jsonSchema: FIRECRAWL_JSON_SCHEMA,
+        jsonPrompt: JSON_PROMPT,
       });
-
-      let parsed: z.infer<typeof SinglePageOutput>;
-      try { parsed = SinglePageOutput.parse(JSON.parse(llm.text)); }
-      catch { skipped++; continue; }
-
-      if (!parsed.is_program || !parsed.grant) { skipped++; continue; }
-      const g = parsed.grant;
-      const ck = canonicalKey(funder.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
-
-      const { data: existing } = await supabaseAdmin
-        .from("grants")
-        .select("id, times_seen")
-        .eq("canonical_key", ck)
-        .maybeSingle();
-      if (existing) {
-        await supabaseAdmin.from("grants").update({
-          last_seen_at: new Date().toISOString(),
-          times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
-        } as never).eq("id", existing.id);
-        seenAgain++;
-        continue;
+      if (!scrape.ok) {
+        skipped++;
+        perPageStats.push({ url, found: 0, via: "skipped", reason: scrape.error });
+        return;
       }
 
-      const sourceHash = createHash("sha256").update(`${g.url}|${g.title}`).digest("hex");
-      const { error: ierr } = await supabaseAdmin.from("grants").insert({
-        funder_id: funder.id,
-        title: g.title,
-        title_fr: g.title_fr ?? null,
-        summary: g.summary ?? null,
-        summary_fr: g.summary_fr ?? null,
-        amount_cad_min: g.amount_cad_min ?? null,
-        amount_cad_max: g.amount_cad_max ?? null,
-        deadline: g.deadline ?? null,
-        eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
-        sectors: g.sectors ?? [],
-        language: g.language,
-        url: g.url || url,
-        source_hash: sourceHash,
-        canonical_key: ck,
-        status: "discovered",
-      });
-      if (!ierr) inserted++;
+      // Try Firecrawl-extracted JSON first (cheaper + more reliable).
+      let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
+      let via: "firecrawl_json" | "llm" = "firecrawl_json";
+
+      if (scrape.json && typeof scrape.json === "object") {
+        try {
+          const candidate = (scrape.json as { grants?: unknown }).grants;
+          if (Array.isArray(candidate)) {
+            for (const raw of candidate) {
+              const r = raw as Record<string, unknown>;
+              // Coerce URL to absolute (Firecrawl sometimes returns relative).
+              if (typeof r.url === "string") {
+                try { r.url = new URL(r.url, url).href; } catch { r.url = url; }
+              } else {
+                r.url = url;
+              }
+              const parsed = DiscoveredGrant.safeParse(r);
+              if (parsed.success) pageGrants.push(parsed.data);
+            }
+          }
+        } catch { /* fall through to LLM */ }
+      }
+
+      // Fallback to in-process LLM if Firecrawl JSON returned nothing usable.
+      if (pageGrants.length === 0) {
+        const md = scrape.markdown.slice(0, MAX_MARKDOWN_LEN);
+        if (md.length < 200) {
+          skipped++;
+          perPageStats.push({ url, found: 0, via: "skipped", reason: "page_too_short" });
+          return;
+        }
+        const llm = await callLlm({
+          model: "google/gemini-2.5-flash",
+          agent: "discoverer",
+          runId,
+          temperature: 0.1,
+          responseFormat: "json",
+          messages: [
+            { role: "system", content:
+              `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}\n` +
+              `Extract every distinct Canadian funding program described on this page. ` +
+              `If the page is an index listing multiple programs, return one entry per listed program. ` +
+              `If nothing is a real program, return { "grants": [] }.` },
+            { role: "user", content:
+              `Funder: ${F.name}\nPage URL: ${url}\nPage title: ${scrape.title ?? ""}\n\n` +
+              `Markdown:\n${md}\n\n` +
+              `Return JSON: { "grants": [ { "title", "title_fr"?, "summary"?, "summary_fr"?, ` +
+              `"amount_cad_min"?, "amount_cad_max"?, "deadline"?, "eligibility"?, "sectors"?, ` +
+              `"language", "url" } ] }` },
+          ],
+        });
+        inputTokens += llm.inputTokens ?? 0;
+        outputTokens += llm.outputTokens ?? 0;
+        try {
+          const parsed = MultiPageOutput.parse(JSON.parse(llm.text));
+          pageGrants = parsed.grants;
+          via = "llm";
+        } catch {
+          skipped++;
+          perPageStats.push({ url, found: 0, via: "skipped", reason: "schema_validation" });
+          return;
+        }
+      }
+
+      foundTotal += pageGrants.length;
+      perPageStats.push({ url, found: pageGrants.length, via });
+
+      for (const g of pageGrants) {
+        const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
+        const { data: existing } = await supabaseAdmin
+          .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
+        if (existing) {
+          await supabaseAdmin.from("grants").update({
+            last_seen_at: new Date().toISOString(),
+            times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
+          } as never).eq("id", existing.id);
+          seenAgain++;
+          continue;
+        }
+        const sourceHash = createHash("sha256").update(`${g.url}|${g.title}`).digest("hex");
+        const { error: ierr } = await supabaseAdmin.from("grants").insert({
+          funder_id: F.id,
+          title: g.title, title_fr: g.title_fr ?? null,
+          summary: g.summary ?? null, summary_fr: g.summary_fr ?? null,
+          amount_cad_min: g.amount_cad_min ?? null,
+          amount_cad_max: g.amount_cad_max ?? null,
+          deadline: g.deadline ?? null,
+          eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
+          sectors: g.sectors ?? [],
+          language: g.language,
+          url: g.url || url,
+          source_hash: sourceHash, canonical_key: ck, status: "discovered",
+        });
+        if (!ierr) inserted++;
+      }
+    }
+
+    // Bounded concurrency.
+    for (let i = 0; i < candidates.length; i += SCRAPE_CONCURRENCY) {
+      await Promise.all(candidates.slice(i, i + SCRAPE_CONCURRENCY).map(processOne));
     }
 
     await supabaseAdmin
       .from("funders")
       .update({ last_discovered_at: new Date().toISOString() } as never)
-      .eq("id", funder.id);
+      .eq("id", F.id);
 
     await supabaseAdmin.from("agent_runs").insert({
       run_id: runId, agent: "discoverer", status: "succeeded",
       model: "google/gemini-2.5-flash",
       latency_ms: Date.now() - t0,
+      input_tokens: inputTokens || null,
+      output_tokens: outputTokens || null,
       metadata: {
         ...baseMeta,
-        funder_id: funder.id, funder_name: funder.name, engine: "firecrawl_v2",
+        funder_id: F.id, funder_name: F.name, engine: "firecrawl_v2",
         urls_mapped: mapped.size, urls_scraped: candidates.length,
-        urls_skipped: skipped, inserted, seen_again: seenAgain,
+        urls_skipped: skipped, found: foundTotal, inserted, seen_again: seenAgain,
+        per_page: perPageStats.slice(0, 12),
       },
     });
-    return { ok: true, inserted, seenAgain, urlsMapped: mapped.size, urlsScraped: candidates.length, runId, engine: "firecrawl_v2" };
+    return { ok: true, inserted, seenAgain, found: foundTotal, urlsMapped: mapped.size, urlsScraped: candidates.length, runId, engine: "firecrawl_v2" };
   }
+
 
   // ----- Path B: Fallback (no Firecrawl) -----
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   let raw = "";
   try {
-    const res = await fetch(funder.source_url, {
+    const res = await fetch(F.source_url, {
       signal: ctrl.signal,
       headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
     });
@@ -202,7 +303,7 @@ export async function discoverFunderImpl(
       run_id: runId, agent: "discoverer", status: "degraded",
       model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
       error: "page_too_short",
-      metadata: { ...baseMeta, funder_id: funder.id, funder_name: funder.name, engine: "fallback" },
+      metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback" },
     });
     return { ok: true, inserted: 0, runId, degraded: true, engine: "fallback" };
   }
@@ -214,7 +315,7 @@ export async function discoverFunderImpl(
     messages: [
       { role: "system", content: `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}` },
       { role: "user", content:
-        `Funder: ${funder.name}\nSource URL: ${funder.source_url}\n\nPage text:\n${text}\n\n` +
+        `Funder: ${F.name}\nSource URL: ${F.source_url}\n\nPage text:\n${text}\n\n` +
         `Return JSON: { "grants": [ { "title", "title_fr"?, "summary"?, "summary_fr"?, ` +
         `"amount_cad_min"?, "amount_cad_max"?, "deadline"?, "eligibility"?, "sectors"?, "language", "url" } ] }` },
     ],
@@ -228,7 +329,7 @@ export async function discoverFunderImpl(
       run_id: runId, agent: "discoverer", status: "failed",
       model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
       error: `schema_validation: ${e instanceof Error ? e.message : String(e)}`,
-      metadata: { ...baseMeta, funder_id: funder.id, funder_name: funder.name, engine: "fallback" },
+      metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback" },
     });
     return { ok: false, inserted: 0, runId, error: "schema_validation", engine: "fallback" };
   }
@@ -236,7 +337,7 @@ export async function discoverFunderImpl(
   let inserted = 0;
   let seenAgain = 0;
   for (const g of parsed.grants) {
-    const ck = canonicalKey(funder.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
+    const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
     const { data: existing } = await supabaseAdmin
       .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
     if (existing) {
@@ -248,7 +349,7 @@ export async function discoverFunderImpl(
     }
     const sourceHash = createHash("sha256").update(`${g.url}|${g.title}`).digest("hex");
     const { error: ierr } = await supabaseAdmin.from("grants").insert({
-      funder_id: funder.id, title: g.title, title_fr: g.title_fr ?? null,
+      funder_id: F.id, title: g.title, title_fr: g.title_fr ?? null,
       summary: g.summary ?? null, summary_fr: g.summary_fr ?? null,
       amount_cad_min: g.amount_cad_min ?? null, amount_cad_max: g.amount_cad_max ?? null,
       deadline: g.deadline ?? null,
@@ -262,14 +363,14 @@ export async function discoverFunderImpl(
   await supabaseAdmin
     .from("funders")
     .update({ last_discovered_at: new Date().toISOString() } as never)
-    .eq("id", funder.id);
+    .eq("id", F.id);
 
   await supabaseAdmin.from("agent_runs").insert({
     run_id: runId, agent: "discoverer", status: "succeeded",
     model: "google/gemini-2.5-flash",
     input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,
     latency_ms: Date.now() - t0,
-    metadata: { ...baseMeta, funder_id: funder.id, funder_name: funder.name, engine: "fallback", found: parsed.grants.length, inserted, seen_again: seenAgain },
+    metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback", found: parsed.grants.length, inserted, seen_again: seenAgain },
   });
   return { ok: true, inserted, seenAgain, found: parsed.grants.length, runId, engine: "fallback" };
 }
