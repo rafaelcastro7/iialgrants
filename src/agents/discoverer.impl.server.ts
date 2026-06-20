@@ -288,6 +288,8 @@ export async function discoverFunderImpl(
         funder_id: F.id, funder_name: F.name, engine: "firecrawl_v2",
         urls_mapped: mapped.size, urls_scraped: candidates.length,
         urls_skipped: skipped, found: foundTotal, inserted, seen_again: seenAgain,
+        seed_search_used: seedSearchUsed,
+        via_counts: viaCounts,
         per_page: perPageStats.slice(0, 12),
       },
     });
