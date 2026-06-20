@@ -37,12 +37,16 @@ export async function runFunderScout(): Promise<RawCandidate[]> {
     const hitBlock = search.hits.map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet}`).join("\n\n");
     try {
       const resp = await callLlm({
-        system: SYSTEM_PROMPT,
-        user: `Query: ${q}\n\nResults:\n${hitBlock}`,
-        schemaName: "funder_scout",
-        maxTokens: 600,
+        agent: "discoverer",
+        model: "google/gemini-2.5-flash",
+        responseFormat: "json",
+        maxOutputTokens: 600,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user",   content: `Query: ${q}\n\nResults:\n${hitBlock}` },
+        ],
       });
-      const parsed = JSON.parse(resp.content) as { hits?: ClassifiedHit[] };
+      const parsed = JSON.parse(resp.text) as { hits?: ClassifiedHit[] };
       for (const h of parsed.hits ?? []) {
         if (!h.name || !h.url?.startsWith("http")) continue;
         out.push({
