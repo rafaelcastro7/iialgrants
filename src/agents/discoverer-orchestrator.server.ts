@@ -46,6 +46,7 @@ async function logRetry(opts: {
 export async function runDiscoveryJob(
   jobId: string,
   triggeringUserId: string,
+  funderIds?: string[],
 ): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -55,14 +56,21 @@ export async function runDiscoveryJob(
     agent: "discoverer",
     status: "running",
     model: "google/gemini-2.5-flash",
-    metadata: { job_id: jobId, stage: "orchestrator_started", user_id: triggeringUserId },
+    metadata: {
+      job_id: jobId,
+      stage: "orchestrator_started",
+      user_id: triggeringUserId,
+      funder_ids: funderIds ?? null,
+    },
   });
 
-  const { data: funders, error } = await supabaseAdmin
+  let q = supabaseAdmin
     .from("funders")
     .select("id, name")
     .eq("active", true)
     .not("source_url", "is", null);
+  if (funderIds && funderIds.length > 0) q = q.in("id", funderIds);
+  const { data: funders, error } = await q;
   if (error) {
     await supabaseAdmin.from("agent_runs").insert({
       run_id: crypto.randomUUID(), agent: "discoverer", status: "failed",
