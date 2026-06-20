@@ -169,9 +169,17 @@ function GrantsPage() {
             </Button>
           )}
         </div>
-        {discoveryMsg && <p className="text-sm text-muted-foreground mb-3">{discoveryMsg}</p>}
+        {discoveryMsg && <pre className="text-xs text-muted-foreground mb-3 whitespace-pre-wrap font-sans">{discoveryMsg}</pre>}
         {autoMsg && <p className="text-sm text-muted-foreground mb-3">{autoMsg}</p>}
         {evalError && <p className="text-sm text-destructive mb-3">{evalError}</p>}
+
+        <GrantFilters
+          grants={data.grants}
+          fr={fr}
+          jurisdiction={jurisdiction} setJurisdiction={setJurisdiction}
+          eligibleOnly={eligibleOnly} setEligibleOnly={setEligibleOnly}
+          onlyWithDeadline={onlyWithDeadline} setOnlyWithDeadline={setOnlyWithDeadline}
+        />
         {data.grants.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
