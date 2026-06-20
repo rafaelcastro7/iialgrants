@@ -1,87 +1,106 @@
-# Consola Admin — Usuarios & Módulos
+## Objetivo
 
-Nueva ruta `/_authenticated/admin` (gate adicional: `has_role('admin')`) con dos pestañas profesionales: **Usuarios** y **Módulos**. Sidebar persistente con shadcn `Sidebar` para navegación de la consola.
+Rehacer el módulo de Grants para que el Discovery sea **profundo, multi-página y estructurado**, en vez del actual "1 URL → strip HTML → 30 KB de texto al LLM". Borrar los 3 grants/eval actuales y arrancar limpio con un catálogo de funders más serio.
 
-## Alcance
+---
 
-### 1. Gestión de usuarios
-- Tabla con: email, nombre, rol (`admin` / `member`), idioma preferido, último login, fecha creación, estado (activo / baneado).
-- Acciones por fila:
-  - **Promover / degradar** rol (admin ↔ member) → upsert/delete en `user_roles`.
-  - **Resetear contraseña** → envía magic link / recovery via Auth Admin API.
-  - **Banear / reactivar** → `auth.admin.updateUserById({ ban_duration })`.
-  - **Eliminar** (con confirmación dura, dispara DSAR audit log) → `auth.admin.deleteUser`.
-- Botón **"Invitar usuario"** → modal con email + rol inicial → `auth.admin.inviteUserByEmail`.
-- Filtro búsqueda por email + selector de rol.
-- Todo vía `createServerFn` con `requireSupabaseAuth` + verificación `has_role(uid, 'admin')` antes de `supabaseAdmin`.
+## Estado actual (diagnóstico)
 
-### 2. Gestión de módulos
-- 8 módulos del producto registrados como flags:
-  `grants_discovery`, `evaluator`, `strategist`, `writer`, `critic`, `submissions`, `rag_org_profile`, `public_webhooks`.
-- Vista grid con switch on/off por módulo, descripción, agente vinculado, y badge de estado.
-- Toggle off → desactiva entrada al módulo en la nav + bloquea server fns asociadas (middleware `requireModuleEnabled('writer')` que lee `module_flags`).
-- Audit trail: cada toggle inserta en `audit_log` (actor, módulo, on/off, timestamp).
+- 3 funders, 3 grants en `discovered`, 3 evaluaciones, 1 entrada en `discovery_sources`.
+- `Discoverer` descarga **una sola URL** por funder, hace `replace(<[^>]+>)` y manda 30 KB al LLM. Pierde paginación, links a fichas individuales, contenido renderizado por JS.
+- Sin extracción estructurada: el LLM "adivina" amount/deadline desde texto plano.
+- Hash de dedupe = `sha256(url+title)`, frágil ante variantes de título.
 
-### 3. Nueva tabla `module_flags`
-- Columnas: `module` (text PK), `enabled` (bool), `updated_by`, `updated_at`, `description`, `description_fr`.
-- Seed inicial con los 8 módulos activos.
-- RLS: `SELECT` para `authenticated` (todos pueden leer su disponibilidad), `UPDATE` solo `admin`.
-- Hook `useModuleFlags()` para condicionar UI (esconder botones / nav items).
+---
 
-### 4. Layout consola
-- `src/routes/_authenticated/admin/route.tsx` — pathless layout con sidebar (shadcn `Sidebar` con `collapsible="icon"`), gate `has_role('admin')`, redirige a `/dashboard` si no es admin.
-- Hijos: `admin/users.tsx`, `admin/modules.tsx`, `admin/index.tsx` (resumen: # usuarios, # admins, módulos activos, últimas acciones).
-- Diseño limpio, profesional, alineado con tokens existentes (no purple/indigo). Tipografía consistente con el resto.
+## Reingeniería propuesta
 
-### 5. Acceso
-- Nuevo link **"Console"** visible solo cuando `has_role('admin') === true` en el dashboard y en el header.
+### Fase A — Limpieza (1 migración)
+
+- `truncate grant_events, grant_evaluations, grants, discovery_sources restart identity cascade`.
+- Borrar los 3 funders demo; el seed de la Fase B los repone con catálogo nuevo.
+
+### Fase B — Catálogo de funders v2 (1 migración de seed)
+
+Mínimo 8 funders canadienses representativos, con `source_url` apuntando al **índice** de programas (no a una landing):
+
+| Funder | Jurisdicción | Source |
+|---|---|---|
+| Innovation Canada (Business Benefits Finder) | federal | innovation.ised-isde.canada.ca |
+| NRC IRAP | federal | nrc-cnrc.gc.ca/en/support-technology-innovation |
+| Mitacs | federal | mitacs.ca/en/programs |
+| NSERC | federal | nserc-crsng.gc.ca/Professors-Professeurs/Grants-Subs_eng.asp |
+| SR&ED (CRA) | federal | canada.ca/en/revenue-agency/services/scientific-research-experimental-development-tax-incentive-program.html |
+| Trade Commissioner – CanExport | federal | tradecommissioner.gc.ca/funding-financement |
+| Investissement Québec | QC | investquebec.com/quebec/en/financial-products |
+| MEI Québec (PSII) | QC | economie.gouv.qc.ca/bibliotheques/programmes |
+| Ontario – ONe-key / OCI | ON | oc-innovation.ca/programs |
+| Open Government grants & contributions | federal | search.open.canada.ca/grants |
+
+(Adaptable; el seed deja `active=true` solo en 4–5 para no quemar créditos al primer run.)
+
+### Fase C — Pipeline Discovery v2
+
+Cambios al `runDiscoverer`:
+
+1. **Firecrawl como motor de fetching** (vía connector ya documentado en knowledge):
+   - `map(source_url, { limit: 50 })` → lista de URLs candidatas dentro del dominio.
+   - Filtro heurístico: descartar URLs con `/news/`, `/blog/`, `/events/`, `/contact`, idiomas duplicados (`/fr/` cuando ya tomamos `/en/`).
+   - `batchScrape(urls.slice(0,15), { formats: ['markdown'] })` → markdown limpio por página (renderiza JS, sin tags rotos).
+2. **Extracción estructurada por página** (no por dominio):
+   - Para cada página, una llamada al LLM con `responseFormat: json` y el `DiscoveredGrant` schema (1 grant por página, no array de 50). Schema chico → evita el problema de "too many states" de Gemini.
+   - Si la página claramente NO es un programa (markdown < 500 chars o contiene keywords de blog), se salta sin llamar LLM.
+3. **Dedupe robusto**:
+   - `canonical_key = sha256(funder_id + normalize(title) + amount_range)` donde `normalize` = lowercase + colapsa whitespace + remove punctuation.
+   - Si existe, `times_seen++` y `last_seen_at = now()`; nunca duplica por variante de URL.
+4. **Conditional fetch reused**: ya está, se mantiene (etag/last-modified en `discovery_sources` a nivel de URL hijo, no solo del índice).
+5. **Fallback sin Firecrawl**: si `FIRECRAWL_API_KEY` no está, cae al pipeline actual (fetch + strip HTML) para no bloquear demo.
+6. **Telemetría**: cada `agent_runs` registra `urls_mapped`, `urls_scraped`, `urls_skipped`, `grants_inserted`, `grants_seen_again`, `cost_estimate`.
+
+### Fase D — Auto-fit inmediato (ya hecho parcialmente)
+
+- Tras Discovery, encolar `autoEvaluatePending` automáticamente para el admin que disparó "Discover & Enrich" (no solo al cargar `/grants`).
+- Enrich queda como tarea **opcional en background** — la UI ya no espera por él, solo se ejecuta para añadir FR-CA cuando el grant pasa a `shortlisted`.
+
+### Fase E — UI Grants
+
+- Banner `"Discovery v2 · powered by Firecrawl"` cuando la connection esté activa.
+- Filtros: jurisdiction (federal/QC/ON/…), sector, deadline próximo, solo elegibles (`evaluation.eligibility_pass`).
+- Botón Admin "Discover all" muestra progreso por funder (ya tenemos `perFunder[]`, falta render).
+
+---
 
 ## Detalles técnicos
 
-- **Migración 015**: crea `module_flags` + GRANTs + RLS + seed + trigger `updated_at`.
-- **Server fns**:
-  - `src/lib/admin-users.functions.ts` — `listUsers`, `setUserRole`, `inviteUser`, `banUser`, `unbanUser`, `deleteUser`, `sendRecovery`.
-  - `src/lib/admin-modules.functions.ts` — `listModules`, `toggleModule`.
-  - Cada handler: `requireSupabaseAuth` → comprueba `has_role(ctx.userId,'admin')` → carga `supabaseAdmin` dinámicamente.
-- **Middleware `requireModuleEnabled(name)`** reutilizable en agent server fns (writer, strategist, etc.) — devuelve 403 si flag off.
-- **Sidebar**: provider montado solo dentro de `/admin/*` para no afectar el resto del app.
-- **i18n**: claves nuevas `admin.*` en EN/FR.
-- **Tests**: añadir cases en `src/evals/runner.test.ts` validando que un toggle off bloquea el flow correspondiente.
-- **Evidence**: `docs/evidence/admin-console.md` con capturas + descripción de RBAC.
+- **Connector**: Firecrawl gateway-backed. Antes de la Fase C: `standard_connectors--list_app_connectors` → `connect` para que el usuario enlace su cuenta. Secret inyectado: `FIRECRAWL_API_KEY`. Sin él, fallback.
+- **Server function**: `runDiscoverer` se reescribe; misma firma `{ funderId }`. Llamadas LLM siguen vía `callLlm` (Lovable AI gateway). Sin cambio de RLS ni tablas (excepto opcionalmente añadir `discovery_sources.parent_url` para distinguir índice de hijos — incluido en migración de Fase A).
+- **Schema DB**: opcionales en Fase A:
+  - `funders.source_urls text[]` (multi-URL por funder).
+  - `grants.canonical_key text unique` (índice único para el dedupe robusto).
+- **Tests**: ampliar `evals/runner.test.ts` con un golden case "página de programa real" mockeada para Discovery v2.
+
+---
+
+## Entregables
+
+1. Migración A: truncate + nuevo seed de funders + columnas opcionales.
+2. `src/agents/discoverer.functions.ts` reescrito (Firecrawl + per-page + dedupe).
+3. `src/lib/firecrawl.server.ts` helper.
+4. Fallback path verificado (sin connector instalado).
+5. UI grants con filtros + progreso por funder.
+6. Doc `docs/evidence/discovery-v2.md` con diagrama y métricas.
+
+---
 
 ## Fuera de alcance
-- Multi-tenant orgs reales (cada usuario sigue siendo su propio tenant — el toggle es global del proyecto, no por org).
-- SSO/SCIM (out of scope, ya documentado en ADR).
-- Audit log viewer rico (solo se escriben entradas; visor queda como follow-up).
 
-```text
-src/routes/
-  _authenticated/
-    admin/
-      route.tsx        # layout + gate admin + Sidebar
-      index.tsx        # resumen
-      users.tsx        # tabla usuarios + acciones
-      modules.tsx      # grid de toggles
-src/lib/
-  admin-users.functions.ts
-  admin-modules.functions.ts
-  module-gate.server.ts   # requireModuleEnabled middleware
-src/components/admin/
-  AdminSidebar.tsx
-  UserRow.tsx
-  InviteUserDialog.tsx
-  ModuleCard.tsx
-supabase/migrations/015_*.sql
-docs/evidence/admin-console.md
-```
+- No tocamos Strategist/Writer/Critic.
+- No tocamos auth, ni cron schedulers (siguen apuntando al nuevo `runDiscoverer`).
+- No añadimos scraping de PDFs en esta iteración (queda para v3).
 
-## Iteraciones (High Autonomy)
-1. Migración + seed `module_flags`.
-2. Server fns admin (users + modules) con verificación de rol.
-3. Layout `/admin` + sidebar + gate.
-4. Página Usuarios completa.
-5. Página Módulos completa + hook `useModuleFlags` + middleware `requireModuleEnabled`.
-6. Integración: ocultar nav items + bloquear writer/strategist si módulo off.
-7. i18n + evidencia + tests.
+---
 
-Ejecuto las 7 iteraciones seguidas y entrego el reporte final.
+## Riesgos
+
+- Firecrawl consume créditos: la Fase B limita a 4-5 funders activos y `batchScrape` a 15 URLs/funder → ~75 scrapes por ciclo de discovery.
+- Si el usuario no conecta Firecrawl, el fallback sigue siendo el pipeline actual: degradado pero funcional.
