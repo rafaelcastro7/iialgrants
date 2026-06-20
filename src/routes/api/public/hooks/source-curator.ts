@@ -14,7 +14,9 @@ export const Route = createFileRoute("/api/public/hooks/source-curator")({
         }
         try {
           const { runSourceCurator } = await import("@/lib/source-curator/orchestrator.server");
-          const result = await runSourceCurator();
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const result = await runSourceCurator("C");
+          await supabaseAdmin.rpc("auto_promote_stale_candidates");
           return new Response(JSON.stringify({ ok: true, ...result }), {
             status: 200, headers: { "Content-Type": "application/json" },
           });
