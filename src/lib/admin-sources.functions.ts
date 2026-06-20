@@ -12,7 +12,7 @@ async function ensureAdmin(context: Ctx): Promise<void> {
 export const listDiscoverySources = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context);
+    await assertAdmin(context.userId);
     const { data: sources, error } = await context.supabase
       .from("discovery_sources_registry")
       .select("*")
@@ -29,7 +29,7 @@ export const setSourceEnabled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ datasetKey: z.string().min(1), enabled: z.boolean() }).parse(i))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context);
+    await assertAdmin(context.userId);
     const { error } = await context.supabase
       .from("discovery_sources_registry")
       .update({ enabled: data.enabled })
@@ -42,7 +42,7 @@ export const runDiscoveryTier = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ tier: z.enum(["A","B","C","scout","all"]) }).parse(i))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context);
+    await assertAdmin(context.userId);
     const { runSourceCurator } = await import("@/lib/source-curator/orchestrator.server");
     const result = await runSourceCurator(data.tier);
     return result;
@@ -51,7 +51,7 @@ export const runDiscoveryTier = createServerFn({ method: "POST" })
 export const promoteStaleCandidates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context);
+    await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.rpc("auto_promote_stale_candidates");
     if (error) throw error;
@@ -61,7 +61,7 @@ export const promoteStaleCandidates = createServerFn({ method: "POST" })
 export const recentSourceRuns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context);
+    await assertAdmin(context.userId);
     const { data, error } = await context.supabase
       .from("source_ingest_runs")
       .select("*")
