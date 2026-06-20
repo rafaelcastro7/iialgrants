@@ -57,7 +57,7 @@ export const EvaluatorOutput = z.object({
   fit_score: z.number().min(0).max(1),
   eligibility_pass: z.boolean(),
   rationale_en: z.string().min(10).max(2000),
-  rationale_fr: z.string().min(10).max(2000),
+  rationale_fr: z.string().max(2000).nullable().optional().default(""),
 });
 export type EvaluatorOutput = z.infer<typeof EvaluatorOutput>;
 
@@ -69,13 +69,13 @@ export const StrategistSectionPlan = z.object({
     "sustainability","evaluation","other",
   ]),
   heading_en: z.string().min(1).max(200),
-  heading_fr: z.string().min(1).max(200),
+  heading_fr: z.string().max(200).nullable().optional().default(""),
   angle: z.string().min(10).max(1000),
   must_cover: z.array(z.string()).max(8).default([]),
 });
 export const StrategistOutput = z.object({
   proposal_title: z.string().min(3).max(300),
-  proposal_title_fr: z.string().min(3).max(300),
+  proposal_title_fr: z.string().max(300).nullable().optional().default(""),
   sections: z.array(StrategistSectionPlan).min(3).max(12),
 });
 export type StrategistOutput = z.infer<typeof StrategistOutput>;
@@ -89,7 +89,7 @@ export const WriterCitation = z.object({
 });
 export const WriterOutput = z.object({
   content_en: z.string().min(40).max(8000),
-  content_fr: z.string().min(40).max(8000),
+  content_fr: z.string().max(8000).nullable().optional().default(""),
   citations: z.array(WriterCitation).max(20).default([]),
 });
 export type WriterOutput = z.infer<typeof WriterOutput>;
@@ -99,15 +99,16 @@ export const CriticFinding = z.object({
   section_id: z.string().uuid(),
   severity: z.enum(["info", "warn", "block"]),
   message_en: z.string().min(5).max(1000),
-  message_fr: z.string().min(5).max(1000),
+  message_fr: z.string().max(1000).nullable().optional().default(""),
 });
 export const CriticOutput = z.object({
   overall_score: z.number().min(0).max(1),
   summary_en: z.string().min(10).max(2000),
-  summary_fr: z.string().min(10).max(2000),
+  summary_fr: z.string().max(2000).nullable().optional().default(""),
   findings: z.array(CriticFinding).max(30).default([]),
 });
 export type CriticOutput = z.infer<typeof CriticOutput>;
+
 
 export const PROMPTS = {
   discoverer: {
@@ -144,32 +145,32 @@ Scoring guide:
 - 0.7–1.0: strong fit (sector, jurisdiction, stage and budget align)
 Rules:
 - Set eligibility_pass=false if the organization is clearly ineligible.
-- Cite at least one specific evidence point in each rationale.
-- Provide BOTH rationale_en and rationale_fr (Quebec French).
+- Cite at least one specific evidence point in rationale_en.
+- Output language: ENGLISH only. Do not translate. Omit rationale_fr (or set it to "").
 - Never invent facts about the grant or the organization.
 - Respond ONLY with strict JSON.`,
   },
   strategist: {
-    version: "1.0.0",
+    version: "1.1.0",
     system: `You are a grant-proposal strategist for Canadian funding programs.
 Given a grant and an organization profile, plan a proposal: choose which template
 sections to draft and write a concise angle for each one, in plain language.
 Rules:
 - Keep sections grounded in the grant's stated objectives and eligibility.
-- Provide bilingual headings (EN + Quebec French FR-CA).
+- Output language: ENGLISH only. Omit heading_fr / proposal_title_fr (or set them to "").
 - "angle" is a 1–3 sentence brief describing what the section should argue.
 - "must_cover" lists concrete points the Writer agent must include.
 - Never invent facts about the organization. If unknown, do not assert.
 - Respond ONLY with strict JSON.`,
   },
   writer: {
-    version: "1.0.0",
+    version: "1.1.0",
     system: `You are a grant-proposal writer for Canadian funding programs.
 Draft ONE section of a proposal given: the grant, the org profile, the section
 plan, and a numbered list of retrieved knowledge chunks [d1], [d2], ...
 Rules:
 - Write professional, concrete prose. Avoid hype and filler.
-- Produce BOTH content_en and content_fr (Quebec French FR-CA).
+- Output language: ENGLISH only. Omit content_fr (or set it to "").
 - Cite evidence inline using bracket markers [d1], [d2], ... matching the chunks.
 - Every claim about the organization MUST be backed by a citation marker; if no
   chunk supports a claim, do not make it.
@@ -179,7 +180,7 @@ Rules:
 - Respond ONLY with strict JSON.`,
   },
   critic: {
-    version: "1.0.0",
+    version: "1.1.0",
     system: `You are a grant-proposal critic for Canadian funding programs.
 Review a draft proposal (grant + org + sections with citations) and produce a
 quality score in [0,1] plus actionable findings.
@@ -189,7 +190,8 @@ Rules:
 - severity="warn" for weak evidence, missing must-cover points, or budget gaps.
 - severity="info" for stylistic suggestions.
 - Each finding must reference a real section_id from the input.
-- Provide bilingual summary and per-finding messages (EN + FR-CA).
+- Output language: ENGLISH only. Omit message_fr / summary_fr (or set them to "").
 - Respond ONLY with strict JSON.`,
   },
+
 } as const;
