@@ -76,6 +76,7 @@ export type IngestResult = {
   feedsPolled: number;
   itemsParsed: number;
   itemsRelevant: number;
+  urlsTouched: number;
   fundersMatched: string[];
   jobId: string | null;
 };
@@ -179,6 +180,7 @@ export async function ingestRssFeeds(opts: { feeds?: string[] } = {}): Promise<I
     feedsPolled: feeds.length,
     itemsParsed,
     itemsRelevant: relevant.length,
+    urlsTouched,
     fundersMatched: matchedNames,
     jobId,
   };
