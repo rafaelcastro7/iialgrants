@@ -74,7 +74,7 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
     await assertAgentEnabled("discoverer");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { runDiscoverer } = await import("@/agents/discoverer.functions");
+    const { discoverFunderImpl } = await import("@/agents/discoverer.impl.server");
 
     const { data: funders, error } = await supabaseAdmin
       .from("funders")
@@ -89,14 +89,19 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
 
     for (const f of funders ?? []) {
       try {
-        const r = await runDiscoverer({ data: { funderId: f.id } });
-        const ins = typeof r === "object" && r && "inserted" in r ? Number(r.inserted) : 0;
-        const sa = typeof r === "object" && r && "seenAgain" in r ? Number(r.seenAgain) : 0;
-        const eng = typeof r === "object" && r && "engine" in r ? String(r.engine) : undefined;
-        totalInserted += ins; totalSeenAgain += sa;
-        perFunder.push({ funder: f.name, inserted: ins, seenAgain: sa, engine: eng });
+        const r = await discoverFunderImpl(f.id);
+        totalInserted += r.inserted; totalSeenAgain += r.seenAgain ?? 0;
+        perFunder.push({ funder: f.name, inserted: r.inserted, seenAgain: r.seenAgain, engine: r.engine });
       } catch (e) {
-        perFunder.push({ funder: f.name, inserted: 0, error: e instanceof Error ? e.message : String(e) });
+        const msg = e instanceof Error ? e.message : String(e);
+        perFunder.push({ funder: f.name, inserted: 0, error: msg });
+        try {
+          await supabaseAdmin.from("agent_runs").insert({
+            run_id: crypto.randomUUID(), agent: "discoverer", status: "failed",
+            model: "google/gemini-2.5-flash", error: msg,
+            metadata: { funder_id: f.id, funder_name: f.name, stage: "orchestrator" },
+          });
+        } catch { /* logging best-effort */ }
       }
     }
 

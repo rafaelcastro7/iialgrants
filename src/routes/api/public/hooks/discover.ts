@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/public/hooks/discover")({
         if (!result.ok) return new Response(result.reason, { status: result.status });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { runDiscoverer } = await import("@/agents/discoverer.functions");
+        const { discoverFunderImpl } = await import("@/agents/discoverer.impl.server");
 
         const { data: funders, error } = await supabaseAdmin
           .from("funders")
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/hooks/discover")({
         const results: Array<{ funder: string; result: unknown; error?: string }> = [];
         for (const f of funders ?? []) {
           try {
-            const r = await runDiscoverer({ data: { funderId: f.id } });
+            const r = await discoverFunderImpl(f.id);
             results.push({ funder: f.name, result: r });
           } catch (e) {
             results.push({ funder: f.name, result: null, error: e instanceof Error ? e.message : String(e) });
