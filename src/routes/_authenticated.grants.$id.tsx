@@ -1,0 +1,195 @@
+// Drill-down page for a single grant — full eligibility, sectors, evaluation
+// rationale, and the audit timeline. Linked from every row in /grants.
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, ExternalLink, Building2, Calendar, DollarSign, Tag, Globe } from "lucide-react";
+import { getGrantDetail } from "@/lib/grant-detail.functions";
+import { runEvaluator } from "@/agents/evaluator.functions";
+import { runStrategist } from "@/agents/strategist.functions";
+import { enrichGrant } from "@/lib/grants.functions";
+import { useIsAdmin } from "@/lib/use-platform";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FitEvaluation } from "@/components/grants/FitEvaluation";
+import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
+import { useState } from "react";
+import "@/i18n";
+
+const detailQuery = (id: string) =>
+  queryOptions({
+    queryKey: ["grant-detail", id],
+    queryFn: () => getGrantDetail({ data: { id } }),
+  });
+
+export const Route = createFileRoute("/_authenticated/grants/$id")({
+  head: ({ params }) => ({
+    meta: [{ title: `Grant ${params.id.slice(0, 8)} — IIAL` }],
+  }),
+  loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
+  component: GrantDetailPage,
+});
+
+function GrantDetailPage() {
+  const { id } = Route.useParams();
+  const { t, i18n } = useTranslation();
+  const fr = i18n.language?.startsWith("fr");
+  const navigate = useNavigate();
+  const isAdmin = useIsAdmin();
+  const qc = useQueryClient();
+  const evaluate = useServerFn(runEvaluator);
+  const enrichOne = useServerFn(enrichGrant);
+  const strategize = useServerFn(runStrategist);
+  const { data } = useSuspenseQuery(detailQuery(id));
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const g = data.grant as unknown as {
+    id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
+    amount_cad_min: number | null; amount_cad_max: number | null; deadline: string | null;
+    sectors: string[] | null; eligibility: Record<string, unknown> | null;
+    language: string; url: string; status: string; fit_score: number | null;
+    discovered_at: string | null; enriched_at: string | null; scored_at: string | null;
+    last_seen_at: string | null; times_seen: number | null;
+    funder: { id: string; name: string; name_fr: string | null; jurisdiction: string | null; source_url: string | null } | null;
+  };
+  const title = (fr && g.title_fr) ? g.title_fr : g.title;
+  const summary = (fr && g.summary_fr) ? g.summary_fr : g.summary;
+  const funderName = g.funder ? (fr && g.funder.name_fr ? g.funder.name_fr : g.funder.name) : "—";
+  const fmt = (n: number | null) =>
+    n == null ? "—" : new Intl.NumberFormat(fr ? "fr-CA" : "en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
+
+  async function run(label: string, fn: () => Promise<unknown>) {
+    setBusy(label); setErr(null);
+    try { await fn(); await qc.invalidateQueries({ queryKey: ["grant-detail", id] }); }
+    catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(null); }
+  }
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="border-b">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/grants"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.grants")}</Link>
+          </Button>
+        </div>
+      </header>
+
+      <section className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold leading-tight">{title}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                <Building2 className="h-3.5 w-3.5 inline mr-1" />
+                {funderName}{g.funder?.jurisdiction ? ` · ${g.funder.jurisdiction}` : ""}
+              </p>
+            </div>
+            <Badge variant={g.status === "shortlisted" ? "default" : "secondary"}>
+              {t(`grants.status.${g.status}`)}
+            </Badge>
+          </div>
+          <FreshnessBadges discoveredAt={g.discovered_at} deadline={g.deadline} fr={fr} />
+        </div>
+
+        {err && <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">{err}</div>}
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5" />{t("grants.amount")}</CardTitle></CardHeader>
+            <CardContent className="text-sm tabular-nums">{fmt(g.amount_cad_min)} – {fmt(g.amount_cad_max)}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{t("grants.deadline")}</CardTitle></CardHeader>
+            <CardContent className="text-sm">{g.deadline ?? "—"}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" />{fr ? "Langue" : "Language"}</CardTitle></CardHeader>
+            <CardContent className="text-sm uppercase">{g.language}</CardContent>
+          </Card>
+        </div>
+
+        {summary && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">{fr ? "Résumé" : "Summary"}</CardTitle></CardHeader>
+            <CardContent className="text-sm leading-relaxed">{summary}</CardContent>
+          </Card>
+        )}
+
+        {g.sectors && g.sectors.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-1.5"><Tag className="h-3.5 w-3.5" />{fr ? "Secteurs" : "Sectors"}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {g.sectors.map((s) => <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>)}
+            </div>
+          </div>
+        )}
+
+        <FitEvaluation
+          status={g.status}
+          discoveredAt={g.discovered_at}
+          enrichedAt={g.enriched_at}
+          scoredAt={g.scored_at}
+          evaluation={data.evaluation as { fit_score: number; eligibility_pass: boolean; rationale_en: string; rationale_fr: string; created_at: string } | null}
+          fr={fr}
+        />
+
+        {g.eligibility && Object.keys(g.eligibility).length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">{fr ? "Admissibilité" : "Eligibility"}</CardTitle></CardHeader>
+            <CardContent>
+              <pre className="text-xs whitespace-pre-wrap font-mono bg-muted/40 p-3 rounded">{JSON.stringify(g.eligibility, null, 2)}</pre>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">{fr ? "Chronologie" : "Timeline"}</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {data.events.length === 0 && <p className="text-xs text-muted-foreground">{fr ? "Aucun événement." : "No events yet."}</p>}
+            {data.events.map((e, i) => (
+              <div key={i} className="flex items-baseline gap-3 text-xs">
+                <span className="text-muted-foreground tabular-nums shrink-0">{new Date(e.created_at).toLocaleString(fr ? "fr-CA" : "en-CA")}</span>
+                <span>{e.from_status ?? "∅"} → <span className="font-medium">{e.to_status}</span></span>
+              </div>
+            ))}
+            {g.last_seen_at && (
+              <p className="text-[11px] text-muted-foreground pt-2 border-t mt-2">
+                {fr ? "Vu" : "Seen"} {g.times_seen ?? 1}× · {fr ? "dernière fois" : "last"} {new Date(g.last_seen_at).toLocaleString(fr ? "fr-CA" : "en-CA")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-4">
+          <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-sm underline inline-flex items-center gap-1">
+            {t("grants.source")} <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+          <div className="flex gap-2 flex-wrap">
+            {isAdmin && g.status === "discovered" && (
+              <Button size="sm" variant="outline" disabled={busy === "enrich"} onClick={() => run("enrich", () => enrichOne({ data: { grantId: id } }))}>
+                {busy === "enrich" ? t("app.loading") : "Enrich"}
+              </Button>
+            )}
+            <Button size="sm" variant="secondary" disabled={busy === "eval"} onClick={() => run("eval", () => evaluate({ data: { grantId: id } }))}>
+              {busy === "eval" ? t("app.loading") : (data.evaluation ? (fr ? "Réévaluer" : "Re-evaluate") : t("grants.evaluate"))}
+            </Button>
+            {(g.status === "scored" || g.status === "shortlisted" || g.status === "in_proposal") && (
+              <Button size="sm" disabled={busy === "draft"} onClick={async () => {
+                setBusy("draft"); setErr(null);
+                try {
+                  const r = await strategize({ data: { grantId: id } });
+                  await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
+                } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+                finally { setBusy(null); }
+              }}>{busy === "draft" ? t("app.loading") : t("grants.draftProposal")}</Button>
+            )}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
