@@ -2,12 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-type Ctx = { supabase: { rpc: (fn: "has_role", args: { _user_id: string; _role: "admin" | "member" }) => Promise<{ data: boolean | null; error: unknown }> }; userId: string };
-async function ensureAdmin(context: Ctx): Promise<void> {
-  const { data, error } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-  if (error || !data) throw new Error("Forbidden");
-}
+import { assertAdmin } from "@/lib/admin-guard";
 
 export const listDiscoverySources = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
