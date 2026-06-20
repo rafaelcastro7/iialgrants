@@ -4,9 +4,10 @@ import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { listGrants } from "@/lib/grants.functions";
+import { listGrants, discoverAllFunders, enrichGrant } from "@/lib/grants.functions";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
+import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,13 +37,17 @@ function GrantsPage() {
   const { t, i18n } = useTranslation();
   const fr = i18n.language?.startsWith("fr");
   const navigate = useNavigate();
+  const isAdmin = useIsAdmin();
   const fetchGrants = useServerFn(listGrants);
   const evaluate = useServerFn(runEvaluator);
   const strategize = useServerFn(runStrategist);
+  const discoverAll = useServerFn(discoverAllFunders);
+  const enrichOne = useServerFn(enrichGrant);
 
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
   const [evalError, setEvalError] = useState<string | null>(null);
+  const [discoveryMsg, setDiscoveryMsg] = useState<string | null>(null);
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
     queryFn: () => fetchGrants({ data: { limit: 50 } }),
@@ -73,6 +78,25 @@ function GrantsPage() {
       setEvalError(e instanceof Error ? e.message : String(e));
     } finally { setPending(null); }
   }
+  async function onDiscoverAll() {
+    setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
+    try {
+      const r = await discoverAll({});
+      setDiscoveryMsg(`Discovered ${r.totalInserted} new grant(s); enriched ${r.enriched}.`);
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally { setPending(null); }
+  }
+  async function onEnrich(grantId: string) {
+    setPending(grantId + ":enrich"); setEvalError(null);
+    try {
+      await enrichOne({ data: { grantId } });
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally { setPending(null); }
+  }
 
 
   const fmt = (n: number | null) =>
@@ -98,7 +122,16 @@ function GrantsPage() {
       </header>
 
       <section className="max-w-6xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">{t("nav.grants")}</h1>
+        <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold">{t("nav.grants")}</h1>
+          {isAdmin && (
+            <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"}>
+              {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
+            </Button>
+          )}
+        </div>
+        {discoveryMsg && <p className="text-sm text-muted-foreground mb-3">{discoveryMsg}</p>}
+        {evalError && <p className="text-sm text-destructive mb-3">{evalError}</p>}
         {data.grants.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
@@ -136,7 +169,12 @@ function GrantsPage() {
                       <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
                         {t("grants.source")} →
                       </a>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        {isAdmin && g.status === "discovered" && (
+                          <Button size="sm" variant="outline" disabled={pending === g.id + ":enrich"} onClick={() => onEnrich(g.id)}>
+                            {pending === g.id + ":enrich" ? t("app.loading") : "Enrich"}
+                          </Button>
+                        )}
                         <Button size="sm" variant="secondary" disabled={pending === g.id} onClick={() => onEvaluate(g.id)}>
                           {pending === g.id ? t("app.loading") : t("grants.evaluate")}
                         </Button>
