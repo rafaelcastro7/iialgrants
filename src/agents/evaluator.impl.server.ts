@@ -16,9 +16,15 @@ export async function evaluateGrantImpl(opts: {
   const { callLlm } = await import("@/agents/llm.server");
   const { newRunId } = await import("@/lib/otel");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { traceStep } = await import("@/agents/trace.server");
 
   const runId = newRunId();
   const t0 = Date.now();
+  const trace = (step: string, message: string, status: "info" | "ok" | "warn" | "error" | "start" | "done" = "info", payload?: Record<string, unknown>) =>
+    traceStep({ runId, grantId, agent: "evaluator", step, status, message, payload });
+
+  await trace("init", `Starting fit evaluation for grant ${grantId.slice(0, 8)}`, "start");
+  await trace("load", "Loading grant + organization profile", "info");
 
   const [{ data: g, error: gerr }, { data: org, error: oerr }] = await Promise.all([
     userSupabase
@@ -33,16 +39,18 @@ export async function evaluateGrantImpl(opts: {
       .maybeSingle(),
   ]);
   if (gerr) throw new Error(gerr.message);
-  if (!g) throw new Error("grant_not_found");
+  if (!g) { await trace("load", "Grant not found", "error"); throw new Error("grant_not_found"); }
   if (oerr) throw new Error(oerr.message);
-  if (!org) throw new Error("org_profile_missing");
+  if (!org) { await trace("load", "Organization profile missing — fill /org first", "error"); throw new Error("org_profile_missing"); }
+  await trace("load", `Loaded grant "${g.title?.slice(0, 60)}" + org "${(org as { org_name?: string }).org_name ?? "(unnamed)"}"`, "ok");
 
-  // Gate: never evaluate a grant that hasn't been enriched — its fields may
-  // be incomplete/missing and the LLM would synthesize a misleading verdict.
   if (g.status === "discovered") {
+    await trace("gate", `Refusing to evaluate — grant is still in "discovered" state (no enriched data)`, "error");
     throw new Error("grant_not_enriched_yet");
   }
 
+  await trace("llm_call", "Calling Gemini 2.5 Flash for fit verdict", "start");
+  const tLlm = Date.now();
   const llm = await callLlm({
     model: "google/gemini-2.5-flash",
     agent: "evaluator",
@@ -52,10 +60,12 @@ export async function evaluateGrantImpl(opts: {
       { role: "user", content: JSON.stringify({ grant: g, organization: org }) },
     ],
   });
+  await trace("llm_call", `Verdict received (${llm.outputTokens ?? "?"} tokens, ${Date.now() - tLlm}ms)`, "done", { in: llm.inputTokens, out: llm.outputTokens });
 
   let parsed: ReturnType<typeof EvaluatorOutput.parse>;
   try { parsed = EvaluatorOutput.parse(JSON.parse(llm.text)); }
   catch (e) {
+    await trace("parse", `Schema validation failed: ${e instanceof Error ? e.message : String(e)}`, "error");
     await supabaseAdmin.from("agent_runs").insert({
       run_id: runId, agent: "evaluator", status: "failed",
       model: "google/gemini-2.5-flash",
@@ -65,6 +75,8 @@ export async function evaluateGrantImpl(opts: {
     });
     throw new Error("evaluator_schema_validation");
   }
+  await trace("parse", `Verdict: fit=${parsed.fit_score}/100 · eligible=${parsed.eligibility_pass}`, "ok", { fit_score: parsed.fit_score, eligibility_pass: parsed.eligibility_pass });
+  await trace("rationale", parsed.rationale_en.slice(0, 600), "info");
 
   await userSupabase.from("grant_evaluations").upsert({
     user_id: userId, grant_id: g.id,
@@ -75,8 +87,6 @@ export async function evaluateGrantImpl(opts: {
     prompt_version: PROMPTS.evaluator.version, run_id: runId,
   }, { onConflict: "user_id,grant_id" });
 
-  // Record evidence for the verdict — the rationale itself + the grant fields
-  // it synthesizes from. Source is the grant's canonical URL.
   try {
     const { recordEvidence } = await import("@/agents/evidence.server");
     const grantUrl = (g as { url?: string }).url ?? "";
@@ -94,21 +104,24 @@ export async function evaluateGrantImpl(opts: {
     });
   } catch { /* evidence is non-blocking */ }
 
-  // Eligibility-first gating: if we don't qualify, archive immediately and
-  // stop spending tokens on enrichment/scoring downstream.
   if (!parsed.eligibility_pass) {
+    await trace("gate", "Not eligible → archiving grant to stop downstream spend", "warn");
     if (g.status === "discovered" || g.status === "enriched" || g.status === "scored") {
       await supabaseAdmin.from("grants").update({
         status: "archived", fit_score: parsed.fit_score,
       } as never).eq("id", g.id);
     }
   } else if (g.status === "discovered" || g.status === "enriched") {
+    await trace("commit", `Eligible → status = scored, fit = ${parsed.fit_score}`, "ok");
     await supabaseAdmin.from("grants").update({
       status: "scored", scored_at: new Date().toISOString(), fit_score: parsed.fit_score,
     } as never).eq("id", g.id);
   } else {
+    await trace("commit", `Updated fit_score = ${parsed.fit_score}`, "ok");
     await supabaseAdmin.from("grants").update({ fit_score: parsed.fit_score } as never).eq("id", g.id);
   }
+
+  await trace("done", `Evaluation complete in ${Date.now() - t0}ms`, "done", { total_ms: Date.now() - t0 });
 
   await supabaseAdmin.from("agent_runs").insert({
     run_id: runId, agent: "evaluator", status: "succeeded",
