@@ -124,10 +124,12 @@ function GrantsPage() {
   async function onDiscoverAll() {
     setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
     try {
-      const r = await discoverAll({});
+      const funderIds = selectedFunders.size > 0 ? [...selectedFunders] : undefined;
+      const r = await discoverAll({ data: { funderIds } });
       if (r?.jobId) {
         setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
-        setDiscoveryMsg(`Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s). Live progress below.`);
+        const scope = funderIds ? ` (${funderIds.length} selected)` : "";
+        setDiscoveryMsg(`Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s)${scope}. Live progress below.`);
       } else {
         setDiscoveryMsg("Discovery enqueued (no jobId returned).");
       }
