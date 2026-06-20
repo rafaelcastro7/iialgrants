@@ -39,7 +39,7 @@ export const Route = createFileRoute("/_authenticated/grants/$id")({
 function GrantDetailPage() {
   const { id } = Route.useParams();
   const { t, i18n } = useTranslation();
-  const fr = i18n.language?.startsWith("fr");
+  const fr = false /* EN-only */;
   const navigate = useNavigate();
   const isAdmin = useIsAdmin();
   const qc = useQueryClient();

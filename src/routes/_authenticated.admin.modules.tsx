@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/admin/modules")({
 
 function ModulesPage() {
   const { i18n } = useTranslation();
-  const fr = i18n.language?.startsWith("fr");
+  const fr = false /* EN-only */;
   const qc = useQueryClient();
   const fetchMods = useServerFn(listModuleFlags);
   const toggle = useServerFn(toggleModuleFlag);

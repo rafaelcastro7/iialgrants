@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/proposals/$id")({
 function ProposalDetailPage() {
   const { id } = Route.useParams();
   const { t, i18n } = useTranslation();
-  const fr = i18n.language?.startsWith("fr");
+  const fr = false /* EN-only */;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchProposal = useServerFn(getProposal);

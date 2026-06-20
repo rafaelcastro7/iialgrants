@@ -40,7 +40,7 @@ export const Route = createFileRoute("/_authenticated/grants")({
 
 function GrantsPage() {
   const { t, i18n } = useTranslation();
-  const fr = i18n.language?.startsWith("fr");
+  const fr = false /* EN-only */;
   const navigate = useNavigate();
   const isAdmin = useIsAdmin();
   const fetchGrants = useServerFn(listGrants);

@@ -39,7 +39,7 @@ export function EvidencePanel({
   onOpenChange: (o: boolean) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const fr = i18n.language?.startsWith("fr");
+  const fr = false /* EN-only */;
   const fetchEvidence = useServerFn(getGrantEvidence);
   const { data, isLoading, error } = useQuery({
     queryKey: ["evidence", grantId, field],
