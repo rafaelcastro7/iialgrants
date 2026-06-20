@@ -171,7 +171,7 @@ export async function discoverFunderImpl(
 
       // Try Firecrawl-extracted JSON first (cheaper + more reliable).
       let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
-      let via: "firecrawl_json" | "llm" = "firecrawl_json";
+      let via: string = scrape.via;
 
       if (scrape.json && typeof scrape.json === "object") {
         try {
@@ -192,7 +192,8 @@ export async function discoverFunderImpl(
         } catch { /* fall through to LLM */ }
       }
 
-      // Fallback to in-process LLM if Firecrawl JSON returned nothing usable.
+      // Fallback to in-process LLM if no structured JSON was returned (e.g.
+      // Jina Reader / raw HTML paths, or Firecrawl JSON empty).
       if (pageGrants.length === 0) {
         const md = scrape.markdown.slice(0, MAX_MARKDOWN_LEN);
         if (md.length < 200) {
@@ -225,7 +226,7 @@ export async function discoverFunderImpl(
         try {
           const parsed = MultiPageOutput.parse(JSON.parse(llm.text));
           pageGrants = parsed.grants;
-          via = "llm";
+          via = `${scrape.via}+llm`;
         } catch {
           skipped++;
           perPageStats.push({ url, found: 0, via: "skipped", reason: "schema_validation" });
