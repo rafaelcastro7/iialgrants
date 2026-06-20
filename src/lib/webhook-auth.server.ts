@@ -24,13 +24,19 @@ export async function verifyWebhookRequest(
 ): Promise<{ result: WebhookAuthResult; rawBody: string }> {
   const rawBody = await request.text();
 
-  const secret = process.env.WEBHOOK_HMAC_SECRET;
-  if (!secret) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: cfg, error: cfgErr } = await supabaseAdmin
+    .from("webhook_config")
+    .select("value")
+    .eq("key", "hmac_secret")
+    .maybeSingle();
+  if (cfgErr || !cfg?.value) {
     return {
       result: { ok: false, status: 500, reason: "webhook_secret_not_configured" },
       rawBody,
     };
   }
+  const secret = cfg.value;
 
   const ts = request.headers.get("x-iial-timestamp");
   const nonce = request.headers.get("x-iial-nonce");
@@ -67,7 +73,8 @@ export async function verifyWebhookRequest(
 
   // Replay protection: nonce must not have been seen before. Insert with
   // PK conflict → 401. Old rows are GC'd by the seen_at predicate below.
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+
 
   // Best-effort GC: delete nonces older than 2× tolerance window.
   const cutoff = new Date(Date.now() - 2 * TOLERANCE_SEC * 1000).toISOString();
