@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { listGrants, discoverAllFunders, enrichGrant, autoEvaluatePending } from "@/lib/grants.functions";
+import { DiscoveryProgress } from "@/components/grants/DiscoveryProgress";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
 import { useIsAdmin } from "@/lib/use-platform";
@@ -53,6 +54,7 @@ function GrantsPage() {
   const [evaluatingIds, setEvaluatingIds] = useState<Set<string>>(new Set());
   const [evalError, setEvalError] = useState<string | null>(null);
   const [discoveryMsg, setDiscoveryMsg] = useState<string | null>(null);
+  const [activeJob, setActiveJob] = useState<{ jobId: string; queued: number } | null>(null);
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
   const [jurisdiction, setJurisdiction] = useState<string>("all");
   const [eligibleOnly, setEligibleOnly] = useState(false);
@@ -121,18 +123,12 @@ function GrantsPage() {
     setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
     try {
       const r = await discoverAll({});
-      if (!r || typeof r !== "object") {
-        setDiscoveryMsg("Discovery returned no payload (check Event log for per-funder status).");
+      if (r?.jobId) {
+        setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
+        setDiscoveryMsg(`Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s). Live progress below.`);
       } else {
-        const perFunder = Array.isArray(r.perFunder) ? r.perFunder : [];
-        const lines = [
-          `Discovered ${r.totalInserted ?? 0} new grant(s), ${r.totalSeenAgain ?? 0} already known, ${r.evaluated ?? 0} auto-evaluated.`,
-          ...perFunder.map((p) => `  · ${p.funder}: +${p.inserted ?? 0}${p.seenAgain ? ` (${p.seenAgain} repeat)` : ""}${p.engine ? ` [${p.engine}]` : ""}${p.error ? ` — error: ${p.error}` : ""}`),
-        ];
-        setDiscoveryMsg(lines.join("\n"));
+        setDiscoveryMsg("Discovery enqueued (no jobId returned).");
       }
-
-      await qc.invalidateQueries({ queryKey: ["grants"] });
       autoRan.current = false;
     } catch (e) {
       setEvalError(e instanceof Error ? e.message : String(e));
@@ -180,7 +176,15 @@ function GrantsPage() {
             </Button>
           )}
         </div>
-        {discoveryMsg && (
+        {activeJob && (
+          <DiscoveryProgress
+            jobId={activeJob.jobId}
+            queued={activeJob.queued}
+            fr={fr}
+            onClose={() => { setActiveJob(null); qc.invalidateQueries({ queryKey: ["grants"] }); }}
+          />
+        )}
+        {discoveryMsg && !activeJob && (
           <div className="mb-3 rounded-md border bg-muted/30 px-3 py-2">
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">{discoveryMsg}</pre>
           </div>
