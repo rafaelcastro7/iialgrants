@@ -40,9 +40,14 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     const { extractEligibility } = await import("@/agents/extractors/eligibility.server");
     const { extractSectors } = await import("@/agents/extractors/sectors.server");
     const { recordEvidence, snippetIsGrounded } = await import("@/agents/evidence.server");
+    const { traceStep } = await import("@/agents/trace.server");
 
     const runId = newRunId();
     const t0 = Date.now();
+    const trace = (step: string, message: string, status: "info" | "ok" | "warn" | "error" | "start" | "done" = "info", payload?: Record<string, unknown>) =>
+      traceStep({ runId, grantId: data.grantId, agent: "enricher", step, status, message, payload });
+
+    await trace("init", `Starting enrichment for grant ${data.grantId.slice(0, 8)}`, "start");
 
     const { data: g, error } = await supabaseAdmin
       .from("grants")
@@ -52,9 +57,11 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     if (error) throw new Error(error.message);
     if (!g) throw new Error("grant_not_found");
     if (g.status !== "discovered") {
+      await trace("skip", `Skipped — status is "${g.status}", not "discovered"`, "warn");
       return { ok: true, skipped: true, reason: `status=${g.status}`, runId };
     }
     if (((g as { enrich_attempts?: number }).enrich_attempts ?? 0) >= 3) {
+      await trace("skip", "Skipped — max 3 enrich attempts reached", "warn");
       return { ok: true, skipped: true, reason: "max_attempts_reached", runId };
     }
 
