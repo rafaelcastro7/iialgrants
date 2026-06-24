@@ -7,6 +7,7 @@ import {
   listDiscoverySources, setSourceEnabled, runDiscoveryTier,
   promoteStaleCandidates, recentSourceRuns,
 } from "@/lib/admin-sources.functions";
+import { funderActivityRollup, type FunderActivityRow } from "@/lib/admin-sources-audit.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -72,6 +73,7 @@ function SourcesPage() {
   const runFn = useServerFn(runDiscoveryTier);
   const promoteFn = useServerFn(promoteStaleCandidates);
   const runsFn = useServerFn(recentSourceRuns);
+  const funderFn = useServerFn(funderActivityRollup);
   const [busy, setBusy] = useState<string | null>(null);
 
   const q = useQuery({
@@ -81,6 +83,11 @@ function SourcesPage() {
   const qRuns = useQuery({
     queryKey: ["admin-source-runs"],
     queryFn: () => runsFn(),
+  });
+  const qFunders = useQuery({
+    queryKey: ["admin-funder-activity"],
+    queryFn: () => funderFn(),
+    refetchInterval: 30_000,
   });
 
   const sources: SourceRow[] = q.data?.sources ?? [];
@@ -212,6 +219,71 @@ function SourcesPage() {
           </Card>
         );
       })}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Per-funder activity (live)</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Verifies every funder is actually being scanned AND that screening rules
+            produce evidence. Counts auto-refresh every 30 s.
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Funder</TableHead>
+                <TableHead className="text-right">Grants</TableHead>
+                <TableHead className="text-right">Enriched</TableHead>
+                <TableHead className="text-right">Scored</TableHead>
+                <TableHead className="text-right">Shortlisted</TableHead>
+                <TableHead className="text-right">Evidences</TableHead>
+                <TableHead>Last discovery</TableHead>
+                <TableHead>Last evidence</TableHead>
+                <TableHead>Recent grants</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(qFunders.data ?? []).map((f: FunderActivityRow) => {
+                const stale = !f.last_discovered_at;
+                return (
+                  <TableRow key={f.funder_id} className={stale ? "opacity-60" : ""}>
+                    <TableCell>
+                      <div className="font-medium">{f.funder_name}</div>
+                      {f.source_url && (
+                        <a href={f.source_url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:underline truncate block max-w-xs">
+                          {f.source_url}
+                        </a>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{f.grants_total}</TableCell>
+                    <TableCell className="text-right tabular-nums">{f.grants_enriched}</TableCell>
+                    <TableCell className="text-right tabular-nums">{f.grants_scored}</TableCell>
+                    <TableCell className="text-right tabular-nums">{f.grants_shortlisted}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <Badge variant={f.evidences_total > 0 ? "default" : "secondary"}>{f.evidences_total}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">{f.last_discovered_at ? new Date(f.last_discovered_at).toLocaleString() : "never"}</TableCell>
+                    <TableCell className="text-xs">{f.last_evidence_at ? new Date(f.last_evidence_at).toLocaleString() : "—"}</TableCell>
+                    <TableCell className="text-xs space-y-0.5 max-w-xs">
+                      {f.recent_grants.map((g) => (
+                        <Link key={g.id} to="/grants/$id/audit" params={{ id: g.id }} className="block truncate hover:underline">
+                          · {g.title}
+                        </Link>
+                      ))}
+                      {f.recent_grants.length === 0 && <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {(qFunders.data ?? []).length === 0 && (
+                <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-4">No funders registered.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base">Recent runs</CardTitle></CardHeader>
