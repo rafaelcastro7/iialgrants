@@ -175,15 +175,17 @@ function GrantsPage() {
       <section className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <h1 className="text-2xl font-bold">{t("nav.grants")}</h1>
-          {isAdmin && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <NotebookLMBridge fr={fr} />
-              <FunderSelector fr={fr} selected={selectedFunders} onChange={setSelectedFunders} />
-              <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"}>
-                {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <NotebookLMBridge />
+            {isAdmin && (
+              <>
+                <FunderSelector fr={fr} selected={selectedFunders} onChange={setSelectedFunders} />
+                <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"}>
+                  {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         {activeJob && (
           <DiscoveryProgress
