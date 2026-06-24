@@ -228,10 +228,25 @@ function GrantsPage() {
         />
 
         {data.grants.length === 0 && (
-          <div className="mt-6 rounded-lg border bg-card py-10 text-center text-muted-foreground">
-            {t("grants.empty")}
+          <div className="mt-6 rounded-lg border bg-card p-10 text-center">
+            <h2 className="text-2xl mb-2 text-[#0f1b3d]" style={{ fontFamily: "'Instrument Serif', serif" }}>
+              No grants yet
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-4">
+              Click <b>Discover & Enrich</b> above to scan the Canadian funder catalog
+              (Mitacs, NRC IRAP, SSHRC, NSERC, CIHR, Canada Council, OTF, provincial portals…).
+              The agent fetches each source, extracts opportunities, and applies your Screening Rules automatically.
+            </p>
+            {isAdmin ? (
+              <Button onClick={onDiscoverAll} disabled={pending === "__discover__"} className="bg-[#0f1b3d] hover:bg-[#1e3a5f]">
+                {pending === "__discover__" ? "Starting…" : "Run discovery now"}
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">Ask an admin to run discovery.</p>
+            )}
           </div>
         )}
+
 
         {isAdmin && <div className="mt-8"><EventLog fr={false} /></div>}
       </section>
