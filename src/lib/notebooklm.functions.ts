@@ -95,7 +95,7 @@ export const buildNotebookBriefing = createServerFn({ method: "POST" })
     // ── Per-user evaluation rationale (RLS-scoped, safe).
     const { data: evals } = await supabase
       .from("grant_evaluations")
-      .select("grant_id, fit_score, eligibility_pass, rationale_en, criteria_json")
+      .select("grant_id, fit_score, eligibility_pass, rationale_en")
       .eq("user_id", userId)
       .in("grant_id", ids);
     const evalByGrant = new Map(
@@ -105,7 +105,6 @@ export const buildNotebookBriefing = createServerFn({ method: "POST" })
           fit_score: Number(e.fit_score),
           eligibility_pass: !!e.eligibility_pass,
           rationale: (e.rationale_en ?? "").trim(),
-          criteria: (e.criteria_json ?? null) as unknown,
         },
       ]),
     );
