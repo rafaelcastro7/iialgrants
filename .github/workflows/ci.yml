@@ -30,6 +30,10 @@ jobs:
         # Hard fail on regression: any change in seeded grant count or any
         # rule-engine error breaks the build immediately.
         run: bunx vitest run src/agents/discover-enrich.gate.test.ts 2>&1 | tee reports/gate.log
+      - name: No-Token discovery gate (Lovable Gateway must NOT be called)
+        # Proves the user contract: with only free-tier keys configured,
+        # grant discovery runs end-to-end without consuming any Lovable credits.
+        run: bunx vitest run src/agents/discover-no-token.e2e.test.ts src/agents/llm-cascade.e2e.test.ts 2>&1 | tee reports/no-token.log
       # Upload test logs + coverage on failure so a red build is debuggable
       # without re-running CI locally. `if: failure()` keeps green builds lean.
       - name: Upload test logs (on failure)
