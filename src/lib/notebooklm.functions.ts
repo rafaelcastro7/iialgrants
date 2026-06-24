@@ -18,7 +18,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ScopeEnum = z.enum(["selected", "top-fit", "shortlisted", "all-enriched"]);
 
-const ELIGIBLE_STATUSES = ["enriched", "scored", "shortlisted", "in_proposal"] as const;
+type GrantStatus =
+  | "discovered" | "enriched" | "scored" | "shortlisted"
+  | "in_proposal" | "submitted" | "won" | "lost" | "expired" | "archived";
+const ELIGIBLE_STATUSES: GrantStatus[] = ["enriched", "scored", "shortlisted", "in_proposal"];
 
 export const buildNotebookBriefing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
