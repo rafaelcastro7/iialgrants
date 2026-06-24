@@ -26,6 +26,10 @@ jobs:
         # Explicit re-run keeps the pipeline regression signal isolated from
         # the broader suite; both runs feed the same artifact bundle.
         run: bunx vitest run src/agents/discoverer.e2e.test.ts src/agents/pipeline.e2e.test.ts 2>&1 | tee reports/e2e.log
+      - name: Discover & Enrich CI gate (snapshot grant count + rules)
+        # Hard fail on regression: any change in seeded grant count or any
+        # rule-engine error breaks the build immediately.
+        run: bunx vitest run src/agents/discover-enrich.gate.test.ts 2>&1 | tee reports/gate.log
       # Upload test logs + coverage on failure so a red build is debuggable
       # without re-running CI locally. `if: failure()` keeps green builds lean.
       - name: Upload test logs (on failure)
