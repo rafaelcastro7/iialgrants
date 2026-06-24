@@ -27,9 +27,9 @@ import {
 import { cn } from "@/lib/utils";
 import { buildNotebookBriefing } from "@/lib/notebooklm.functions";
 
-type Scope = "top-fit" | "shortlisted" | "all-enriched";
+type Scope = "single" | "top-fit" | "shortlisted" | "all-enriched";
 
-const SCOPES: { id: Scope; title: string; subtitle: string }[] = [
+const MULTI_SCOPES: { id: Exclude<Scope, "single">; title: string; subtitle: string }[] = [
   { id: "top-fit", title: "Top 25 by fit", subtitle: "Highest-scoring grants the Evaluator has ranked. Best default." },
   { id: "shortlisted", title: "My shortlist", subtitle: "Only grants already moved to Shortlisted. Curated set." },
   { id: "all-enriched", title: "Everything enriched", subtitle: "All grants with verified evidence. Broadest scan." },
@@ -42,13 +42,22 @@ type Result = {
   shortlistedCount: number; markdown: string; ids: string[];
 } | { ok: false; reason: string; message: string };
 
-export function NotebookLMBridge() {
+export function NotebookLMBridge({
+  grantId,
+  label,
+  variant = "outline",
+}: {
+  grantId?: string;
+  label?: string;
+  variant?: "outline" | "default" | "secondary" | "ghost";
+} = {}) {
   const build = useServerFn(buildNotebookBriefing);
   const qc = useQueryClient();
 
+  const isSingle = !!grantId;
   const [open, setOpen] = useState(false);
-  const [scope, setScope] = useState<Scope>("top-fit");
-  const [autoShortlist, setAutoShortlist] = useState(true);
+  const [scope, setScope] = useState<Scope>(isSingle ? "single" : "top-fit");
+  const [autoShortlist, setAutoShortlist] = useState(!isSingle);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
@@ -61,7 +70,11 @@ export function NotebookLMBridge() {
   async function onGenerate() {
     setBusy(true); reset();
     try {
-      const r = await build({ data: { scope, autoShortlist, maxItems: 25 } });
+      const r = await build({
+        data: isSingle
+          ? { scope: "single", ids: [grantId!], autoShortlist: false, maxItems: 1 }
+          : { scope: scope as Exclude<Scope, "single">, autoShortlist, maxItems: 25 },
+      });
       setResult(r as Result);
       if (r.ok && r.shortlistedCount > 0) {
         qc.invalidateQueries({ queryKey: ["grants"] });
