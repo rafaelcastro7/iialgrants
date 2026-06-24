@@ -19,8 +19,9 @@ type Row = Record<string, unknown>;
 const db: Record<string, Row[]> = { funders: [], grants: [], agent_runs: [] };
 
 function makeQuery(table: string) {
-  const state: { filters: Array<[string, unknown]>; updates?: Row } = { filters: [] };
-  const api: Record<string, (...a: unknown[]) => unknown> = {};
+  const state: { filters: Array<[string, unknown]> } = { filters: [] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const api: any = {};
   api.select = () => api;
   api.eq = (col: string, val: unknown) => { state.filters.push([col, val]); return api; };
   const rowsMatching = () =>
@@ -31,17 +32,13 @@ function makeQuery(table: string) {
     for (const r of rows) db[table].push({ id: r.id ?? `id_${db[table].length + 1}`, ...r });
     return { error: null };
   };
-  api.update = (patch: Row) => {
-    state.updates = patch;
-    const chain = {
-      eq: (col: string, val: unknown) => {
-        state.filters.push([col, val]);
-        for (const r of rowsMatching()) Object.assign(r, patch);
-        return Promise.resolve({ error: null });
-      },
-    };
-    return chain;
-  };
+  api.update = (patch: Row) => ({
+    eq: (col: string, val: unknown) => {
+      state.filters.push([col, val]);
+      for (const r of rowsMatching()) Object.assign(r, patch);
+      return Promise.resolve({ error: null });
+    },
+  });
   return api;
 }
 const supabaseAdmin = { from: (t: string) => makeQuery(t) };
