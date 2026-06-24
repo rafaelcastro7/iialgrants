@@ -122,6 +122,13 @@ export async function evaluateGrantImpl(opts: {
   try {
     const { recordEvidence } = await import("@/agents/evidence.server");
     const grantUrl = (g as { url?: string }).url ?? "";
+    // Idempotency: re-running the evaluator must NOT accumulate duplicate
+    // evidence rows. Drop prior evaluator spans for this grant+field pair
+    // before recording the fresh verdict.
+    await supabaseAdmin.from("evidence_spans").delete()
+      .eq("grant_id", g.id)
+      .eq("agent", "evaluator")
+      .in("field", ["fit_score", "eligibility_pass"]);
     await recordEvidence({
       grantId: g.id, agent: "evaluator", field: "fit_score",
       value: parsed.fit_score, sourceUrl: grantUrl,
