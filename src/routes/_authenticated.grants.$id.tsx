@@ -202,6 +202,9 @@ function GrantDetailPage() {
             {t("grants.source")} <ExternalLink className="h-3.5 w-3.5" />
           </a>
           <div className="flex gap-2 flex-wrap">
+            {g.status !== "discovered" && (
+              <NotebookLMBridge grantId={id} label="Send to NotebookLM" />
+            )}
             {isAdmin && g.status === "discovered" && (
               <Button size="sm" variant="outline" disabled={busy === "enrich"} onClick={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}>
                 {busy === "enrich" ? t("app.loading") : "Enrich"}
