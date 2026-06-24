@@ -40,7 +40,15 @@ export const buildNotebookBriefing = createServerFn({ method: "POST" })
     }).parse(i ?? {}),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    return buildNotebookBriefingImpl({ data, supabase: context.supabase, userId: context.userId });
+  });
+
+// Server-only impl. Exposed for E2E tests so the briefing can be exercised
+// end-to-end without the auth middleware. Public callers go through the
+// serverFn above; tests pass a mocked supabase client + userId.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" | "selected" | "top-fit" | "shortlisted" | "all-enriched"; ids?: string[]; maxItems: number; autoShortlist: boolean }; supabase: any; userId: string }) {
+  const { data, supabase, userId } = opts;
 
     type Row = {
       id: string;
@@ -367,4 +375,4 @@ export const buildNotebookBriefing = createServerFn({ method: "POST" })
       markdown,
       ids,
     };
-  });
+}
