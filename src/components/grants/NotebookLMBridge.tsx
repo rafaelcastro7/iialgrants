@@ -115,9 +115,9 @@ export function NotebookLMBridge({
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-2">
+        <Button size="sm" variant={variant} className="gap-2">
           <BookOpenText className="h-4 w-4" />
-          NotebookLM
+          {label ?? "NotebookLM"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-xl">
