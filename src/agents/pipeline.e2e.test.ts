@@ -318,4 +318,48 @@ describe("enrich → evaluate → shortlist → NotebookLM", () => {
     // Every evidence span surfaced in the briefing has a verifiable URL.
     expect(out.markdown).toContain("https://innovation.ca/programs/innovation-boost");
   });
+
+  it("deep-dive bridge records a SAFE error state when the data layer throws (grant record not corrupted)", async () => {
+    await enrichGrantImpl(GRANT_ID);
+    await evaluateGrantImpl({ grantId: GRANT_ID, userId: USER_ID, userSupabase: supabaseMock as never });
+
+    // Snapshot every piece of state that must not change on failure.
+    const grantBefore = JSON.parse(JSON.stringify(db.tables.grants[0]));
+    const evidenceBefore = db.tables.evidence_spans.length;
+    const eventsBefore = db.tables.grant_events.length;
+    const evalsBefore = db.tables.grant_evaluations.length;
+
+    // Simulate the data layer throwing mid-briefing (NotebookLM-bound query fails).
+    const fromSpy = vi.spyOn(supabaseMock, "from").mockImplementationOnce(() => {
+      throw new Error("simulated NotebookLM data layer failure");
+    });
+
+    const out = await buildNotebookBriefingImpl({
+      data: { scope: "single", ids: [GRANT_ID], maxItems: 1, autoShortlist: true },
+      supabase: supabaseMock, userId: USER_ID,
+    });
+
+    fromSpy.mockRestore();
+
+    // 1. Bridge returned a structured, safe error envelope (no throw bubbled up).
+    expect(out.ok).toBe(false);
+    if (out.ok) throw new Error("unreachable");
+    expect(out.reason).toBe("briefing_error");
+    expect(out.scope).toBe("single");
+    expect(out.message).toContain("simulated NotebookLM");
+
+    // 2. Grant record is BYTE-FOR-BYTE unchanged (no corruption, no status flip).
+    expect(db.tables.grants[0]).toEqual(grantBefore);
+    // 3. No side-effects: no new evidence, no new events, no new evaluations.
+    expect(db.tables.evidence_spans.length).toBe(evidenceBefore);
+    expect(db.tables.grant_events.length).toBe(eventsBefore);
+    expect(db.tables.grant_evaluations.length).toBe(evalsBefore);
+
+    // 4. The bridge stays usable after the failure — a retry succeeds.
+    const retry = await buildNotebookBriefingImpl({
+      data: { scope: "single", ids: [GRANT_ID], maxItems: 1, autoShortlist: true },
+      supabase: supabaseMock, userId: USER_ID,
+    });
+    expect(retry.ok).toBe(true);
+  });
 });
