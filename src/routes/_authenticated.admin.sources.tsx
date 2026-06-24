@@ -7,6 +7,7 @@ import {
   listDiscoverySources, setSourceEnabled, runDiscoveryTier,
   promoteStaleCandidates, recentSourceRuns,
 } from "@/lib/admin-sources.functions";
+import { funderActivityRollup, type FunderActivityRow } from "@/lib/admin-sources-audit.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -72,6 +73,7 @@ function SourcesPage() {
   const runFn = useServerFn(runDiscoveryTier);
   const promoteFn = useServerFn(promoteStaleCandidates);
   const runsFn = useServerFn(recentSourceRuns);
+  const funderFn = useServerFn(funderActivityRollup);
   const [busy, setBusy] = useState<string | null>(null);
 
   const q = useQuery({
@@ -81,6 +83,11 @@ function SourcesPage() {
   const qRuns = useQuery({
     queryKey: ["admin-source-runs"],
     queryFn: () => runsFn(),
+  });
+  const qFunders = useQuery({
+    queryKey: ["admin-funder-activity"],
+    queryFn: () => funderFn(),
+    refetchInterval: 30_000,
   });
 
   const sources: SourceRow[] = q.data?.sources ?? [];
