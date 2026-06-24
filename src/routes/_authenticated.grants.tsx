@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
@@ -11,36 +11,32 @@ import { runStrategist } from "@/agents/strategist.functions";
 import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
-import { GrantRow, sortByFit, type GrantRowData } from "@/components/grants/GrantRow";
-import { syncClientLocale } from "@/i18n/sync";
+import { GrantKanban } from "@/components/grants/GrantKanban";
+import type { GrantRowData } from "@/components/grants/GrantRow";
 import "@/i18n";
 
 const grantsQueryOptions = queryOptions({
   queryKey: ["grants", "all"],
-  queryFn: () => listGrants({ data: { limit: 50 } }),
+  queryFn: () => listGrants({ data: { limit: 100 } }),
 });
 
 export const Route = createFileRoute("/_authenticated/grants")({
   head: () => ({
     meta: [
       { title: "Grants — IIAL" },
-      { name: "description", content: "Browse Canadian funding opportunities discovered and enriched by IIAL agents." },
+      { name: "description", content: "Manage Canadian grant opportunities through a clear, stage-by-stage pipeline." },
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(grantsQueryOptions),
   component: GrantsPage,
 });
 
-
 function GrantsPage() {
-  const { t, i18n } = useTranslation();
-  const fr = false /* EN-only */;
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isAdmin = useIsAdmin();
   const fetchGrants = useServerFn(listGrants);
@@ -61,15 +57,12 @@ function GrantsPage() {
   const [eligibleOnly, setEligibleOnly] = useState(false);
   const [onlyWithDeadline, setOnlyWithDeadline] = useState(false);
   const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
+
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
-    queryFn: () => fetchGrants({ data: { limit: 50 } }),
+    queryFn: () => fetchGrants({ data: { limit: 100 } }),
   });
 
-  useEffect(() => { syncClientLocale(); }, []);
-
-  // Auto-evaluate every enriched grant the user hasn't scored yet, on mount.
-  // Mark them as evaluating so the pipeline stepper animates in real time.
   const autoRan = useRef(false);
   useEffect(() => {
     if (autoRan.current) return;
@@ -81,32 +74,24 @@ function GrantsPage() {
     setEvaluatingIds(new Set(pendingIds));
     autoEvaluate({ data: { limit: 10 } })
       .then(async (r) => {
-        if (r.evaluated > 0) {
-          setAutoMsg(fr ? `${r.evaluated} subvention(s) évaluée(s) automatiquement.` : `${r.evaluated} grant(s) auto-evaluated.`);
-        } else if ("reason" in r && r.reason === "org_profile_missing") {
-          setAutoMsg(fr
-            ? "Complétez votre profil d'organisation pour activer l'évaluation IA."
-            : "Complete your organization profile to enable AI fit evaluation.");
-        }
+        if (r.evaluated > 0) setAutoMsg(`${r.evaluated} grant(s) auto-evaluated.`);
+        else if ("reason" in r && r.reason === "org_profile_missing")
+          setAutoMsg("Complete your organization profile to enable AI fit evaluation.");
         await qc.invalidateQueries({ queryKey: ["grants"] });
       })
       .catch((e) => setEvalError(e instanceof Error ? e.message : String(e)))
       .finally(() => setEvaluatingIds(new Set()));
-  }, [data.grants, autoEvaluate, fr, qc]);
+  }, [data.grants, autoEvaluate, qc]);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    await navigate({ to: "/" });
-  }
+  async function signOut() { await supabase.auth.signOut(); await navigate({ to: "/" }); }
   async function onEvaluate(grantId: string) {
     setPending(grantId); setEvalError(null);
     setEvaluatingIds((s) => new Set(s).add(grantId));
     try {
       await evaluate({ data: { grantId } });
       await qc.invalidateQueries({ queryKey: ["grants"] });
-    } catch (e) {
-      setEvalError(e instanceof Error ? e.message : String(e));
-    } finally {
+    } catch (e) { setEvalError(e instanceof Error ? e.message : String(e)); }
+    finally {
       setPending(null);
       setEvaluatingIds((s) => { const n = new Set(s); n.delete(grantId); return n; });
     }
@@ -117,9 +102,8 @@ function GrantsPage() {
       const r = await strategize({ data: { grantId } });
       await qc.invalidateQueries({ queryKey: ["grants"] });
       await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
-    } catch (e) {
-      setEvalError(e instanceof Error ? e.message : String(e));
-    } finally { setPending(null); }
+    } catch (e) { setEvalError(e instanceof Error ? e.message : String(e)); }
+    finally { setPending(null); }
   }
   async function onDiscoverAll() {
     setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
@@ -130,133 +114,126 @@ function GrantsPage() {
         setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
         const scope = funderIds ? ` (${funderIds.length} selected)` : "";
         setDiscoveryMsg(`Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s)${scope}. Live progress below.`);
-      } else {
-        setDiscoveryMsg("Discovery enqueued (no jobId returned).");
-      }
+      } else setDiscoveryMsg("Discovery enqueued.");
       autoRan.current = false;
-    } catch (e) {
-      setEvalError(e instanceof Error ? e.message : String(e));
-    } finally { setPending(null); }
+    } catch (e) { setEvalError(e instanceof Error ? e.message : String(e)); }
+    finally { setPending(null); }
   }
   async function onEnrich(grantId: string) {
     setPending(grantId + ":enrich"); setEvalError(null);
-    try {
-      await enrichOne({ data: { grantId } });
-      await qc.invalidateQueries({ queryKey: ["grants"] });
-    } catch (e) {
-      setEvalError(e instanceof Error ? e.message : String(e));
-    } finally { setPending(null); }
+    try { await enrichOne({ data: { grantId } }); await qc.invalidateQueries({ queryKey: ["grants"] }); }
+    catch (e) { setEvalError(e instanceof Error ? e.message : String(e)); }
+    finally { setPending(null); }
   }
 
+  const filtered = useMemo(
+    () => applyGrantFilters(data.grants, { jurisdiction, eligibleOnly, onlyWithDeadline }) as GrantRowData[],
+    [data.grants, jurisdiction, eligibleOnly, onlyWithDeadline],
+  );
 
-  const fmt = (n: number | null) =>
-    n == null ? "—" : new Intl.NumberFormat(fr ? "fr-CA" : "en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
+  const kpis = useMemo(() => {
+    const total = filtered.length;
+    const needsAction = filtered.filter((g) => {
+      if (g.status === "discovered") return true;
+      if (g.status === "enriched" && !g.evaluation) return true;
+      const d = g.deadline ? Math.ceil((new Date(g.deadline).getTime() - Date.now()) / 86400000) : null;
+      return d != null && d >= 0 && d <= 7 && !["submitted","won","lost","expired","archived"].includes(g.status);
+    }).length;
+    const scored = filtered.map((g) => g.evaluation?.fit_score ?? g.fit_score).filter((v): v is number => v != null);
+    const avgFit = scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
+    const pipelineValueCad = filtered.reduce((sum, g) => sum + (g.amount_cad_max ?? g.amount_cad_min ?? 0), 0);
+    return { total, needsAction, avgFit, pipelineValueCad };
+  }, [filtered]);
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <main className="min-h-screen bg-[#f4f7fa] text-foreground" style={{ fontFamily: "'Work Sans', system-ui, sans-serif" }}>
+      <header className="border-b bg-card">
+        <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
           <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold">{t("app.name")}</Link>
+            <Link to="/dashboard" className="font-semibold text-[#0f1b3d]" style={{ fontFamily: "'Instrument Serif', serif" }}>IIAL</Link>
             <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">{t("nav.dashboard")}</Link>
-            <Link to="/grants" className="text-sm font-medium">{t("nav.grants")}</Link>
+            <Link to="/grants" className="text-sm font-medium text-[#0f1b3d]">{t("nav.grants")}</Link>
             <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">{t("nav.proposals")}</Link>
             <Link to="/org" className="text-sm text-muted-foreground hover:underline">{t("org.title")}</Link>
-            <Link to="/fit-rules" className="text-sm text-muted-foreground hover:underline">Fit Rules</Link>
-
+            <Link to="/fit-rules" className="text-sm text-muted-foreground hover:underline">Screening Rules</Link>
           </nav>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={signOut}>{t("nav.signOut")}</Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={signOut}>{t("nav.signOut")}</Button>
         </div>
       </header>
 
-      <section className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-          <h1 className="text-2xl font-bold">{t("nav.grants")}</h1>
-          <div className="flex items-center gap-2 flex-wrap">
-            <NotebookLMBridge />
-            {isAdmin && (
-              <>
-                <FunderSelector fr={fr} selected={selectedFunders} onChange={setSelectedFunders} />
-                <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"}>
-                  {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
-                </Button>
-              </>
-            )}
+      <section className="max-w-[1600px] mx-auto px-6 py-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+          <div className="min-w-0">
+            <h1 className="text-4xl text-[#0f1b3d]" style={{ fontFamily: "'Instrument Serif', serif" }}>
+              Grants Workspace
+            </h1>
+            <p className="text-slate-500 max-w-2xl text-sm mt-1">
+              Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step.
+            </p>
           </div>
         </div>
+
         {activeJob && (
           <DiscoveryProgress
             jobId={activeJob.jobId}
             queued={activeJob.queued}
-            fr={fr}
+            fr={false}
             onClose={() => { setActiveJob(null); qc.invalidateQueries({ queryKey: ["grants"] }); }}
           />
         )}
         {discoveryMsg && !activeJob && (
-          <div className="mb-3 rounded-md border bg-muted/30 px-3 py-2">
+          <div className="mb-4 rounded-md border bg-card px-3 py-2">
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">{discoveryMsg}</pre>
           </div>
         )}
-        {autoMsg && <p className="text-sm text-muted-foreground mb-3">{autoMsg}</p>}
+        {autoMsg && <p className="text-sm text-muted-foreground mb-4">{autoMsg}</p>}
         {evalError && (
-          <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 flex items-start justify-between gap-3">
+          <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 flex items-start justify-between gap-3">
             <p className="text-sm text-destructive break-words">{evalError}</p>
             <button type="button" onClick={() => setEvalError(null)} className="text-xs text-muted-foreground hover:text-foreground shrink-0">✕</button>
           </div>
         )}
 
-        <GrantFilters
-          grants={data.grants}
-          fr={fr}
-          jurisdiction={jurisdiction} setJurisdiction={setJurisdiction}
-          eligibleOnly={eligibleOnly} setEligibleOnly={setEligibleOnly}
-          onlyWithDeadline={onlyWithDeadline} setOnlyWithDeadline={setOnlyWithDeadline}
+        <GrantKanban
+          grants={filtered}
+          isAdmin={isAdmin}
+          pending={pending}
+          evaluatingIds={evaluatingIds}
+          onEnrich={onEnrich}
+          onEvaluate={onEvaluate}
+          onDraft={onDraft}
+          kpis={kpis}
+          filters={
+            <GrantFilters
+              grants={data.grants}
+              fr={false}
+              jurisdiction={jurisdiction} setJurisdiction={setJurisdiction}
+              eligibleOnly={eligibleOnly} setEligibleOnly={setEligibleOnly}
+              onlyWithDeadline={onlyWithDeadline} setOnlyWithDeadline={setOnlyWithDeadline}
+            />
+          }
+          toolbarRight={
+            <>
+              <NotebookLMBridge />
+              {isAdmin && (
+                <>
+                  <FunderSelector fr={false} selected={selectedFunders} onChange={setSelectedFunders} />
+                  <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"} className="bg-[#0f1b3d] hover:bg-[#1e3a5f]">
+                    {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
+                  </Button>
+                </>
+              )}
+            </>
+          }
         />
-        {(() => {
-          const filtered = applyGrantFilters(data.grants, { jurisdiction, eligibleOnly, onlyWithDeadline });
-          const sorted = [...filtered].sort(sortByFit);
-          return data.grants.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
-              {t("grants.empty")}
-            </CardContent>
-          </Card>
-        ) : sorted.length === 0 ? (
-          <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">
-            {fr ? "Aucune subvention ne correspond aux filtres." : "No grants match the current filters."}
-          </CardContent></Card>
-        ) : (
-          <>
-            <p className="text-xs text-muted-foreground mb-2">
-              {fr
-                ? `${sorted.length} subvention(s) · triées par adéquation puis échéance`
-                : `${sorted.length} grant(s) · sorted by fit, then deadline`}
-            </p>
-            <div className="grid gap-2">
-              {sorted.map((g) => (
-                <GrantRow
-                  key={g.id}
-                  g={g as GrantRowData}
-                  fr={fr}
-                  fmt={fmt}
-                  isEvaluating={evaluatingIds.has(g.id)}
-                  pending={pending}
-                  onEnrich={onEnrich}
-                  onEvaluate={onEvaluate}
-                  onDraft={onDraft}
-                  isAdmin={isAdmin}
-                  t={t}
-                />
-              ))}
-              {evalError && <p className="text-sm text-destructive">{evalError}</p>}
-            </div>
-          </>
-        );
-        })()}
-        {isAdmin && <EventLog fr={fr} />}
+
+        {data.grants.length === 0 && (
+          <div className="mt-6 rounded-lg border bg-card py-10 text-center text-muted-foreground">
+            {t("grants.empty")}
+          </div>
+        )}
+
+        {isAdmin && <div className="mt-8"><EventLog fr={false} /></div>}
       </section>
     </main>
   );
