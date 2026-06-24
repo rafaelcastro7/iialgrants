@@ -12,6 +12,14 @@ export type LlmCallOptions = {
   agent: "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";
   runId?: string;
   responseFormat?: "json";
+  /**
+   * When true, skip the free-provider cascade and go straight to Lovable AI
+   * Gateway. Reserved for the admin playground where the user is explicitly
+   * testing a Lovable-hosted model. Every production agent leaves this OFF
+   * so the workspace never burns Lovable credits while free providers are
+   * configured (Groq / Google AI Studio / Cerebras).
+   */
+  forceLovable?: boolean;
 };
 
 export type LlmCallResult = {
@@ -24,8 +32,34 @@ export type LlmCallResult = {
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
+  // ── Free-tier cascade (Groq → Google AI Studio → Cerebras) ──────────────
+  // By default we route through the free cascade and only fall back to the
+  // Lovable Gateway if every free provider fails. This is the contract the
+  // user explicitly asked for: "no Lovable credits when free models are
+  // available". The admin playground passes forceLovable:true to bypass.
+  if (!opts.forceLovable) {
+    try {
+      const { callFreeLlm, freeProvidersAvailable } = await import("@/agents/llm-free.server");
+      if (freeProvidersAvailable().length > 0) {
+        const r = await callFreeLlm({
+          agent: opts.agent,
+          messages: opts.messages,
+          temperature: opts.temperature,
+          maxOutputTokens: opts.maxOutputTokens,
+          responseFormat: opts.responseFormat,
+          runId: opts.runId,
+          allowLovableFallback: true,
+        });
+        return { text: r.text, inputTokens: r.inputTokens, outputTokens: r.outputTokens, runId: r.runId };
+      }
+    } catch {
+      // Fall through to direct Lovable call below.
+    }
+  }
+
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY missing in environment");
+
 
   // Resolve per-agent config (model, temp, max tokens, json mode) from the
   // agent console. The console-stored value wins over caller-passed values,
