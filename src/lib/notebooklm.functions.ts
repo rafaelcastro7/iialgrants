@@ -69,11 +69,11 @@ export const buildNotebookBriefing = createServerFn({ method: "POST" })
       q = q.eq("status", "shortlisted")
         .order("fit_score", { ascending: false, nullsFirst: false });
     } else if (data.scope === "all-enriched") {
-      q = q.in("status", ELIGIBLE_STATUSES as unknown as string[])
+      q = q.in("status", ELIGIBLE_STATUSES)
         .order("discovered_at", { ascending: false });
     } else {
       // top-fit (default)
-      q = q.in("status", ELIGIBLE_STATUSES as unknown as string[])
+      q = q.in("status", ELIGIBLE_STATUSES)
         .not("fit_score", "is", null)
         .order("fit_score", { ascending: false, nullsFirst: false });
     }
