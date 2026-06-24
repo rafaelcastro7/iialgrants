@@ -120,7 +120,27 @@ beforeEach(() => {
   db.tables.grant_events = [];
   db.tables.agent_runs = [];
   db.tables.agent_trace_steps = [];
-  db.tables.fit_rules = []; // evaluator falls back to DEFAULT_RULES
+  // Permissive rules so the deterministic engine doesn't hard-fail on
+  // missing optional fields (e.g. grants.country isn't set in fixtures).
+  db.tables.fit_rules = [{
+    user_id: USER_ID,
+    min_amount_cad: null, max_amount_cad: null,
+    required_jurisdictions: [], excluded_jurisdictions: [],
+    required_sectors: [], excluded_sectors: [],
+    required_keywords: [], excluded_keywords: [],
+    min_days_to_deadline: null,
+    weight_llm: 0.4, threshold_fit_pass: 50,
+    hard_fail_on_jurisdiction: false, hard_fail_on_excluded_keyword: false,
+    hard_fail_on_amount: false, hard_fail_on_deadline: false,
+    auto_archive_on_fail: false,
+    applicant_types_allowed: [], applicant_types_excluded: [],
+    lead_min_weeks: null, partner_min_weeks: null,
+    iial_capabilities: [],
+    max_cost_share_pct_org_carries: null,
+    require_match_verification: false,
+    rolling_intake_passes_runway: true,
+    hard_fail_on_applicant_type: false, hard_fail_on_runway: false, hard_fail_on_capability: false,
+  }];
 });
 
 describe("enrich → evaluate → shortlist → NotebookLM", () => {
