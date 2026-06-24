@@ -134,37 +134,48 @@ export function NotebookLMBridge({
         {/* ── Scope picker ───────────────────────────────────── */}
         {!result?.ok && (
           <div className="space-y-3">
-            <div className="space-y-2">
-              {SCOPES.map((s) => {
-                const active = scope === s.id;
-                return (
-                  <button
-                    key={s.id} type="button"
-                    onClick={() => setScope(s.id)}
-                    className={cn(
-                      "w-full text-left rounded-md border p-3 transition-all hover:border-primary/60",
-                      active && "border-primary ring-2 ring-primary/20 bg-primary/5",
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{s.title}</span>
-                      {active && <Badge variant="default" className="text-[10px] h-4">Selected</Badge>}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.subtitle}</p>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-start justify-between gap-3 rounded-md border p-3">
-              <div className="space-y-0.5 min-w-0">
-                <Label className="text-xs font-medium">Auto-mark as Shortlisted</Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Move the included grants to your shortlist when the briefing is generated. Skips grants already in a proposal.
+            {isSingle ? (
+              <div className="rounded-md border p-3 bg-primary/5 text-xs">
+                <p className="font-medium text-sm mb-1">Deep-dive briefing</p>
+                <p className="text-muted-foreground">
+                  Generates a single high-fidelity NotebookLM source for this grant only — every field, every citation, the full workflow timeline, and tuned questions for deep analysis.
                 </p>
               </div>
-              <Switch checked={autoShortlist} onCheckedChange={setAutoShortlist} />
-            </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {MULTI_SCOPES.map((s) => {
+                    const active = scope === s.id;
+                    return (
+                      <button
+                        key={s.id} type="button"
+                        onClick={() => setScope(s.id)}
+                        className={cn(
+                          "w-full text-left rounded-md border p-3 transition-all hover:border-primary/60",
+                          active && "border-primary ring-2 ring-primary/20 bg-primary/5",
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">{s.title}</span>
+                          {active && <Badge variant="default" className="text-[10px] h-4">Selected</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.subtitle}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+                  <div className="space-y-0.5 min-w-0">
+                    <Label className="text-xs font-medium">Auto-mark as Shortlisted</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Move the included grants to your shortlist when the briefing is generated. Skips grants already in a proposal.
+                    </p>
+                  </div>
+                  <Switch checked={autoShortlist} onCheckedChange={setAutoShortlist} />
+                </div>
+              </>
+            )}
           </div>
         )}
 
