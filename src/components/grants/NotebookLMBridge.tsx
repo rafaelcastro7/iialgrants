@@ -27,9 +27,9 @@ import {
 import { cn } from "@/lib/utils";
 import { buildNotebookBriefing } from "@/lib/notebooklm.functions";
 
-type Scope = "top-fit" | "shortlisted" | "all-enriched";
+type Scope = "single" | "top-fit" | "shortlisted" | "all-enriched";
 
-const SCOPES: { id: Scope; title: string; subtitle: string }[] = [
+const MULTI_SCOPES: { id: Exclude<Scope, "single">; title: string; subtitle: string }[] = [
   { id: "top-fit", title: "Top 25 by fit", subtitle: "Highest-scoring grants the Evaluator has ranked. Best default." },
   { id: "shortlisted", title: "My shortlist", subtitle: "Only grants already moved to Shortlisted. Curated set." },
   { id: "all-enriched", title: "Everything enriched", subtitle: "All grants with verified evidence. Broadest scan." },
@@ -42,13 +42,22 @@ type Result = {
   shortlistedCount: number; markdown: string; ids: string[];
 } | { ok: false; reason: string; message: string };
 
-export function NotebookLMBridge() {
+export function NotebookLMBridge({
+  grantId,
+  label,
+  variant = "outline",
+}: {
+  grantId?: string;
+  label?: string;
+  variant?: "outline" | "default" | "secondary" | "ghost";
+} = {}) {
   const build = useServerFn(buildNotebookBriefing);
   const qc = useQueryClient();
 
+  const isSingle = !!grantId;
   const [open, setOpen] = useState(false);
-  const [scope, setScope] = useState<Scope>("top-fit");
-  const [autoShortlist, setAutoShortlist] = useState(true);
+  const [scope, setScope] = useState<Scope>(isSingle ? "single" : "top-fit");
+  const [autoShortlist, setAutoShortlist] = useState(!isSingle);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
@@ -61,7 +70,11 @@ export function NotebookLMBridge() {
   async function onGenerate() {
     setBusy(true); reset();
     try {
-      const r = await build({ data: { scope, autoShortlist, maxItems: 25 } });
+      const r = await build({
+        data: isSingle
+          ? { scope: "single", ids: [grantId!], autoShortlist: false, maxItems: 1 }
+          : { scope: scope as Exclude<Scope, "single">, autoShortlist, maxItems: 25 },
+      });
       setResult(r as Result);
       if (r.ok && r.shortlistedCount > 0) {
         qc.invalidateQueries({ queryKey: ["grants"] });
@@ -102,9 +115,9 @@ export function NotebookLMBridge() {
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-2">
+        <Button size="sm" variant={variant} className="gap-2">
           <BookOpenText className="h-4 w-4" />
-          NotebookLM
+          {label ?? "NotebookLM"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-xl">
@@ -121,37 +134,48 @@ export function NotebookLMBridge() {
         {/* ── Scope picker ───────────────────────────────────── */}
         {!result?.ok && (
           <div className="space-y-3">
-            <div className="space-y-2">
-              {SCOPES.map((s) => {
-                const active = scope === s.id;
-                return (
-                  <button
-                    key={s.id} type="button"
-                    onClick={() => setScope(s.id)}
-                    className={cn(
-                      "w-full text-left rounded-md border p-3 transition-all hover:border-primary/60",
-                      active && "border-primary ring-2 ring-primary/20 bg-primary/5",
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{s.title}</span>
-                      {active && <Badge variant="default" className="text-[10px] h-4">Selected</Badge>}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.subtitle}</p>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-start justify-between gap-3 rounded-md border p-3">
-              <div className="space-y-0.5 min-w-0">
-                <Label className="text-xs font-medium">Auto-mark as Shortlisted</Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Move the included grants to your shortlist when the briefing is generated. Skips grants already in a proposal.
+            {isSingle ? (
+              <div className="rounded-md border p-3 bg-primary/5 text-xs">
+                <p className="font-medium text-sm mb-1">Deep-dive briefing</p>
+                <p className="text-muted-foreground">
+                  Generates a single high-fidelity NotebookLM source for this grant only — every field, every citation, the full workflow timeline, and tuned questions for deep analysis.
                 </p>
               </div>
-              <Switch checked={autoShortlist} onCheckedChange={setAutoShortlist} />
-            </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {MULTI_SCOPES.map((s) => {
+                    const active = scope === s.id;
+                    return (
+                      <button
+                        key={s.id} type="button"
+                        onClick={() => setScope(s.id)}
+                        className={cn(
+                          "w-full text-left rounded-md border p-3 transition-all hover:border-primary/60",
+                          active && "border-primary ring-2 ring-primary/20 bg-primary/5",
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">{s.title}</span>
+                          {active && <Badge variant="default" className="text-[10px] h-4">Selected</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.subtitle}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+                  <div className="space-y-0.5 min-w-0">
+                    <Label className="text-xs font-medium">Auto-mark as Shortlisted</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Move the included grants to your shortlist when the briefing is generated. Skips grants already in a proposal.
+                    </p>
+                  </div>
+                  <Switch checked={autoShortlist} onCheckedChange={setAutoShortlist} />
+                </div>
+              </>
+            )}
           </div>
         )}
 
