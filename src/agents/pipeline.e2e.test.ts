@@ -262,7 +262,7 @@ describe("enrich → evaluate → shortlist → NotebookLM", () => {
       data: { scope: "top-fit", maxItems: 10, autoShortlist: true },
       supabase: supabaseMock, userId: USER_ID,
     });
-    if (!second.ok) throw new Error(`second briefing failed: ${second.reason}`);
+    if (!second.ok) throw new Error(`second briefing failed: ${second.reason} — ${(second as { message?: string }).message ?? ""}`);
     expect(second.shortlistedCount).toBe(0);
     expect(db.tables.evidence_spans.length).toBe(evidenceAfterFirst); // briefing never writes evidence
     expect(db.tables.grant_events.filter((e) => e.to_status === "shortlisted").length)
