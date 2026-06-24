@@ -375,4 +375,4 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
       markdown,
       ids,
     };
-  });
+}
