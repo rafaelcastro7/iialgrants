@@ -87,6 +87,9 @@ function GrantDetailPage() {
           <Button asChild variant="ghost" size="sm">
             <Link to="/grants"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.grants")}</Link>
           </Button>
+          <Button asChild variant="outline" size="sm" className="ml-auto">
+            <Link to="/grants/$id/audit" params={{ id }}>Audit trail →</Link>
+          </Button>
         </div>
       </header>
 

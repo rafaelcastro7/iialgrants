@@ -38,6 +38,7 @@ import { Route as ApiPublicHooksRssPollRouteImport } from './routes/api/public/h
 import { Route as ApiPublicHooksEnrichRouteImport } from './routes/api/public/hooks/enrich'
 import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/hooks/discover'
 import { Route as ApiPublicHooksDeadlinesRouteImport } from './routes/api/public/hooks/deadlines'
+import { Route as AuthenticatedGrantsIdAuditRouteImport } from './routes/_authenticated.grants.$id.audit'
 
 const ComplianceRoute = ComplianceRouteImport.update({
   id: '/compliance',
@@ -193,6 +194,12 @@ const ApiPublicHooksDeadlinesRoute = ApiPublicHooksDeadlinesRouteImport.update({
   path: '/api/public/hooks/deadlines',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedGrantsIdAuditRoute =
+  AuthenticatedGrantsIdAuditRouteImport.update({
+    id: '/audit',
+    path: '/audit',
+    getParentRoute: () => AuthenticatedGrantsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -213,9 +220,10 @@ export interface FileRoutesByFullPath {
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/grants/$id': typeof AuthenticatedGrantsIdRoute
+  '/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
@@ -242,9 +250,10 @@ export interface FileRoutesByTo {
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/grants/$id': typeof AuthenticatedGrantsIdRoute
+  '/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
@@ -274,9 +283,10 @@ export interface FileRoutesById {
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/_authenticated/grants/$id': typeof AuthenticatedGrantsIdRoute
+  '/_authenticated/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
   '/api/public/hooks/enrich': typeof ApiPublicHooksEnrichRoute
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/grants/$id'
     | '/proposals/$id'
     | '/admin/'
+    | '/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/grants/$id'
     | '/proposals/$id'
     | '/admin'
+    | '/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
@@ -369,6 +381,7 @@ export interface FileRouteTypes {
     | '/_authenticated/grants/$id'
     | '/_authenticated/proposals/$id'
     | '/_authenticated/admin/'
+    | '/_authenticated/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
     | '/api/public/hooks/enrich'
@@ -597,6 +610,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDeadlinesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/grants/$id/audit': {
+      id: '/_authenticated/grants/$id/audit'
+      path: '/audit'
+      fullPath: '/grants/$id/audit'
+      preLoaderRoute: typeof AuthenticatedGrantsIdAuditRouteImport
+      parentRoute: typeof AuthenticatedGrantsIdRoute
+    }
   }
 }
 
@@ -623,12 +643,25 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
+interface AuthenticatedGrantsIdRouteChildren {
+  AuthenticatedGrantsIdAuditRoute: typeof AuthenticatedGrantsIdAuditRoute
+}
+
+const AuthenticatedGrantsIdRouteChildren: AuthenticatedGrantsIdRouteChildren = {
+  AuthenticatedGrantsIdAuditRoute: AuthenticatedGrantsIdAuditRoute,
+}
+
+const AuthenticatedGrantsIdRouteWithChildren =
+  AuthenticatedGrantsIdRoute._addFileChildren(
+    AuthenticatedGrantsIdRouteChildren,
+  )
+
 interface AuthenticatedGrantsRouteChildren {
-  AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRoute
+  AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
 }
 
 const AuthenticatedGrantsRouteChildren: AuthenticatedGrantsRouteChildren = {
-  AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRoute,
+  AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
 }
 
 const AuthenticatedGrantsRouteWithChildren =
