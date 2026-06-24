@@ -20,5 +20,9 @@ jobs:
         run: bun run lint
       - name: Unit + Evals (gates 1 & 2: unit, golden regression)
         run: bunx vitest run
+      - name: E2E pipeline (gate 3: discover · enrich · evaluate · shortlist · NotebookLM)
+        # Explicit gate so a regression in the wired pipeline fails loudly,
+        # even though these files are already included in the main run above.
+        run: bunx vitest run src/agents/discoverer.e2e.test.ts src/agents/pipeline.e2e.test.ts
       - name: Build
         run: bun run build
