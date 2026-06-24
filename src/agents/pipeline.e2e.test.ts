@@ -201,10 +201,17 @@ describe("enrich → evaluate → shortlist → NotebookLM", () => {
     expect(evalEvidence.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("re-running evaluate upserts (no duplicate grant_evaluations row)", async () => {
+  it("re-running evaluate upserts evaluation AND dedupes evidence rows (no duplicates)", async () => {
     await enrichGrantImpl(GRANT_ID);
     await evaluateGrantImpl({ grantId: GRANT_ID, userId: USER_ID, userSupabase: supabaseMock as never });
     expect(db.tables.grant_evaluations[0].eligibility_pass).toBe(true);
+
+    // Evaluator writes exactly one row per (grant, agent=evaluator, field).
+    const evalEvidenceAfterFirst = db.tables.evidence_spans.filter(
+      (s) => s.agent === "evaluator" && s.grant_id === GRANT_ID,
+    );
+    expect(evalEvidenceAfterFirst).toHaveLength(2); // fit_score + eligibility_pass
+    const enricherEvidenceCount = db.tables.evidence_spans.filter((s) => s.agent !== "evaluator").length;
 
     // Change LLM verdict on second pass → upsert must overwrite, not insert.
     evaluatorLlm.mockResolvedValueOnce({
@@ -220,9 +227,46 @@ describe("enrich → evaluate → shortlist → NotebookLM", () => {
     expect(db.tables.grant_evaluations).toHaveLength(1); // upsert, no dup
     expect(db.tables.grant_evaluations[0].eligibility_pass).toBe(false);
 
-    // Two evaluator agent_runs rows recorded
+    // Evidence: still exactly 2 evaluator rows, enricher rows untouched.
+    const evalEvidenceAfterSecond = db.tables.evidence_spans.filter(
+      (s) => s.agent === "evaluator" && s.grant_id === GRANT_ID,
+    );
+    expect(evalEvidenceAfterSecond).toHaveLength(2);
+    expect(db.tables.evidence_spans.filter((s) => s.agent !== "evaluator").length)
+      .toBe(enricherEvidenceCount);
+    // And the new evaluator span carries the updated value.
+    const fitSpan = evalEvidenceAfterSecond.find((s) => s.field === "fit_score");
+    expect(fitSpan?.value).toBe(db.tables.grant_evaluations[0].fit_score);
+
+    // Two evaluator agent_runs rows recorded (run history is append-only).
     const evalRuns = db.tables.agent_runs.filter((r) => r.agent === "evaluator");
     expect(evalRuns.length).toBe(2);
+  });
+
+  it("re-running shortlist via briefing is idempotent — no extra evidence, no duplicate events", async () => {
+    await enrichGrantImpl(GRANT_ID);
+    await evaluateGrantImpl({ grantId: GRANT_ID, userId: USER_ID, userSupabase: supabaseMock as never });
+
+    const first = await buildNotebookBriefingImpl({
+      data: { scope: "top-fit", maxItems: 10, autoShortlist: true },
+      supabase: supabaseMock, userId: USER_ID,
+    });
+    if (!first.ok) throw new Error(`first briefing failed: ${first.reason}`);
+    expect(first.shortlistedCount).toBe(1);
+    const evidenceAfterFirst = db.tables.evidence_spans.length;
+    const eventsAfterFirst = db.tables.grant_events.filter((e) => e.to_status === "shortlisted").length;
+    expect(eventsAfterFirst).toBe(1);
+
+    // Second briefing run: grant is already shortlisted, so toBump is empty.
+    const second = await buildNotebookBriefingImpl({
+      data: { scope: "top-fit", maxItems: 10, autoShortlist: true },
+      supabase: supabaseMock, userId: USER_ID,
+    });
+    if (!second.ok) throw new Error(`second briefing failed: ${second.reason}`);
+    expect(second.shortlistedCount).toBe(0);
+    expect(db.tables.evidence_spans.length).toBe(evidenceAfterFirst); // briefing never writes evidence
+    expect(db.tables.grant_events.filter((e) => e.to_status === "shortlisted").length)
+      .toBe(eventsAfterFirst); // no duplicate transition event
   });
 
   it("multi-grant briefing auto-shortlists and writes grant_events", async () => {
