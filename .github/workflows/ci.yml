@@ -18,11 +18,31 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Lint
         run: bun run lint
-      - name: Unit + Evals (gates 1 & 2: unit, golden regression)
-        run: bunx vitest run
+      # Single vitest invocation generates JUnit + JSON reports AND v8 coverage
+      # (gated by the thresholds in vitest.config.ts — a regression fails here).
+      - name: Unit + Evals + Coverage (gates 1, 2 & 4: unit, golden regression, coverage)
+        run: bunx vitest run --coverage 2>&1 | tee reports/vitest.log
       - name: E2E pipeline (gate 3: discover · enrich · evaluate · shortlist · NotebookLM)
-        # Explicit gate so a regression in the wired pipeline fails loudly,
-        # even though these files are already included in the main run above.
-        run: bunx vitest run src/agents/discoverer.e2e.test.ts src/agents/pipeline.e2e.test.ts
+        # Explicit re-run keeps the pipeline regression signal isolated from
+        # the broader suite; both runs feed the same artifact bundle.
+        run: bunx vitest run src/agents/discoverer.e2e.test.ts src/agents/pipeline.e2e.test.ts 2>&1 | tee reports/e2e.log
+      # Upload test logs + coverage on failure so a red build is debuggable
+      # without re-running CI locally. `if: failure()` keeps green builds lean.
+      - name: Upload test logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            reports/
+          retention-days: 14
+      - name: Upload coverage report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+          retention-days: 14
       - name: Build
         run: bun run build
