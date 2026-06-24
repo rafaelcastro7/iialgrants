@@ -18,8 +18,7 @@ function mockFetch(impl: (url: string) => Response | Promise<Response>) {
     const url = typeof input === "string" ? input : input.toString();
     return impl(url);
   });
-  // @ts-expect-error override global
-  globalThis.fetch = spy;
+  (globalThis as unknown as { fetch: unknown }).fetch = spy;
   return spy;
 }
 
