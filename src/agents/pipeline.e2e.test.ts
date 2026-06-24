@@ -204,21 +204,21 @@ describe("enrich → evaluate → shortlist → NotebookLM", () => {
   it("re-running evaluate upserts (no duplicate grant_evaluations row)", async () => {
     await enrichGrantImpl(GRANT_ID);
     await evaluateGrantImpl({ grantId: GRANT_ID, userId: USER_ID, userSupabase: supabaseMock as never });
-    const firstFit = db.tables.grant_evaluations[0].fit_score;
+    expect(db.tables.grant_evaluations[0].eligibility_pass).toBe(true);
 
-    // Change LLM verdict on second pass → upsert should overwrite, not insert.
+    // Change LLM verdict on second pass → upsert must overwrite, not insert.
     evaluatorLlm.mockResolvedValueOnce({
       text: JSON.stringify({
-        fit_score: 0.9, eligibility_pass: true,
-        rationale_en: "Re-evaluated with slightly lower confidence but still eligible.",
+        fit_score: 0, eligibility_pass: false,
+        rationale_en: "Re-evaluated: applicant type now disqualified after review.",
         rationale_fr: "",
       }),
       inputTokens: 100, outputTokens: 50, runId: "run_eval_2",
     });
     await evaluateGrantImpl({ grantId: GRANT_ID, userId: USER_ID, userSupabase: supabaseMock as never });
 
-    expect(db.tables.grant_evaluations).toHaveLength(1); // upsert, not dup
-    expect(db.tables.grant_evaluations[0].fit_score).not.toBe(firstFit);
+    expect(db.tables.grant_evaluations).toHaveLength(1); // upsert, no dup
+    expect(db.tables.grant_evaluations[0].eligibility_pass).toBe(false);
 
     // Two evaluator agent_runs rows recorded
     const evalRuns = db.tables.agent_runs.filter((r) => r.agent === "evaluator");
