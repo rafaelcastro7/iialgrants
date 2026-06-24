@@ -76,7 +76,13 @@ function makeBuilder(db: InMemoryDb, table: string) {
       const rows = Array.isArray(pendingOp.payload) ? pendingOp.payload : [pendingOp.payload!];
       const inserted: Row[] = [];
       for (const r of rows) {
-        const row = { id: r.id ?? `id_${db.tables[table].length + 1}_${Math.random().toString(36).slice(2, 7)}`, ...r };
+        const row = {
+          id: r.id ?? `id_${db.tables[table].length + 1}_${Math.random().toString(36).slice(2, 7)}`,
+          // Auto-stamp created_at to mimic Postgres `default now()` columns
+          // that production tables (grant_events, agent_runs, ...) rely on.
+          created_at: r.created_at ?? new Date().toISOString(),
+          ...r,
+        };
         db.tables[table].push(row); inserted.push(row);
       }
       return { data: inserted, error: null };
