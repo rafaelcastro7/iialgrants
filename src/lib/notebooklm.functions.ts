@@ -376,4 +376,18 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
       markdown,
       ids,
     };
+  } catch (e) {
+    // Deep-dive / briefing should NEVER corrupt a grant record on failure:
+    // every grant mutation (status=shortlisted, grant_events insert) only
+    // happens AFTER the markdown build succeeds, so any throw here aborts
+    // before we touched user data. Surface a safe error envelope so the
+    // bridge can render a retry UI instead of bubbling a 500.
+    const message = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false as const,
+      reason: "briefing_error" as const,
+      scope: opts.data.scope,
+      message,
+    };
+  }
 }
