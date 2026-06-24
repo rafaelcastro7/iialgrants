@@ -49,6 +49,7 @@ export const buildNotebookBriefing = createServerFn({ method: "POST" })
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" | "selected" | "top-fit" | "shortlisted" | "all-enriched"; ids?: string[]; maxItems: number; autoShortlist: boolean }; supabase: any; userId: string }) {
   const { data, supabase, userId } = opts;
+  try {
 
     type Row = {
       id: string;
