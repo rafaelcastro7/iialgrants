@@ -447,9 +447,12 @@ export async function discoverFunderImpl(
   const insertErrors: Array<{ title: string; error: string }> = [];
   const perPage: Array<{ url: string; found: number; inserted: number; reason?: string }> = [];
 
-  // Ask LLM to extract ONE grant per program page.
-  for (const doc of pageDocs) {
+  // Ask LLM to extract ONE grant per program page (sequential + throttle to respect free-tier rate limits).
+  for (let pi = 0; pi < pageDocs.length; pi++) {
+    const doc = pageDocs[pi];
+    if (pi > 0) await sleep(2_500);
     let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
+
     try {
       const llmPage = await callLlm({
         model: "google/gemini-2.5-flash",
