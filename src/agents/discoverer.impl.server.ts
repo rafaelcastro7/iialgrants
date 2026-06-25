@@ -356,28 +356,65 @@ export async function discoverFunderImpl(
   }
 
 
-  // ----- Path B: Fallback (no Firecrawl) -----
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  let raw = "";
-  try {
-    const res = await fetch(F.source_url, {
-      signal: ctrl.signal,
-      headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
-    });
-    if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
-    raw = (await res.text()).slice(0, 250_000);
-  } finally { clearTimeout(timer); }
+  // ----- Path B: Fallback (no Firecrawl) — multi-page link-following crawl -----
+  // Strategy: fetch the index, extract anchor links to same-host program-looking
+  // sub-pages, scrape up to N of them in parallel, and let the LLM extract one
+  // grant per page. This avoids the "nav-menu only" failure mode where the
+  // index page yields generic titles like "Loans" / "Programs".
 
-  const text = raw
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 30_000);
+  async function fetchHtml(target: string, timeoutMs: number): Promise<string> {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(target, {
+        signal: ctrl.signal,
+        headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
+      });
+      if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
+      return (await res.text()).slice(0, 350_000);
+    } finally { clearTimeout(timer); }
+  }
+  function htmlToText(html: string, max = 30_000): string {
+    return html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, max);
+  }
+  const PROGRAM_HINTS = /(program|programme|fund(ing)?|grant|subvention|aide|prêt|pret|bourse|scholarship|prime|credit|crédit|incentive|loan)/i;
+  function extractCandidateLinks(html: string, baseUrl: string): Array<{ url: string; text: string }> {
+    const base = new URL(baseUrl);
+    const found = new Map<string, string>();
+    const re = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html))) {
+      const href = m[1];
+      const rawText = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      if (!rawText || rawText.length < 5 || rawText.length > 160) continue;
+      let abs: URL;
+      try { abs = new URL(href, baseUrl); } catch { continue; }
+      if (abs.host !== base.host) continue;
+      if (!/^https?:$/.test(abs.protocol)) continue;
+      const path = abs.pathname.replace(/\/+$/, "").toLowerCase();
+      if (!path || path === "/") continue;
+      if (path === base.pathname.replace(/\/+$/, "").toLowerCase()) continue;
+      // Path must be deeper than index OR text/url contain a program hint.
+      const segs = path.split("/").filter(Boolean);
+      if (segs.length < 2 && !PROGRAM_HINTS.test(`${path} ${rawText}`)) continue;
+      // Strip query and fragment for de-dup.
+      const key = `${abs.origin}${abs.pathname}`;
+      if (!found.has(key)) found.set(key, rawText);
+    }
+    return Array.from(found, ([url, text]) => ({ url, text }));
+  }
 
-  if (text.length < 200) {
+  const indexHtml = await fetchHtml(F.source_url, 10_000);
+  const indexText = htmlToText(indexHtml, 8_000);
+  const links = extractCandidateLinks(indexHtml, F.source_url).slice(0, 15);
+
+  if (links.length === 0 && indexText.length < 200) {
     await supabaseAdmin.from("agent_runs").insert({
       run_id: runId, agent: "discoverer", status: "degraded",
       model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
@@ -387,57 +424,93 @@ export async function discoverFunderImpl(
     return { ok: true, inserted: 0, runId, degraded: true, engine: "fallback" };
   }
 
-  const llm = await callLlm({
-    model: "google/gemini-2.5-flash",
-    agent: "discoverer",
-    runId, temperature: 0.1, responseFormat: "json",
-    messages: [
-      { role: "system", content: `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}` },
-      { role: "user", content:
-        `Funder: ${F.name}\nSource URL: ${F.source_url}\n\nPage text:\n${text}\n\n` +
-        `Return JSON: { "grants": [ { "title", "title_fr"?, "summary"?, "summary_fr"?, ` +
-        `"amount_cad_min"?, "amount_cad_max"?, "deadline"?, "eligibility"?, "sectors"?, "language", "url" } ] }` },
-    ],
-  });
-
-  const { DiscovererOutput } = await import("@/agents/schemas");
-  let parsed: ReturnType<typeof DiscovererOutput.parse>;
-  try { parsed = DiscovererOutput.parse(JSON.parse(llm.text)); }
-  catch (e) {
-    await supabaseAdmin.from("agent_runs").insert({
-      run_id: runId, agent: "discoverer", status: "failed",
-      model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
-      error: `schema_validation: ${e instanceof Error ? e.message : String(e)}`,
-      metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback" },
-    });
-    return { ok: false, inserted: 0, runId, error: "schema_validation", engine: "fallback" };
+  // Scrape candidate pages in parallel (bounded).
+  type PageDoc = { url: string; text: string };
+  const pageDocs: PageDoc[] = [];
+  for (let i = 0; i < links.length; i += SCRAPE_CONCURRENCY) {
+    const batch = links.slice(i, i + SCRAPE_CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map(async (l) => ({ url: l.url, text: htmlToText(await fetchHtml(l.url, 8_000), 12_000) })),
+    );
+    for (const r of results) if (r.status === "fulfilled" && r.value.text.length >= 400) pageDocs.push(r.value);
   }
 
   let inserted = 0;
   let seenAgain = 0;
-  for (const g of parsed.grants) {
-    if (isGenericTitle(g.title) || isRootIndex(g.url)) continue;
-    const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
-    const { data: existing } = await supabaseAdmin
-      .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
-    if (existing) {
-      await supabaseAdmin.from("grants").update({
-        last_seen_at: new Date().toISOString(),
-        times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
-      } as never).eq("id", existing.id);
-      seenAgain++; continue;
+  let foundTotal = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  const skipReasons: Record<string, number> = {};
+  const skippedSamples: Array<{ title: string; url: string; reason: string }> = [];
+  const insertErrors: Array<{ title: string; error: string }> = [];
+  const perPage: Array<{ url: string; found: number; inserted: number; reason?: string }> = [];
+
+  // Ask LLM to extract ONE grant per program page.
+  for (const doc of pageDocs) {
+    let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
+    try {
+      const llmPage = await callLlm({
+        model: "google/gemini-2.5-flash",
+        agent: "discoverer",
+        runId, temperature: 0.1, responseFormat: "json",
+        messages: [
+          { role: "system", content: `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}` },
+          { role: "user", content:
+            `Funder: ${F.name}\nProgram page URL: ${doc.url}\n\nPage text:\n${doc.text}\n\n` +
+            `Return JSON: { "grants": [ one entry describing THIS specific program with fields: ` +
+            `"title", "title_fr"?, "summary"?, "summary_fr"?, "amount_cad_min"?, "amount_cad_max"?, ` +
+            `"deadline"?, "eligibility"?, "sectors"?, "language", "url" ] }. Use "${doc.url}" as the url. ` +
+            `If the page is not a specific funding program, return { "grants": [] }.` },
+        ],
+      });
+      inputTokens += llmPage.inputTokens ?? 0;
+      outputTokens += llmPage.outputTokens ?? 0;
+      const parsedPage = MultiPageOutput.parse(JSON.parse(llmPage.text));
+      pageGrants = parsedPage.grants;
+    } catch {
+      perPage.push({ url: doc.url, found: 0, inserted: 0, reason: "schema_validation" });
+      continue;
     }
-    const sourceHash = createHash("sha256").update(`${g.url}|${g.title}`).digest("hex");
-    const { error: ierr } = await supabaseAdmin.from("grants").insert({
-      funder_id: F.id, title: g.title, title_fr: g.title_fr ?? null,
-      summary: g.summary ?? null, summary_fr: g.summary_fr ?? null,
-      amount_cad_min: g.amount_cad_min ?? null, amount_cad_max: g.amount_cad_max ?? null,
-      deadline: g.deadline ?? null,
-      eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
-      sectors: g.sectors ?? [], language: g.language, url: g.url,
-      source_hash: sourceHash, canonical_key: ck, status: "discovered",
-    });
-    if (!ierr) inserted++;
+
+    let pageInserted = 0;
+    foundTotal += pageGrants.length;
+    for (const g of pageGrants) {
+      if (isGenericTitle(g.title)) {
+        skipReasons.generic_title = (skipReasons.generic_title ?? 0) + 1;
+        if (skippedSamples.length < 5) skippedSamples.push({ title: g.title, url: g.url || doc.url, reason: "generic_title" });
+        continue;
+      }
+      // Force page URL when the LLM omits it or returns the index URL.
+      const effectiveUrl = (g.url && g.url !== F.source_url) ? g.url : doc.url;
+      if (isRootIndex(effectiveUrl)) {
+        skipReasons.root_index = (skipReasons.root_index ?? 0) + 1;
+        if (skippedSamples.length < 5) skippedSamples.push({ title: g.title, url: effectiveUrl, reason: "root_index" });
+        continue;
+      }
+      const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
+      const { data: existing } = await supabaseAdmin
+        .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
+      if (existing) {
+        await supabaseAdmin.from("grants").update({
+          last_seen_at: new Date().toISOString(),
+          times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
+        } as never).eq("id", existing.id);
+        seenAgain++; continue;
+      }
+      const sourceHash = createHash("sha256").update(`${effectiveUrl}|${g.title}`).digest("hex");
+      const { error: ierr } = await supabaseAdmin.from("grants").insert({
+        funder_id: F.id, title: g.title, title_fr: g.title_fr ?? null,
+        summary: g.summary ?? null, summary_fr: g.summary_fr ?? null,
+        amount_cad_min: g.amount_cad_min ?? null, amount_cad_max: g.amount_cad_max ?? null,
+        deadline: g.deadline ?? null,
+        eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
+        sectors: g.sectors ?? [], language: g.language, url: effectiveUrl,
+        source_hash: sourceHash, canonical_key: ck, status: "discovered",
+      });
+      if (!ierr) { inserted++; pageInserted++; }
+      else insertErrors.push({ title: g.title, error: ierr.message });
+    }
+    perPage.push({ url: doc.url, found: pageGrants.length, inserted: pageInserted });
   }
 
   await supabaseAdmin
@@ -448,9 +521,19 @@ export async function discoverFunderImpl(
   await supabaseAdmin.from("agent_runs").insert({
     run_id: runId, agent: "discoverer", status: "succeeded",
     model: "google/gemini-2.5-flash",
-    input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,
+    input_tokens: inputTokens || null, output_tokens: outputTokens || null,
     latency_ms: Date.now() - t0,
-    metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback", found: parsed.grants.length, inserted, seen_again: seenAgain },
+    metadata: {
+      ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback",
+      links_extracted: links.length, pages_scraped: pageDocs.length,
+      found: foundTotal, inserted, seen_again: seenAgain,
+      skip_reasons: skipReasons,
+      skipped_samples: skippedSamples,
+      insert_errors: insertErrors.slice(0, 5),
+      per_page: perPage.slice(0, 15),
+    },
   });
-  return { ok: true, inserted, seenAgain, found: parsed.grants.length, runId, engine: "fallback" };
+  return { ok: true, inserted, seenAgain, found: foundTotal, urlsScraped: pageDocs.length, runId, engine: "fallback" };
 }
+
+
