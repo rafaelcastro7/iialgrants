@@ -93,27 +93,34 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
     const jobId = crypto.randomUUID();
     const queued = funders?.length ?? 0;
 
-    // Kick off background work without awaiting. The orchestrator logs every
-    // attempt, success and failure into agent_runs tagged with this job_id.
+    // Run inline. Fire-and-forget promises are terminated by the Worker
+    // runtime as soon as the response is sent, which previously made the
+    // "Run discovery now" button look like a no-op. The orchestrator already
+    // caps per-funder latency and retries internally.
     const { runDiscoveryJob } = await import("@/agents/discoverer-orchestrator.server");
-    void runDiscoveryJob(jobId, context.userId, data.funderIds).catch((e) => {
-      console.error("[discoverAllFunders] background job crashed", e);
-    });
+    let result: Awaited<ReturnType<typeof runDiscoveryJob>> | null = null;
+    let runError: string | null = null;
+    try {
+      result = await runDiscoveryJob(jobId, context.userId, data.funderIds);
+    } catch (e) {
+      runError = e instanceof Error ? e.message : String(e);
+      console.error("[discoverAllFunders] orchestrator threw", e);
+    }
 
-    // Standardized payload: always includes totalInserted/totalProcessed even
-    // when delivered in queued mode (zero until the background job updates).
     return {
-      ok: true,
+      ok: runError == null,
       jobId,
       queued,
-      totalInserted: 0,
-      totalSeenAgain: 0,
-      totalProcessed: 0,
-      evaluated: 0,
-      perFunder: [] as Array<{ funder: string; inserted: number; seenAgain?: number; engine?: string; error?: string }>,
-      status: "queued" as const,
+      totalInserted: result?.totalInserted ?? 0,
+      totalSeenAgain: result?.totalSeenAgain ?? 0,
+      totalProcessed: result?.totalProcessed ?? queued,
+      evaluated: result?.evaluated ?? 0,
+      perFunder: result?.perFunder ?? [],
+      status: (runError ? "failed" : "completed") as "completed" | "failed",
+      error: runError,
     };
   });
+
 
 // List active funders with a discoverable source_url. Used by the admin UI to
 // select which funders to run in the next discovery job.

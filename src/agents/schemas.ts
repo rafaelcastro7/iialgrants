@@ -13,13 +13,26 @@ export const DiscoveredGrant = z.object({
   // Accept null from LLMs that emit explicit nulls for missing optional fields,
   // then normalize to safe defaults so a single null doesn't fail the batch.
   eligibility: z.preprocess(
-    (v) => (v == null ? {} : v),
+    (v) => {
+      if (v == null) return {};
+      if (typeof v === "string") return v.trim() ? { description: v } : {};
+      if (Array.isArray(v)) return { items: v };
+      if (typeof v === "object") return v;
+      return {};
+    },
     z.record(z.string(), z.unknown()).default({}),
   ),
   sectors: z.preprocess(
-    (v) => (v == null ? [] : v),
+    (v) => {
+      if (v == null) return [];
+      if (Array.isArray(v)) return v.filter((x) => typeof x === "string");
+      if (typeof v === "string")
+        return v.split(/[,;|/]+/).map((s) => s.trim()).filter(Boolean);
+      return [];
+    },
     z.array(z.string()).default([]),
   ),
+
   language: z.enum(["en", "fr"]).default("en"),
   url: z.string().url(),
 });
