@@ -43,11 +43,20 @@ async function logRetry(opts: {
   } catch { /* logging is best-effort */ }
 }
 
+export type DiscoveryJobResult = {
+  totalInserted: number;
+  totalSeenAgain: number;
+  totalProcessed: number;
+  evaluated: number;
+  perFunder: Array<{ funder: string; inserted: number; seenAgain?: number; engine?: string; error?: string }>;
+};
+
 export async function runDiscoveryJob(
   jobId: string,
   triggeringUserId: string,
   funderIds?: string[],
-): Promise<void> {
+): Promise<DiscoveryJobResult> {
+
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   // Job started marker (status='running' so UI knows it's in flight).
@@ -77,15 +86,17 @@ export async function runDiscoveryJob(
       model: "google/gemini-2.5-flash", error: error.message,
       metadata: { job_id: jobId, stage: "orchestrator_funders_query" },
     });
-    return;
+    return { totalInserted: 0, totalSeenAgain: 0, totalProcessed: 0, evaluated: 0, perFunder: [] };
   }
 
   let totalInserted = 0;
   let totalSeenAgain = 0;
   let totalProcessed = 0;
+  const perFunder: DiscoveryJobResult["perFunder"] = [];
 
   for (const f of funders ?? []) {
     let success = false;
+    let lastError: string | undefined;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       if (attempt > 1) await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt - 1] ?? 5000));
       try {
@@ -97,17 +108,20 @@ export async function runDiscoveryJob(
         totalInserted += r.inserted;
         totalSeenAgain += r.seenAgain ?? 0;
         totalProcessed += 1;
+        perFunder.push({ funder: f.name, inserted: r.inserted, seenAgain: r.seenAgain, engine: r.engine });
         success = true;
         break;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
+        lastError = msg;
         const willRetry = attempt < MAX_ATTEMPTS;
         await logRetry({ jobId, funderId: f.id, funderName: f.name, attempt, error: msg, willRetry });
         if (!willRetry) totalProcessed += 1;
       }
     }
-    if (!success) { /* already logged failed */ }
+    if (!success) perFunder.push({ funder: f.name, inserted: 0, error: lastError });
   }
+
 
   // Auto-evaluate fit for the triggering user (best effort).
   let evaluated = 0;
@@ -150,4 +164,7 @@ export async function runDiscoveryJob(
       funders_queued: funders?.length ?? 0,
     },
   });
+
+  return { totalInserted, totalSeenAgain, totalProcessed, evaluated, perFunder };
 }
+
