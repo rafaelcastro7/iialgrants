@@ -384,9 +384,11 @@ export async function discoverFunderImpl(
       .slice(0, max);
   }
   const PROGRAM_HINTS = /(program|programme|fund(ing)?|grant|subvention|aide|prêt|pret|bourse|scholarship|prime|credit|crédit|incentive|loan)/i;
-  function extractCandidateLinks(html: string, baseUrl: string): Array<{ url: string; text: string }> {
+  // Negative patterns: obviously non-program pages we should never spend an LLM call on.
+  const NON_PROGRAM = /(about|contact|press|news|blog|career|jobs|privacy|terms|legal|cookie|login|sign[\-_]?in|sitemap|search|rss|feed|sponsor|commandite|salle[\-_]de[\-_]presse|nous[\-_]joindre|tout[\-_]sur[\-_]nous|qui[\-_]sommes|esg|publication|rapport|annual[\-_]report|events?|evenements?|webinair|partners?|partenaires)/i;
+  function extractCandidateLinks(html: string, baseUrl: string): Array<{ url: string; text: string; score: number }> {
     const base = new URL(baseUrl);
-    const found = new Map<string, string>();
+    const found = new Map<string, { text: string; score: number }>();
     const re = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(html))) {
@@ -400,19 +402,27 @@ export async function discoverFunderImpl(
       const path = abs.pathname.replace(/\/+$/, "").toLowerCase();
       if (!path || path === "/") continue;
       if (path === base.pathname.replace(/\/+$/, "").toLowerCase()) continue;
-      // Path must be deeper than index OR text/url contain a program hint.
+      if (NON_PROGRAM.test(`${path} ${rawText}`)) continue;
       const segs = path.split("/").filter(Boolean);
-      if (segs.length < 2 && !PROGRAM_HINTS.test(`${path} ${rawText}`)) continue;
-      // Strip query and fragment for de-dup.
+      // Score: program hints in path/text + depth.
+      let score = 0;
+      if (PROGRAM_HINTS.test(path)) score += 3;
+      if (PROGRAM_HINTS.test(rawText)) score += 2;
+      score += Math.min(segs.length, 4);
+      // Require at least one positive signal.
+      if (score < 2) continue;
       const key = `${abs.origin}${abs.pathname}`;
-      if (!found.has(key)) found.set(key, rawText);
+      const prev = found.get(key);
+      if (!prev || prev.score < score) found.set(key, { text: rawText, score });
     }
-    return Array.from(found, ([url, text]) => ({ url, text }));
+    return Array.from(found, ([url, v]) => ({ url, text: v.text, score: v.score }))
+      .sort((a, b) => b.score - a.score);
   }
 
   const indexHtml = await fetchHtml(F.source_url, 10_000);
   const indexText = htmlToText(indexHtml, 8_000);
   const links = extractCandidateLinks(indexHtml, F.source_url).slice(0, 6);
+
 
   if (links.length === 0 && indexText.length < 200) {
     await supabaseAdmin.from("agent_runs").insert({
