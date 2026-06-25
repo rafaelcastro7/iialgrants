@@ -340,9 +340,12 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
   const passed = evaluable.filter((c) => c.status === "pass").length;
   const rule_score = evaluable.length === 0 ? 100 : Math.round((passed / evaluable.length) * 100);
 
+  // combined_score is on 0–100 scale. `llm` arrives in 0–1 (Evaluator schema),
+  // so multiply by 100 before blending with rule_score (already 0–100).
   const w = rules.weight_llm;
-  const combined_score = (llm: number) => Math.round(w * llm + (1 - w) * rule_score);
+  const combined_score = (llm: number) => Math.round(w * llm * 100 + (1 - w) * rule_score);
   const pass = (llm: number) => !hard_fail && combined_score(llm) >= rules.threshold_fit_pass;
+
 
   return { checks, hard_fail, rule_score, combined_score, pass, detected_role, cost_share_pct, rolling_intake };
 }
