@@ -475,7 +475,12 @@ export async function discoverFunderImpl(
             `Return JSON: { "grants": [ one entry describing THIS specific program with fields: ` +
             `"title", "title_fr"?, "summary"?, "summary_fr"?, "amount_cad_min"?, "amount_cad_max"?, ` +
             `"deadline"?, "eligibility"?, "sectors"?, "language", "url" ] }. Use "${doc.url}" as the url. ` +
+            `LANGUAGE RULE (CRITICAL): "title" and "summary" MUST always be in ENGLISH. ` +
+            `If the source page is in French, translate them to natural English and put the ORIGINAL French ` +
+            `text in "title_fr" and "summary_fr". Set "language" to the source page language ("en" or "fr"). ` +
+            `Do not leave French strings in "title" or "summary". Translate "eligibility" values and "sectors" to English as well. ` +
             `If the page is not a specific funding program, return { "grants": [] }.` },
+
         ],
       });
       inputTokens += llmPage.inputTokens ?? 0;
