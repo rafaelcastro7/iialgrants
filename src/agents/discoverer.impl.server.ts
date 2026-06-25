@@ -503,8 +503,12 @@ export async function discoverFunderImpl(
         continue;
       }
       const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
+      const sourceHash = createHash("sha256").update(`${(g.url && g.url !== F.source_url) ? g.url : doc.url}|${g.title}`).digest("hex");
+      // Look up existing by canonical_key OR source_hash to absorb retries/dupes.
       const { data: existing } = await supabaseAdmin
-        .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
+        .from("grants").select("id, times_seen")
+        .or(`canonical_key.eq.${ck},source_hash.eq.${sourceHash}`)
+        .maybeSingle();
       if (existing) {
         await supabaseAdmin.from("grants").update({
           last_seen_at: new Date().toISOString(),
@@ -512,18 +516,20 @@ export async function discoverFunderImpl(
         } as never).eq("id", existing.id);
         seenAgain++; continue;
       }
-      const sourceHash = createHash("sha256").update(`${effectiveUrl}|${g.title}`).digest("hex");
+      const effectiveUrl2 = (g.url && g.url !== F.source_url) ? g.url : doc.url;
       const { error: ierr } = await supabaseAdmin.from("grants").insert({
         funder_id: F.id, title: g.title, title_fr: g.title_fr ?? null,
         summary: g.summary ?? null, summary_fr: g.summary_fr ?? null,
         amount_cad_min: g.amount_cad_min ?? null, amount_cad_max: g.amount_cad_max ?? null,
         deadline: g.deadline ?? null,
         eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
-        sectors: g.sectors ?? [], language: g.language, url: effectiveUrl,
+        sectors: g.sectors ?? [], language: g.language, url: effectiveUrl2,
         source_hash: sourceHash, canonical_key: ck, status: "discovered",
       });
       if (!ierr) { inserted++; pageInserted++; }
-      else insertErrors.push({ title: g.title, error: ierr.message });
+      else if (/duplicate key/i.test(ierr.message)) { seenAgain++; }
+      else { insertErrors.push({ title: g.title, error: ierr.message }); }
+
     }
     perPage.push({ url: doc.url, found: pageGrants.length, inserted: pageInserted });
   }
