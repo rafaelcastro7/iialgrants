@@ -384,6 +384,35 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
       }
     }
 
+    // ----- Step 5: Normalize French → English in patched fields -----
+    // Canonical language is English. Translate any French that slipped through
+    // (sectors, eligibility text values) before persisting.
+    try {
+      const { translateStringsToEnglish, looksFrench } = await import("@/agents/translate.server");
+      if (Array.isArray(patch.sectors)) {
+        const arr = (patch.sectors as unknown[]).map(String);
+        if (arr.some(looksFrench)) {
+          patch.sectors = await translateStringsToEnglish({ strings: arr, agent: "enricher", runId });
+          await trace("translate_sectors", "Translated French sector labels to English", "ok");
+        }
+      }
+      if (patch.eligibility && typeof patch.eligibility === "object") {
+        const elig = patch.eligibility as Record<string, unknown>;
+        const stringEntries = Object.entries(elig).filter(([, v]) => typeof v === "string") as Array<[string, string]>;
+        const frEntries = stringEntries.filter(([, v]) => looksFrench(v));
+        if (frEntries.length) {
+          const translated = await translateStringsToEnglish({
+            strings: frEntries.map(([, v]) => v), agent: "enricher", runId,
+          });
+          frEntries.forEach(([k], i) => { elig[k] = translated[i]; });
+          patch.eligibility = elig as never;
+          await trace("translate_eligibility", `Translated ${frEntries.length} French eligibility value(s)`, "ok");
+        }
+      }
+    } catch (e) {
+      await trace("translate", `Translation pass failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`, "warn");
+    }
+
     // Schema check on the structural shape we built
     const built = EnricherOutput.partial().safeParse(patch);
     if (!built.success) {
@@ -395,6 +424,7 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
       } as never).eq("id", g.id);
       return { ok: false, runId, error: "schema_validation" };
     }
+
 
     patch.status = "enriched";
     patch.enriched_at = new Date().toISOString();
