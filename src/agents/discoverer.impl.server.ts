@@ -424,16 +424,18 @@ export async function discoverFunderImpl(
     return { ok: true, inserted: 0, runId, degraded: true, engine: "fallback" };
   }
 
-  // Scrape candidate pages in parallel (bounded).
+  // Scrape candidate pages in parallel (bounded), then process LLM sequentially.
   type PageDoc = { url: string; text: string };
   const pageDocs: PageDoc[] = [];
   for (let i = 0; i < links.length; i += SCRAPE_CONCURRENCY) {
     const batch = links.slice(i, i + SCRAPE_CONCURRENCY);
     const results = await Promise.allSettled(
-      batch.map(async (l) => ({ url: l.url, text: htmlToText(await fetchHtml(l.url, 8_000), 12_000) })),
+      batch.map(async (l) => ({ url: l.url, text: htmlToText(await fetchHtml(l.url, 8_000), 5_000) })),
     );
     for (const r of results) if (r.status === "fulfilled" && r.value.text.length >= 400) pageDocs.push(r.value);
   }
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 
   let inserted = 0;
   let seenAgain = 0;
