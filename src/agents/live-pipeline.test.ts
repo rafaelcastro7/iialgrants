@@ -27,8 +27,9 @@ describe.skipIf(!RUN)("live pipeline", () => {
     console.log(JSON.stringify(g, null, 2));
 
     const { data: ev } = await supabaseAdmin.from("evidence_spans")
-      .select("field,method,snippet").eq("grant_id", GRANT_ID!);
+      .select("field,extraction_method,snippet").eq("grant_id", GRANT_ID!);
     console.log(`\n[LIVE] evidence count=${ev?.length}`);
-    for (const r of ev ?? []) console.log(`  - [${r.method}] ${r.field}: ${(r.snippet ?? "").slice(0, 120)}`);
+    for (const r of ev ?? []) console.log(`  - [${r.extraction_method}] ${r.field}: ${(r.snippet ?? "").slice(0, 120)}`);
+
   }, 600_000);
 });
