@@ -96,21 +96,25 @@ export async function evaluateGrantImpl(opts: {
     throw new Error("evaluator_schema_validation");
   }
 
-  // Combine LLM verdict with deterministic rules
-  const llm_fit = parsed.fit_score;
-  const combined_fit = rulesResult.combined_score(llm_fit);
+  // Combine LLM verdict with deterministic rules. combined_fit is on 0–100
+  // scale (matches threshold_fit_pass). The DB columns grants.fit_score and
+  // grant_evaluations.fit_score are numeric(4,3) constrained to 0..1, so we
+  // persist the normalized value (combined_fit / 100) and keep traces in 0–100.
+  const llm_fit = parsed.fit_score;                             // 0..1
+  const combined_fit = rulesResult.combined_score(llm_fit);     // 0..100
+  const combined_fit_unit = Math.max(0, Math.min(1, combined_fit / 100));
   const eligibility_pass = !rulesResult.hard_fail && parsed.eligibility_pass && combined_fit >= rules.threshold_fit_pass;
-  parsed.fit_score = combined_fit;
+  parsed.fit_score = combined_fit_unit;
   parsed.eligibility_pass = eligibility_pass;
   await trace("combine",
-    `LLM=${llm_fit} · rules=${rulesResult.rule_score} · combined=${combined_fit} · threshold=${rules.threshold_fit_pass} · pass=${eligibility_pass}`,
+    `LLM=${Math.round(llm_fit * 100)} · rules=${rulesResult.rule_score} · combined=${combined_fit} · threshold=${rules.threshold_fit_pass} · pass=${eligibility_pass}`,
     eligibility_pass ? "ok" : "warn",
     { llm_fit, rule_score: rulesResult.rule_score, combined_fit, threshold: rules.threshold_fit_pass, pass: eligibility_pass });
 
-  await trace("parse", `Verdict: fit=${parsed.fit_score}/100 · eligible=${parsed.eligibility_pass}`, "ok", { fit_score: parsed.fit_score, eligibility_pass: parsed.eligibility_pass });
+  await trace("parse", `Verdict: fit=${combined_fit}/100 · eligible=${parsed.eligibility_pass}`, "ok", { fit_score: parsed.fit_score, eligibility_pass: parsed.eligibility_pass });
   await trace("rationale", parsed.rationale_en.slice(0, 600), "info");
 
-  await userSupabase.from("grant_evaluations").upsert({
+  const { error: upErr } = await userSupabase.from("grant_evaluations").upsert({
     user_id: userId, grant_id: g.id,
     fit_score: parsed.fit_score,
     eligibility_pass: parsed.eligibility_pass,
@@ -118,6 +122,10 @@ export async function evaluateGrantImpl(opts: {
     model: "google/gemini-2.5-flash",
     prompt_version: PROMPTS.evaluator.version, run_id: runId,
   }, { onConflict: "user_id,grant_id" });
+  if (upErr) {
+    await trace("persist", `grant_evaluations upsert failed: ${upErr.message}`, "error");
+    throw new Error(`grant_evaluations_upsert_failed: ${upErr.message}`);
+  }
 
   try {
     const { recordEvidence } = await import("@/agents/evidence.server");
