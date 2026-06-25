@@ -412,7 +412,7 @@ export async function discoverFunderImpl(
 
   const indexHtml = await fetchHtml(F.source_url, 10_000);
   const indexText = htmlToText(indexHtml, 8_000);
-  const links = extractCandidateLinks(indexHtml, F.source_url).slice(0, 15);
+  const links = extractCandidateLinks(indexHtml, F.source_url).slice(0, 6);
 
   if (links.length === 0 && indexText.length < 200) {
     await supabaseAdmin.from("agent_runs").insert({
