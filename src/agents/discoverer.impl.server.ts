@@ -492,8 +492,46 @@ export async function discoverFunderImpl(
       continue;
     }
 
+    // Defensive translation: if the LLM left French in title/summary, translate now.
+    const FRENCH_HINT = /\b(le|la|les|des|du|aux?|pour|avec|sans|sur|programme|subvention|prêt|prets?|aide|crédit|entreprises?|québec|développement|investissement|formation|d['’]|l['’]|qu['’])\b/i;
+    function looksFrench(s: string | null | undefined): boolean {
+      if (!s) return false;
+      const hits = (s.match(FRENCH_HINT) ?? []).length;
+      return hits >= 2 || /[àâçéèêëîïôûùœ]/.test(s) && hits >= 1;
+    }
+    for (const g of pageGrants) {
+      if (!looksFrench(g.title) && !looksFrench(g.summary)) continue;
+      try {
+        const tr = await callLlm({
+          model: "google/gemini-2.5-flash",
+          agent: "discoverer",
+          runId, temperature: 0, responseFormat: "json",
+          messages: [
+            { role: "system", content: "You translate Canadian funding-program text from French to natural English. Return ONLY JSON." },
+            { role: "user", content:
+              `Translate to English. Keep proper nouns (program names, agencies) intact. ` +
+              `Return JSON: {"title_en": string, "summary_en": string}\n\n` +
+              `title: ${g.title}\nsummary: ${g.summary ?? ""}` },
+          ],
+        });
+        inputTokens += tr.inputTokens ?? 0;
+        outputTokens += tr.outputTokens ?? 0;
+        const parsed = JSON.parse(tr.text) as { title_en?: string; summary_en?: string };
+        if (parsed.title_en && looksFrench(g.title)) {
+          if (!g.title_fr) g.title_fr = g.title;
+          g.title = parsed.title_en;
+        }
+        if (parsed.summary_en && looksFrench(g.summary)) {
+          if (!g.summary_fr) g.summary_fr = g.summary ?? null;
+          g.summary = parsed.summary_en;
+        }
+        await sleep(2_500);
+      } catch { /* keep original on failure */ }
+    }
+
     let pageInserted = 0;
     foundTotal += pageGrants.length;
+
     for (const g of pageGrants) {
       if (isGenericTitle(g.title)) {
         skipReasons.generic_title = (skipReasons.generic_title ?? 0) + 1;
