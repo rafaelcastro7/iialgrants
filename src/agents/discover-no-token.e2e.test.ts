@@ -76,8 +76,7 @@ vi.mock("@/lib/web-fetch.server", () => ({
     via: "firecrawl_markdown" as const,
     markdown: PAGE_MD,
     title: "Applied Research Catalyst",
-    json: null,
-  }),
+    json: null,, attempts: []}),
   jinaSearch: async () => ({ ok: true, hits: [] }),
 }));
 
