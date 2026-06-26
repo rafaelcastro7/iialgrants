@@ -100,6 +100,7 @@ vi.mock("@/lib/web-fetch.server", () => ({
             ]
           : [],
     },
+    attempts: [],
   }),
   jinaSearch: async () => ({ ok: true, hits: [] }),
 }));
