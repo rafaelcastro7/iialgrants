@@ -447,12 +447,14 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
         provider: llmInfo?.provider ?? "none",
         deterministic_counts: methodCounts,
         still_missing_after: stillMissing.filter((f) => (patch as Record<string, unknown>)[f] == null),
+        fetch_attempts: fetchAttempts,
       },
     });
     return {
       ok: true, runId, filled,
       deterministic_counts: methodCounts,
       provider: llmInfo?.provider ?? "none",
+      attempts: fetchAttempts,
     };
 }
 
