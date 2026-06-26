@@ -175,8 +175,28 @@ export function AgentTracePanel({
             let payloadObj: Record<string, unknown> | null = null;
             if (s.payload) { try { payloadObj = JSON.parse(s.payload) as Record<string, unknown>; } catch { /* ignore */ } }
             const info = stepInfo(s.step);
+            // Match by step id (precise) or step name (first occurrence).
+            const isFocused = !!focusStep && (focusStep === s.id || focusStep === s.step);
+            const copyDeepLink = async (e: React.MouseEvent) => {
+              e.stopPropagation();
+              const url = new URL(window.location.href);
+              url.searchParams.set("step", s.id);
+              try {
+                await navigator.clipboard.writeText(url.toString());
+                setCopied(s.id);
+                setTimeout(() => setCopied((c) => (c === s.id ? null : c)), 1500);
+              } catch { /* ignore */ }
+              onFocusStep?.(s.id);
+            };
             return (
-              <div key={s.id} className="border rounded-md p-2 bg-card text-xs">
+              <div
+                key={s.id}
+                ref={(el) => { stepRefs.current[s.id] = el; stepRefs.current[s.step] ??= el; }}
+                className={
+                  "border rounded-md p-2 bg-card text-xs transition-shadow " +
+                  (isFocused ? "ring-2 ring-sky-500/60 border-sky-500/40" : "")
+                }
+              >
                 <div className="flex items-start gap-2">
                   <StatusIcon s={s.status as Status} />
                   <div className="flex-1 min-w-0">
@@ -199,10 +219,27 @@ export function AgentTracePanel({
                       {s.duration_ms != null && (
                         <span className="text-muted-foreground tabular-nums text-[10px]">({s.duration_ms}ms)</span>
                       )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={copyDeepLink}
+                            className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                            aria-label={fr ? "Copier le lien vers cette étape" : "Copy deep-link to this step"}
+                          >
+                            {copied === s.id ? <Check className="h-3 w-3 text-emerald-500" /> : <Link2 className="h-3 w-3" />}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {copied === s.id
+                            ? (fr ? "Lien copié" : "Link copied")
+                            : (fr ? "Copier le lien vers cette étape" : "Copy deep-link to this step")}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                     {s.message && <p className="mt-1 leading-relaxed break-words">{s.message}</p>}
                     {payloadObj && Object.keys(payloadObj).length > 0 && (
-                      <details className="mt-1.5">
+                      <details className="mt-1.5" open={isFocused}>
                         <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground">
                           {fr ? "Détails" : "Details"}
                         </summary>
@@ -216,6 +253,7 @@ export function AgentTracePanel({
               </div>
             );
           })}
+
         </div>
       </SheetContent>
     </Sheet>
