@@ -61,14 +61,17 @@ function StatusIcon({ s }: { s: Status }) {
 }
 
 export function AgentTracePanel({
-  runId, agentLabel, open, onOpenChange, fr,
+  runId, agentLabel, open, onOpenChange, fr, focusStep, onFocusStep,
 }: {
   runId: string | null;
   agentLabel: string;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   fr: boolean;
+  focusStep?: string | null;
+  onFocusStep?: (step: string | null) => void;
 }) {
+
   const fetchTrace = useServerFn(getAgentTrace);
   const { data } = useQuery({
     queryKey: ["agent-trace", runId],
