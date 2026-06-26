@@ -21,7 +21,8 @@ const STAGES: Stage[] = [
   { key: "evaluated",   label: "Evaluated",   statuses: ["scored"],                      dot: "bg-[#3b6fa0]",      helper: "Scored against your screening rules. Review and shortlist." },
   { key: "shortlisted", label: "Shortlisted", statuses: ["shortlisted"],                 dot: "bg-[#1e3a5f]",      helper: "Curated as a real opportunity. Start drafting." },
   { key: "drafting",    label: "Drafting",    statuses: ["in_proposal"],                 dot: "bg-orange-400",     helper: "A proposal exists. Continue writing or send to NotebookLM." },
-  { key: "submitted",   label: "Submitted",   statuses: ["submitted","won","lost","expired","archived"], dot: "bg-emerald-500", helper: "Filed with the funder. Outcome tracking only." },
+  { key: "submitted",   label: "Submitted",   statuses: ["submitted","won","lost","expired"], dot: "bg-emerald-500", helper: "Filed with the funder. Outcome tracking only." },
+  { key: "archived",    label: "Archived",    statuses: ["archived"],                    dot: "bg-slate-400",      helper: "Filtered out by screening rules or manually archived." },
 ];
 
 function daysLeft(deadline: string | null): number | null {
