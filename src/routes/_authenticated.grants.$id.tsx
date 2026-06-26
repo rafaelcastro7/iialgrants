@@ -58,7 +58,7 @@ function GrantDetailPage() {
   const { t, i18n } = useTranslation();
   const fr = false /* EN-only */;
   const navigate = useNavigate();
-  const isAdmin = useIsAdmin();
+  void useIsAdmin; // imported for potential future admin-only actions
   const qc = useQueryClient();
   const evaluate = useServerFn(runEvaluator);
   const enrichOne = useServerFn(enrichGrant);
