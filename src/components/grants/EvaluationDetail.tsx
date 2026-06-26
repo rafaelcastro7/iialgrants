@@ -1,11 +1,12 @@
 // Inline, expanded evaluation breakdown rendered directly on the grant page.
 // Pulls the same data as /grants/$id/audit so users see WHY a grant scored
 // what it scored without having to navigate away.
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertTriangle, ExternalLink,
-  Brain, Gauge, Scale, ListChecks, FileText, Loader2,
+  Brain, Gauge, Scale, ListChecks, FileText, Loader2, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { getGrantAudit } from "@/lib/grant-audit.functions";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,22 @@ const STATUS_ICON = {
   fail: <XCircle className="h-4 w-4 text-rose-600" />,
   warn: <AlertTriangle className="h-4 w-4 text-amber-600" />,
   skip: <MinusCircle className="h-4 w-4 text-muted-foreground" />,
+};
+
+// Map each rule id to the evidence fields that fed it. Used to surface ONLY
+// the spans that actually drove a given rule when the user drills into it.
+const RULE_FIELD_MAP: Record<string, string[]> = {
+  sop_filter_1_country: ["country", "jurisdiction", "eligibility"],
+  sop_filter_2_role: ["eligibility", "applicant_type"],
+  sop_filter_3_money: ["amount_cad_min", "amount_cad_max", "amount", "funding"],
+  sop_filter_4_strategic: ["sectors", "themes", "summary"],
+  sop_filter_5_runway: ["deadline", "intake", "rolling"],
+  sop_filter_6_effort: ["cost_share", "match", "effort"],
+  amount_min: ["amount_cad_min", "amount_cad_max", "amount"],
+  amount_max: ["amount_cad_min", "amount_cad_max", "amount"],
+  deadline: ["deadline", "intake"],
+  keywords_required: ["summary", "title", "sectors"],
+  keywords_excluded: ["summary", "title", "sectors"],
 };
 
 export function EvaluationDetail({ grantId }: { grantId: string }) {
