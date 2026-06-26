@@ -28,6 +28,7 @@ export type EnricherResult = {
   filled?: string[];
   deterministic_counts?: Record<string, number>;
   provider?: string;
+  attempts?: import("@/lib/web-fetch.server").FetchAttempt[];
 };
 
 export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> {
