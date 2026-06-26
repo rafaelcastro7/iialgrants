@@ -238,12 +238,14 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
     };
   });
 
-// Admin-triggered enrichment of a single grant.
+// On-demand enrichment of a single grant. Available to any authenticated user
+// — enrichment only scrapes the public funder URL and writes structured fields
+// + evidence back, so it is safe to expose. The agent's own kill-switch
+// (`assertAgentEnabled`) still applies.
 export const enrichGrant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ grantId: z.string().uuid() }).parse(i))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+  .handler(async ({ data }) => {
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     await assertAgentEnabled("enricher");
     const { enrichGrantImpl } = await import("@/agents/enricher.functions");
