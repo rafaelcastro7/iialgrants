@@ -91,9 +91,10 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
     await trace("scrape", `Fetching ${g.url}`, "start");
     const tScrape = Date.now();
     const scraped = await scrapeWithFallback(g.url);
+    const fetchAttempts = scraped.attempts ?? [];
     if (!scraped.ok) {
       const msg = `scrape_failed: ${scraped.error}`;
-      await trace("scrape", msg, "error", { via: scraped.via, duration_ms: Date.now() - tScrape });
+      await trace("scrape", msg, "error", { via: scraped.via, duration_ms: Date.now() - tScrape, attempts: fetchAttempts });
       await supabaseAdmin.from("grants").update({
         enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
         enrich_last_error: msg.slice(0, 500),
@@ -102,13 +103,13 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
       await supabaseAdmin.from("agent_runs").insert({
         run_id: runId, agent: "enricher", status: "failed",
         model: "scrape", latency_ms: Date.now() - t0, grant_id: g.id,
-        error: msg, metadata: { via: scraped.via },
+        error: msg, metadata: { via: scraped.via, fetch_attempts: fetchAttempts },
       });
-      return { ok: false, runId, error: msg };
+      return { ok: false, runId, error: msg, attempts: fetchAttempts };
     }
     const markdown = scraped.markdown;
     const language = (g.language as "en" | "fr") ?? "en";
-    await trace("scrape", `Scraped ${markdown.length} chars via ${scraped.via}`, "done", { via: scraped.via, chars: markdown.length, duration_ms: Date.now() - tScrape });
+    await trace("scrape", `Scraped ${markdown.length} chars via ${scraped.via}`, "done", { via: scraped.via, chars: markdown.length, duration_ms: Date.now() - tScrape, attempts: fetchAttempts });
 
     // ----- Step 3: Deterministic extraction with evidence -----
     await trace("extractors", "Running deterministic extractors (regex / chrono / rules)", "start");
