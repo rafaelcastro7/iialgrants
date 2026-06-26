@@ -432,18 +432,52 @@ export async function discoverFunderImpl(
 
   const indexHtml = await fetchHtml(F.source_url, 10_000);
   const indexText = htmlToText(indexHtml, 8_000);
-  const links = extractCandidateLinks(indexHtml, F.source_url).slice(0, 6);
+  const linksFromIndex = extractCandidateLinks(indexHtml, F.source_url);
 
+  // Seed extra candidates via Jina Search so we never depend on the funder's
+  // own navigation surfacing every program. This makes discovery resilient on
+  // sites that hide programs behind JS menus, filters, or pagination.
+  const { jinaSearch } = await import("@/lib/web-fetch.server");
+  const seedHost = new URL(F.source_url).host;
+  const seeded: Array<{ url: string; text: string; score: number }> = [];
+  try {
+    const queries = [
+      `site:${seedHost} (program OR funding OR grant OR subvention OR financement OR prêt)`,
+      `site:${seedHost} eligibility deadline application`,
+    ];
+    for (const q of queries) {
+      const hits = await jinaSearch(q, 15);
+      for (const h of hits) {
+        try {
+          const u = new URL(h.url);
+          if (u.host !== seedHost) continue;
+          if (NON_PROGRAM.test(u.pathname)) continue;
+          seeded.push({ url: `${u.origin}${u.pathname}`, text: h.title || u.pathname, score: 4 });
+        } catch { /* skip */ }
+      }
+    }
+  } catch { /* Jina best-effort */ }
+
+  // Merge index + seeded, dedupe by URL, keep best score, cap at FALLBACK_MAX_LINKS.
+  const merged = new Map<string, { url: string; text: string; score: number }>();
+  for (const l of [...linksFromIndex, ...seeded]) {
+    const prev = merged.get(l.url);
+    if (!prev || prev.score < l.score) merged.set(l.url, l);
+  }
+  const links = Array.from(merged.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, FALLBACK_MAX_LINKS);
 
   if (links.length === 0 && indexText.length < 200) {
     await supabaseAdmin.from("agent_runs").insert({
       run_id: runId, agent: "discoverer", status: "degraded",
       model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
       error: "page_too_short",
-      metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback" },
+      metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback", links_considered: 0 },
     });
     return { ok: true, inserted: 0, runId, degraded: true, engine: "fallback" };
   }
+
 
   // Scrape candidate pages in parallel (bounded), then process LLM sequentially.
   type PageDoc = { url: string; text: string };
