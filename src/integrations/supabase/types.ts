@@ -306,6 +306,90 @@ export type Database = {
         }
         Relationships: []
       }
+      crawl_ledger: {
+        Row: {
+          bytes: number | null
+          change_count: number
+          content_hash: string | null
+          created_at: string
+          error_count: number
+          etag: string | null
+          fetch_count: number
+          funder_id: string | null
+          host: string
+          http_status: number | null
+          interval_hours: number
+          last_error: string | null
+          last_fetched_at: string | null
+          last_modified: string | null
+          next_fetch_at: string
+          status: string
+          title: string | null
+          updated_at: string
+          url: string
+          via: string | null
+        }
+        Insert: {
+          bytes?: number | null
+          change_count?: number
+          content_hash?: string | null
+          created_at?: string
+          error_count?: number
+          etag?: string | null
+          fetch_count?: number
+          funder_id?: string | null
+          host: string
+          http_status?: number | null
+          interval_hours?: number
+          last_error?: string | null
+          last_fetched_at?: string | null
+          last_modified?: string | null
+          next_fetch_at?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          url: string
+          via?: string | null
+        }
+        Update: {
+          bytes?: number | null
+          change_count?: number
+          content_hash?: string | null
+          created_at?: string
+          error_count?: number
+          etag?: string | null
+          fetch_count?: number
+          funder_id?: string | null
+          host?: string
+          http_status?: number | null
+          interval_hours?: number
+          last_error?: string | null
+          last_fetched_at?: string | null
+          last_modified?: string | null
+          next_fetch_at?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          url?: string
+          via?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crawl_ledger_funder_id_fkey"
+            columns: ["funder_id"]
+            isOneToOne: false
+            referencedRelation: "funder_source_yield"
+            referencedColumns: ["funder_id"]
+          },
+          {
+            foreignKeyName: "crawl_ledger_funder_id_fkey"
+            columns: ["funder_id"]
+            isOneToOne: false
+            referencedRelation: "funders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discovery_sources: {
         Row: {
           content_hash: string | null
