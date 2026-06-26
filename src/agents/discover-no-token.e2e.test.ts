@@ -73,10 +73,12 @@ vi.mock("@/lib/web-fetch.server", () => ({
   scrapeWithFallback: async (url: string) => ({
     ok: true,
     url,
-    via: "firecrawl_markdown" as const,
+    via: "jina_reader" as const,
     markdown: PAGE_MD,
     title: "Applied Research Catalyst",
-    json: null,, attempts: []}),
+    json: null,
+    attempts: [],
+  }),
   jinaSearch: async () => ({ ok: true, hits: [] }),
 }));
 
