@@ -4,9 +4,11 @@
 
 import { discoverFunderImpl } from "@/agents/discoverer.impl.server";
 
-const FUNDER_TIMEOUT_MS = 90_000;
-const MAX_ATTEMPTS = 3;
-const BACKOFF_MS = [0, 1500, 4000]; // pre-attempt wait per attempt index
+const FUNDER_TIMEOUT_MS = 60_000;
+const MAX_ATTEMPTS = 2;
+const BACKOFF_MS = [0, 1500]; // pre-attempt wait per attempt index
+const FUNDER_CONCURRENCY = 4; // run up to N funders in parallel
+
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -94,7 +96,7 @@ export async function runDiscoveryJob(
   let totalProcessed = 0;
   const perFunder: DiscoveryJobResult["perFunder"] = [];
 
-  for (const f of funders ?? []) {
+  async function runOne(f: { id: string; name: string }) {
     let success = false;
     let lastError: string | undefined;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -110,7 +112,7 @@ export async function runDiscoveryJob(
         totalProcessed += 1;
         perFunder.push({ funder: f.name, inserted: r.inserted, seenAgain: r.seenAgain, engine: r.engine });
         success = true;
-        break;
+        return;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         lastError = msg;
@@ -121,6 +123,14 @@ export async function runDiscoveryJob(
     }
     if (!success) perFunder.push({ funder: f.name, inserted: 0, error: lastError });
   }
+
+  // Parallelize across funders so a single slow site can't starve the budget.
+  const list = funders ?? [];
+  for (let i = 0; i < list.length; i += FUNDER_CONCURRENCY) {
+    const batch = list.slice(i, i + FUNDER_CONCURRENCY);
+    await Promise.allSettled(batch.map(runOne));
+  }
+
 
 
   // Auto-evaluate fit for the triggering user (best effort).
