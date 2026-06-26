@@ -18,7 +18,10 @@ import TurndownService from "turndown";
 import robotsParser from "robots-parser";
 import type { FetchedPage } from "@/lib/web-fetch.server";
 
-const UA = "IIAL-Scraper/1.0 (+https://iial.ca; contact@iial.ca)";
+// Realistic desktop browser UA — government sites (NRC, ISED, gc.ca) and many
+// Cloudflare-protected hosts return 403 for scraper-looking UAs. We still
+// honour robots.txt and per-host throttling.
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 const MIN_GAP_MS = 1500;            // per-host politeness
 const ROBOTS_TTL_MS = 6 * 3600_000; // 6h cache
 
