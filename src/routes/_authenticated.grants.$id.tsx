@@ -285,15 +285,18 @@ function GrantDetailPage() {
         grantId={id}
         field={evField}
         open={!!evField}
-        onOpenChange={(o) => !o && setEvField(null)}
+        onOpenChange={(o) => !o && closeEvidence()}
       />
       <AgentTracePanel
         runId={traceRun?.runId ?? null}
         agentLabel={traceRun?.agent ?? ""}
         open={!!traceRun}
-        onOpenChange={(o) => !o && setTraceRun(null)}
+        onOpenChange={(o) => !o && closeTrace()}
         fr={!!fr}
+        focusStep={search.step ?? null}
+        onFocusStep={(step) => patchSearch({ step: step ?? undefined })}
       />
+
     </main>
   );
 }
