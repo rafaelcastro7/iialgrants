@@ -78,6 +78,16 @@ function GrantDetailPage() {
     else setTraceRun(null);
   }, [search.run, search.agent]);
 
+  // Auto-fetch details on first open when the grant has never been enriched.
+  // Keeps the click-through useful even when discovery hasn't run the enricher
+  // pass yet. Idempotent: enrichGrantImpl returns early if already fresh.
+  const needsEnrich = !data.grant.enriched_at && data.grant.status === "discovered";
+  useEffect(() => {
+    if (!needsEnrich || busy) return;
+    run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, needsEnrich]);
+
   // State → URL: keep the deep-link sharable as the user opens panels.
   const patchSearch = (patch: Partial<GrantSearch>) =>
     navigate({
