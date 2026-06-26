@@ -427,6 +427,40 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
       return { ok: false, runId, error: "schema_validation" };
     }
 
+    // Honest-failure gate: if nothing was extracted (deterministic + LLM both
+    // produced zero usable fields) we must NOT mark the grant as enriched.
+    // Otherwise the UI would lie ("✓ enriched") while showing an empty card.
+    const extractedKeys = Object.keys(patch);
+    if (extractedKeys.length === 0) {
+      const reason = stillMissing.length > 0 && llmInfo?.provider === "none"
+        ? "no_extraction: deterministic=0 llm_cascade=all_failed"
+        : "no_extraction: page yielded no usable grant fields";
+      await trace("commit", reason, "error", { still_missing: stillMissing, provider: llmInfo?.provider });
+      await supabaseAdmin.from("grants").update({
+        enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
+        enrich_last_error: reason.slice(0, 500),
+        enrich_last_attempt_at: new Date().toISOString(),
+      } as never).eq("id", g.id);
+      await supabaseAdmin.from("agent_runs").insert({
+        run_id: runId, agent: "enricher", status: "failed",
+        model: llmInfo?.model ?? "deterministic",
+        input_tokens: llmInfo?.inputTokens ?? 0,
+        output_tokens: llmInfo?.outputTokens ?? 0,
+        latency_ms: Date.now() - t0, grant_id: g.id,
+        error: reason,
+        metadata: {
+          via: scraped.via, provider: llmInfo?.provider ?? "none",
+          deterministic_counts: methodCounts, still_missing: stillMissing,
+          fetch_attempts: fetchAttempts, scraped_bytes: markdown.length,
+        },
+      });
+      return {
+        ok: false, runId, error: reason,
+        deterministic_counts: methodCounts,
+        provider: llmInfo?.provider ?? "none",
+        attempts: fetchAttempts,
+      };
+    }
 
     patch.status = "enriched";
     patch.enriched_at = new Date().toISOString();
@@ -456,6 +490,7 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
       provider: llmInfo?.provider ?? "none",
       attempts: fetchAttempts,
     };
+
 }
 
 // Thin admin-only serverFn wrapper. Public RPC endpoint is auth-gated:
