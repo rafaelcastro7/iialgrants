@@ -49,15 +49,60 @@ export async function jinaReader(url: string, timeoutMs = 20_000): Promise<Fetch
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${JINA_READER_BASE}${url}`, { headers: jinaHeaders(), signal: ctrl.signal });
+    // First try JSON (richer metadata, but Jina requires auth on some IPs).
+    let res = await fetch(`${JINA_READER_BASE}${url}`, { headers: jinaHeaders(), signal: ctrl.signal });
+    if (res.status === 401 || res.status === 402) {
+      // Plain-text mode often works without auth — drop JSON Accept header.
+      const plainHeaders: Record<string, string> = {};
+      const key = process.env.JINA_API_KEY?.trim();
+      if (key) plainHeaders.Authorization = `Bearer ${key}`;
+      res = await fetch(`${JINA_READER_BASE}${url}`, { headers: plainHeaders, signal: ctrl.signal });
+    }
     if (!res.ok) return { ok: false, url, error: `jina_reader_${res.status}`, via: "jina_reader" };
-    const data = (await res.json()) as { data?: { content?: string; title?: string; url?: string } };
-    const markdown = data.data?.content ?? "";
-    const title = data.data?.title;
+    const ct = res.headers.get("content-type") ?? "";
+    let markdown = "";
+    let title: string | undefined;
+    if (ct.includes("application/json")) {
+      const data = (await res.json()) as { data?: { content?: string; title?: string } };
+      markdown = data.data?.content ?? "";
+      title = data.data?.title;
+    } else {
+      markdown = await res.text();
+      const m = markdown.match(/^Title:\s*(.+)$/m);
+      if (m) title = m[1].trim();
+    }
     if (markdown.length < 100) return { ok: false, url, error: "jina_reader_empty", via: "jina_reader" };
     return { ok: true, url, markdown, title, via: "jina_reader" };
   } catch (e) {
     return { ok: false, url, error: e instanceof Error ? e.message : String(e), via: "jina_reader" };
+  } finally { clearTimeout(t); }
+}
+
+// Free fallback: Wayback Machine returns the most recent snapshot, which
+// often bypasses geo/bot blocks on government sites that Cloudflare-protect
+// the origin (e.g. nrc.canada.ca).
+async function waybackFetch(url: string, timeoutMs = 15_000): Promise<FetchedPage> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const av = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    if (!av.ok) return { ok: false, url, error: `wayback_avail_${av.status}`, via: "raw_html" };
+    const j = (await av.json()) as { archived_snapshots?: { closest?: { url?: string; available?: boolean } } };
+    const snap = j.archived_snapshots?.closest;
+    if (!snap?.available || !snap.url) return { ok: false, url, error: "wayback_no_snapshot", via: "raw_html" };
+    const res = await fetch(snap.url, { signal: ctrl.signal });
+    if (!res.ok) return { ok: false, url, error: `wayback_${res.status}`, via: "raw_html" };
+    const html = (await res.text()).slice(0, 400_000);
+    const markdown = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ").trim().slice(0, 40_000);
+    if (markdown.length < 300) return { ok: false, url, error: "wayback_too_short", via: "raw_html" };
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    return { ok: true, url, markdown, title: titleMatch?.[1]?.trim(), via: "raw_html" };
+  } catch (e) {
+    return { ok: false, url, error: e instanceof Error ? e.message : String(e), via: "raw_html" };
   } finally { clearTimeout(t); }
 }
 
