@@ -116,27 +116,23 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
           </div>
         </div>
 
-        {/* Rules list */}
+        {/* Rules list — click to drill into evidence + math */}
         <div>
           <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
-            Rules evaluated ({rules.checks.length})
+            Rules evaluated ({rules.checks.length}) · click a rule to inspect
           </p>
           <ul className="divide-y rounded-md border">
             {rules.checks.map((c) => (
-              <li key={c.id} className="flex items-start gap-3 px-3 py-2 text-sm">
-                {STATUS_ICON[c.status]}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium flex items-center gap-1.5">
-                    {c.label}
-                    {c.hard && <Badge variant="outline" className="text-[10px] py-0">hard</Badge>}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{c.detail}</div>
-                </div>
-                <Badge
-                  variant={c.status === "fail" ? "destructive" : c.status === "pass" ? "default" : "secondary"}
-                  className="text-[10px]"
-                >{c.status}</Badge>
-              </li>
+              <RuleRow
+                key={c.id}
+                check={c}
+                evidence={evidence}
+                ruleScore={rules.rule_score}
+                weightLlm={rules.weight_llm}
+                llmPct={llmPct}
+                threshold={rules.threshold_fit_pass}
+                totalEvaluable={rules.checks.filter((x) => x.status === "pass" || x.status === "fail").length}
+              />
             ))}
             {rules.checks.length === 0 && (
               <li className="px-3 py-3 text-sm text-muted-foreground">No rules triggered.</li>
