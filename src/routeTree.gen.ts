@@ -18,10 +18,10 @@ import { Route as AuthenticatedProposalsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated.privacy'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
-import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated.grants'
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
+import { Route as AuthenticatedGrantsIndexRouteImport } from './routes/_authenticated.grants.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticated.grants.$id'
@@ -85,11 +85,6 @@ const AuthenticatedOpsRoute = AuthenticatedOpsRouteImport.update({
   path: '/ops',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
-  id: '/grants',
-  path: '/grants',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedFitRulesRoute = AuthenticatedFitRulesRouteImport.update({
   id: '/fit-rules',
   path: '/fit-rules',
@@ -105,6 +100,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedGrantsIndexRoute =
+  AuthenticatedGrantsIndexRouteImport.update({
+    id: '/grants/',
+    path: '/grants/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -117,9 +118,9 @@ const AuthenticatedProposalsIdRoute =
     getParentRoute: () => AuthenticatedProposalsRoute,
   } as any)
 const AuthenticatedGrantsIdRoute = AuthenticatedGrantsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedGrantsRoute,
+  id: '/grants/$id',
+  path: '/grants/$id',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
@@ -208,7 +209,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
-  '/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
@@ -223,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/grants/': typeof AuthenticatedGrantsIndexRoute
   '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
@@ -238,7 +239,6 @@ export interface FileRoutesByTo {
   '/compliance': typeof ComplianceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
-  '/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
@@ -253,6 +253,7 @@ export interface FileRoutesByTo {
   '/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/grants': typeof AuthenticatedGrantsIndexRoute
   '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
@@ -271,7 +272,6 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
-  '/_authenticated/grants': typeof AuthenticatedGrantsRouteWithChildren
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
@@ -286,6 +286,7 @@ export interface FileRoutesById {
   '/_authenticated/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/grants/': typeof AuthenticatedGrantsIndexRoute
   '/_authenticated/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
@@ -304,7 +305,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/fit-rules'
-    | '/grants'
     | '/ops'
     | '/org'
     | '/privacy'
@@ -319,6 +319,7 @@ export interface FileRouteTypes {
     | '/grants/$id'
     | '/proposals/$id'
     | '/admin/'
+    | '/grants/'
     | '/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
@@ -334,7 +335,6 @@ export interface FileRouteTypes {
     | '/compliance'
     | '/dashboard'
     | '/fit-rules'
-    | '/grants'
     | '/ops'
     | '/org'
     | '/privacy'
@@ -349,6 +349,7 @@ export interface FileRouteTypes {
     | '/grants/$id'
     | '/proposals/$id'
     | '/admin'
+    | '/grants'
     | '/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
@@ -366,7 +367,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/fit-rules'
-    | '/_authenticated/grants'
     | '/_authenticated/ops'
     | '/_authenticated/org'
     | '/_authenticated/privacy'
@@ -381,6 +381,7 @@ export interface FileRouteTypes {
     | '/_authenticated/grants/$id'
     | '/_authenticated/proposals/$id'
     | '/_authenticated/admin/'
+    | '/_authenticated/grants/'
     | '/_authenticated/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
@@ -470,13 +471,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOpsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/grants': {
-      id: '/_authenticated/grants'
-      path: '/grants'
-      fullPath: '/grants'
-      preLoaderRoute: typeof AuthenticatedGrantsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/fit-rules': {
       id: '/_authenticated/fit-rules'
       path: '/fit-rules'
@@ -498,6 +492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/grants/': {
+      id: '/_authenticated/grants/'
+      path: '/grants'
+      fullPath: '/grants/'
+      preLoaderRoute: typeof AuthenticatedGrantsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/'
@@ -514,10 +515,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/grants/$id': {
       id: '/_authenticated/grants/$id'
-      path: '/$id'
+      path: '/grants/$id'
       fullPath: '/grants/$id'
       preLoaderRoute: typeof AuthenticatedGrantsIdRouteImport
-      parentRoute: typeof AuthenticatedGrantsRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
@@ -643,30 +644,6 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
-interface AuthenticatedGrantsIdRouteChildren {
-  AuthenticatedGrantsIdAuditRoute: typeof AuthenticatedGrantsIdAuditRoute
-}
-
-const AuthenticatedGrantsIdRouteChildren: AuthenticatedGrantsIdRouteChildren = {
-  AuthenticatedGrantsIdAuditRoute: AuthenticatedGrantsIdAuditRoute,
-}
-
-const AuthenticatedGrantsIdRouteWithChildren =
-  AuthenticatedGrantsIdRoute._addFileChildren(
-    AuthenticatedGrantsIdRouteChildren,
-  )
-
-interface AuthenticatedGrantsRouteChildren {
-  AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
-}
-
-const AuthenticatedGrantsRouteChildren: AuthenticatedGrantsRouteChildren = {
-  AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
-}
-
-const AuthenticatedGrantsRouteWithChildren =
-  AuthenticatedGrantsRoute._addFileChildren(AuthenticatedGrantsRouteChildren)
-
 interface AuthenticatedProposalsRouteChildren {
   AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
 }
@@ -681,28 +658,43 @@ const AuthenticatedProposalsRouteWithChildren =
     AuthenticatedProposalsRouteChildren,
   )
 
+interface AuthenticatedGrantsIdRouteChildren {
+  AuthenticatedGrantsIdAuditRoute: typeof AuthenticatedGrantsIdAuditRoute
+}
+
+const AuthenticatedGrantsIdRouteChildren: AuthenticatedGrantsIdRouteChildren = {
+  AuthenticatedGrantsIdAuditRoute: AuthenticatedGrantsIdAuditRoute,
+}
+
+const AuthenticatedGrantsIdRouteWithChildren =
+  AuthenticatedGrantsIdRoute._addFileChildren(
+    AuthenticatedGrantsIdRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
-  AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRouteWithChildren
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
   AuthenticatedProposalsRoute: typeof AuthenticatedProposalsRouteWithChildren
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
+  AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
+  AuthenticatedGrantsIndexRoute: typeof AuthenticatedGrantsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
-  AuthenticatedGrantsRoute: AuthenticatedGrantsRouteWithChildren,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
   AuthenticatedProposalsRoute: AuthenticatedProposalsRouteWithChildren,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
+  AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
+  AuthenticatedGrantsIndexRoute: AuthenticatedGrantsIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
