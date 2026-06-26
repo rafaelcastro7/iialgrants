@@ -670,6 +670,7 @@ export async function discoverFunderImpl(
     metadata: {
       ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback",
       links_extracted: links.length, pages_scraped: pageDocs.length,
+      ledger_skipped: ledgerSkipped, ledger_fresh_hits: ledgerFreshHits,
       found: foundTotal, inserted, seen_again: seenAgain,
       skip_reasons: skipReasons,
       skipped_samples: skippedSamples,
