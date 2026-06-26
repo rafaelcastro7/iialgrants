@@ -20,7 +20,7 @@ import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 import "@/i18n";
 
@@ -30,13 +30,27 @@ const detailQuery = (id: string) =>
     queryFn: () => getGrantDetail({ data: { id } }),
   });
 
+type GrantSearch = {
+  evidence?: string;
+  run?: string;
+  agent?: string;
+  step?: string;
+};
+
 export const Route = createFileRoute("/_authenticated/grants/$id")({
   head: ({ params }) => ({
     meta: [{ title: `Grant ${params.id.slice(0, 8)} — IIAL` }],
   }),
+  validateSearch: (raw: Record<string, unknown>): GrantSearch => ({
+    evidence: typeof raw.evidence === "string" ? raw.evidence : undefined,
+    run: typeof raw.run === "string" ? raw.run : undefined,
+    agent: typeof raw.agent === "string" ? raw.agent : undefined,
+    step: typeof raw.step === "string" ? raw.step : undefined,
+  }),
   loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
   component: GrantDetailPage,
 });
+
 
 function GrantDetailPage() {
   const { id } = Route.useParams();
