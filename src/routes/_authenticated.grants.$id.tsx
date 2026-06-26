@@ -9,7 +9,7 @@ import { getGrantDetail } from "@/lib/grant-detail.functions";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
 import { enrichGrant } from "@/lib/grants.functions";
-import { useIsAdmin } from "@/lib/use-platform";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +58,7 @@ function GrantDetailPage() {
   const { t, i18n } = useTranslation();
   const fr = false /* EN-only */;
   const navigate = useNavigate();
-  const isAdmin = useIsAdmin();
+  
   const qc = useQueryClient();
   const evaluate = useServerFn(runEvaluator);
   const enrichOne = useServerFn(enrichGrant);
@@ -77,6 +77,16 @@ function GrantDetailPage() {
     if (search.run) setTraceRun({ runId: search.run, agent: search.agent ?? "" });
     else setTraceRun(null);
   }, [search.run, search.agent]);
+
+  // Auto-fetch details on first open when the grant has never been enriched.
+  // Keeps the click-through useful even when discovery hasn't run the enricher
+  // pass yet. Idempotent: enrichGrantImpl returns early if already fresh.
+  const needsEnrich = !data.grant.enriched_at && data.grant.status === "discovered";
+  useEffect(() => {
+    if (!needsEnrich || busy) return;
+    run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, needsEnrich]);
 
   // State → URL: keep the deep-link sharable as the user opens panels.
   const patchSearch = (patch: Partial<GrantSearch>) =>
@@ -148,6 +158,17 @@ function GrantDetailPage() {
         </div>
 
         {err && <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">{err}</div>}
+        {busy === "enrich" && (
+          <div className="rounded-md border border-blue-500/40 bg-blue-500/5 px-3 py-2 text-sm flex items-center gap-2">
+            <Activity className="h-4 w-4 animate-pulse" />
+            Fetching live details from the funder's page… this can take 20–60 s.
+          </div>
+        )}
+        {!data.grant.enriched_at && !busy && (
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            This grant was discovered but full details haven't been fetched yet. Use <b>Fetch details</b> below or wait — auto-fetch is running.
+          </div>
+        )}
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
@@ -250,9 +271,9 @@ function GrantDetailPage() {
             {g.status !== "discovered" && (
               <NotebookLMBridge grantId={id} label="Send to NotebookLM" />
             )}
-            {isAdmin && g.status === "discovered" && (
+            {g.status === "discovered" && (
               <Button size="sm" variant="outline" disabled={busy === "enrich"} onClick={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}>
-                {busy === "enrich" ? t("app.loading") : "Enrich"}
+                {busy === "enrich" ? t("app.loading") : "Fetch details"}
               </Button>
             )}
             <Button size="sm" variant="secondary" disabled={busy === "eval"} onClick={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}>
