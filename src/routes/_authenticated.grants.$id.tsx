@@ -20,6 +20,8 @@ import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
+import { FetchTrailPanel } from "@/components/grants/FetchTrailPanel";
+import { SelfCheckBanner } from "@/components/grants/SelfCheckBanner";
 import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 import "@/i18n";
