@@ -42,18 +42,22 @@ type ProviderConfig = {
   model: string;
 };
 
-const PROVIDERS: Record<ProviderName, ProviderConfig> = {
+const PROVIDERS: Record<ProviderName, ProviderConfig & { fallbackModels?: string[] }> = {
   groq: {
     name: "groq",
     envKey: "GROQ_API_KEY",
     url: "https://api.groq.com/openai/v1/chat/completions",
     model: "llama-3.3-70b-versatile",
+    // If 70b hits TPM ceiling, retry with the cheaper/lighter 8b-instant
+    // (separate quota bucket on Groq free tier).
+    fallbackModels: ["llama-3.1-8b-instant"],
   },
   gemini: {
     name: "gemini",
     envKey: "GOOGLE_AI_STUDIO_KEY",
     url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     model: "gemini-2.5-flash",
+    fallbackModels: ["gemini-2.0-flash", "gemini-2.5-flash-lite"],
   },
   cerebras: {
     name: "cerebras",
@@ -62,6 +66,7 @@ const PROVIDERS: Record<ProviderName, ProviderConfig> = {
     model: "llama-3.3-70b",
   },
 };
+
 
 async function callOpenAICompat(
   cfg: ProviderConfig,
