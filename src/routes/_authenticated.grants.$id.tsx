@@ -83,7 +83,7 @@ function GrantDetailPage() {
     navigate({
       to: "/grants/$id",
       params: { id },
-      search: (prev) => ({ ...prev, ...patch }),
+      search: (prev: GrantSearch) => ({ ...prev, ...patch }),
       replace: true,
     });
   const openEvidence = (f: string) => { setEvField(f); patchSearch({ evidence: f }); };
