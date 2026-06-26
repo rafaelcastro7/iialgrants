@@ -39,7 +39,8 @@ const MARKDOWN = [
 vi.mock("@/lib/web-fetch.server", () => ({
   scrapeWithFallback: async (url: string) => ({
     ok: true, url, via: "jina_reader" as const,
-    markdown: MARKDOWN, title: "Innovation Boost Program",, attempts: []}),
+    markdown: MARKDOWN, title: "Innovation Boost Program", attempts: [],
+  }),
   jinaSearch: async () => ({ ok: true, hits: [] }),
 }));
 vi.mock("@/lib/firecrawl.server", () => ({
