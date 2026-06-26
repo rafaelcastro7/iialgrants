@@ -250,9 +250,9 @@ function GrantDetailPage() {
             {g.status !== "discovered" && (
               <NotebookLMBridge grantId={id} label="Send to NotebookLM" />
             )}
-            {isAdmin && g.status === "discovered" && (
+            {g.status === "discovered" && (
               <Button size="sm" variant="outline" disabled={busy === "enrich"} onClick={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}>
-                {busy === "enrich" ? t("app.loading") : "Enrich"}
+                {busy === "enrich" ? t("app.loading") : "Fetch details"}
               </Button>
             )}
             <Button size="sm" variant="secondary" disabled={busy === "eval"} onClick={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}>
