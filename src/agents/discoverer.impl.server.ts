@@ -51,12 +51,20 @@ function canonicalKey(funderId: string, title: string, minAmt: number | null, ma
 // Reject titles that are too generic to be real programs.
 // E.g. "Funding", "Loans", "Programs and Initiatives", landing-page bait.
 function isGenericTitle(title: string): boolean {
-  const norm = normalizeTitle(title);
+  const raw = (title || "").trim();
+  if (!raw) return true;
+  // Escape hatch: titles containing an acronym (3+ uppercase letters) or a roman/arabic
+  // numeral suffix (e.g. "PSCe Volet 2", "IRAP", "SR&ED") are valid even when short.
+  if (/[A-Z]{3,}/.test(raw)) return false;
+  if (/\b(volet|phase|stream|program(me)?|fund|grant)\s+[0-9IVX]+\b/i.test(raw)) return false;
+  const norm = normalizeTitle(raw);
   if (norm.length < 4) return true;
   const words = norm.split(/\s+/).filter(Boolean);
-  if (words.length <= 2) return true; // After stopword removal, must have ≥3 meaningful words.
+  // Require ≥2 meaningful words after stopword removal (was ≥3 — too strict).
+  if (words.length < 2) return true;
   return false;
 }
+
 
 // Reject root-ish index URLs that aren't actual program pages.
 // Paths like /financement, /prets, /programmes, /grants, /funding are
