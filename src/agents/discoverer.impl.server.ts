@@ -13,8 +13,11 @@ import { DiscoveredGrant, PROMPTS } from "@/agents/schemas";
 const MAX_PAGES_PER_RUN = 15;
 const MAX_MARKDOWN_LEN = 22_000;
 const SCRAPE_CONCURRENCY = 3;
-const FALLBACK_MAX_LINKS = 18;
-const FALLBACK_LLM_THROTTLE_MS = 600;
+const FALLBACK_MAX_LINKS = 12;
+// Groq free tier is 30 RPM — 2.2s spacing keeps us safely below the limit
+// when several pages are processed sequentially for the same funder.
+const FALLBACK_LLM_THROTTLE_MS = 2_200;
+
 
 
 // Hard title normalization for canonical dedup. Strips:
