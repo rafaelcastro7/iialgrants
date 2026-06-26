@@ -94,9 +94,22 @@ export function AgentTracePanel({
   }, [steps.length]);
 
   const lastStatus = steps[steps.length - 1]?.status;
+  const lastStep = steps[steps.length - 1]?.step;
   const running = !!runId && lastStatus !== "done" && lastStatus !== "error";
+  const counts = useMemo(() => {
+    const c = { ok: 0, warn: 0, error: 0 };
+    for (const s of steps) {
+      if (s.status === "ok" || s.status === "done") c.ok++;
+      else if (s.status === "warn") c.warn++;
+      else if (s.status === "error") c.error++;
+    }
+    return c;
+  }, [steps]);
+  const elapsedMs = steps.length > 1 ? new Date(steps[steps.length - 1].created_at).getTime() - t0Ms : 0;
+  const currentInfo = lastStep ? stepInfo(lastStep) : null;
 
   return (
+    <TooltipProvider delayDuration={150}>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-hidden flex flex-col">
         <SheetHeader>
@@ -106,8 +119,25 @@ export function AgentTracePanel({
           </SheetTitle>
           <SheetDescription className="text-xs">
             {runId ? <span className="font-mono">run {runId.slice(0, 12)}…</span> : (fr ? "Aucune corrida sélectionnée" : "No run selected")}
-            {steps.length > 0 && <span className="ml-2">· {steps.length} {fr ? "étapes" : "steps"}</span>}
+            {steps.length > 0 && (
+              <>
+                <span className="ml-2">· {steps.length} {fr ? "étapes" : "steps"}</span>
+                <span className="ml-2 text-emerald-600">✓ {counts.ok}</span>
+                {counts.warn > 0 && <span className="ml-1 text-amber-600">⚠ {counts.warn}</span>}
+                {counts.error > 0 && <span className="ml-1 text-destructive">✕ {counts.error}</span>}
+                {elapsedMs > 0 && <span className="ml-2 tabular-nums">· {(elapsedMs / 1000).toFixed(1)}s</span>}
+              </>
+            )}
           </SheetDescription>
+          {currentInfo && running && (
+            <div className="mt-2 rounded-md border bg-muted/30 p-2 text-xs">
+              <div className="flex items-center gap-1.5 font-medium">
+                <Loader2 className="h-3 w-3 animate-spin text-sky-500" />
+                {fr ? "Étape actuelle:" : "Current step:"} {currentInfo.title}
+              </div>
+              <p className="mt-0.5 text-muted-foreground leading-relaxed">{currentInfo.desc}</p>
+            </div>
+          )}
         </SheetHeader>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto mt-3 pr-2 space-y-1.5">
@@ -126,6 +156,7 @@ export function AgentTracePanel({
             const tDelta = t0Ms ? new Date(s.created_at).getTime() - t0Ms : 0;
             let payloadObj: Record<string, unknown> | null = null;
             if (s.payload) { try { payloadObj = JSON.parse(s.payload) as Record<string, unknown>; } catch { /* ignore */ } }
+            const info = stepInfo(s.step);
             return (
               <div key={s.id} className="border rounded-md p-2 bg-card text-xs">
                 <div className="flex items-start gap-2">
@@ -133,7 +164,19 @@ export function AgentTracePanel({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-muted-foreground tabular-nums shrink-0">{String(i + 1).padStart(2, "0")}</span>
-                      <Badge variant="outline" className="text-[10px] h-4 px-1 font-mono">{s.step}</Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex items-center gap-1 cursor-help">
+                            <Badge variant="outline" className="text-[10px] h-4 px-1 font-mono">{s.step}</Badge>
+                            <HelpCircle className="h-3 w-3 text-muted-foreground/70" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+                          <div className="font-semibold mb-0.5">{info.title}</div>
+                          <div className="opacity-90">{info.desc}</div>
+                        </TooltipContent>
+                      </Tooltip>
+                      <span className="text-muted-foreground text-[10px] hidden sm:inline">{info.title}</span>
                       <span className="text-muted-foreground tabular-nums text-[10px]">+{(tDelta / 1000).toFixed(2)}s</span>
                       {s.duration_ms != null && (
                         <span className="text-muted-foreground tabular-nums text-[10px]">({s.duration_ms}ms)</span>
@@ -158,5 +201,7 @@ export function AgentTracePanel({
         </div>
       </SheetContent>
     </Sheet>
+    </TooltipProvider>
   );
 }
+
