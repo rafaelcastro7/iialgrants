@@ -437,7 +437,6 @@ export async function discoverFunderImpl(
   // Seed extra candidates via Jina Search so we never depend on the funder's
   // own navigation surfacing every program. This makes discovery resilient on
   // sites that hide programs behind JS menus, filters, or pagination.
-  const { jinaSearch } = await import("@/lib/web-fetch.server");
   const seedHost = new URL(F.source_url).host;
   const seeded: Array<{ url: string; text: string; score: number }> = [];
   try {
@@ -446,8 +445,9 @@ export async function discoverFunderImpl(
       `site:${seedHost} eligibility deadline application`,
     ];
     for (const q of queries) {
-      const hits = await jinaSearch(q, 15);
-      for (const h of hits) {
+      const r = await jinaSearch(q, 15);
+      if (!r.ok) continue;
+      for (const h of r.hits) {
         try {
           const u = new URL(h.url);
           if (u.host !== seedHost) continue;
@@ -457,6 +457,7 @@ export async function discoverFunderImpl(
       }
     }
   } catch { /* Jina best-effort */ }
+
 
   // Merge index + seeded, dedupe by URL, keep best score, cap at FALLBACK_MAX_LINKS.
   const merged = new Map<string, { url: string; text: string; score: number }>();
