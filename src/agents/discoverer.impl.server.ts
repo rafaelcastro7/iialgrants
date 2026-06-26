@@ -164,6 +164,7 @@ export async function discoverFunderImpl(
   const { firecrawlAvailable, firecrawlMap, filterProgramUrls } =
     await import("@/lib/firecrawl.server");
   const { scrapeWithFallback, jinaSearch } = await import("@/lib/web-fetch.server");
+  const { shouldFetch, recordFetch } = await import("@/lib/crawl-ledger.server");
 
   const runId = newRunId();
   const t0 = Date.now();
@@ -483,15 +484,45 @@ export async function discoverFunderImpl(
   }
 
 
-  // Scrape candidate pages in parallel (bounded), then process LLM sequentially.
+  // Scrape candidate pages in parallel (bounded) using the local engine chain.
+  // The crawl ledger skips URLs whose `next_fetch_at` hasn't elapsed and records
+  // the outcome so future runs honour Nutch-style adaptive cadence.
   type PageDoc = { url: string; text: string };
   const pageDocs: PageDoc[] = [];
+  let ledgerSkipped = 0;
+  let ledgerFreshHits = 0;
   for (let i = 0; i < links.length; i += SCRAPE_CONCURRENCY) {
     const batch = links.slice(i, i + SCRAPE_CONCURRENCY);
     const results = await Promise.allSettled(
-      batch.map(async (l) => ({ url: l.url, text: htmlToText(await fetchHtml(l.url, 8_000), 5_000) })),
+      batch.map(async (l) => {
+        const decision = await shouldFetch(l.url);
+        if (!decision.fetch) return { url: l.url, text: "", skipped: true, reason: decision.reason };
+        const scrape = await scrapeWithFallback(l.url, {
+          etag: decision.etag,
+          lastModified: decision.lastModified,
+        });
+        if (!scrape.ok) {
+          await recordFetch(l.url, { kind: "error", reason: scrape.error }, { funderId: F.id });
+          return { url: l.url, text: "", skipped: false, reason: scrape.error };
+        }
+        const out = await recordFetch(l.url, {
+          kind: "ok",
+          markdown: scrape.markdown,
+          title: scrape.title,
+          via: scrape.via,
+          bytes: scrape.markdown.length,
+        }, { funderId: F.id });
+        return { url: l.url, text: scrape.markdown.slice(0, 5_000), skipped: false, changed: out.changed };
+      }),
     );
-    for (const r of results) if (r.status === "fulfilled" && r.value.text.length >= 400) pageDocs.push(r.value);
+    for (const r of results) {
+      if (r.status !== "fulfilled") continue;
+      if (r.value.skipped) { ledgerSkipped++; continue; }
+      if (r.value.text.length >= 400) {
+        pageDocs.push({ url: r.value.url, text: r.value.text });
+        ledgerFreshHits++;
+      }
+    }
   }
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -639,6 +670,7 @@ export async function discoverFunderImpl(
     metadata: {
       ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback",
       links_extracted: links.length, pages_scraped: pageDocs.length,
+      ledger_skipped: ledgerSkipped, ledger_fresh_hits: ledgerFreshHits,
       found: foundTotal, inserted, seen_again: seenAgain,
       skip_reasons: skipReasons,
       skipped_samples: skippedSamples,
