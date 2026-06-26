@@ -172,6 +172,10 @@ function GrantDetailPage() {
           )}
         </div>
 
+        {g.enriched_at && <EvaluationDetail grantId={id} />}
+
+
+
         {g.eligibility && Object.keys(g.eligibility).length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
