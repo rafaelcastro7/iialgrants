@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { CrawlLedgerWidget } from "@/components/admin/CrawlLedgerWidget";
 
 export const Route = createFileRoute("/_authenticated/admin/sources")({
   component: SourcesPage,
@@ -147,6 +148,10 @@ function SourcesPage() {
           <Link to="/admin/candidates"><Button variant="ghost">View candidates →</Button></Link>
         </div>
       </div>
+
+      <CrawlLedgerWidget />
+
+
 
       {Object.keys(TIER_LABEL).map((tier) => {
         const rows = byTier[tier] ?? [];
