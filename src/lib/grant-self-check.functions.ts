@@ -108,10 +108,10 @@ export const getFetchTrail = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: rows, error } = await supabase
       .from("agent_runs")
-      .select("run_id, agent, status, started_at, latency_ms, metadata")
+      .select("run_id, agent, status, created_at, latency_ms, metadata")
       .eq("grant_id", data.grantId)
       .eq("agent", "enricher")
-      .order("started_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1);
     if (error) throw new Error(error.message);
     const row = rows?.[0];
@@ -121,8 +121,6 @@ export const getFetchTrail = createServerFn({ method: "POST" })
     const meta = (row.metadata ?? {}) as { fetch_attempts?: FetchAttemptRow[] };
     const attempts = Array.isArray(meta.fetch_attempts) ? meta.fetch_attempts : [];
 
-    // Compute next-retry suggestion: exponential cool-down based on
-    // consecutive failures recorded on the grant row.
     const { data: g } = await supabase
       .from("grants")
       .select("enrich_attempts, enrich_last_attempt_at")
@@ -138,7 +136,7 @@ export const getFetchTrail = createServerFn({ method: "POST" })
       runId: row.run_id as string,
       agent: row.agent as string,
       status: row.status as string,
-      startedAt: (row.started_at as string) ?? null,
+      startedAt: (row.created_at as string) ?? null,
       totalLatencyMs: (row.latency_ms as number | null) ?? null,
       attempts,
       nextRetryAfter,
