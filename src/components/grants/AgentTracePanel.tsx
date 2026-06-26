@@ -3,14 +3,15 @@
 // in chronological order with status icon, message, payload, and duration.
 // Each step name has a human-readable description surfaced via tooltip so a
 // non-technical user understands what the agent is doing in real time.
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAgentTrace } from "@/lib/traces.functions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CheckCircle2, AlertCircle, Loader2, Info, AlertTriangle, Play, Flag, HelpCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Info, AlertTriangle, Play, Flag, HelpCircle, Link2, Check } from "lucide-react";
+
 
 type Status = "info" | "ok" | "warn" | "error" | "start" | "done";
 
@@ -60,14 +61,17 @@ function StatusIcon({ s }: { s: Status }) {
 }
 
 export function AgentTracePanel({
-  runId, agentLabel, open, onOpenChange, fr,
+  runId, agentLabel, open, onOpenChange, fr, focusStep, onFocusStep,
 }: {
   runId: string | null;
   agentLabel: string;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   fr: boolean;
+  focusStep?: string | null;
+  onFocusStep?: (step: string | null) => void;
 }) {
+
   const fetchTrace = useServerFn(getAgentTrace);
   const { data } = useQuery({
     queryKey: ["agent-trace", runId],
@@ -89,9 +93,23 @@ export function AgentTracePanel({
 
   const t0Ms = useMemo(() => (steps[0] ? new Date(steps[0].created_at).getTime() : 0), [steps]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const stepRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [copied, setCopied] = useState<string | null>(null);
+
+  // Auto-scroll to bottom as new steps stream in, unless a focusStep is pinned.
   useEffect(() => {
+    if (focusStep) return;
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [steps.length]);
+  }, [steps.length, focusStep]);
+
+  // Scroll the focused step into view and flash a ring when deep-linked.
+  useEffect(() => {
+    if (!focusStep || !open) return;
+    const el = stepRefs.current[focusStep];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusStep, open, steps.length]);
+
+
 
   const lastStatus = steps[steps.length - 1]?.status;
   const lastStep = steps[steps.length - 1]?.step;
@@ -157,8 +175,28 @@ export function AgentTracePanel({
             let payloadObj: Record<string, unknown> | null = null;
             if (s.payload) { try { payloadObj = JSON.parse(s.payload) as Record<string, unknown>; } catch { /* ignore */ } }
             const info = stepInfo(s.step);
+            // Match by step id (precise) or step name (first occurrence).
+            const isFocused = !!focusStep && (focusStep === s.id || focusStep === s.step);
+            const copyDeepLink = async (e: React.MouseEvent) => {
+              e.stopPropagation();
+              const url = new URL(window.location.href);
+              url.searchParams.set("step", s.id);
+              try {
+                await navigator.clipboard.writeText(url.toString());
+                setCopied(s.id);
+                setTimeout(() => setCopied((c) => (c === s.id ? null : c)), 1500);
+              } catch { /* ignore */ }
+              onFocusStep?.(s.id);
+            };
             return (
-              <div key={s.id} className="border rounded-md p-2 bg-card text-xs">
+              <div
+                key={s.id}
+                ref={(el) => { stepRefs.current[s.id] = el; stepRefs.current[s.step] ??= el; }}
+                className={
+                  "border rounded-md p-2 bg-card text-xs transition-shadow " +
+                  (isFocused ? "ring-2 ring-sky-500/60 border-sky-500/40" : "")
+                }
+              >
                 <div className="flex items-start gap-2">
                   <StatusIcon s={s.status as Status} />
                   <div className="flex-1 min-w-0">
@@ -181,10 +219,27 @@ export function AgentTracePanel({
                       {s.duration_ms != null && (
                         <span className="text-muted-foreground tabular-nums text-[10px]">({s.duration_ms}ms)</span>
                       )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={copyDeepLink}
+                            className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                            aria-label={fr ? "Copier le lien vers cette étape" : "Copy deep-link to this step"}
+                          >
+                            {copied === s.id ? <Check className="h-3 w-3 text-emerald-500" /> : <Link2 className="h-3 w-3" />}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {copied === s.id
+                            ? (fr ? "Lien copié" : "Link copied")
+                            : (fr ? "Copier le lien vers cette étape" : "Copy deep-link to this step")}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                     {s.message && <p className="mt-1 leading-relaxed break-words">{s.message}</p>}
                     {payloadObj && Object.keys(payloadObj).length > 0 && (
-                      <details className="mt-1.5">
+                      <details className="mt-1.5" open={isFocused}>
                         <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground">
                           {fr ? "Détails" : "Details"}
                         </summary>
@@ -198,6 +253,7 @@ export function AgentTracePanel({
               </div>
             );
           })}
+
         </div>
       </SheetContent>
     </Sheet>
