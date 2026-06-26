@@ -165,7 +165,7 @@ export async function recordFetch(
   };
 
   // upsert
-  const { error } = await supabaseAdmin
+  const { error } = await sb
     .from("crawl_ledger")
     .upsert(row as never, { onConflict: "url" });
   if (error) throw new Error(`ledger_upsert_failed: ${error.message}`);
@@ -177,7 +177,9 @@ export async function ledgerStats(funderId?: string): Promise<{
   due_now: number; queued_24h: number; stable: number; gone: number; blocked: number; errored: number; total: number;
 }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  let q = supabaseAdmin.from("crawl_ledger").select("status, next_fetch_at", { count: "exact" });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabaseAdmin as any;
+  let q = sb.from("crawl_ledger").select("status, next_fetch_at", { count: "exact" });
   if (funderId) q = q.eq("funder_id", funderId);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
