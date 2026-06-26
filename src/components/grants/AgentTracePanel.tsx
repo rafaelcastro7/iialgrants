@@ -3,14 +3,15 @@
 // in chronological order with status icon, message, payload, and duration.
 // Each step name has a human-readable description surfaced via tooltip so a
 // non-technical user understands what the agent is doing in real time.
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAgentTrace } from "@/lib/traces.functions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CheckCircle2, AlertCircle, Loader2, Info, AlertTriangle, Play, Flag, HelpCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Info, AlertTriangle, Play, Flag, HelpCircle, Link2, Check } from "lucide-react";
+
 
 type Status = "info" | "ok" | "warn" | "error" | "start" | "done";
 
