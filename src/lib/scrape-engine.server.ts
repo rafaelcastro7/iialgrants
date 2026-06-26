@@ -185,6 +185,14 @@ export async function scrapeEngineFetch(
 
 // Adapter to legacy FetchedPage shape used by web-fetch.server.ts callers.
 export function toFetchedPage(r: ScrapeEngineResult): FetchedPage {
-  if (r.ok) return { ok: true, url: r.url, markdown: r.markdown, title: r.title, via: "scrape_engine" };
-  return { ok: false, url: r.url, error: r.error, via: "scrape_engine" };
+  const attempts = [{
+    engine: "scrape_engine" as const,
+    ok: !!r.ok,
+    latency_ms: 0,
+    error: r.ok ? undefined : r.error,
+    bytes: r.ok ? r.markdown.length : undefined,
+    ts: new Date().toISOString(),
+  }];
+  if (r.ok) return { ok: true, url: r.url, markdown: r.markdown, title: r.title, via: "scrape_engine", attempts };
+  return { ok: false, url: r.url, error: r.error, via: "scrape_engine", attempts };
 }

@@ -20,6 +20,8 @@ import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
+import { FetchTrailPanel } from "@/components/grants/FetchTrailPanel";
+import { SelfCheckBanner } from "@/components/grants/SelfCheckBanner";
 import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 import "@/i18n";
@@ -164,11 +166,19 @@ function GrantDetailPage() {
             Fetching live details from the funder's page… this can take 20–60 s.
           </div>
         )}
-        {!data.grant.enriched_at && !busy && (
-          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            This grant was discovered but full details haven't been fetched yet. Use <b>Fetch details</b> below or wait — auto-fetch is running.
-          </div>
-        )}
+
+        <SelfCheckBanner
+          grantId={id}
+          retrying={busy === "enrich"}
+          onRetry={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}
+        />
+
+        <FetchTrailPanel
+          grantId={id}
+          retrying={busy === "enrich"}
+          errorMsg={(data.grant as { enrich_last_error?: string | null }).enrich_last_error ?? null}
+          onRetry={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}
+        />
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
