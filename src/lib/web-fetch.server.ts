@@ -181,7 +181,11 @@ export async function scrapeWithFallback(
   const raw = await rawHtmlFetch(url);
   if (raw.ok) return raw;
 
-  // 4. Optional Firecrawl (only if user opts in)
+  // 4. Wayback Machine — bypasses origin geo/bot blocks on government sites.
+  const wb = await waybackFetch(url);
+  if (wb.ok) return wb;
+
+  // 5. Optional Firecrawl (only if user opts in)
   if (!opts.skipFirecrawl && firecrawlEnabled()) {
     const fc = await firecrawlScrape(url, { jsonSchema: opts.jsonSchema, jsonPrompt: opts.jsonPrompt });
     if (fc.ok) {
@@ -192,7 +196,7 @@ export async function scrapeWithFallback(
     }
   }
 
-  return { ok: false, url, error: `all_engines_failed: ${eng.error} | ${jr.error} | ${raw.error}`, via: "none" };
+  return { ok: false, url, error: `all_engines_failed: ${eng.error} | ${jr.error} | ${raw.error} | ${wb.error}`, via: "none" };
 }
 
 export async function searchWeb(query: string, limit = 10): Promise<SearchHit[]> {
