@@ -238,7 +238,7 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
                 `If you cannot find justification in the markdown, omit the field. Never invent.` },
               { role: "user", content: JSON.stringify({
                 needs: stillMissing, source_language: language,
-                source_url: g.url, markdown: markdown.slice(0, 18_000),
+                source_url: g.url, markdown: markdown.slice(0, 9_000),
               })},
             ],
           });
@@ -300,7 +300,7 @@ export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> 
                 `${PROMPTS.enricher.system}\nReturn JSON {"fields":{"<field>":{"value":...,"quote":"..."}}}. Quote literal page text. Never invent.` },
               { role: "user", content: JSON.stringify({
                 needs: stillMissing, source_language: language,
-                source_url: g.url, markdown: markdown.slice(0, 18_000),
+                source_url: g.url, markdown: markdown.slice(0, 9_000),
               })},
             ],
           });
