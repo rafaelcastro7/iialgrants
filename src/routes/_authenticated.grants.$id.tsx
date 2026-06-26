@@ -9,7 +9,7 @@ import { getGrantDetail } from "@/lib/grant-detail.functions";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
 import { enrichGrant } from "@/lib/grants.functions";
-import { useIsAdmin } from "@/lib/use-platform";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
