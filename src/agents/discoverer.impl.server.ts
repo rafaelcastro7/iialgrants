@@ -10,9 +10,15 @@ import { z } from "zod";
 import { createHash } from "crypto";
 import { DiscoveredGrant, PROMPTS } from "@/agents/schemas";
 
-const MAX_PAGES_PER_RUN = 12;
+const MAX_PAGES_PER_RUN = 15;
 const MAX_MARKDOWN_LEN = 22_000;
 const SCRAPE_CONCURRENCY = 3;
+const FALLBACK_MAX_LINKS = 12;
+// Groq free tier is 30 RPM — 2.2s spacing keeps us safely below the limit
+// when several pages are processed sequentially for the same funder.
+const FALLBACK_LLM_THROTTLE_MS = 2_200;
+
+
 
 // Hard title normalization for canonical dedup. Strips:
 //   - parenthetical content "(IRAP)" / "(programme XYZ)"
@@ -48,12 +54,20 @@ function canonicalKey(funderId: string, title: string, minAmt: number | null, ma
 // Reject titles that are too generic to be real programs.
 // E.g. "Funding", "Loans", "Programs and Initiatives", landing-page bait.
 function isGenericTitle(title: string): boolean {
-  const norm = normalizeTitle(title);
+  const raw = (title || "").trim();
+  if (!raw) return true;
+  // Escape hatch: titles containing an acronym (3+ uppercase letters) or a roman/arabic
+  // numeral suffix (e.g. "PSCe Volet 2", "IRAP", "SR&ED") are valid even when short.
+  if (/[A-Z]{3,}/.test(raw)) return false;
+  if (/\b(volet|phase|stream|program(me)?|fund|grant)\s+[0-9IVX]+\b/i.test(raw)) return false;
+  const norm = normalizeTitle(raw);
   if (norm.length < 4) return true;
   const words = norm.split(/\s+/).filter(Boolean);
-  if (words.length <= 2) return true; // After stopword removal, must have ≥3 meaningful words.
+  // Require ≥2 meaningful words after stopword removal (was ≥3 — too strict).
+  if (words.length < 2) return true;
   return false;
 }
+
 
 // Reject root-ish index URLs that aren't actual program pages.
 // Paths like /financement, /prets, /programmes, /grants, /funding are
@@ -421,18 +435,53 @@ export async function discoverFunderImpl(
 
   const indexHtml = await fetchHtml(F.source_url, 10_000);
   const indexText = htmlToText(indexHtml, 8_000);
-  const links = extractCandidateLinks(indexHtml, F.source_url).slice(0, 6);
+  const linksFromIndex = extractCandidateLinks(indexHtml, F.source_url);
 
+  // Seed extra candidates via Jina Search so we never depend on the funder's
+  // own navigation surfacing every program. This makes discovery resilient on
+  // sites that hide programs behind JS menus, filters, or pagination.
+  const seedHost = new URL(F.source_url).host;
+  const seeded: Array<{ url: string; text: string; score: number }> = [];
+  try {
+    const queries = [
+      `site:${seedHost} (program OR funding OR grant OR subvention OR financement OR prêt)`,
+      `site:${seedHost} eligibility deadline application`,
+    ];
+    for (const q of queries) {
+      const r = await jinaSearch(q, 15);
+      if (!r.ok) continue;
+      for (const h of r.hits) {
+        try {
+          const u = new URL(h.url);
+          if (u.host !== seedHost) continue;
+          if (NON_PROGRAM.test(u.pathname)) continue;
+          seeded.push({ url: `${u.origin}${u.pathname}`, text: h.title || u.pathname, score: 4 });
+        } catch { /* skip */ }
+      }
+    }
+  } catch { /* Jina best-effort */ }
+
+
+  // Merge index + seeded, dedupe by URL, keep best score, cap at FALLBACK_MAX_LINKS.
+  const merged = new Map<string, { url: string; text: string; score: number }>();
+  for (const l of [...linksFromIndex, ...seeded]) {
+    const prev = merged.get(l.url);
+    if (!prev || prev.score < l.score) merged.set(l.url, l);
+  }
+  const links = Array.from(merged.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, FALLBACK_MAX_LINKS);
 
   if (links.length === 0 && indexText.length < 200) {
     await supabaseAdmin.from("agent_runs").insert({
       run_id: runId, agent: "discoverer", status: "degraded",
       model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
       error: "page_too_short",
-      metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback" },
+      metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback", links_considered: 0 },
     });
     return { ok: true, inserted: 0, runId, degraded: true, engine: "fallback" };
   }
+
 
   // Scrape candidate pages in parallel (bounded), then process LLM sequentially.
   type PageDoc = { url: string; text: string };
@@ -460,7 +509,7 @@ export async function discoverFunderImpl(
   // Ask LLM to extract ONE grant per program page (sequential + throttle to respect free-tier rate limits).
   for (let pi = 0; pi < pageDocs.length; pi++) {
     const doc = pageDocs[pi];
-    if (pi > 0) await sleep(2_500);
+    if (pi > 0) await sleep(FALLBACK_LLM_THROTTLE_MS);
     let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
 
     try {
@@ -525,7 +574,7 @@ export async function discoverFunderImpl(
           if (!g.summary_fr) g.summary_fr = g.summary ?? null;
           g.summary = parsed.summary_en;
         }
-        await sleep(2_500);
+        await sleep(FALLBACK_LLM_THROTTLE_MS);
       } catch { /* keep original on failure */ }
     }
 

@@ -121,41 +121,53 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       errors.push(`${name}:no_key`);
       continue;
     }
-    const t0 = Date.now();
-    let ok = false;
-    let errMsg: string | undefined;
-    let result: { text: string; inputTokens?: number; outputTokens?: number; model: string } | undefined;
-    try {
-      result = await callOpenAICompat(cfg, opts);
-      ok = true;
-    } catch (e) {
-      errMsg = e instanceof Error ? e.message : String(e);
-      errors.push(`${name}:${errMsg}`);
-    } finally {
-      logGenAI({
-        "gen_ai.system": `free.${name}`,
-        "gen_ai.request.model": cfg.model,
-        "gen_ai.operation.name": "chat",
-        "gen_ai.usage.input_tokens": result?.inputTokens,
-        "gen_ai.usage.output_tokens": result?.outputTokens,
-        latency_ms: Date.now() - t0,
-        agent: opts.agent,
-        run_id: runId,
-        ok,
-        error: errMsg,
-      });
-    }
-    if (ok && result) {
-      return {
-        text: result.text,
-        inputTokens: result.inputTokens,
-        outputTokens: result.outputTokens,
-        runId,
-        provider: name,
-        model: result.model,
-      };
+    // Up to 2 attempts per provider: on rate_limit we wait a short backoff and
+    // retry once before moving to the next provider. This soaks up the bursty
+    // 30-RPM ceiling of Groq's free tier without immediately failing over.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const t0 = Date.now();
+      let ok = false;
+      let errMsg: string | undefined;
+      let result: { text: string; inputTokens?: number; outputTokens?: number; model: string } | undefined;
+      try {
+        result = await callOpenAICompat(cfg, opts);
+        ok = true;
+      } catch (e) {
+        errMsg = e instanceof Error ? e.message : String(e);
+      } finally {
+        logGenAI({
+          "gen_ai.system": `free.${name}`,
+          "gen_ai.request.model": cfg.model,
+          "gen_ai.operation.name": "chat",
+          "gen_ai.usage.input_tokens": result?.inputTokens,
+          "gen_ai.usage.output_tokens": result?.outputTokens,
+          latency_ms: Date.now() - t0,
+          agent: opts.agent,
+          run_id: runId,
+          ok,
+          error: errMsg,
+        });
+      }
+      if (ok && result) {
+        return {
+          text: result.text,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          runId,
+          provider: name,
+          model: result.model,
+        };
+      }
+      const isRate = !!errMsg && /rate_limited/.test(errMsg);
+      if (isRate && attempt === 1) {
+        await new Promise((r) => setTimeout(r, 2_500));
+        continue;
+      }
+      errors.push(`${name}:${errMsg ?? "unknown"}`);
+      break;
     }
   }
+
 
   // Optional Lovable fallback
   if (opts.allowLovableFallback) {
