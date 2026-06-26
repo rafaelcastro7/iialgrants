@@ -20,7 +20,7 @@ import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 import "@/i18n";
 
@@ -30,16 +30,31 @@ const detailQuery = (id: string) =>
     queryFn: () => getGrantDetail({ data: { id } }),
   });
 
+type GrantSearch = {
+  evidence?: string;
+  run?: string;
+  agent?: string;
+  step?: string;
+};
+
 export const Route = createFileRoute("/_authenticated/grants/$id")({
   head: ({ params }) => ({
     meta: [{ title: `Grant ${params.id.slice(0, 8)} — IIAL` }],
+  }),
+  validateSearch: (raw: Record<string, unknown>): GrantSearch => ({
+    evidence: typeof raw.evidence === "string" ? raw.evidence : undefined,
+    run: typeof raw.run === "string" ? raw.run : undefined,
+    agent: typeof raw.agent === "string" ? raw.agent : undefined,
+    step: typeof raw.step === "string" ? raw.step : undefined,
   }),
   loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
   component: GrantDetailPage,
 });
 
+
 function GrantDetailPage() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
   const { t, i18n } = useTranslation();
   const fr = false /* EN-only */;
   const navigate = useNavigate();
@@ -51,9 +66,30 @@ function GrantDetailPage() {
   const { data } = useSuspenseQuery(detailQuery(id));
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [evField, setEvField] = useState<string | null>(null);
-  const [traceRun, setTraceRun] = useState<{ runId: string; agent: string } | null>(null);
-  const openEvidence = (f: string) => setEvField(f);
+  const [evField, setEvField] = useState<string | null>(search.evidence ?? null);
+  const [traceRun, setTraceRun] = useState<{ runId: string; agent: string } | null>(
+    search.run ? { runId: search.run, agent: search.agent ?? "" } : null,
+  );
+
+  // Sync URL → state when the user navigates with a deep-link mid-session.
+  useEffect(() => { setEvField(search.evidence ?? null); }, [search.evidence]);
+  useEffect(() => {
+    if (search.run) setTraceRun({ runId: search.run, agent: search.agent ?? "" });
+    else setTraceRun(null);
+  }, [search.run, search.agent]);
+
+  // State → URL: keep the deep-link sharable as the user opens panels.
+  const patchSearch = (patch: Partial<GrantSearch>) =>
+    navigate({
+      to: "/grants/$id",
+      params: { id },
+      search: (prev: GrantSearch) => ({ ...prev, ...patch }),
+      replace: true,
+    });
+  const openEvidence = (f: string) => { setEvField(f); patchSearch({ evidence: f }); };
+  const closeEvidence = () => { setEvField(null); patchSearch({ evidence: undefined }); };
+  const closeTrace = () => { setTraceRun(null); patchSearch({ run: undefined, agent: undefined, step: undefined }); };
+
 
   const g = data.grant as unknown as {
     id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
@@ -75,7 +111,7 @@ function GrantDetailPage() {
     try {
       const result = await fn();
       const runId = (result as { runId?: string } | undefined)?.runId;
-      if (runId) setTraceRun({ runId, agent });
+      if (runId) { setTraceRun({ runId, agent }); patchSearch({ run: runId, agent }); }
       await qc.invalidateQueries({ queryKey: ["grant-detail", id] });
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(null); }
@@ -249,15 +285,18 @@ function GrantDetailPage() {
         grantId={id}
         field={evField}
         open={!!evField}
-        onOpenChange={(o) => !o && setEvField(null)}
+        onOpenChange={(o) => !o && closeEvidence()}
       />
       <AgentTracePanel
         runId={traceRun?.runId ?? null}
         agentLabel={traceRun?.agent ?? ""}
         open={!!traceRun}
-        onOpenChange={(o) => !o && setTraceRun(null)}
+        onOpenChange={(o) => !o && closeTrace()}
         fr={!!fr}
+        focusStep={search.step ?? null}
+        onFocusStep={(step) => patchSearch({ step: step ?? undefined })}
       />
+
     </main>
   );
 }
