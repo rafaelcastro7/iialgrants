@@ -164,6 +164,7 @@ export async function discoverFunderImpl(
   const { firecrawlAvailable, firecrawlMap, filterProgramUrls } =
     await import("@/lib/firecrawl.server");
   const { scrapeWithFallback, jinaSearch } = await import("@/lib/web-fetch.server");
+  const { shouldFetch, recordFetch } = await import("@/lib/crawl-ledger.server");
 
   const runId = newRunId();
   const t0 = Date.now();
