@@ -24,7 +24,7 @@ const grantsQueryOptions = queryOptions({
   queryFn: () => listGrants({ data: { limit: 100 } }),
 });
 
-export const Route = createFileRoute("/_authenticated/grants")({
+export const Route = createFileRoute("/_authenticated/grants/")({
   head: () => ({
     meta: [
       { title: "Grants — IIAL" },
