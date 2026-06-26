@@ -90,7 +90,11 @@ async function rawHtmlFetch(url: string, timeoutMs = 8000): Promise<FetchedPage>
   try {
     const res = await fetch(url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-CA,en;q=0.9,fr-CA;q=0.5",
+      },
     });
     if (!res.ok) return { ok: false, url, error: `raw_fetch_${res.status}`, via: "raw_html" };
     const html = (await res.text()).slice(0, 250_000);
