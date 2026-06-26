@@ -4,9 +4,11 @@
 
 import { discoverFunderImpl } from "@/agents/discoverer.impl.server";
 
-const FUNDER_TIMEOUT_MS = 90_000;
-const MAX_ATTEMPTS = 3;
-const BACKOFF_MS = [0, 1500, 4000]; // pre-attempt wait per attempt index
+const FUNDER_TIMEOUT_MS = 60_000;
+const MAX_ATTEMPTS = 2;
+const BACKOFF_MS = [0, 1500]; // pre-attempt wait per attempt index
+const FUNDER_CONCURRENCY = 4; // run up to N funders in parallel
+
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
