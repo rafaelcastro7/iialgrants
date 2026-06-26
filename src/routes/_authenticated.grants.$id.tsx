@@ -54,6 +54,7 @@ export const Route = createFileRoute("/_authenticated/grants/$id")({
 
 function GrantDetailPage() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
   const { t, i18n } = useTranslation();
   const fr = false /* EN-only */;
   const navigate = useNavigate();
@@ -65,9 +66,30 @@ function GrantDetailPage() {
   const { data } = useSuspenseQuery(detailQuery(id));
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [evField, setEvField] = useState<string | null>(null);
-  const [traceRun, setTraceRun] = useState<{ runId: string; agent: string } | null>(null);
-  const openEvidence = (f: string) => setEvField(f);
+  const [evField, setEvField] = useState<string | null>(search.evidence ?? null);
+  const [traceRun, setTraceRun] = useState<{ runId: string; agent: string } | null>(
+    search.run ? { runId: search.run, agent: search.agent ?? "" } : null,
+  );
+
+  // Sync URL → state when the user navigates with a deep-link mid-session.
+  useEffect(() => { setEvField(search.evidence ?? null); }, [search.evidence]);
+  useEffect(() => {
+    if (search.run) setTraceRun({ runId: search.run, agent: search.agent ?? "" });
+    else setTraceRun(null);
+  }, [search.run, search.agent]);
+
+  // State → URL: keep the deep-link sharable as the user opens panels.
+  const patchSearch = (patch: Partial<GrantSearch>) =>
+    navigate({
+      to: "/grants/$id",
+      params: { id },
+      search: (prev) => ({ ...prev, ...patch }),
+      replace: true,
+    });
+  const openEvidence = (f: string) => { setEvField(f); patchSearch({ evidence: f }); };
+  const closeEvidence = () => { setEvField(null); patchSearch({ evidence: undefined }); };
+  const closeTrace = () => { setTraceRun(null); patchSearch({ run: undefined, agent: undefined, step: undefined }); };
+
 
   const g = data.grant as unknown as {
     id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
