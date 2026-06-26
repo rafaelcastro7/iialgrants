@@ -19,6 +19,7 @@ import { EvidencePanel, EvidenceChip } from "@/components/grants/EvidencePanel";
 import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
+import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
 import { useState } from "react";
 import { Activity } from "lucide-react";
 import "@/i18n";
