@@ -202,3 +202,129 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
     </div>
   );
 }
+
+type EvidenceItem = {
+  agent: string; field: string; value: unknown; source_url: string | null;
+  snippet: string | null; extraction_method: string; confidence: number | string;
+};
+
+function RuleRow({
+  check, evidence, ruleScore, weightLlm, llmPct, threshold, totalEvaluable,
+}: {
+  check: { id: string; label: string; status: "pass" | "fail" | "warn" | "skip"; hard: boolean; detail: string };
+  evidence: EvidenceItem[];
+  ruleScore: number;
+  weightLlm: number;
+  llmPct: number | null;
+  threshold: number;
+  totalEvaluable: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Per-rule evidence: match by field name OR by agent==evaluator referencing this rule id.
+  const fields = RULE_FIELD_MAP[check.id] ?? [];
+  const related = evidence.filter((e) => {
+    const f = (e.field ?? "").toLowerCase();
+    return fields.some((wanted) => f.includes(wanted)) ||
+      (e.snippet ?? "").toLowerCase().includes(check.id);
+  });
+
+  // Math contribution: each evaluable rule contributes 1/N of rule_score (0–100).
+  const perRulePoints = totalEvaluable > 0 ? Math.round(100 / totalEvaluable) : 0;
+  const contributed = check.status === "pass" ? perRulePoints : 0;
+  const ruleWeightPct = Math.round((1 - weightLlm) * 100);
+  const llmWeightPct = Math.round(weightLlm * 100);
+  const combined = llmPct != null
+    ? Math.round(weightLlm * llmPct + (1 - weightLlm) * ruleScore)
+    : null;
+
+  return (
+    <li className="text-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-start gap-3 px-3 py-2 hover:bg-muted/40 text-left"
+      >
+        {open ? <ChevronDown className="h-4 w-4 mt-0.5 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 mt-0.5 text-muted-foreground" />}
+        {STATUS_ICON[check.status]}
+        <div className="flex-1 min-w-0">
+          <div className="font-medium flex items-center gap-1.5">
+            {check.label}
+            {check.hard && <Badge variant="outline" className="text-[10px] py-0">hard</Badge>}
+          </div>
+          <div className="text-xs text-muted-foreground">{check.detail}</div>
+        </div>
+        <Badge
+          variant={check.status === "fail" ? "destructive" : check.status === "pass" ? "default" : "secondary"}
+          className="text-[10px]"
+        >{check.status}</Badge>
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 pl-12 space-y-3 bg-muted/20 border-t">
+          {/* Exact math */}
+          <div className="rounded-md border bg-card p-2.5 text-xs space-y-1">
+            <p className="font-semibold uppercase tracking-wide text-[10px] text-muted-foreground">Calculation</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 tabular-nums">
+              <span className="text-muted-foreground">Rule contribution</span>
+              <span><b>{contributed}</b> / {perRulePoints} pts (status: {check.status})</span>
+              <span className="text-muted-foreground">Rule score (all rules)</span>
+              <span><b>{Math.round(ruleScore)}</b>/100 · weight {ruleWeightPct}%</span>
+              <span className="text-muted-foreground">LLM fit</span>
+              <span>{llmPct != null ? <><b>{llmPct}</b>/100 · weight {llmWeightPct}%</> : <span className="italic">not yet scored</span>}</span>
+              <span className="text-muted-foreground">Combined</span>
+              <span>
+                {combined != null ? <><b>{combined}</b>/100 vs threshold {threshold} → {combined >= threshold ? <span className="text-emerald-600 font-semibold">PASS</span> : <span className="text-rose-600 font-semibold">FAIL</span>}</> : "—"}
+              </span>
+            </div>
+            {check.hard && check.status === "fail" && (
+              <p className="text-rose-600 pt-1">⚠ Hard-fail rule — overrides combined score regardless of LLM fit.</p>
+            )}
+            {check.status === "skip" && (
+              <p className="text-muted-foreground pt-1">Skipped rules do not affect the rule score.</p>
+            )}
+          </div>
+
+          {/* Evidence */}
+          <div>
+            <p className="font-semibold uppercase tracking-wide text-[10px] text-muted-foreground mb-1">
+              Evidence that fired this rule ({related.length})
+            </p>
+            {related.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                No evidence span tagged for fields: {fields.join(", ") || "—"}. The rule fired on derived values from the grant record.
+              </p>
+            ) : (
+              <ul className="divide-y rounded-md border bg-card">
+                {related.map((e, i) => (
+                  <li key={i} className="px-2.5 py-1.5 text-xs space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px]">{e.agent}</Badge>
+                      <span className="font-medium">{e.field}</span>
+                      <Badge variant="secondary" className="text-[10px]">{e.extraction_method}</Badge>
+                      <span className="text-muted-foreground">conf {Math.round(Number(e.confidence) * 100)}%</span>
+                      {e.source_url && (
+                        <a href={e.source_url} target="_blank" rel="noreferrer"
+                           className="ml-auto text-primary hover:underline inline-flex items-center gap-1">
+                          source <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                    {e.snippet && (
+                      <div className="text-muted-foreground italic" title={e.snippet}>"{e.snippet}"</div>
+                    )}
+                    {e.value != null && (
+                      <div className="font-mono text-[11px] text-foreground/80">
+                        value: {typeof e.value === "string" ? e.value : JSON.stringify(e.value)}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </li>
+  );
+}
