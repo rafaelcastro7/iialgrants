@@ -111,7 +111,7 @@ function GrantDetailPage() {
     try {
       const result = await fn();
       const runId = (result as { runId?: string } | undefined)?.runId;
-      if (runId) setTraceRun({ runId, agent });
+      if (runId) { setTraceRun({ runId, agent }); patchSearch({ run: runId, agent }); }
       await qc.invalidateQueries({ queryKey: ["grant-detail", id] });
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(null); }
