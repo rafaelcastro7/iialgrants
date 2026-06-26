@@ -506,7 +506,7 @@ export async function discoverFunderImpl(
   // Ask LLM to extract ONE grant per program page (sequential + throttle to respect free-tier rate limits).
   for (let pi = 0; pi < pageDocs.length; pi++) {
     const doc = pageDocs[pi];
-    if (pi > 0) await sleep(2_500);
+    if (pi > 0) await sleep(FALLBACK_LLM_THROTTLE_MS);
     let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
 
     try {
