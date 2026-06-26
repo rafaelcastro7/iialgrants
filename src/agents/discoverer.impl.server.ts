@@ -571,7 +571,7 @@ export async function discoverFunderImpl(
           if (!g.summary_fr) g.summary_fr = g.summary ?? null;
           g.summary = parsed.summary_en;
         }
-        await sleep(2_500);
+        await sleep(FALLBACK_LLM_THROTTLE_MS);
       } catch { /* keep original on failure */ }
     }
 
