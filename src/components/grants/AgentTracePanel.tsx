@@ -93,9 +93,23 @@ export function AgentTracePanel({
 
   const t0Ms = useMemo(() => (steps[0] ? new Date(steps[0].created_at).getTime() : 0), [steps]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const stepRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [copied, setCopied] = useState<string | null>(null);
+
+  // Auto-scroll to bottom as new steps stream in, unless a focusStep is pinned.
   useEffect(() => {
+    if (focusStep) return;
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [steps.length]);
+  }, [steps.length, focusStep]);
+
+  // Scroll the focused step into view and flash a ring when deep-linked.
+  useEffect(() => {
+    if (!focusStep || !open) return;
+    const el = stepRefs.current[focusStep];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusStep, open, steps.length]);
+
+
 
   const lastStatus = steps[steps.length - 1]?.status;
   const lastStep = steps[steps.length - 1]?.step;
