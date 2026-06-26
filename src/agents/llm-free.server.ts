@@ -42,18 +42,22 @@ type ProviderConfig = {
   model: string;
 };
 
-const PROVIDERS: Record<ProviderName, ProviderConfig> = {
+const PROVIDERS: Record<ProviderName, ProviderConfig & { fallbackModels?: string[] }> = {
   groq: {
     name: "groq",
     envKey: "GROQ_API_KEY",
     url: "https://api.groq.com/openai/v1/chat/completions",
     model: "llama-3.3-70b-versatile",
+    // If 70b hits TPM ceiling, retry with the cheaper/lighter 8b-instant
+    // (separate quota bucket on Groq free tier).
+    fallbackModels: ["llama-3.1-8b-instant"],
   },
   gemini: {
     name: "gemini",
     envKey: "GOOGLE_AI_STUDIO_KEY",
     url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     model: "gemini-2.5-flash",
+    fallbackModels: ["gemini-2.0-flash", "gemini-2.5-flash-lite"],
   },
   cerebras: {
     name: "cerebras",
@@ -63,15 +67,18 @@ const PROVIDERS: Record<ProviderName, ProviderConfig> = {
   },
 };
 
+
 async function callOpenAICompat(
   cfg: ProviderConfig,
   opts: FreeLlmOptions,
+  modelOverride?: string,
 ): Promise<{ text: string; inputTokens?: number; outputTokens?: number; model: string }> {
   const apiKey = process.env[cfg.envKey];
   if (!apiKey) throw new Error(`missing_${cfg.envKey}`);
+  const model = modelOverride ?? cfg.model;
 
   const body: Record<string, unknown> = {
-    model: cfg.model,
+    model,
     messages: opts.messages,
     temperature: opts.temperature ?? 0.2,
   };
@@ -90,7 +97,10 @@ async function callOpenAICompat(
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
-    if (res.status === 429) throw new Error(`${cfg.name}_rate_limited`);
+    if (res.status === 429) {
+      const txt = (await res.text()).slice(0, 200);
+      throw new Error(`${cfg.name}_rate_limited: ${txt}`);
+    }
     if (res.status === 401 || res.status === 403) throw new Error(`${cfg.name}_unauthorized`);
     if (!res.ok) throw new Error(`${cfg.name}_${res.status}: ${(await res.text()).slice(0, 200)}`);
     const data = await res.json();
@@ -99,12 +109,13 @@ async function callOpenAICompat(
       text,
       inputTokens: data?.usage?.prompt_tokens,
       outputTokens: data?.usage?.completion_tokens,
-      model: cfg.model,
+      model,
     };
   } finally {
     clearTimeout(t);
   }
 }
+
 
 export function freeProvidersAvailable(): ProviderName[] {
   return (Object.keys(PROVIDERS) as ProviderName[]).filter((p) => !!process.env[PROVIDERS[p].envKey]);
@@ -121,52 +132,65 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       errors.push(`${name}:no_key`);
       continue;
     }
-    // Up to 2 attempts per provider: on rate_limit we wait a short backoff and
-    // retry once before moving to the next provider. This soaks up the bursty
-    // 30-RPM ceiling of Groq's free tier without immediately failing over.
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      const t0 = Date.now();
-      let ok = false;
-      let errMsg: string | undefined;
-      let result: { text: string; inputTokens?: number; outputTokens?: number; model: string } | undefined;
-      try {
-        result = await callOpenAICompat(cfg, opts);
-        ok = true;
-      } catch (e) {
-        errMsg = e instanceof Error ? e.message : String(e);
-      } finally {
-        logGenAI({
-          "gen_ai.system": `free.${name}`,
-          "gen_ai.request.model": cfg.model,
-          "gen_ai.operation.name": "chat",
-          "gen_ai.usage.input_tokens": result?.inputTokens,
-          "gen_ai.usage.output_tokens": result?.outputTokens,
-          latency_ms: Date.now() - t0,
-          agent: opts.agent,
-          run_id: runId,
-          ok,
-          error: errMsg,
-        });
+    // Per-provider escalation:
+    //   try primary model → on 429 wait + retry → on second 429 try
+    //   each fallbackModel (different quota bucket on Groq/Gemini free tiers).
+    const modelChain = [cfg.model, ...((cfg as { fallbackModels?: string[] }).fallbackModels ?? [])];
+    let lastErr: string | undefined;
+    let resolved = false;
+    outer: for (let mi = 0; mi < modelChain.length; mi++) {
+      const model = modelChain[mi];
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const t0 = Date.now();
+        let ok = false;
+        let errMsg: string | undefined;
+        let result: { text: string; inputTokens?: number; outputTokens?: number; model: string } | undefined;
+        try {
+          result = await callOpenAICompat(cfg, opts, model);
+          ok = true;
+        } catch (e) {
+          errMsg = e instanceof Error ? e.message : String(e);
+        } finally {
+          logGenAI({
+            "gen_ai.system": `free.${name}`,
+            "gen_ai.request.model": model,
+            "gen_ai.operation.name": "chat",
+            "gen_ai.usage.input_tokens": result?.inputTokens,
+            "gen_ai.usage.output_tokens": result?.outputTokens,
+            latency_ms: Date.now() - t0,
+            agent: opts.agent,
+            run_id: runId,
+            ok,
+            error: errMsg,
+          });
+        }
+        if (ok && result) {
+          return {
+            text: result.text,
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            runId,
+            provider: name,
+            model: result.model,
+          };
+        }
+        lastErr = errMsg;
+        const isRate = !!errMsg && /rate_limited/.test(errMsg);
+        if (isRate && attempt === 1) {
+          // 6s backoff — enough to clear most TPM windows on Groq/Gemini free
+          await new Promise((r) => setTimeout(r, 6_000));
+          continue;
+        }
+        // give up on this model; try next model in chain if any
+        break;
       }
-      if (ok && result) {
-        return {
-          text: result.text,
-          inputTokens: result.inputTokens,
-          outputTokens: result.outputTokens,
-          runId,
-          provider: name,
-          model: result.model,
-        };
-      }
-      const isRate = !!errMsg && /rate_limited/.test(errMsg);
-      if (isRate && attempt === 1) {
-        await new Promise((r) => setTimeout(r, 2_500));
-        continue;
-      }
-      errors.push(`${name}:${errMsg ?? "unknown"}`);
-      break;
+      // Don't waste fallback attempts on auth errors — the key is just bad.
+      if (lastErr && /unauthorized/.test(lastErr)) break outer;
     }
+    if (resolved) break;
+    errors.push(`${name}:${lastErr ?? "unknown"}`);
   }
+
 
 
   // Optional Lovable fallback
