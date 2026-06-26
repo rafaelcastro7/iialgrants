@@ -37,7 +37,10 @@ function clamp(n: number, lo: number, hi: number): number {
 
 export async function shouldFetch(url: string): Promise<LedgerDecision> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
+  // crawl_ledger isn't in the generated types yet — cast through any.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabaseAdmin as any;
+  const { data } = await sb
     .from("crawl_ledger")
     .select("next_fetch_at, etag, last_modified, status, interval_hours")
     .eq("url", url)
@@ -62,10 +65,12 @@ export async function recordFetch(
   opts: { funderId?: string | null; previousIntervalHours?: number | null } = {},
 ): Promise<{ next_fetch_at: string; status: string; changed: boolean; interval_hours: number; content_hash: string | null }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabaseAdmin as any;
   const host = (() => { try { return new URL(url).host; } catch { return ""; } })();
 
   // Load current row (we need previous hash + interval to decide cadence).
-  const { data: prev } = await supabaseAdmin
+  const { data: prev } = await sb
     .from("crawl_ledger")
     .select("content_hash, interval_hours, change_count, fetch_count, error_count")
     .eq("url", url)
