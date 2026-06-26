@@ -1,15 +1,55 @@
 // Live chain-of-thought panel. Polls agent_trace_steps every 1s while the
 // agent run is active and renders each step (scrape, regex, LLM, validation)
 // in chronological order with status icon, message, payload, and duration.
+// Each step name has a human-readable description surfaced via tooltip so a
+// non-technical user understands what the agent is doing in real time.
 import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAgentTrace } from "@/lib/traces.functions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertCircle, Loader2, Info, AlertTriangle, Play, Flag } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CheckCircle2, AlertCircle, Loader2, Info, AlertTriangle, Play, Flag, HelpCircle } from "lucide-react";
 
 type Status = "info" | "ok" | "warn" | "error" | "start" | "done";
+
+// Human-readable explanation of every agent step.
+// Keep titles short (chip label) and descriptions one sentence (tooltip).
+const STEP_INFO: Record<string, { title: string; desc: string }> = {
+  init:              { title: "Initialize",          desc: "Start the agent run, allocate a trace id and prepare context for this grant." },
+  load:              { title: "Load grant + org",    desc: "Fetch the grant record and your organization profile from the database." },
+  gate:              { title: "Eligibility gate",    desc: "Hard rules that decide whether the grant is allowed to proceed (state, eligibility flags, archiving)." },
+  inventory:         { title: "Field inventory",     desc: "Check which fields (amount, deadline, sectors, eligibility) are already known before scraping." },
+  scrape:            { title: "Web scrape",          desc: "Download the program page (Firecrawl → fetch fallback) and extract clean Markdown." },
+  extractors:        { title: "Deterministic pass",  desc: "Run regex + chrono + rule-based extractors — zero LLM cost, fully traceable." },
+  regex_amount:      { title: "Regex · amount",      desc: "Parse dollar figures and ranges from the page text using strict patterns." },
+  chrono_deadline:   { title: "Chrono · deadline",   desc: "Detect application deadlines via natural-language date parsing." },
+  rule_eligibility:  { title: "Rules · eligibility", desc: "Match eligibility tags (nonprofit, for-profit, indigenous, sector…) against a curated tag list." },
+  rule_sectors:      { title: "Rules · sectors",     desc: "Tag program sectors (climate, smart cities, applied research…) via keyword rules." },
+  llm_gap:           { title: "LLM gap analysis",    desc: "List fields still missing after the deterministic pass — only these are sent to the LLM." },
+  llm_providers:     { title: "Provider check",      desc: "List the free providers (Groq, Gemini, Cerebras) and Firecrawl JSON extraction available right now." },
+  llm_cascade:       { title: "Free LLM cascade",    desc: "Call free providers in order (Groq → Gemini → Cerebras). No Lovable credits are consumed." },
+  llm_validate:      { title: "Validate LLM output", desc: "Per-field schema check + grounded-quote verification: the LLM must cite exact text from the page." },
+  translate:         { title: "Translate (FR→EN)",   desc: "Translate any French value to English before saving so the catalog stays mono-lingual." },
+  translate_sectors: { title: "Translate sectors",   desc: "Translate French sector labels to their canonical English names." },
+  translate_eligibility: { title: "Translate eligibility", desc: "Translate French eligibility values to English." },
+  schema:            { title: "Schema validation",   desc: "Final Zod check that the assembled grant record matches the database schema." },
+  rules_load:        { title: "Load fit rules",      desc: "Load your customized screening rules (F1–F6 from the IIAL SOP) for this evaluation." },
+  rules_summary:     { title: "Rules summary",       desc: "Apply each rule and record pass / fail / skip with the reason." },
+  llm_call:          { title: "LLM verdict",         desc: "Ask the LLM for a 0–100 fit score and a written rationale, grounded in the grant text." },
+  parse:             { title: "Parse verdict",       desc: "Validate the LLM's JSON output against the verdict schema." },
+  combine:           { title: "Combine scores",      desc: "Blend the rule-based score and the LLM score using your weight settings to produce the final fit." },
+  rationale:         { title: "Rationale",           desc: "The LLM's written explanation for the verdict, in English." },
+  persist:           { title: "Persist evaluation",  desc: "Upsert the evaluation row (fit score, eligibility, rationale, model) into grant_evaluations." },
+  commit:            { title: "Commit",              desc: "Update the grant status (scored / archived) and write the final fit score." },
+  skip:              { title: "Skip",                desc: "This step was skipped — message explains why (already processed, max attempts, etc.)." },
+  done:              { title: "Done",                desc: "Agent run finished successfully." },
+};
+
+function stepInfo(step: string) {
+  return STEP_INFO[step] ?? { title: step, desc: "Pipeline step — see message and payload below for details." };
+}
 
 function StatusIcon({ s }: { s: Status }) {
   if (s === "ok" || s === "done") return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />;
