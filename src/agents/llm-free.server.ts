@@ -71,12 +71,14 @@ const PROVIDERS: Record<ProviderName, ProviderConfig & { fallbackModels?: string
 async function callOpenAICompat(
   cfg: ProviderConfig,
   opts: FreeLlmOptions,
+  modelOverride?: string,
 ): Promise<{ text: string; inputTokens?: number; outputTokens?: number; model: string }> {
   const apiKey = process.env[cfg.envKey];
   if (!apiKey) throw new Error(`missing_${cfg.envKey}`);
+  const model = modelOverride ?? cfg.model;
 
   const body: Record<string, unknown> = {
-    model: cfg.model,
+    model,
     messages: opts.messages,
     temperature: opts.temperature ?? 0.2,
   };
@@ -95,7 +97,10 @@ async function callOpenAICompat(
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
-    if (res.status === 429) throw new Error(`${cfg.name}_rate_limited`);
+    if (res.status === 429) {
+      const txt = (await res.text()).slice(0, 200);
+      throw new Error(`${cfg.name}_rate_limited: ${txt}`);
+    }
     if (res.status === 401 || res.status === 403) throw new Error(`${cfg.name}_unauthorized`);
     if (!res.ok) throw new Error(`${cfg.name}_${res.status}: ${(await res.text()).slice(0, 200)}`);
     const data = await res.json();
@@ -104,12 +109,13 @@ async function callOpenAICompat(
       text,
       inputTokens: data?.usage?.prompt_tokens,
       outputTokens: data?.usage?.completion_tokens,
-      model: cfg.model,
+      model,
     };
   } finally {
     clearTimeout(t);
   }
 }
+
 
 export function freeProvidersAvailable(): ProviderName[] {
   return (Object.keys(PROVIDERS) as ProviderName[]).filter((p) => !!process.env[PROVIDERS[p].envKey]);
