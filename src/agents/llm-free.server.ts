@@ -137,7 +137,6 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
     //   each fallbackModel (different quota bucket on Groq/Gemini free tiers).
     const modelChain = [cfg.model, ...((cfg as { fallbackModels?: string[] }).fallbackModels ?? [])];
     let lastErr: string | undefined;
-    let resolved = false;
     outer: for (let mi = 0; mi < modelChain.length; mi++) {
       const model = modelChain[mi];
       for (let attempt = 1; attempt <= 2; attempt++) {
@@ -187,7 +186,6 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       // Don't waste fallback attempts on auth errors — the key is just bad.
       if (lastErr && /unauthorized/.test(lastErr)) break outer;
     }
-    if (resolved) break;
     errors.push(`${name}:${lastErr ?? "unknown"}`);
   }
 
@@ -204,6 +202,7 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       responseFormat: opts.responseFormat,
       agent: opts.agent,
       runId,
+      forceLovable: true,
     });
     return {
       text: r.text,

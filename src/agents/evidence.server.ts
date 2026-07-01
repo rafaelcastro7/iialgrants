@@ -43,7 +43,7 @@ function normalizeWs(s: string): string {
 export function snippetIsGrounded(snippet: string, markdown: string): boolean {
   if (!snippet || !markdown) return false;
   const haystack = normalizeWs(markdown);
-  const needle = normalizeWs(snippet).slice(0, 80);
+  const needle = normalizeWs(snippet).slice(0, 200);
   if (needle.length < 12) return false;
   return haystack.includes(needle);
 }

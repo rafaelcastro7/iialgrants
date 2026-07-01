@@ -34,7 +34,7 @@ export async function ragRetrieve(
   // 1) BM25 via Postgres FTS (simple config covers EN + FR ok for MVP).
   const tsQuery = query
     .toLowerCase()
-    .replace(/[^a-z0-9àâçéèêëîïôûùüÿñæœ\s]/gi, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((w) => w.length > 2)
     .slice(0, 12)
@@ -53,11 +53,12 @@ export async function ragRetrieve(
   ]);
 
   const [queryEmbedding] = embeddings;
-  const { data: vecRows } = await supabase.rpc("match_knowledge_chunks", {
+  const { data: vecRows, error: vecErr } = await supabase.rpc("match_knowledge_chunks", {
     query_embedding: queryEmbedding as unknown as string,
     match_user_id: userId,
     match_count: topK * 2,
   });
+  if (vecErr) console.warn("[rag] vector search failed, falling back to FTS only:", vecErr.message);
 
   const fts = (ftsRows ?? []) as Array<{ id: string; content: string; source: string; language: "en" | "fr" }>;
   const vec = (vecRows ?? []) as Array<{ id: string; content: string; source: string; language: "en" | "fr"; similarity: number }>;
@@ -70,7 +71,9 @@ export async function ragRetrieve(
     .sort((a, b) => b[1] - a[1])
     .slice(0, topK)
     .map(([id, score]) => {
-      const r = byId.get(id)!;
+      const r = byId.get(id);
+      if (!r) return null;
       return { id: r.id, content: r.content, source: r.source, language: r.language, score };
-    });
+    })
+    .filter((x): x is RagHit => x !== null);
 }

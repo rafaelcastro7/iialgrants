@@ -39,8 +39,8 @@ export const MODEL_CATALOG = [
 export const listAgentConfigs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { resolveAgentConfig, invalidateAgentConfigCache } = await import("@/lib/agent-config.server");
-    invalidateAgentConfigCache();
+    await assertAdmin(context.userId);
+    const { resolveAgentConfig } = await import("@/lib/agent-config.server");
     const { data: flags } = await context.supabase
       .from("agent_flags" as never)
       .select("agent, enabled, description, updated_at, updated_by");
@@ -167,6 +167,7 @@ export const listAgentConfigAudit = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ agent: z.enum(AGENTS), limit: z.number().int().min(1).max(100).optional() }).parse(i))
   .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
     const { data: rows, error } = await context.supabase
       .from("agent_config_audit" as never)
       .select("id, agent, user_id, changed_at, field, old_value, new_value, is_prompt")
@@ -269,6 +270,7 @@ export const listAgentRuns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ agent: z.enum(AGENTS), limit: z.number().int().min(1).max(50).optional() }).parse(i))
   .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
     const { data: rows, error } = await context.supabase
       .from("agent_runs")
       .select("run_id, agent, status, model, input_tokens, output_tokens, latency_ms, created_at, grant_id, metadata")

@@ -576,7 +576,7 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId, context.supabase as never);
+    await assertAdmin(context.userId);
     const ts = new Date().toISOString();
     let updated = 0;
     for (const id of data.grantIds) {

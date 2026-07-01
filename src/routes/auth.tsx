@@ -105,6 +105,7 @@ function AuthPage() {
             </button>
           </form>
 
+          {import.meta.env.DEV && (
           <div className="mt-6 pt-6 border-t">
             <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2 text-center">
               Demo autologin
@@ -127,6 +128,7 @@ function AuthPage() {
               Seeded accounts · password <code className="font-mono">{DEMO_PASSWORD}</code>
             </p>
           </div>
+          )}
 
         </CardContent>
 
