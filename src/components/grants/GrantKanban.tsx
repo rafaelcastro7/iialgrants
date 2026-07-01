@@ -119,6 +119,12 @@ export function GrantKanban({
       </div>
 
       {/* Kanban */}
+      {grants.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-card p-10 text-center">
+          <p className="text-sm font-medium text-[#0f1b3d]">No grants match your filters</p>
+          <p className="text-xs text-slate-400 mt-1">Try clearing the search or filters above.</p>
+        </div>
+      ) : (
       <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2">
         {buckets.map((col) => (
           <div key={col.key} className="flex-shrink-0 w-72">
@@ -151,6 +157,7 @@ export function GrantKanban({
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }
@@ -311,10 +318,10 @@ function primaryCta({
   }
   // submitted
   return (
-    <Button asChild size="sm" variant="outline" className={baseCls}>
-      <a href={g.url} target="_blank" rel="noopener noreferrer">
-        View source <ExternalLink className="h-3 w-3 ml-1 inline" />
-      </a>
-    </Button>
+      <Button asChild size="sm" variant="outline" className={baseCls}>
+        <a href={g.url} target="_blank" rel="noopener noreferrer">
+        Open funder page <ExternalLink className="h-3 w-3 ml-1 inline" />
+        </a>
+      </Button>
   );
 }

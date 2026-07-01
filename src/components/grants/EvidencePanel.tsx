@@ -1,5 +1,3 @@
-// Drill-down panel showing every evidence span for a field on a grant.
-// Each span shows: extracted value, literal snippet, source URL, method, confidence.
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getGrantEvidence } from "@/lib/evidence.functions";
@@ -9,10 +7,16 @@ import { ExternalLink, ShieldCheck, Bot, Regex, FileCheck2, Calendar } from "luc
 import { useTranslation } from "react-i18next";
 
 type Span = {
-  id: string; agent: string; field: string; value: unknown;
-  source_url: string; snippet: string;
-  extraction_method: string; confidence: number;
-  model: string | null; created_at: string;
+  id: string;
+  agent: string;
+  field: string;
+  value: unknown;
+  source_url: string;
+  snippet: string;
+  extraction_method: string;
+  confidence: number;
+  model: string | null;
+  created_at: string;
 };
 
 const METHOD_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -38,8 +42,7 @@ export function EvidencePanel({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
-  const { t, i18n } = useTranslation();
-  const fr = false /* EN-only */;
+  const { t } = useTranslation();
   const fetchEvidence = useServerFn(getGrantEvidence);
   const { data, isLoading, error } = useQuery({
     queryKey: ["evidence", grantId, field],
@@ -64,24 +67,18 @@ export function EvidencePanel({
       <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-base">
-            {fr ? "Preuves pour" : "Evidence for"} <span className="font-mono">{field}</span>
+            Evidence for <span className="font-mono">{field}</span>
           </SheetTitle>
           <SheetDescription className="text-xs">
-            {fr
-              ? "Chaque valeur est ancrée à une citation littérale de la source. Aucune invention."
-              : "Every value is anchored to a literal quote from the source. Nothing invented."}
+            Source citations supporting this field.
           </SheetDescription>
         </SheetHeader>
 
         <div className="mt-4 space-y-3">
-          {isLoading && <p className="text-xs text-muted-foreground">{t("app.loading")}…</p>}
+          {isLoading && <p className="text-xs text-muted-foreground">{t("app.loading")}...</p>}
           {error && <p className="text-xs text-destructive">{String(error)}</p>}
           {!isLoading && spans.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              {fr
-                ? "Aucune preuve enregistrée. Ce champ a été défini avant l'introduction du suivi des preuves, ou provient directement de la page d'index."
-                : "No evidence recorded. This field was set before evidence tracking was enabled, or came directly from the index page."}
-            </p>
+            <p className="text-xs text-muted-foreground">No linked citation is currently available for this field.</p>
           )}
           {spans.map((s) => {
             const Icon = METHOD_ICON[s.extraction_method] ?? Bot;
@@ -91,11 +88,11 @@ export function EvidencePanel({
                   <div className="flex items-center gap-1.5 text-xs">
                     <Icon className="h-3.5 w-3.5" />
                     <span className="font-medium">{s.extraction_method}</span>
-                    {s.model && <span className="text-muted-foreground">· {s.model}</span>}
-                    <span className="text-muted-foreground">· {s.agent}</span>
+                    {s.model && <span className="text-muted-foreground"> · {s.model}</span>}
+                    <span className="text-muted-foreground"> · {s.agent}</span>
                   </div>
                   <Badge variant="outline" className={`text-[10px] ${confColor(s.confidence)}`}>
-                    {Math.round(s.confidence * 100)}% {fr ? "fiabilité" : "confidence"}
+                    {Math.round(s.confidence * 100)}% confidence
                   </Badge>
                 </div>
 
@@ -120,7 +117,7 @@ export function EvidencePanel({
                   {s.source_url} <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
                 <p className="text-[10px] text-muted-foreground">
-                  {new Date(s.created_at).toLocaleString(fr ? "fr-CA" : "en-CA")}
+                  {new Date(s.created_at).toLocaleString("en-CA")}
                 </p>
               </div>
             );
@@ -131,7 +128,6 @@ export function EvidencePanel({
   );
 }
 
-/** Clickable chip that opens the EvidencePanel for a specific field. */
 export function EvidenceChip({
   field, label, onClick, count,
 }: {
@@ -145,7 +141,7 @@ export function EvidenceChip({
       type="button"
       onClick={() => onClick(field)}
       className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors"
-      title={`View evidence for ${field}`}
+      title={`View citations for ${field}`}
     >
       <ShieldCheck className="h-3 w-3" />
       {label}

@@ -23,6 +23,7 @@ export type EvidenceInput = {
   confidence?: number;               // 0..1 (defaults from method)
   model?: string;
   runId?: string;
+  db?: { from: (table: string) => any };
 };
 
 const DEFAULT_CONFIDENCE: Record<ExtractionMethod, number> = {
@@ -49,6 +50,7 @@ export function snippetIsGrounded(snippet: string, markdown: string): boolean {
 
 export async function recordEvidence(input: EvidenceInput): Promise<{ ok: boolean; id?: string; reason?: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const db = input.db ?? supabaseAdmin;
 
   // Anti-hallucination gate for LLM-method evidence.
   if (input.method === "llm" && input.sourceMarkdown) {
@@ -60,7 +62,7 @@ export async function recordEvidence(input: EvidenceInput): Promise<{ ok: boolea
   const confidence = input.confidence ?? DEFAULT_CONFIDENCE[input.method];
   const sourceHash = createHash("sha256").update(input.sourceUrl).digest("hex").slice(0, 16);
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await db
     .from("evidence_spans")
     .insert({
       grant_id: input.grantId,
