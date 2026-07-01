@@ -245,11 +245,21 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
 export const enrichGrant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ grantId: z.string().uuid() }).parse(i))
-  .handler(async ({ data }) => {
-    const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
-    await assertAgentEnabled("enricher");
+  .handler(async ({ data, context }) => {
+    const { data: flag, error: flagError } = await context.supabase
+      .from("agent_flags" as never)
+      .select("enabled")
+      .eq("agent", "enricher")
+      .maybeSingle();
+    if (flagError) throw new Error(flagError.message);
+    if (!flag || !(flag as { enabled?: boolean }).enabled) {
+      throw new Error("agent_disabled:enricher");
+    }
     const { enrichGrantImpl } = await import("@/agents/enricher.functions");
-    return enrichGrantImpl(data.grantId);
+    return enrichGrantImpl(data.grantId, {
+      db: context.supabase as never,
+      userId: context.userId,
+    });
   });
 
 // Auto-evaluate every enriched/scored grant that the calling user has NOT yet
@@ -272,7 +282,7 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
 
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     try {
-      await assertAgentEnabled("evaluator");
+      await assertAgentEnabled("evaluator", context.supabase as never);
     } catch {
       return { ok: true, evaluated: 0, skipped: 0, reason: "evaluator_disabled" as const };
     }
@@ -418,12 +428,18 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
     if (incompleteIds.length > 0 && data.autoEnrich) {
       const { enrichGrantImpl } = await import("@/agents/enricher.functions");
       const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
-      await assertAgentEnabled("enricher");
+      await assertAgentEnabled("enricher", context.supabase as never);
       let succeeded = 0; let failed = 0;
       // Cap to keep the request bounded; the rest can be re-tried in a follow-up export.
       const batch = incompleteIds.slice(0, 10);
       for (const id of batch) {
-        try { await enrichGrantImpl(id); succeeded++; }
+        try {
+          await enrichGrantImpl(id, {
+            db: context.supabase as never,
+            userId: context.userId,
+          });
+          succeeded++;
+        }
         catch { failed++; }
       }
       enrichmentReport = { attempted: batch.length, succeeded, failed };
@@ -560,20 +576,19 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context.userId, context.supabase as never);
     const ts = new Date().toISOString();
     let updated = 0;
     for (const id of data.grantIds) {
-      const { data: prev } = await supabaseAdmin.from("grants").select("status").eq("id", id).maybeSingle();
+      const { data: prev } = await context.supabase.from("grants").select("status").eq("id", id).maybeSingle();
       const fromStatus = (prev as { status?: string } | null)?.status ?? null;
-      const { error: uerr } = await supabaseAdmin
+      const { error: uerr } = await context.supabase
         .from("grants")
         .update({ status: "shortlisted", updated_at: ts } as never)
         .eq("id", id);
       if (uerr) continue;
       updated++;
-      await supabaseAdmin.from("grant_events").insert({
+      await context.supabase.from("grant_events").insert({
         grant_id: id,
         from_status: (fromStatus ?? null) as never,
         to_status: "shortlisted" as never,

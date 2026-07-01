@@ -60,10 +60,7 @@ function firecrawlEnabled(): boolean {
 
 function jinaHeaders(): HeadersInit {
   const key = process.env.JINA_API_KEY?.trim();
-  const h: Record<string, string> = {
-    Accept: "application/json",
-    "X-With-Generated-Alt": "true",
-  };
+  const h: Record<string, string> = { Accept: "application/json" };
   if (key) h.Authorization = `Bearer ${key}`;
   return h;
 }
@@ -83,7 +80,11 @@ function titleFromHtml(html: string): string | undefined {
   return m?.[1]?.trim();
 }
 
-export async function jinaReader(url: string, timeoutMs = 20_000): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
+export async function jinaReader(
+  url: string,
+  timeoutMs = 20_000,
+  minChars = 100,
+): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   const t0 = Date.now();
@@ -114,7 +115,7 @@ export async function jinaReader(url: string, timeoutMs = 20_000): Promise<{ pag
       const m = markdown.match(/^Title:\s*(.+)$/m);
       if (m) title = m[1].trim();
     }
-    if (markdown.length < 100) {
+    if (markdown.length < minChars) {
       const attempt: FetchAttempt = { engine: "jina_reader", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: "jina_reader_empty", bytes: markdown.length, ts: new Date().toISOString() };
       return { page: { ok: false, url, error: "jina_reader_empty", via: "jina_reader", attempts: [attempt] }, attempt };
     }
@@ -127,7 +128,13 @@ export async function jinaReader(url: string, timeoutMs = 20_000): Promise<{ pag
   } finally { clearTimeout(t); }
 }
 
-async function rawFetch(url: string, ua: string, engine: "raw_html" | "raw_html_googlebot", timeoutMs = 10_000): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
+async function rawFetch(
+  url: string,
+  ua: string,
+  engine: "raw_html" | "raw_html_googlebot",
+  timeoutMs = 10_000,
+  minChars = 200,
+): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   const t0 = Date.now();
@@ -155,7 +162,7 @@ async function rawFetch(url: string, ua: string, engine: "raw_html" | "raw_html_
     }
     const html = (await res.text()).slice(0, 400_000);
     const markdown = htmlToMarkdown(html, 30_000);
-    if (markdown.length < 200) {
+    if (markdown.length < minChars) {
       const attempt: FetchAttempt = { engine, ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: `${engine}_too_short`, bytes: markdown.length, ts: new Date().toISOString() };
       return { page: { ok: false, url, error: attempt.error!, via: engine, attempts: [attempt] }, attempt };
     }
@@ -168,7 +175,11 @@ async function rawFetch(url: string, ua: string, engine: "raw_html" | "raw_html_
   } finally { clearTimeout(t); }
 }
 
-async function waybackFetch(url: string, timeoutMs = 18_000): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
+async function waybackFetch(
+  url: string,
+  timeoutMs = 18_000,
+  minChars = 300,
+): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   const t0 = Date.now();
@@ -195,7 +206,7 @@ async function waybackFetch(url: string, timeoutMs = 18_000): Promise<{ page: Fe
     }
     const html = (await res.text()).slice(0, 500_000);
     const markdown = htmlToMarkdown(html, 40_000);
-    if (markdown.length < 300) {
+    if (markdown.length < minChars) {
       const attempt: FetchAttempt = { engine: "wayback", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: "wayback_too_short", bytes: markdown.length, url_used: snapUrl, ts: new Date().toISOString() };
       return { page: { ok: false, url, error: "wayback_too_short", via: "wayback", attempts: [attempt] }, attempt };
     }
@@ -210,7 +221,11 @@ async function waybackFetch(url: string, timeoutMs = 18_000): Promise<{ page: Fe
 
 // archive.today / archive.ph — separate infra from Wayback, useful when
 // Wayback has no snapshot (commercial sites, recent pages).
-async function archiveTodayFetch(url: string, timeoutMs = 15_000): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
+async function archiveTodayFetch(
+  url: string,
+  timeoutMs = 15_000,
+  minChars = 300,
+): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   const t0 = Date.now();
@@ -229,7 +244,7 @@ async function archiveTodayFetch(url: string, timeoutMs = 15_000): Promise<{ pag
     }
     const html = (await res.text()).slice(0, 500_000);
     const markdown = htmlToMarkdown(html, 40_000);
-    if (markdown.length < 300) {
+    if (markdown.length < minChars) {
       const attempt: FetchAttempt = { engine: "archive_today", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: "archive_today_too_short", bytes: markdown.length, ts: new Date().toISOString() };
       return { page: { ok: false, url, error: "archive_today_too_short", via: "archive_today", attempts: [attempt] }, attempt };
     }
@@ -267,10 +282,45 @@ export async function jinaSearch(query: string, limit = 10, timeoutMs = 15_000):
 
 export async function scrapeWithFallback(
   url: string,
-  opts: { jsonSchema?: object; jsonPrompt?: string; etag?: string; lastModified?: string; skipFirecrawl?: boolean } = {},
+  opts: {
+    jsonSchema?: object;
+    jsonPrompt?: string;
+    etag?: string;
+    lastModified?: string;
+    skipFirecrawl?: boolean;
+    minContentChars?: number;
+    preferFirecrawl?: boolean;
+  } = {},
 ): Promise<FetchedPage> {
   const attempts: FetchAttempt[] = [];
   const push = (a: FetchAttempt) => attempts.push(a);
+  const minContentChars = Math.max(100, opts.minContentChars ?? 200);
+
+  // For structured extraction workflows, callers may prefer Firecrawl first
+  // so they don't lose JSON extraction behind an earlier markdown-only success.
+  if (opts.preferFirecrawl && !opts.skipFirecrawl && firecrawlEnabled()) {
+    const tFc = Date.now();
+    const fc = await firecrawlScrape(url, { jsonSchema: opts.jsonSchema, jsonPrompt: opts.jsonPrompt });
+    push({
+      engine: "firecrawl",
+      ok: !!fc.ok,
+      latency_ms: Date.now() - tFc,
+      error: fc.ok ? undefined : fc.error,
+      bytes: fc.ok ? fc.markdown.length : undefined,
+      ts: new Date().toISOString(),
+    });
+    if (fc.ok && (fc.markdown.length >= minContentChars || fc.json)) {
+      return {
+        ok: true,
+        url: fc.url,
+        markdown: fc.markdown,
+        title: fc.title,
+        json: fc.json,
+        via: fc.json ? "firecrawl_json" : "firecrawl",
+        attempts,
+      };
+    }
+  }
 
   // 1. Local engine
   const tEng = Date.now();
@@ -283,34 +333,36 @@ export async function scrapeWithFallback(
     bytes: eng.ok ? eng.markdown.length : undefined,
     ts: new Date().toISOString(),
   });
-  if (eng.ok) return { ok: true, url: eng.url, markdown: eng.markdown, title: eng.title, via: "scrape_engine", attempts };
-  if (eng.gone || eng.blocked || eng.notModified) {
+  if (eng.ok && eng.markdown.length >= minContentChars) {
+    return { ok: true, url: eng.url, markdown: eng.markdown, title: eng.title, via: "scrape_engine", attempts };
+  }
+  if (!eng.ok && (eng.gone || eng.blocked || eng.notModified)) {
     return { ok: false, url, error: eng.error, via: "scrape_engine", attempts };
   }
 
   // 2. Jina Reader
-  const jr = await jinaReader(url);
+  const jr = await jinaReader(url, 20_000, minContentChars);
   push(jr.attempt);
   if (jr.page.ok) return { ...jr.page, attempts };
 
   // 3. Raw HTML (Chrome UA)
-  const raw = await rawFetch(url, CHROME_UA, "raw_html");
+  const raw = await rawFetch(url, CHROME_UA, "raw_html", 10_000, minContentChars);
   push(raw.attempt);
   if (raw.page.ok) return { ...raw.page, attempts };
 
   // 4. Raw HTML (Googlebot UA) — many gov / news sites whitelist Googlebot
   //    but block desktop browsers from datacentre IPs.
-  const gb = await rawFetch(url, GOOGLEBOT_UA, "raw_html_googlebot");
+  const gb = await rawFetch(url, GOOGLEBOT_UA, "raw_html_googlebot", 10_000, minContentChars);
   push(gb.attempt);
   if (gb.page.ok) return { ...gb.page, attempts };
 
   // 5. Wayback Machine
-  const wb = await waybackFetch(url);
+  const wb = await waybackFetch(url, 18_000, minContentChars);
   push(wb.attempt);
   if (wb.page.ok) return { ...wb.page, attempts };
 
   // 6. archive.today / archive.ph
-  const at = await archiveTodayFetch(url);
+  const at = await archiveTodayFetch(url, 15_000, minContentChars);
   push(at.attempt);
   if (at.page.ok) return { ...at.page, attempts };
 
@@ -326,7 +378,7 @@ export async function scrapeWithFallback(
       bytes: fc.ok ? fc.markdown.length : undefined,
       ts: new Date().toISOString(),
     });
-    if (fc.ok) {
+    if (fc.ok && (fc.markdown.length >= minContentChars || fc.json)) {
       return {
         ok: true, url: fc.url, markdown: fc.markdown, title: fc.title, json: fc.json,
         via: fc.json ? "firecrawl_json" : "firecrawl", attempts,
@@ -340,5 +392,6 @@ export async function scrapeWithFallback(
 
 export async function searchWeb(query: string, limit = 10): Promise<SearchHit[]> {
   const r = await jinaSearch(query, limit);
-  return r.ok ? r.hits : [];
+  if (!r.ok) throw new Error(r.error);
+  return r.hits;
 }

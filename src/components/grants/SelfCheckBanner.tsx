@@ -1,6 +1,3 @@
-// Pre-render self-check banner. Calls selfCheckGrant and shows a compact
-// status header with drill-down list of issues + a "Retry fetch" CTA when
-// the last enrichment failed.
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { selfCheckGrant } from "@/lib/grant-self-check.functions";
@@ -41,7 +38,7 @@ export function SelfCheckBanner({
         <div className="flex items-center gap-2 min-w-0">
           <Icon className={`h-4 w-4 ${iconColor} shrink-0`} />
           <span className="font-medium">
-            {data.overall === "ok" ? "All systems verified" : data.overall === "warn" ? "Partial data" : "Fetch issue"}
+            {data.overall === "ok" ? "Data verification complete" : data.overall === "warn" ? "Partially verified" : "Source retrieval issue"}
           </span>
           <Badge variant="secondary" className="text-[10px]">
             {filledCount}/{totalFields} fields · {data.evidence_count} citations
@@ -56,7 +53,7 @@ export function SelfCheckBanner({
           {data.overall !== "ok" && onRetry && (
             <Button size="sm" variant="outline" className="h-7" onClick={onRetry} disabled={retrying}>
               <RefreshCw className={`h-3 w-3 mr-1 ${retrying ? "animate-spin" : ""}`} />
-              {retrying ? "Fetching…" : "Retry"}
+              {retrying ? "Retrieving..." : "Retry retrieval"}
             </Button>
           )}
         </div>

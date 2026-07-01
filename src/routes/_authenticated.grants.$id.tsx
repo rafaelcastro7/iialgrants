@@ -1,29 +1,37 @@
-// Drill-down page for a single grant — full eligibility, sectors, evaluation
-// rationale, and the audit timeline. Linked from every row in /grants.
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+// Drill-down page for a single grant - summary, evidence, fit analysis,
+// workflow history, and proposal actions.
+import { useEffect, useState } from "react";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ExternalLink, Building2, Calendar, DollarSign, Tag, Globe } from "lucide-react";
-import { getGrantDetail } from "@/lib/grant-detail.functions";
+import {
+  Activity,
+  ArrowLeft,
+  Building2,
+  Calendar,
+  DollarSign,
+  ExternalLink,
+  Globe,
+  Tag,
+} from "lucide-react";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
-import { enrichGrant } from "@/lib/grants.functions";
-
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
+import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
+import { EvidenceChip, EvidencePanel } from "@/components/grants/EvidencePanel";
+import { FetchTrailPanel } from "@/components/grants/FetchTrailPanel";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
-import { EvidencePanel, EvidenceChip } from "@/components/grants/EvidencePanel";
-import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
-import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
-import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
-import { FetchTrailPanel } from "@/components/grants/FetchTrailPanel";
+import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { SelfCheckBanner } from "@/components/grants/SelfCheckBanner";
-import { useEffect, useState } from "react";
-import { Activity } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getGrantDetail } from "@/lib/grant-detail.functions";
+import { enrichGrant, markGrantsCurated } from "@/lib/grants.functions";
+import { useIsAdmin } from "@/lib/use-platform";
 import "@/i18n";
 
 const detailQuery = (id: string) =>
@@ -41,7 +49,7 @@ type GrantSearch = {
 
 export const Route = createFileRoute("/_authenticated/grants/$id")({
   head: ({ params }) => ({
-    meta: [{ title: `Grant ${params.id.slice(0, 8)} — IIAL` }],
+    meta: [{ title: `Grant ${params.id.slice(0, 8)} - IIAL` }],
   }),
   validateSearch: (raw: Record<string, unknown>): GrantSearch => ({
     evidence: typeof raw.evidence === "string" ? raw.evidence : undefined,
@@ -53,18 +61,17 @@ export const Route = createFileRoute("/_authenticated/grants/$id")({
   component: GrantDetailPage,
 });
 
-
 function GrantDetailPage() {
   const { id } = Route.useParams();
   const search = Route.useSearch();
-  const { t, i18n } = useTranslation();
-  const fr = false /* EN-only */;
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  
   const qc = useQueryClient();
+  const isAdmin = useIsAdmin();
   const evaluate = useServerFn(runEvaluator);
   const enrichOne = useServerFn(enrichGrant);
   const strategize = useServerFn(runStrategist);
+  const curate = useServerFn(markGrantsCurated);
   const { data } = useSuspenseQuery(detailQuery(id));
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -73,16 +80,15 @@ function GrantDetailPage() {
     search.run ? { runId: search.run, agent: search.agent ?? "" } : null,
   );
 
-  // Sync URL → state when the user navigates with a deep-link mid-session.
-  useEffect(() => { setEvField(search.evidence ?? null); }, [search.evidence]);
+  useEffect(() => {
+    setEvField(search.evidence ?? null);
+  }, [search.evidence]);
+
   useEffect(() => {
     if (search.run) setTraceRun({ runId: search.run, agent: search.agent ?? "" });
     else setTraceRun(null);
   }, [search.run, search.agent]);
 
-  // Auto-fetch details on first open when the grant has never been enriched.
-  // Keeps the click-through useful even when discovery hasn't run the enricher
-  // pass yet. Idempotent: enrichGrantImpl returns early if already fresh.
   const needsEnrich = !data.grant.enriched_at && data.grant.status === "discovered";
   useEffect(() => {
     if (!needsEnrich || busy) return;
@@ -90,7 +96,6 @@ function GrantDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, needsEnrich]);
 
-  // State → URL: keep the deep-link sharable as the user opens panels.
   const patchSearch = (patch: Partial<GrantSearch>) =>
     navigate({
       to: "/grants/$id",
@@ -98,72 +103,150 @@ function GrantDetailPage() {
       search: (prev: GrantSearch) => ({ ...prev, ...patch }),
       replace: true,
     });
-  const openEvidence = (f: string) => { setEvField(f); patchSearch({ evidence: f }); };
-  const closeEvidence = () => { setEvField(null); patchSearch({ evidence: undefined }); };
-  const closeTrace = () => { setTraceRun(null); patchSearch({ run: undefined, agent: undefined, step: undefined }); };
 
+  const openEvidence = (field: string) => {
+    setEvField(field);
+    patchSearch({ evidence: field });
+  };
+  const closeEvidence = () => {
+    setEvField(null);
+    patchSearch({ evidence: undefined });
+  };
+  const closeTrace = () => {
+    setTraceRun(null);
+    patchSearch({ run: undefined, agent: undefined, step: undefined });
+  };
 
   const g = data.grant as unknown as {
-    id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
-    amount_cad_min: number | null; amount_cad_max: number | null; deadline: string | null;
-    sectors: string[] | null; eligibility: Record<string, unknown> | null;
-    language: string; url: string; status: string; fit_score: number | null;
-    discovered_at: string | null; enriched_at: string | null; scored_at: string | null;
-    last_seen_at: string | null; times_seen: number | null;
-    funder: { id: string; name: string; name_fr: string | null; jurisdiction: string | null; source_url: string | null } | null;
+    id: string;
+    title: string;
+    title_fr: string | null;
+    summary: string | null;
+    summary_fr: string | null;
+    amount_cad_min: number | null;
+    amount_cad_max: number | null;
+    deadline: string | null;
+    sectors: string[] | null;
+    eligibility: Record<string, unknown> | null;
+    language: string;
+    url: string;
+    status: string;
+    fit_score: number | null;
+    discovered_at: string | null;
+    enriched_at: string | null;
+    scored_at: string | null;
+    last_seen_at: string | null;
+    times_seen: number | null;
+    funder: {
+      id: string;
+      name: string;
+      name_fr: string | null;
+      jurisdiction: string | null;
+      source_url: string | null;
+    } | null;
+    enrich_last_error?: string | null;
   };
-  const title = (fr && g.title_fr) ? g.title_fr : g.title;
-  const summary = (fr && g.summary_fr) ? g.summary_fr : g.summary;
-  const funderName = g.funder ? (fr && g.funder.name_fr ? g.funder.name_fr : g.funder.name) : "—";
-  const fmt = (n: number | null) =>
-    n == null ? "—" : new Intl.NumberFormat(fr ? "fr-CA" : "en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
+  const title = g.title;
+  const summary = g.summary?.trim() || null;
+  const funderName = g.funder?.name ?? "-";
+  const fmtCurrency = (n: number | null) =>
+    n == null
+      ? "-"
+      : new Intl.NumberFormat("en-CA", {
+          style: "currency",
+          currency: "CAD",
+          maximumFractionDigits: 0,
+        }).format(n);
 
   async function run(label: string, agent: string, fn: () => Promise<unknown>) {
-    setBusy(label); setErr(null);
+    setBusy(label);
+    setErr(null);
     try {
       const result = await fn();
       const runId = (result as { runId?: string } | undefined)?.runId;
-      if (runId) { setTraceRun({ runId, agent }); patchSearch({ run: runId, agent }); }
+      if (runId) {
+        setTraceRun({ runId, agent });
+        patchSearch({ run: runId, agent });
+      }
       await qc.invalidateQueries({ queryKey: ["grant-detail", id] });
-    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(null); }
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onShortlist() {
+    setBusy("shortlist");
+    setErr(null);
+    try {
+      await curate({ data: { grantIds: [id] } });
+      await qc.invalidateQueries({ queryKey: ["grant-detail", id] });
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-4">
           <Button asChild variant="ghost" size="sm">
-            <Link to="/grants"><ArrowLeft className="h-4 w-4 mr-1" />{t("nav.grants")}</Link>
+            <Link to="/grants">
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              {t("nav.grants")}
+            </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="ml-auto">
-            <Link to="/grants/$id/audit" params={{ id }}>Audit trail →</Link>
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            {g.url && (
+              <Button asChild size="sm">
+                <a href={g.url} target="_blank" rel="noopener noreferrer">
+                  Open funder page
+                  <ExternalLink className="ml-1 h-4 w-4" />
+                </a>
+              </Button>
+            )}
+            <Button asChild variant="outline" size="sm">
+              <Link to="/grants/$id/audit" params={{ id }}>
+                Audit trail
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 
-      <section className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <section className="mx-auto max-w-5xl space-y-6 px-4 py-6">
         <div className="space-y-3">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl font-bold leading-tight">{title}</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                <Building2 className="h-3.5 w-3.5 inline mr-1" />
-                {funderName}{g.funder?.jurisdiction ? ` · ${g.funder.jurisdiction}` : ""}
+              <p className="mt-1 text-sm text-muted-foreground">
+                <Building2 className="mr-1 inline h-3.5 w-3.5" />
+                {funderName}
+                {g.funder?.jurisdiction ? ` | ${g.funder.jurisdiction}` : ""}
               </p>
             </div>
             <Badge variant={g.status === "shortlisted" ? "default" : "secondary"}>
               {t(`grants.status.${g.status}`)}
             </Badge>
           </div>
-          <FreshnessBadges discoveredAt={g.discovered_at} deadline={g.deadline} fr={fr} />
+          <FreshnessBadges discoveredAt={g.discovered_at} deadline={g.deadline} fr={false} />
         </div>
 
-        {err && <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">{err}</div>}
+        {err && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {err}
+          </div>
+        )}
+
         {busy === "enrich" && (
-          <div className="rounded-md border border-blue-500/40 bg-blue-500/5 px-3 py-2 text-sm flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border border-blue-500/40 bg-blue-500/5 px-3 py-2 text-sm">
             <Activity className="h-4 w-4 animate-pulse" />
-            Fetching live details from the funder's page… this can take 20–60 s.
+            Fetching live details from the funder page. This can take 20 to 60 seconds.
           </div>
         )}
 
@@ -176,48 +259,126 @@ function GrantDetailPage() {
         <FetchTrailPanel
           grantId={id}
           retrying={busy === "enrich"}
-          errorMsg={(data.grant as { enrich_last_error?: string | null }).enrich_last_error ?? null}
+          errorMsg={g.enrich_last_error ?? null}
           onRetry={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}
         />
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5" />{t("grants.amount")}</CardTitle></CardHeader>
-            <CardContent className="text-sm tabular-nums space-y-1.5">
-              <div>{fmt(g.amount_cad_min)} – {fmt(g.amount_cad_max)}</div>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-1.5 text-xs uppercase text-muted-foreground">
+                <DollarSign className="h-3.5 w-3.5" />
+                {t("grants.amount")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5 text-sm tabular-nums">
+              <div>
+                {fmtCurrency(g.amount_cad_min)} to {fmtCurrency(g.amount_cad_max)}
+              </div>
               {(g.amount_cad_min != null || g.amount_cad_max != null) && (
-                <EvidenceChip field="amount_cad_max" label={fr ? "Voir la source" : "View source"} onClick={openEvidence} />
+                <EvidenceChip
+                  field="amount_cad_max"
+                  label="View citation"
+                  onClick={openEvidence}
+                />
               )}
             </CardContent>
           </Card>
+
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{t("grants.deadline")}</CardTitle></CardHeader>
-            <CardContent className="text-sm space-y-1.5">
-              <div>{g.deadline ?? "—"}</div>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-1.5 text-xs uppercase text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" />
+                {t("grants.deadline")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5 text-sm">
+              <div>{g.deadline ?? "-"}</div>
               {g.deadline && (
-                <EvidenceChip field="deadline" label={fr ? "Voir la source" : "View source"} onClick={openEvidence} />
+                <EvidenceChip field="deadline" label="View citation" onClick={openEvidence} />
               )}
             </CardContent>
           </Card>
+
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" />{fr ? "Langue" : "Language"}</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-1.5 text-xs uppercase text-muted-foreground">
+                <Globe className="h-3.5 w-3.5" />
+                Language
+              </CardTitle>
+            </CardHeader>
             <CardContent className="text-sm uppercase">{g.language}</CardContent>
           </Card>
         </div>
 
-        {summary && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">{fr ? "Résumé" : "Summary"}</CardTitle></CardHeader>
-            <CardContent className="text-sm leading-relaxed">{summary}</CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Grant overview</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                What this grant is
+              </p>
+              <p className="leading-relaxed text-foreground">
+                {summary ?? "A detailed public summary is not available yet. Run enrichment to pull more context from the funder page."}
+              </p>
+            </div>
+
+            <div className="space-y-2.5 border-t pt-3">
+              <DetailRow label="Funder" value={funderName} />
+              {g.funder?.jurisdiction && (
+                <DetailRow label="Jurisdiction" value={g.funder.jurisdiction} />
+              )}
+              <DetailRow label="Status" value={t(`grants.status.${g.status}`)} />
+              {g.discovered_at && <DetailRow label="Discovered" value={fmtDate(g.discovered_at)} />}
+              {g.enriched_at && <DetailRow label="Enriched" value={fmtDate(g.enriched_at)} />}
+              {g.scored_at && <DetailRow label="Evaluated" value={fmtDate(g.scored_at)} />}
+              {g.times_seen != null && <DetailRow label="Times seen" value={`${g.times_seen} times`} />}
+              <div className="gap-2 pt-1 sm:grid sm:grid-cols-[180px_1fr] sm:items-baseline">
+                <span className="font-medium text-muted-foreground">Official links</span>
+                <div className="flex flex-col gap-1.5">
+                  {g.url && (
+                    <a
+                      href={g.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex w-fit items-center gap-1 underline"
+                    >
+                      Official grant page
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {g.funder?.source_url && g.funder.source_url !== g.url && (
+                    <a
+                      href={g.funder.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex w-fit items-center gap-1 underline"
+                    >
+                      Funder website
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {g.sectors && g.sectors.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-1.5"><Tag className="h-3.5 w-3.5" />{fr ? "Secteurs" : "Sectors"}</p>
-            <div className="flex flex-wrap gap-1.5 items-center">
-              {g.sectors.map((s) => <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>)}
-              <EvidenceChip field="sectors" label={fr ? "Sources" : "Sources"} onClick={openEvidence} />
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase text-muted-foreground">
+              <Tag className="h-3.5 w-3.5" />
+              Sectors
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {g.sectors.map((s) => (
+                <Badge key={s} variant="secondary" className="text-xs">
+                  {s}
+                </Badge>
+              ))}
+              <EvidenceChip field="sectors" label="View citations" onClick={openEvidence} />
             </div>
           </div>
         )}
@@ -228,89 +389,148 @@ function GrantDetailPage() {
             discoveredAt={g.discovered_at}
             enrichedAt={g.enriched_at}
             scoredAt={g.scored_at}
-            evaluation={data.evaluation as { fit_score: number; eligibility_pass: boolean; rationale_en: string; rationale_fr: string; created_at: string } | null}
-            fr={fr}
+            evaluation={
+              data.evaluation as {
+                fit_score: number;
+                eligibility_pass: boolean;
+                rationale_en: string;
+                rationale_fr: string;
+                created_at: string;
+              } | null
+            }
+            fr={false}
           />
           {data.evaluation && (
-            <div className="flex gap-2 flex-wrap pl-2">
-              <EvidenceChip field="fit_score" label={fr ? "Pourquoi ce score ?" : "Why this score?"} onClick={openEvidence} />
-              <EvidenceChip field="eligibility_pass" label={fr ? "Pourquoi admissible ?" : "Why eligible?"} onClick={openEvidence} />
+            <div className="flex flex-wrap gap-2 pl-2">
+              <EvidenceChip field="fit_score" label="Why this score?" onClick={openEvidence} />
+              <EvidenceChip
+                field="eligibility_pass"
+                label="Why this eligibility result?"
+                onClick={openEvidence}
+              />
             </div>
           )}
         </div>
 
         {g.enriched_at && <EvaluationDetail grantId={id} />}
 
-
-
         {g.eligibility && Object.keys(g.eligibility).length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">{fr ? "Admissibilité" : "Eligibility"}</CardTitle>
-              <EvidenceChip field="eligibility" label={fr ? "Sources" : "Sources"} onClick={openEvidence} />
+              <CardTitle className="text-base">Eligibility</CardTitle>
+              <EvidenceChip field="eligibility" label="View citations" onClick={openEvidence} />
             </CardHeader>
-            <CardContent>
-              <pre className="text-xs whitespace-pre-wrap font-mono bg-muted/40 p-3 rounded">{JSON.stringify(g.eligibility, null, 2)}</pre>
+            <CardContent className="space-y-2.5 text-sm">
+              {Object.entries(g.eligibility).map(([k, v]) => (
+                <div key={k} className="gap-2 sm:grid sm:grid-cols-[180px_1fr] sm:items-baseline">
+                  <span className="font-medium text-muted-foreground">{humanizeKey(k)}</span>
+                  <div>
+                    <EligibilityValue value={v} />
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
 
         <Card>
-          <CardHeader><CardTitle className="text-base">{fr ? "Chronologie" : "Timeline"}</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Timeline</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-2">
-            {data.events.length === 0 && <p className="text-xs text-muted-foreground">{fr ? "Aucun événement." : "No events yet."}</p>}
+            {data.events.length === 0 && (
+              <p className="text-xs text-muted-foreground">No events recorded yet.</p>
+            )}
             {data.events.map((e, i) => (
               <div key={i} className="flex items-baseline gap-3 text-xs">
-                <span className="text-muted-foreground tabular-nums shrink-0">{new Date(e.created_at).toLocaleString(fr ? "fr-CA" : "en-CA")}</span>
-                <span>{e.from_status ?? "∅"} → <span className="font-medium">{e.to_status}</span></span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {new Date(e.created_at).toLocaleString("en-CA")}
+                </span>
+                <span>
+                  {e.from_status ?? "none"} to <span className="font-medium">{e.to_status}</span>
+                </span>
               </div>
             ))}
             {g.last_seen_at && (
-              <p className="text-[11px] text-muted-foreground pt-2 border-t mt-2">
-                {fr ? "Vu" : "Seen"} {g.times_seen ?? 1}× · {fr ? "dernière fois" : "last"} {new Date(g.last_seen_at).toLocaleString(fr ? "fr-CA" : "en-CA")}
+              <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground">
+                Seen {g.times_seen ?? 1} time(s) | last seen{" "}
+                {new Date(g.last_seen_at).toLocaleString("en-CA")}
               </p>
             )}
           </CardContent>
         </Card>
 
-        <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-4">
-          <a href={g.url} target="_blank" rel="noopener noreferrer" className="text-sm underline inline-flex items-center gap-1">
-            {t("grants.source")} <ExternalLink className="h-3.5 w-3.5" />
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <a
+            href={g.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm underline"
+          >
+            {t("grants.source")}
+            <ExternalLink className="h-3.5 w-3.5" />
           </a>
-          <div className="flex gap-2 flex-wrap">
-            {g.status !== "discovered" && (
-              <NotebookLMBridge grantId={id} label="Send to NotebookLM" />
-            )}
+          <div className="flex flex-wrap gap-2">
+            {g.status !== "discovered" && <NotebookLMBridge grantId={id} label="Send to NotebookLM" />}
             {g.status === "discovered" && (
-              <Button size="sm" variant="outline" disabled={busy === "enrich"} onClick={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy === "enrich"}
+                onClick={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}
+              >
                 {busy === "enrich" ? t("app.loading") : "Fetch details"}
               </Button>
             )}
-            <Button size="sm" variant="secondary" disabled={busy === "eval"} onClick={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}>
-              {busy === "eval" ? t("app.loading") : (data.evaluation ? (fr ? "Réévaluer" : "Re-evaluate") : t("grants.evaluate"))}
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy === "eval"}
+              onClick={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}
+            >
+              {busy === "eval" ? t("app.loading") : data.evaluation ? "Re-evaluate" : t("grants.evaluate")}
             </Button>
+            {isAdmin && g.status === "scored" && (
+              <Button size="sm" disabled={busy === "shortlist"} onClick={onShortlist}>
+                {busy === "shortlist" ? t("app.loading") : "Shortlist"}
+              </Button>
+            )}
             {traceRun && (
-              <Button size="sm" variant="ghost" onClick={() => setTraceRun({ ...traceRun })} title={fr ? "Voir le raisonnement en direct" : "View live reasoning"}>
-                <Activity className="h-3.5 w-3.5 mr-1" />
-                {fr ? "Voir raisonnement" : "View reasoning"}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setTraceRun({ ...traceRun })}
+                title="View live reasoning"
+              >
+                <Activity className="mr-1 h-3.5 w-3.5" />
+                View reasoning
               </Button>
             )}
             {(g.status === "scored" || g.status === "shortlisted" || g.status === "in_proposal") && (
-              <Button size="sm" disabled={busy === "draft"} onClick={async () => {
-                setBusy("draft"); setErr(null);
-                try {
-                  const r = await strategize({ data: { grantId: id } });
-                  if (r.runId) setTraceRun({ runId: r.runId, agent: "strategist" });
-                  await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
-                } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-                finally { setBusy(null); }
-              }}>{busy === "draft" ? t("app.loading") : t("grants.draftProposal")}</Button>
+              <Button
+                size="sm"
+                disabled={busy === "draft"}
+                onClick={async () => {
+                  setBusy("draft");
+                  setErr(null);
+                  try {
+                    const r = await strategize({ data: { grantId: id } });
+                    if (r.runId) setTraceRun({ runId: r.runId, agent: "strategist" });
+                    await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
+                  } catch (e) {
+                    setErr(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                {busy === "draft" ? t("app.loading") : t("grants.draftProposal")}
+              </Button>
             )}
           </div>
           {g.status !== "discovered" && <OpportunityBriefPanel grantId={id} />}
         </div>
       </section>
-
 
       <EvidencePanel
         grantId={id}
@@ -323,11 +543,65 @@ function GrantDetailPage() {
         agentLabel={traceRun?.agent ?? ""}
         open={!!traceRun}
         onOpenChange={(o) => !o && closeTrace()}
-        fr={!!fr}
+        fr={false}
         focusStep={search.step ?? null}
         onFocusStep={(step) => patchSearch({ step: step ?? undefined })}
       />
-
     </main>
   );
+}
+
+function humanizeKey(k: string): string {
+  return k.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString("en-CA", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="gap-2 sm:grid sm:grid-cols-[180px_1fr] sm:items-baseline">
+      <span className="font-medium text-muted-foreground">{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+function EligibilityValue({ value }: { value: unknown }) {
+  if (value == null || value === "") {
+    return <span className="text-muted-foreground">-</span>;
+  }
+  if (typeof value === "boolean") {
+    return <span>{value ? "Yes" : "No"}</span>;
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return <span className="text-muted-foreground">-</span>;
+    }
+    return (
+      <div className="flex flex-wrap gap-1">
+        {value.map((v, i) => (
+          <Badge key={i} variant="outline" className="text-xs font-normal">
+            {typeof v === "object" ? JSON.stringify(v) : String(v)}
+          </Badge>
+        ))}
+      </div>
+    );
+  }
+  if (typeof value === "object") {
+    return (
+      <pre className="rounded bg-muted/40 p-2 font-mono text-xs whitespace-pre-wrap">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    );
+  }
+  return <span>{String(value)}</span>;
 }

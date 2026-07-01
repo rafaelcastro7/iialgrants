@@ -1,9 +1,9 @@
 // Live chain-of-thought trace. Each call inserts one step row that the UI
-// polls in real time. Failures are swallowed — tracing must never break the
+// polls in real time. Failures are swallowed - tracing must never break the
 // underlying agent run.
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type TraceStatus = "info" | "ok" | "warn" | "error" | "start" | "done";
+type TraceDb = { from: (table: string) => any };
 
 export type TraceInput = {
   runId: string;
@@ -14,11 +14,14 @@ export type TraceInput = {
   message?: string;
   payload?: Record<string, unknown>;
   durationMs?: number;
+  db?: TraceDb;
 };
 
 export async function traceStep(input: TraceInput): Promise<void> {
   try {
-    await supabaseAdmin.from("agent_trace_steps").insert({
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = input.db ?? supabaseAdmin;
+    await db.from("agent_trace_steps").insert({
       run_id: input.runId,
       grant_id: input.grantId ?? null,
       agent: input.agent,
@@ -48,7 +51,7 @@ export async function traced<T>(
   } catch (e) {
     await traceStep({
       ...base, status: "error", durationMs: Date.now() - t0,
-      message: (base.message ? base.message + " — " : "") + (e instanceof Error ? e.message : String(e)),
+      message: (base.message ? base.message + " - " : "") + (e instanceof Error ? e.message : String(e)),
     });
     throw e;
   }

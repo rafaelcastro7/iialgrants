@@ -1,0 +1,789 @@
+- main [ref=e61]:
+  - generic [ref=e63]:
+    - navigation [ref=e64]:
+      - link "IIAL" [ref=e65] [cursor=pointer]:
+        - /url: /dashboard
+      - link "Dashboard" [ref=e66] [cursor=pointer]:
+        - /url: /dashboard
+      - link "Grants" [ref=e67] [cursor=pointer]:
+        - /url: /grants
+      - link "Proposals" [ref=e68] [cursor=pointer]:
+        - /url: /proposals
+      - link "Organization profile" [ref=e69] [cursor=pointer]:
+        - /url: /org
+      - link "Screening Rules" [ref=e70] [cursor=pointer]:
+        - /url: /fit-rules
+    - button "Sign out" [ref=e71] [cursor=pointer]
+  - generic [ref=e72]:
+    - generic [ref=e74]:
+      - heading "Grants Workspace" [level=1] [ref=e75]
+      - paragraph [ref=e76]: Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step.
+    - generic [ref=e77]:
+      - generic [ref=e78]:
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Total Opportunities
+          - paragraph [ref=e81]: "47"
+        - generic [ref=e82]:
+          - paragraph [ref=e83]: Needs Action
+          - paragraph [ref=e84]: "26"
+        - generic [ref=e85]:
+          - paragraph [ref=e86]: Avg Fit
+          - paragraph [ref=e87]: 52%
+        - generic [ref=e88]:
+          - paragraph [ref=e89]: In Pipeline
+          - paragraph [ref=e90]: $420K
+      - generic [ref=e92]:
+        - generic [ref=e93]: WORKFLOW
+        - paragraph [ref=e94]: Discover funds → Enrich profile → Evaluate fit → Shortlist → Draft → Submit. Each card shows the next action you should take.
+      - generic [ref=e95]:
+        - generic [ref=e97]:
+          - generic [ref=e98]: "Filters:"
+          - combobox "Jurisdiction" [ref=e99]:
+            - option "All jurisdictions" [selected]
+            - option "ON"
+            - option "QC"
+            - option "federal"
+          - button "Eligible only" [ref=e100] [cursor=pointer]:
+            - generic [ref=e101]: Eligible only
+          - button "With deadline" [ref=e102] [cursor=pointer]:
+            - generic [ref=e103]: With deadline
+        - generic [ref=e104]:
+          - button "NotebookLM" [ref=e105] [cursor=pointer]:
+            - img
+            - text: NotebookLM
+          - button "All funders" [ref=e106] [cursor=pointer]:
+            - img
+            - text: All funders
+          - button "Discover & Enrich" [ref=e107] [cursor=pointer]
+      - generic [ref=e108]:
+        - generic [ref=e109]:
+          - heading "Discovered 25" [level=3] [ref=e111]
+          - paragraph [ref=e113]: Found by the discovery agents. Needs enrichment.
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - generic [ref=e116]:
+                - generic [ref=e117]: Not scored
+                - generic [ref=e118]: Closed
+              - 'link "Community Investments Grants: Capital Grant" [ref=e119] [cursor=pointer]':
+                - /url: /grants/b2f1a3d4-08c6-4a04-b4ce-b5fa4b4f8c30
+              - paragraph [ref=e120]: Ontario Trillium Foundation · ON
+              - generic [ref=e122]: up to $200K
+              - generic [ref=e123]:
+                - button "Enrich profile" [ref=e124] [cursor=pointer]
+                - link "Open detail" [ref=e125] [cursor=pointer]:
+                  - /url: /grants/b2f1a3d4-08c6-4a04-b4ce-b5fa4b4f8c30
+                  - img
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - generic [ref=e128]: Not scored
+                - generic [ref=e129]: 7d left
+              - link "Youth Innovations Test Grant" [ref=e130] [cursor=pointer]:
+                - /url: /grants/05f0dfc4-5a36-44da-95a6-2d261cb9dc1e
+              - paragraph [ref=e131]: Ontario Trillium Foundation · ON
+              - generic [ref=e132]:
+                - button "Enrich profile" [ref=e133] [cursor=pointer]
+                - link "Open detail" [ref=e134] [cursor=pointer]:
+                  - /url: /grants/05f0dfc4-5a36-44da-95a6-2d261cb9dc1e
+                  - img
+            - generic [ref=e135]:
+              - generic [ref=e136]:
+                - generic [ref=e137]: Not scored
+                - generic [ref=e138]: No deadline
+              - link "NRC IRAP International Collaboration" [ref=e139] [cursor=pointer]:
+                - /url: /grants/5f8c5ea6-218c-4669-80a8-5c2984880cd7
+              - paragraph [ref=e140]: NRC IRAP · federal
+              - generic [ref=e141]:
+                - button "Enrich profile" [ref=e142] [cursor=pointer]
+                - link "Open detail" [ref=e143] [cursor=pointer]:
+                  - /url: /grants/5f8c5ea6-218c-4669-80a8-5c2984880cd7
+                  - img
+            - generic [ref=e144]:
+              - generic [ref=e145]:
+                - generic [ref=e146]: Not scored
+                - generic [ref=e147]: No deadline
+              - link "Bpifrance — NRC IRAP Agreement" [ref=e148] [cursor=pointer]:
+                - /url: /grants/f0e5ee4b-a455-46da-bc2f-2308f56a3c78
+              - paragraph [ref=e149]: NRC IRAP · federal
+              - generic [ref=e150]:
+                - button "Enrich profile" [ref=e151] [cursor=pointer]
+                - link "Open detail" [ref=e152] [cursor=pointer]:
+                  - /url: /grants/f0e5ee4b-a455-46da-bc2f-2308f56a3c78
+                  - img
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - generic [ref=e155]: Not scored
+                - generic [ref=e156]: No deadline
+              - link "Loans for Business Growth" [ref=e157] [cursor=pointer]:
+                - /url: /grants/1a1cb7f6-5ea8-48cc-b29d-bb4cc3a7d5f2
+              - paragraph [ref=e158]: Investissement Québec · QC
+              - generic [ref=e159]:
+                - button "Enrich profile" [ref=e160] [cursor=pointer]
+                - link "Open detail" [ref=e161] [cursor=pointer]:
+                  - /url: /grants/1a1cb7f6-5ea8-48cc-b29d-bb4cc3a7d5f2
+                  - img
+            - generic [ref=e162]:
+              - generic [ref=e163]:
+                - generic [ref=e164]: Not scored
+                - generic [ref=e165]: No deadline
+              - link "Defence Industry Assist" [ref=e166] [cursor=pointer]:
+                - /url: /grants/19207a29-8d6b-45cf-adb4-b18072ad9597
+              - paragraph [ref=e167]: NRC IRAP · federal
+              - generic [ref=e168]:
+                - button "Enrich profile" [ref=e169] [cursor=pointer]
+                - link "Open detail" [ref=e170] [cursor=pointer]:
+                  - /url: /grants/19207a29-8d6b-45cf-adb4-b18072ad9597
+                  - img
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - generic [ref=e173]: Not scored
+                - generic [ref=e174]: No deadline
+              - link "Commercialization and Exportation Support Program (PSCE) - Component 2" [ref=e175] [cursor=pointer]:
+                - /url: /grants/04b61c02-ee7f-4ceb-9a1e-b4b5bcf0357c
+              - paragraph [ref=e176]: Investissement Québec · QC
+              - generic [ref=e178]: up to $60K
+              - generic [ref=e179]:
+                - button "Enrich profile" [ref=e180] [cursor=pointer]
+                - link "Open detail" [ref=e181] [cursor=pointer]:
+                  - /url: /grants/04b61c02-ee7f-4ceb-9a1e-b4b5bcf0357c
+                  - img
+            - generic [ref=e182]:
+              - generic [ref=e183]:
+                - generic [ref=e184]: Not scored
+                - generic [ref=e185]: No deadline
+              - link "Industrial Research Assistance Program" [ref=e186] [cursor=pointer]:
+                - /url: /grants/eb87bdf5-84d4-4f9b-8104-df4176a7d300
+              - paragraph [ref=e187]: NRC IRAP · federal
+              - generic [ref=e188]:
+                - button "Enrich profile" [ref=e189] [cursor=pointer]
+                - link "Open detail" [ref=e190] [cursor=pointer]:
+                  - /url: /grants/eb87bdf5-84d4-4f9b-8104-df4176a7d300
+                  - img
+            - generic [ref=e191]:
+              - generic [ref=e192]:
+                - generic [ref=e193]: Not scored
+                - generic [ref=e194]: No deadline
+              - link "Youth Employment Program" [ref=e195] [cursor=pointer]:
+                - /url: /grants/4efeb2db-5343-4bfa-b9f6-6125536030a2
+              - paragraph [ref=e196]: NRC IRAP · federal
+              - generic [ref=e197]:
+                - button "Enrich profile" [ref=e198] [cursor=pointer]
+                - link "Open detail" [ref=e199] [cursor=pointer]:
+                  - /url: /grants/4efeb2db-5343-4bfa-b9f6-6125536030a2
+                  - img
+            - generic [ref=e200]:
+              - generic [ref=e201]:
+                - generic [ref=e202]: Not scored
+                - generic [ref=e203]: No deadline
+              - link "IP Assist" [ref=e204] [cursor=pointer]:
+                - /url: /grants/3f4a49c0-0367-4d49-b771-59f741763c54
+              - paragraph [ref=e205]: NRC IRAP · federal
+              - generic [ref=e206]:
+                - button "Enrich profile" [ref=e207] [cursor=pointer]
+                - link "Open detail" [ref=e208] [cursor=pointer]:
+                  - /url: /grants/3f4a49c0-0367-4d49-b771-59f741763c54
+                  - img
+            - generic [ref=e209]:
+              - generic [ref=e210]:
+                - generic [ref=e211]: Not scored
+                - generic [ref=e212]: No deadline
+              - link "AI Assist program" [ref=e213] [cursor=pointer]:
+                - /url: /grants/2da979a0-b3df-484a-b529-cb18b901c087
+              - paragraph [ref=e214]: NRC IRAP · federal
+              - generic [ref=e215]:
+                - button "Enrich profile" [ref=e216] [cursor=pointer]
+                - link "Open detail" [ref=e217] [cursor=pointer]:
+                  - /url: /grants/2da979a0-b3df-484a-b529-cb18b901c087
+                  - img
+            - generic [ref=e218]:
+              - generic [ref=e219]:
+                - generic [ref=e220]: Not scored
+                - generic [ref=e221]: No deadline
+              - link "Investissement Québec Investment Funds" [ref=e222] [cursor=pointer]:
+                - /url: /grants/b88315c4-e652-4888-b61f-816a3c4d87ac
+              - paragraph [ref=e223]: Investissement Québec · QC
+              - generic [ref=e224]:
+                - button "Enrich profile" [ref=e225] [cursor=pointer]
+                - link "Open detail" [ref=e226] [cursor=pointer]:
+                  - /url: /grants/b88315c4-e652-4888-b61f-816a3c4d87ac
+                  - img
+            - generic [ref=e227]:
+              - generic [ref=e228]:
+                - generic [ref=e229]: Not scored
+                - generic [ref=e230]: No deadline
+              - link "Capital Investment" [ref=e231] [cursor=pointer]:
+                - /url: /grants/529547cf-0b5f-4809-9df9-54c57c3a2c13
+              - paragraph [ref=e232]: Investissement Québec · QC
+              - generic [ref=e233]:
+                - button "Enrich profile" [ref=e234] [cursor=pointer]
+                - link "Open detail" [ref=e235] [cursor=pointer]:
+                  - /url: /grants/529547cf-0b5f-4809-9df9-54c57c3a2c13
+                  - img
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - generic [ref=e238]: Not scored
+                - generic [ref=e239]: No deadline
+              - link "Export Assistance and Attraction of Foreign Investments" [ref=e240] [cursor=pointer]:
+                - /url: /grants/fd667612-14f4-4fd3-9fa7-ef477d8b364c
+              - paragraph [ref=e241]: Investissement Québec · QC
+              - generic [ref=e242]:
+                - button "Enrich profile" [ref=e243] [cursor=pointer]
+                - link "Open detail" [ref=e244] [cursor=pointer]:
+                  - /url: /grants/fd667612-14f4-4fd3-9fa7-ef477d8b364c
+                  - img
+            - generic [ref=e245]:
+              - generic [ref=e246]:
+                - generic [ref=e247]: Not scored
+                - generic [ref=e248]: No deadline
+              - link "Undergraduate Student Research Awards" [ref=e249] [cursor=pointer]:
+                - /url: /grants/77959912-7256-481f-980c-627974f9b755
+              - paragraph [ref=e250]: CIHR — Canadian Institutes of Health Research · federal
+              - generic [ref=e251]:
+                - button "Enrich profile" [ref=e252] [cursor=pointer]
+                - link "Open detail" [ref=e253] [cursor=pointer]:
+                  - /url: /grants/77959912-7256-481f-980c-627974f9b755
+                  - img
+            - generic [ref=e254]:
+              - generic [ref=e255]:
+                - generic [ref=e256]: Not scored
+                - generic [ref=e257]: No deadline
+              - link "Canada Graduate Research Scholarship – Master’s Award" [ref=e258] [cursor=pointer]:
+                - /url: /grants/6ce9e9d0-2a34-4d47-b33c-b33394aa37fc
+              - paragraph [ref=e259]: CIHR — Canadian Institutes of Health Research · federal
+              - generic [ref=e260]:
+                - button "Enrich profile" [ref=e261] [cursor=pointer]
+                - link "Open detail" [ref=e262] [cursor=pointer]:
+                  - /url: /grants/6ce9e9d0-2a34-4d47-b33c-b33394aa37fc
+                  - img
+            - generic [ref=e263]:
+              - generic [ref=e264]:
+                - generic [ref=e265]: Not scored
+                - generic [ref=e266]: No deadline
+              - link "NRC IRAP Funding to Hire Young Graduates" [ref=e267] [cursor=pointer]:
+                - /url: /grants/ab1dc9d1-7fbb-4bd3-9747-c1e6b68a355e
+              - paragraph [ref=e268]: NRC IRAP · federal
+              - generic [ref=e269]:
+                - button "Enrich profile" [ref=e270] [cursor=pointer]
+                - link "Open detail" [ref=e271] [cursor=pointer]:
+                  - /url: /grants/ab1dc9d1-7fbb-4bd3-9747-c1e6b68a355e
+                  - img
+            - generic [ref=e272]:
+              - generic [ref=e273]:
+                - generic [ref=e274]: Not scored
+                - generic [ref=e275]: No deadline
+              - link "Canada Research Training Awards Suite – Research Travel Supplements" [ref=e276] [cursor=pointer]:
+                - /url: /grants/35d56080-59b5-4c1a-b29c-7ff1d4afdaf6
+              - paragraph [ref=e277]: CIHR — Canadian Institutes of Health Research · federal
+              - generic [ref=e278]:
+                - button "Enrich profile" [ref=e279] [cursor=pointer]
+                - link "Open detail" [ref=e280] [cursor=pointer]:
+                  - /url: /grants/35d56080-59b5-4c1a-b29c-7ff1d4afdaf6
+                  - img
+            - generic [ref=e281]:
+              - generic [ref=e282]:
+                - generic [ref=e283]: Not scored
+                - generic [ref=e284]: No deadline
+              - link "Technological Transformation Support" [ref=e285] [cursor=pointer]:
+                - /url: /grants/24cd8aa5-bfcf-4fd3-b473-118a8cea390a
+              - paragraph [ref=e286]: Investissement Québec · QC
+              - generic [ref=e287]:
+                - button "Enrich profile" [ref=e288] [cursor=pointer]
+                - link "Open detail" [ref=e289] [cursor=pointer]:
+                  - /url: /grants/24cd8aa5-bfcf-4fd3-b473-118a8cea390a
+                  - img
+            - generic [ref=e290]:
+              - generic [ref=e291]:
+                - generic [ref=e292]: Not scored
+                - generic [ref=e293]: No deadline
+              - link "Capital Development Investment" [ref=e294] [cursor=pointer]:
+                - /url: /grants/c7ce0dcb-6e16-47df-a8b5-c49d94a5fe46
+              - paragraph [ref=e295]: Investissement Québec · QC
+              - generic [ref=e296]:
+                - button "Enrich profile" [ref=e297] [cursor=pointer]
+                - link "Open detail" [ref=e298] [cursor=pointer]:
+                  - /url: /grants/c7ce0dcb-6e16-47df-a8b5-c49d94a5fe46
+                  - img
+            - generic [ref=e299]:
+              - generic [ref=e300]:
+                - generic [ref=e301]: Not scored
+                - generic [ref=e302]: No deadline
+              - link "Investment and Loan Program" [ref=e303] [cursor=pointer]:
+                - /url: /grants/a76db31f-6da2-466c-a7e6-992f18130862
+              - paragraph [ref=e304]: Investissement Québec · QC
+              - generic [ref=e305]:
+                - button "Enrich profile" [ref=e306] [cursor=pointer]
+                - link "Open detail" [ref=e307] [cursor=pointer]:
+                  - /url: /grants/a76db31f-6da2-466c-a7e6-992f18130862
+                  - img
+            - generic [ref=e308]:
+              - generic [ref=e309]:
+                - generic [ref=e310]: Not scored
+                - generic [ref=e311]: No deadline
+              - link "Strategies for Workforce" [ref=e312] [cursor=pointer]:
+                - /url: /grants/fbe26805-b73c-4502-9024-42fe88e31e65
+              - paragraph [ref=e313]: Investissement Québec · QC
+              - generic [ref=e314]:
+                - button "Enrich profile" [ref=e315] [cursor=pointer]
+                - link "Open detail" [ref=e316] [cursor=pointer]:
+                  - /url: /grants/fbe26805-b73c-4502-9024-42fe88e31e65
+                  - img
+            - generic [ref=e317]:
+              - generic [ref=e318]:
+                - generic [ref=e319]: Not scored
+                - generic [ref=e320]: No deadline
+              - link "NRC IRAP Funding for Innovative Businesses" [ref=e321] [cursor=pointer]:
+                - /url: /grants/198aa2b7-374e-459a-a6ad-25dc40f7da0a
+              - paragraph [ref=e322]: NRC IRAP · federal
+              - generic [ref=e323]:
+                - button "Enrich profile" [ref=e324] [cursor=pointer]
+                - link "Open detail" [ref=e325] [cursor=pointer]:
+                  - /url: /grants/198aa2b7-374e-459a-a6ad-25dc40f7da0a
+                  - img
+            - generic [ref=e326]:
+              - generic [ref=e327]:
+                - generic [ref=e328]: Not scored
+                - generic [ref=e329]: No deadline
+              - link "Canadian International Innovation Program" [ref=e330] [cursor=pointer]:
+                - /url: /grants/0afab560-05c5-460c-9df0-dc2a73b294ea
+              - paragraph [ref=e331]: NRC IRAP · federal
+              - generic [ref=e332]:
+                - button "Enrich profile" [ref=e333] [cursor=pointer]
+                - link "Open detail" [ref=e334] [cursor=pointer]:
+                  - /url: /grants/0afab560-05c5-460c-9df0-dc2a73b294ea
+                  - img
+            - generic [ref=e335]:
+              - generic [ref=e336]:
+                - generic [ref=e337]: Not scored
+                - generic [ref=e338]: No deadline
+              - link "NRC IRAP Support for Intellectual Property" [ref=e339] [cursor=pointer]:
+                - /url: /grants/55fbd096-0b1c-4df4-9343-57c346d55f62
+              - paragraph [ref=e340]: NRC IRAP · federal
+              - generic [ref=e341]:
+                - button "Enrich profile" [ref=e342] [cursor=pointer]
+                - link "Open detail" [ref=e343] [cursor=pointer]:
+                  - /url: /grants/55fbd096-0b1c-4df4-9343-57c346d55f62
+                  - img
+        - generic [ref=e344]:
+          - heading "Enriched 01" [level=3] [ref=e346]
+          - paragraph [ref=e348]: Data fully extracted with citations. Ready for fit evaluation.
+          - generic [ref=e350]:
+            - generic [ref=e351]:
+              - generic [ref=e352]: Not scored
+              - generic [ref=e353]: No deadline
+            - link "NRC IRAP Support for Clean Technology" [ref=e354] [cursor=pointer]:
+              - /url: /grants/a711a5e2-ef82-4763-b857-cef1eaec4d3f
+            - paragraph [ref=e355]: NRC IRAP · federal
+            - generic [ref=e357]:
+              - img [ref=e358]
+              - text: Evidence cited
+            - generic [ref=e361]:
+              - button "Evaluate fit" [ref=e362] [cursor=pointer]
+              - link "Open detail" [ref=e363] [cursor=pointer]:
+                - /url: /grants/a711a5e2-ef82-4763-b857-cef1eaec4d3f
+                - img
+        - generic [ref=e364]:
+          - heading "Evaluated 00" [level=3] [ref=e366]
+          - paragraph [ref=e368]: Scored against your screening rules. Review and shortlist.
+          - generic [ref=e370]: No grants in this stage
+        - generic [ref=e371]:
+          - heading "Shortlisted 00" [level=3] [ref=e373]
+          - paragraph [ref=e375]: Curated as a real opportunity. Start drafting.
+          - generic [ref=e377]: No grants in this stage
+        - generic [ref=e378]:
+          - heading "Drafting 00" [level=3] [ref=e380]
+          - paragraph [ref=e382]: A proposal exists. Continue writing or send to NotebookLM.
+          - generic [ref=e384]: No grants in this stage
+        - generic [ref=e385]:
+          - heading "Submitted 00" [level=3] [ref=e387]
+          - paragraph [ref=e389]: Filed with the funder. Outcome tracking only.
+          - generic [ref=e391]: No grants in this stage
+        - generic [ref=e392]:
+          - heading "Archived 21" [level=3] [ref=e394]
+          - paragraph [ref=e396]: Filtered out by screening rules or manually archived.
+          - generic [ref=e397]:
+            - generic [ref=e398]:
+              - generic [ref=e399]:
+                - generic "Eligibility failed" [ref=e400]: 59% Fit
+                - generic [ref=e401]: No deadline
+              - link "NRC IRAP Advisory Services" [ref=e402] [cursor=pointer]:
+                - /url: /grants/ffb7dcde-c1d0-49f5-bcc7-24e76cd6a2a2
+              - paragraph [ref=e403]: NRC IRAP · federal
+              - generic [ref=e405]:
+                - img [ref=e406]
+                - text: Evidence cited
+              - generic [ref=e409]:
+                - link "View source" [ref=e410] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/nrc-irap-advisory-services
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e411] [cursor=pointer]:
+                  - /url: /grants/ffb7dcde-c1d0-49f5-bcc7-24e76cd6a2a2
+                  - img
+            - generic [ref=e412]:
+              - generic [ref=e413]:
+                - generic "Eligibility failed" [ref=e414]: 59% Fit
+                - generic [ref=e415]: No deadline
+              - link "Financial Support for Technology Innovation" [ref=e416] [cursor=pointer]:
+                - /url: /grants/b1ff8423-aaf6-4d4a-a060-f0d24680603d
+              - paragraph [ref=e417]: NRC IRAP · federal
+              - generic [ref=e419]:
+                - img [ref=e420]
+                - text: Evidence cited
+              - generic [ref=e423]:
+                - link "View source" [ref=e424] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e425] [cursor=pointer]:
+                  - /url: /grants/b1ff8423-aaf6-4d4a-a060-f0d24680603d
+                  - img
+            - generic [ref=e426]:
+              - generic [ref=e427]:
+                - generic "Eligibility failed" [ref=e428]: 59% Fit
+                - generic [ref=e429]: No deadline
+              - link "Loans for Business Projects" [ref=e430] [cursor=pointer]:
+                - /url: /grants/03838459-88d2-4a5b-91b6-cf7548d7f89f
+              - paragraph [ref=e431]: Investissement Québec · QC
+              - generic [ref=e433]:
+                - img [ref=e434]
+                - text: Evidence cited
+              - generic [ref=e437]:
+                - link "View source" [ref=e438] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/prets
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e439] [cursor=pointer]:
+                  - /url: /grants/03838459-88d2-4a5b-91b6-cf7548d7f89f
+                  - img
+            - generic [ref=e440]:
+              - generic [ref=e441]:
+                - generic "Eligibility failed" [ref=e442]: 59% Fit
+                - generic [ref=e443]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=e444] [cursor=pointer]:
+                - /url: /grants/c1a5670b-71f1-47ce-b6cc-9839318184f4
+              - paragraph [ref=e445]: NRC — Industrial Research Assistance Program (IRAP) · federal
+              - generic [ref=e447]:
+                - img [ref=e448]
+                - text: Evidence cited
+              - generic [ref=e451]:
+                - link "View source" [ref=e452] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e453] [cursor=pointer]:
+                  - /url: /grants/c1a5670b-71f1-47ce-b6cc-9839318184f4
+                  - img
+            - generic [ref=e454]:
+              - generic [ref=e455]:
+                - generic "Eligibility failed" [ref=e456]: 59% Fit
+                - generic [ref=e457]: No deadline
+              - link "NRC IRAP AI Assist Program" [ref=e458] [cursor=pointer]:
+                - /url: /grants/d47439de-4956-48f5-a561-8f3c16c74b70
+              - paragraph [ref=e459]: NRC IRAP · federal
+              - generic [ref=e461]:
+                - img [ref=e462]
+                - text: Evidence cited
+              - generic [ref=e465]:
+                - link "View source" [ref=e466] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/nrc-irap-support-smes-innovating-artificial-intelligence
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e467] [cursor=pointer]:
+                  - /url: /grants/d47439de-4956-48f5-a561-8f3c16c74b70
+                  - img
+            - generic [ref=e468]:
+              - generic [ref=e469]:
+                - generic "Eligibility failed" [ref=e470]: 59% Fit
+                - generic [ref=e471]: No deadline
+              - link "Tax Credit Certificates" [ref=e472] [cursor=pointer]:
+                - /url: /grants/4521e0d6-ce1d-40e9-ab14-5433bbff2a75
+              - paragraph [ref=e473]: Investissement Québec · QC
+              - generic [ref=e475]:
+                - img [ref=e476]
+                - text: Evidence cited
+              - generic [ref=e479]:
+                - link "View source" [ref=e480] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux/attestations-de-credits-dimpot
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e481] [cursor=pointer]:
+                  - /url: /grants/4521e0d6-ce1d-40e9-ab14-5433bbff2a75
+                  - img
+            - generic [ref=e482]:
+              - generic [ref=e483]:
+                - generic "Eligibility failed" [ref=e484]: 56% Fit
+                - generic [ref=e485]: No deadline
+              - link "Program to Support Commercialization and Export" [ref=e486] [cursor=pointer]:
+                - /url: /grants/7f947acd-d99d-43d3-82ba-314bd0152010
+              - paragraph [ref=e487]: Investissement Québec · QC
+              - generic [ref=e488]:
+                - generic [ref=e489]:
+                  - img [ref=e490]
+                  - text: Evidence cited
+                - generic [ref=e493]: up to $100K
+              - generic [ref=e494]:
+                - link "View source" [ref=e495] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux/programme-de-soutien-la-commercialisation-et-lexportation/psce-volet-2
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e496] [cursor=pointer]:
+                  - /url: /grants/7f947acd-d99d-43d3-82ba-314bd0152010
+                  - img
+            - generic [ref=e497]:
+              - generic [ref=e498]:
+                - generic "Eligibility failed" [ref=e499]: 56% Fit
+                - generic [ref=e500]: No deadline
+              - link "Investissement Québec Financing" [ref=e501] [cursor=pointer]:
+                - /url: /grants/3565f43b-e57d-431e-9b26-bdd087b8c613
+              - paragraph [ref=e502]: Investissement Québec · QC
+              - generic [ref=e504]:
+                - img [ref=e505]
+                - text: Evidence cited
+              - generic [ref=e508]:
+                - link "View source" [ref=e509] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e510] [cursor=pointer]:
+                  - /url: /grants/3565f43b-e57d-431e-9b26-bdd087b8c613
+                  - img
+            - generic [ref=e511]:
+              - generic [ref=e512]:
+                - generic "Eligibility failed" [ref=e513]: 56% Fit
+                - generic [ref=e514]: No deadline
+              - link "Support for Mobilizing Projects" [ref=e515] [cursor=pointer]:
+                - /url: /grants/c01cea9d-e3c7-4256-b86c-d8363ba005bf
+              - paragraph [ref=e516]: Investissement Québec · QC
+              - generic [ref=e518]:
+                - img [ref=e519]
+                - text: Evidence cited
+              - generic [ref=e522]:
+                - link "View source" [ref=e523] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e524] [cursor=pointer]:
+                  - /url: /grants/c01cea9d-e3c7-4256-b86c-d8363ba005bf
+                  - img
+            - generic [ref=e525]:
+              - generic [ref=e526]:
+                - generic "Eligibility failed" [ref=e527]: 56% Fit
+                - generic [ref=e528]: No deadline
+              - link "TEST CanExport 32551" [ref=e529] [cursor=pointer]:
+                - /url: /grants/ade31adb-a250-4e7b-b102-899cab38f3c3
+              - paragraph [ref=e530]: Investissement Québec · QC
+              - generic [ref=e532]:
+                - img [ref=e533]
+                - text: Evidence cited
+              - generic [ref=e536]:
+                - link "View source" [ref=e537] [cursor=pointer]:
+                  - /url: https://www.tradecommissioner.gc.ca/funding-financement/canexport/sme-pme/index.aspx?lang=eng
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e538] [cursor=pointer]:
+                  - /url: /grants/ade31adb-a250-4e7b-b102-899cab38f3c3
+                  - img
+            - generic [ref=e539]:
+              - generic [ref=e540]:
+                - generic "Eligibility failed" [ref=e541]: 53% Fit
+                - generic [ref=e542]: No deadline
+              - link "The Eurêka Investment Fund" [ref=e543] [cursor=pointer]:
+                - /url: /grants/6b905558-78da-4f88-8840-f69d90a628af
+              - paragraph [ref=e544]: Investissement Québec · QC
+              - generic [ref=e546]:
+                - img [ref=e547]
+                - text: Evidence cited
+              - generic [ref=e550]:
+                - link "View source" [ref=e551] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e552] [cursor=pointer]:
+                  - /url: /grants/6b905558-78da-4f88-8840-f69d90a628af
+                  - img
+            - generic [ref=e553]:
+              - generic [ref=e554]:
+                - generic "Eligibility failed" [ref=e555]: 50% Fit
+                - generic [ref=e556]: No deadline
+              - link "Sponsorships, Partnerships and Donations" [ref=e557] [cursor=pointer]:
+                - /url: /grants/188a7d3f-ab34-4157-ad08-8e4d4cf05965
+              - paragraph [ref=e558]: Investissement Québec · QC
+              - generic [ref=e560]:
+                - img [ref=e561]
+                - text: Evidence cited
+              - generic [ref=e564]:
+                - link "View source" [ref=e565] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/commandite
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e566] [cursor=pointer]:
+                  - /url: /grants/188a7d3f-ab34-4157-ad08-8e4d4cf05965
+                  - img
+            - generic [ref=e567]:
+              - generic [ref=e568]:
+                - generic "Eligibility failed" [ref=e569]: 50% Fit
+                - generic [ref=e570]: No deadline
+              - link "NRC IRAP Support for SMEs Developing Defence and Dual-Use Technologies" [ref=e571] [cursor=pointer]:
+                - /url: /grants/a98ca27a-8dea-4897-9ed9-2cf29f08bfec
+              - paragraph [ref=e572]: NRC IRAP · federal
+              - generic [ref=e574]:
+                - img [ref=e575]
+                - text: Evidence cited
+              - generic [ref=e578]:
+                - link "View source" [ref=e579] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/nrc-irap-support-smes-developing-defence-dual-use-technologies
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e580] [cursor=pointer]:
+                  - /url: /grants/a98ca27a-8dea-4897-9ed9-2cf29f08bfec
+                  - img
+            - generic [ref=e581]:
+              - generic [ref=e582]:
+                - generic "Eligibility failed" [ref=e583]: 47% Fit
+                - generic [ref=e584]: Closed
+              - link "Outreach Initiative Grants and Contributions Program" [ref=e585] [cursor=pointer]:
+                - /url: /grants/16e70755-7c19-4dba-af1c-bdf78f460b85
+              - paragraph [ref=e586]: NRC IRAP · federal
+              - generic [ref=e588]:
+                - img [ref=e589]
+                - text: Evidence cited
+              - generic [ref=e592]:
+                - link "View source" [ref=e593] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/outreach-initiative-grants-contributions-program
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e594] [cursor=pointer]:
+                  - /url: /grants/16e70755-7c19-4dba-af1c-bdf78f460b85
+                  - img
+            - generic [ref=e595]:
+              - generic [ref=e596]:
+                - generic "Eligibility failed" [ref=e597]: 47% Fit
+                - generic [ref=e598]: No deadline
+              - link "Economic Development Program for Territorial Revitalization Assistance" [ref=e599] [cursor=pointer]:
+                - /url: /grants/bb871a02-6ec8-4305-9b78-ffdd709dd6ea
+              - paragraph [ref=e600]: Investissement Québec · QC
+              - generic [ref=e602]:
+                - img [ref=e603]
+                - text: Evidence cited
+              - generic [ref=e606]:
+                - link "View source" [ref=e607] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e608] [cursor=pointer]:
+                  - /url: /grants/bb871a02-6ec8-4305-9b78-ffdd709dd6ea
+                  - img
+            - generic [ref=e609]:
+              - generic [ref=e610]:
+                - generic "Eligibility failed" [ref=e611]: 47% Fit
+                - generic [ref=e612]: No deadline
+              - link "The Quebec Business Transfer Fund" [ref=e613] [cursor=pointer]:
+                - /url: /grants/9c5772fe-6af2-44d8-b54a-4211a28bb4f8
+              - paragraph [ref=e614]: Investissement Québec · QC
+              - generic [ref=e616]:
+                - img [ref=e617]
+                - text: Evidence cited
+              - generic [ref=e620]:
+                - link "View source" [ref=e621] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e622] [cursor=pointer]:
+                  - /url: /grants/9c5772fe-6af2-44d8-b54a-4211a28bb4f8
+                  - img
+            - generic [ref=e623]:
+              - generic [ref=e624]:
+                - generic "Eligibility failed" [ref=e625]: 47% Fit
+                - generic [ref=e626]: No deadline
+              - link "Diversification and Consolidation in Markets Outside Quebec" [ref=e627] [cursor=pointer]:
+                - /url: /grants/03de2861-fa5b-48bd-bf4d-7bdec4c75a04
+              - paragraph [ref=e628]: Investissement Québec · QC
+              - generic [ref=e630]:
+                - img [ref=e631]
+                - text: Evidence cited
+              - generic [ref=e634]:
+                - link "View source" [ref=e635] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e636] [cursor=pointer]:
+                  - /url: /grants/03de2861-fa5b-48bd-bf4d-7bdec4c75a04
+                  - img
+            - generic [ref=e637]:
+              - generic [ref=e638]:
+                - generic "Eligibility failed" [ref=e639]: 47% Fit
+                - generic [ref=e640]: No deadline
+              - link "Development Capital Investment" [ref=e641] [cursor=pointer]:
+                - /url: /grants/e7ca20d1-3669-4533-82b8-fb093ee35ebe
+              - paragraph [ref=e642]: Investissement Québec · QC
+              - generic [ref=e644]:
+                - img [ref=e645]
+                - text: Evidence cited
+              - generic [ref=e648]:
+                - link "View source" [ref=e649] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/investissement/capital-de-developpement
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e650] [cursor=pointer]:
+                  - /url: /grants/e7ca20d1-3669-4533-82b8-fb093ee35ebe
+                  - img
+            - generic [ref=e651]:
+              - generic [ref=e652]:
+                - generic "Eligibility failed" [ref=e653]: 44% Fit
+                - generic [ref=e654]: Closed
+              - link "Market Support and Export Program (PSCE) - Component 2" [ref=e655] [cursor=pointer]:
+                - /url: /grants/de22d23b-51b5-4ac2-9e6f-af7de88ecb40
+              - paragraph [ref=e656]: Investissement Québec · QC
+              - generic [ref=e657]:
+                - generic [ref=e658]:
+                  - img [ref=e659]
+                  - text: Evidence cited
+                - generic [ref=e662]: up to $60K
+              - generic [ref=e663]:
+                - link "View source" [ref=e664] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux/programme-de-soutien-la-commercialisation-et-lexportation/psce-volet-2
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e665] [cursor=pointer]:
+                  - /url: /grants/de22d23b-51b5-4ac2-9e6f-af7de88ecb40
+                  - img
+            - generic [ref=e666]:
+              - generic [ref=e667]:
+                - generic "Eligibility failed" [ref=e668]: 41% Fit
+                - generic [ref=e669]: No deadline
+              - link "Collective Entrepreneurship Investment Program" [ref=e670] [cursor=pointer]:
+                - /url: /grants/b3aa0822-3aa9-448c-a978-f71c451dfa67
+              - paragraph [ref=e671]: Investissement Québec · QC
+              - generic [ref=e673]:
+                - img [ref=e674]
+                - text: Evidence cited
+              - generic [ref=e677]:
+                - link "View source" [ref=e678] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e679] [cursor=pointer]:
+                  - /url: /grants/b3aa0822-3aa9-448c-a978-f71c451dfa67
+                  - img
+            - generic [ref=e680]:
+              - generic [ref=e681]:
+                - generic "Eligibility failed" [ref=e682]: 41% Fit
+                - generic [ref=e683]: No deadline
+              - link "Program to Support the Development of Tourist Attractions" [ref=e684] [cursor=pointer]:
+                - /url: /grants/4668714d-a24a-4258-9774-5adf8d975594
+              - paragraph [ref=e685]: Investissement Québec · QC
+              - generic [ref=e687]:
+                - img [ref=e688]
+                - text: Evidence cited
+              - generic [ref=e691]:
+                - link "View source" [ref=e692] [cursor=pointer]:
+                  - /url: https://www.investquebec.com/fr/financement/programmes-gouvernementaux
+                  - text: View source
+                  - img
+                - link "Open detail" [ref=e693] [cursor=pointer]:
+                  - /url: /grants/4668714d-a24a-4258-9774-5adf8d975594
+                  - img
+    - button "Event log Show" [ref=e696]:
+      - generic [ref=e697]:
+        - img [ref=e698]
+        - text: Event log
+      - generic [ref=e700]: Show

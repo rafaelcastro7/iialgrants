@@ -11,7 +11,7 @@ import { runStrategist } from "@/agents/strategist.functions";
 import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
-import { GrantFilters, applyGrantFilters } from "@/components/grants/GrantFilters";
+import { GrantFilters, applyGrantFilters, sortGrants, type SortKey } from "@/components/grants/GrantFilters";
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
@@ -23,6 +23,12 @@ const grantsQueryOptions = queryOptions({
   queryKey: ["grants", "all"],
   queryFn: () => listGrants({ data: { limit: 100 } }),
 });
+
+// SSR-safe sessionStorage access (component renders on the server too).
+const ss = {
+  get: (k: string) => (typeof window !== "undefined" ? window.sessionStorage.getItem(k) : null),
+  set: (k: string, v: string) => { if (typeof window !== "undefined") window.sessionStorage.setItem(k, v); },
+};
 
 export const Route = createFileRoute("/_authenticated/grants/")({
   head: () => ({
@@ -53,10 +59,21 @@ function GrantsPage() {
   const [discoveryMsg, setDiscoveryMsg] = useState<string | null>(null);
   const [activeJob, setActiveJob] = useState<{ jobId: string; queued: number } | null>(null);
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
-  const [jurisdiction, setJurisdiction] = useState<string>("all");
-  const [eligibleOnly, setEligibleOnly] = useState(false);
-  const [onlyWithDeadline, setOnlyWithDeadline] = useState(false);
+  const [search, setSearch] = useState<string>(() => ss.get("grants.search") ?? "");
+  const [jurisdiction, setJurisdiction] = useState<string>(() => ss.get("grants.jurisdiction") ?? "all");
+  const [sortKey, setSortKey] = useState<SortKey>(() => (ss.get("grants.sort") as SortKey) ?? "fit");
+  const [eligibleOnly, setEligibleOnly] = useState(() => ss.get("grants.eligibleOnly") === "1");
+  const [onlyWithDeadline, setOnlyWithDeadline] = useState(() => ss.get("grants.onlyWithDeadline") === "1");
   const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
+
+  // Persist filter + sort state across reloads (session scope, per house rules).
+  useEffect(() => {
+    ss.set("grants.search", search);
+    ss.set("grants.jurisdiction", jurisdiction);
+    ss.set("grants.sort", sortKey);
+    ss.set("grants.eligibleOnly", eligibleOnly ? "1" : "0");
+    ss.set("grants.onlyWithDeadline", onlyWithDeadline ? "1" : "0");
+  }, [search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline]);
 
   const { data } = useSuspenseQuery({
     queryKey: ["grants", "all"],
@@ -127,8 +144,11 @@ function GrantsPage() {
   }
 
   const filtered = useMemo(
-    () => applyGrantFilters(data.grants, { jurisdiction, eligibleOnly, onlyWithDeadline }) as GrantRowData[],
-    [data.grants, jurisdiction, eligibleOnly, onlyWithDeadline],
+    () => sortGrants(
+      applyGrantFilters(data.grants, { search, jurisdiction, eligibleOnly, onlyWithDeadline }),
+      sortKey,
+    ) as GrantRowData[],
+    [data.grants, search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline],
   );
 
   const kpis = useMemo(() => {
@@ -206,8 +226,9 @@ function GrantsPage() {
           filters={
             <GrantFilters
               grants={data.grants}
-              fr={false}
+              search={search} setSearch={setSearch}
               jurisdiction={jurisdiction} setJurisdiction={setJurisdiction}
+              sortKey={sortKey} setSortKey={setSortKey}
               eligibleOnly={eligibleOnly} setEligibleOnly={setEligibleOnly}
               onlyWithDeadline={onlyWithDeadline} setOnlyWithDeadline={setOnlyWithDeadline}
             />

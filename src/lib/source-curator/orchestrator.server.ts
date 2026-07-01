@@ -109,8 +109,10 @@ async function ingestorsForTier(tier: Tier): Promise<Array<{ key: string; fn: So
   if (tier === "B" || tier === "all") {
     const { fetchBbfPrograms } = await import("./bbf-programs.server");
     const { fetchEuCalls } = await import("./eu-ft.server");
+    const { fetchTriCouncilFunders } = await import("./tri-council.server");
     out.push({ key: "bbf_programs", fn: fetchBbfPrograms });
     out.push({ key: "eu_ft_portal", fn: fetchEuCalls });
+    out.push({ key: "tri_council", fn: fetchTriCouncilFunders });
   }
 
   if (tier === "scout" || tier === "all") {

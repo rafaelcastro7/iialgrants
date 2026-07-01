@@ -27,6 +27,8 @@ export type LlmCallResult = {
   inputTokens?: number;
   outputTokens?: number;
   runId: string;
+  model?: string;
+  provider?: string;
 };
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -50,7 +52,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
           runId: opts.runId,
           allowLovableFallback: true,
         });
-        return { text: r.text, inputTokens: r.inputTokens, outputTokens: r.outputTokens, runId: r.runId };
+        return { text: r.text, inputTokens: r.inputTokens, outputTokens: r.outputTokens, runId: r.runId, model: r.model, provider: r.provider };
       }
     } catch {
       // Fall through to direct Lovable call below.
@@ -130,7 +132,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     inputTokens = data?.usage?.prompt_tokens;
     outputTokens = data?.usage?.completion_tokens;
     ok = true;
-    return { text, inputTokens, outputTokens, runId };
+    return { text, inputTokens, outputTokens, runId, model: usedModel, provider: "lovable" };
   } catch (err) {
     errMsg = err instanceof Error ? err.message : String(err);
     throw err;

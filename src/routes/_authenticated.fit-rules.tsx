@@ -392,7 +392,7 @@ function FitRulesPage() {
             <FilterBlock
               icon={Eye} code="F6" title="Effort vs win"
               tone="manual"
-              summary="Surfaced in the Opportunity Brief for human judgment. Nothing to configure."
+              summary="Surfaced in the Opportunity Brief for human judgment. Review-only."
               hardEnabled={false}
             >
               <ul className="text-xs text-muted-foreground space-y-1 leading-relaxed">

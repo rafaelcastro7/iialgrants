@@ -3,22 +3,6 @@ import { z } from "zod";
 import { EnricherOutput, PROMPTS } from "@/agents/schemas";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-// Enricher v4 — Evidence-First, Free-Tier.
-//
-// Pipeline:
-//   1) Skip if already complete (no LLM, no scrape).
-//   2) Scrape the grant page (Firecrawl → Jina → raw HTML).
-//   3) Run deterministic extractors on the markdown (amounts, deadline,
-//      eligibility, sectors). Each match writes an evidence_span with its
-//      literal snippet + method + confidence.
-//   4) If gaps remain, call a free LLM (Groq → Gemini → Cerebras cascade)
-//      with the markdown as context and REQUIRE literal quote citations.
-//   5) Reject any LLM-claimed value whose quote does not appear in the
-//      scraped markdown (anti-hallucination).
-//
-// Server-only implementation. Exported so cron hooks (HMAC-signed) and the
-// admin-gated `runEnricher` serverFn can both call it without exposing a
-// public unauthenticated RPC endpoint.
 export type EnricherResult = {
   ok: boolean;
   runId: string;
@@ -31,477 +15,767 @@ export type EnricherResult = {
   attempts?: import("@/lib/web-fetch.server").FetchAttempt[];
 };
 
-export async function enrichGrantImpl(grantId: string): Promise<EnricherResult> {
-    const data = { grantId };
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { newRunId } = await import("@/lib/otel");
-    const { scrapeWithFallback } = await import("@/lib/web-fetch.server");
-    const { extractAmounts } = await import("@/agents/extractors/amounts.server");
-    const { extractDeadline } = await import("@/agents/extractors/deadlines.server");
-    const { extractEligibility } = await import("@/agents/extractors/eligibility.server");
-    const { extractSectors } = await import("@/agents/extractors/sectors.server");
-    const { recordEvidence, snippetIsGrounded } = await import("@/agents/evidence.server");
-    const { traceStep } = await import("@/agents/trace.server");
+type EnricherDb = {
+  from: (table: string) => any;
+};
 
-    const runId = newRunId();
-    const t0 = Date.now();
-    const trace = (step: string, message: string, status: "info" | "ok" | "warn" | "error" | "start" | "done" = "info", payload?: Record<string, unknown>) =>
-      traceStep({ runId, grantId: data.grantId, agent: "enricher", step, status, message, payload });
+export async function enrichGrantImpl(
+  grantId: string,
+  opts?: { db?: EnricherDb; userId?: string | null },
+): Promise<EnricherResult> {
+  const data = { grantId };
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { newRunId } = await import("@/lib/otel");
+  const { scrapeWithFallback } = await import("@/lib/web-fetch.server");
+  const { extractAmounts } = await import("@/agents/extractors/amounts.server");
+  const { extractDeadline } = await import("@/agents/extractors/deadlines.server");
+  const { extractEligibility } = await import("@/agents/extractors/eligibility.server");
+  const { extractSectors } = await import("@/agents/extractors/sectors.server");
+  const { recordEvidence, snippetIsGrounded } = await import("@/agents/evidence.server");
+  const { traceStep } = await import("@/agents/trace.server");
+  const db = opts?.db ?? supabaseAdmin;
+  const actorUserId = opts?.userId ?? null;
 
-    await trace("init", `Starting enrichment for grant ${data.grantId.slice(0, 8)}`, "start");
+  const runId = newRunId();
+  const t0 = Date.now();
+  const trace = (
+    step: string,
+    message: string,
+    status: "info" | "ok" | "warn" | "error" | "start" | "done" = "info",
+    payload?: Record<string, unknown>,
+  ) => traceStep({ runId, grantId: data.grantId, agent: "enricher", step, status, message, payload, db: db as never });
 
-    const { data: g, error } = await supabaseAdmin
-      .from("grants")
-      .select("id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, enrich_attempts")
-      .eq("id", data.grantId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!g) throw new Error("grant_not_found");
-    if (g.status !== "discovered") {
-      await trace("skip", `Skipped — status is "${g.status}", not "discovered"`, "warn");
-      return { ok: true, skipped: true, reason: `status=${g.status}`, runId };
-    }
-    if (((g as { enrich_attempts?: number }).enrich_attempts ?? 0) >= 3) {
-      await trace("skip", "Skipped — max 3 enrich attempts reached", "warn");
-      return { ok: true, skipped: true, reason: "max_attempts_reached", runId };
-    }
+  await trace("init", `Starting enrichment for grant ${data.grantId.slice(0, 8)}`, "start");
 
-    const hasAmount = g.amount_cad_min != null || g.amount_cad_max != null;
-    const hasDeadline = !!g.deadline;
-    const hasSectors = Array.isArray(g.sectors) && g.sectors.length > 0;
-    const eligObj = (g.eligibility ?? {}) as Record<string, unknown>;
-    const hasEligibility = Object.keys(eligObj).length > 0;
+  const { data: g, error } = await db
+    .from("grants")
+    .select("id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, enrich_attempts")
+    .eq("id", data.grantId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!g) throw new Error("grant_not_found");
+  if (g.status !== "discovered") {
+    await trace("skip", `Skipped - status is "${g.status}", not "discovered"`, "warn");
+    return { ok: true, skipped: true, reason: `status=${g.status}`, runId };
+  }
+  if (((g as { enrich_attempts?: number }).enrich_attempts ?? 0) >= 3) {
+    await trace("skip", "Skipped - max 3 enrich attempts reached", "warn");
+    return { ok: true, skipped: true, reason: "max_attempts_reached", runId };
+  }
 
-    await trace("inventory", `Existing fields: ${[hasAmount && "amount", hasDeadline && "deadline", hasSectors && "sectors", hasEligibility && "eligibility"].filter(Boolean).join(", ") || "(none)"}`, "info", { hasAmount, hasDeadline, hasSectors, hasEligibility });
+  const hasAmountMin = g.amount_cad_min != null;
+  const hasAmountMax = g.amount_cad_max != null;
+  const hasAmount = hasAmountMin || hasAmountMax;
+  const hasDeadline = !!g.deadline;
+  const hasSectors = Array.isArray(g.sectors) && g.sectors.length > 0;
+  const eligObj = (g.eligibility ?? {}) as Record<string, unknown>;
+  const hasEligibility = Object.keys(eligObj).length > 0;
 
-    if (hasAmount && hasDeadline && hasSectors && hasEligibility) {
-      await trace("done", "Grant already complete — marking enriched without scraping", "done");
-      await supabaseAdmin.from("grants").update({
-        status: "enriched", enriched_at: new Date().toISOString(),
-      } as never).eq("id", g.id);
-      await supabaseAdmin.from("agent_runs").insert({
-        run_id: runId, agent: "enricher", status: "succeeded",
-        model: "noop", input_tokens: 0, output_tokens: 0,
-        latency_ms: Date.now() - t0, grant_id: g.id,
-        metadata: { mode: "already_complete" },
-      });
-      return { ok: true, runId, skipped: true, reason: "already_complete" };
-    }
+  await trace(
+    "inventory",
+    `Existing fields: ${[hasAmount && "amount", hasDeadline && "deadline", hasSectors && "sectors", hasEligibility && "eligibility"].filter(Boolean).join(", ") || "(none)"}`,
+    "info",
+    { hasAmount, hasAmountMin, hasAmountMax, hasDeadline, hasSectors, hasEligibility },
+  );
 
-    // ----- Step 2: Scrape the page -----
-    await trace("scrape", `Fetching ${g.url}`, "start");
-    const tScrape = Date.now();
-    const scraped = await scrapeWithFallback(g.url);
-    const fetchAttempts = scraped.attempts ?? [];
-    if (!scraped.ok) {
-      const msg = `scrape_failed: ${scraped.error}`;
-      await trace("scrape", msg, "error", { via: scraped.via, duration_ms: Date.now() - tScrape, attempts: fetchAttempts });
-      await supabaseAdmin.from("grants").update({
-        enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
-        enrich_last_error: msg.slice(0, 500),
-        enrich_last_attempt_at: new Date().toISOString(),
-      } as never).eq("id", g.id);
-      await supabaseAdmin.from("agent_runs").insert({
-        run_id: runId, agent: "enricher", status: "failed",
-        model: "scrape", latency_ms: Date.now() - t0, grant_id: g.id,
-        error: msg, metadata: { via: scraped.via, fetch_attempts: fetchAttempts },
-      });
-      return { ok: false, runId, error: msg, attempts: fetchAttempts };
-    }
-    const markdown = scraped.markdown;
-    const language = (g.language as "en" | "fr") ?? "en";
-    await trace("scrape", `Scraped ${markdown.length} chars via ${scraped.via}`, "done", { via: scraped.via, chars: markdown.length, duration_ms: Date.now() - tScrape, attempts: fetchAttempts });
+  if (hasAmount && hasDeadline && hasSectors && hasEligibility) {
+    await trace("done", "Grant already complete - marking enriched without scraping", "done");
+    await db.from("grants").update({
+      status: "enriched",
+      enriched_at: new Date().toISOString(),
+    } as never).eq("id", g.id);
+    await db.from("agent_runs").insert({
+      run_id: runId,
+      agent: "enricher",
+      status: "succeeded",
+      model: "noop",
+      input_tokens: 0,
+      output_tokens: 0,
+      latency_ms: Date.now() - t0,
+      user_id: actorUserId,
+      grant_id: g.id,
+      metadata: { mode: "already_complete" },
+    });
+    return { ok: true, runId, skipped: true, reason: "already_complete" };
+  }
 
-    // ----- Step 3: Deterministic extraction with evidence -----
-    await trace("extractors", "Running deterministic extractors (regex / chrono / rules)", "start");
-    const patch: Record<string, unknown> = {};
-    const methodCounts = { regex: 0, chrono: 0, rule: 0, llm: 0 };
+  await trace("scrape", `Fetching ${g.url}`, "start");
+  const tScrape = Date.now();
+  const scraped = await scrapeWithFallback(g.url);
+  const fetchAttempts = scraped.attempts ?? [];
+  if (!scraped.ok) {
+    const msg = `scrape_failed: ${scraped.error}`;
+    await trace("scrape", msg, "error", { via: scraped.via, duration_ms: Date.now() - tScrape, attempts: fetchAttempts });
+    await db.from("grants").update({
+      enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
+      enrich_last_error: msg.slice(0, 500),
+      enrich_last_attempt_at: new Date().toISOString(),
+    } as never).eq("id", g.id);
+    await db.from("agent_runs").insert({
+      run_id: runId,
+      agent: "enricher",
+      status: "failed",
+      model: "scrape",
+      latency_ms: Date.now() - t0,
+      user_id: actorUserId,
+      grant_id: g.id,
+      error: msg,
+      metadata: { via: scraped.via, fetch_attempts: fetchAttempts },
+    });
+    return { ok: false, runId, error: msg, attempts: fetchAttempts };
+  }
 
-    if (!hasAmount) {
-      const am = extractAmounts(markdown);
-      if (am) {
-        if (am.min != null) patch.amount_cad_min = am.min;
-        if (am.max != null) patch.amount_cad_max = am.max;
-        methodCounts.regex++;
-        await trace("regex_amount", `Found amount: $${am.min ?? "?"} – $${am.max ?? "?"}`, "ok", { snippet: am.snippet.slice(0, 200) });
-        if (am.max != null) {
+  const language = (g.language as "en" | "fr") ?? "en";
+  const patch: Record<string, unknown> = {};
+  const methodCounts = { regex: 0, chrono: 0, rule: 0, llm: 0 };
+  const pages: Array<{ url: string; markdown: string }> = [{ url: g.url, markdown: scraped.markdown }];
+  const missingFields = () => {
+    const missing: string[] = [];
+    if (!hasAmountMin && patch.amount_cad_min == null) missing.push("amount_cad_min");
+    if (!hasAmountMax && patch.amount_cad_max == null) missing.push("amount_cad_max");
+    if (!hasDeadline && patch.deadline == null) missing.push("deadline");
+    if (!hasEligibility && patch.eligibility == null) missing.push("eligibility");
+    if (!hasSectors && patch.sectors == null) missing.push("sectors");
+    return missing;
+  };
+  const pageForQuote = (quote: string) => pages.find((page) => snippetIsGrounded(quote, page.markdown)) ?? null;
+  const grantTitleTokens: string[] = Array.from(new Set<string>(
+    g.title
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter((token: string) => token.length >= 4 && !["grant", "grants", "fund", "funding", "program", "programme", "award", "awards", "support"].includes(token)),
+  ));
+  const pageLooksRelevantToGrant = (page: { url: string; markdown: string }) => {
+    if (grantTitleTokens.length === 0) return true;
+    const hay = `${page.url}\n${page.markdown.slice(0, 2_500)}`
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    const overlap = grantTitleTokens.filter((token: string) => hay.includes(token)).length;
+    return overlap >= Math.min(2, grantTitleTokens.length);
+  };
+
+  await trace("scrape", `Scraped ${scraped.markdown.length} chars via ${scraped.via}`, "done", {
+    via: scraped.via,
+    chars: scraped.markdown.length,
+    duration_ms: Date.now() - tScrape,
+    attempts: fetchAttempts,
+  });
+
+  await trace("extractors", "Running deterministic extractors (regex / chrono / rules)", "start");
+
+  const runExtractorsOnPage = async (
+    page: { url: string; markdown: string },
+    stage: "main" | "deep",
+  ) => {
+    const needAmountMin = !hasAmountMin && patch.amount_cad_min == null;
+    const needAmountMax = !hasAmountMax && patch.amount_cad_max == null;
+    if (needAmountMin || needAmountMax) {
+      const amountMatch = extractAmounts(page.markdown);
+      if (amountMatch) {
+        let foundAmount = false;
+        if (needAmountMin && amountMatch.min != null) {
+          patch.amount_cad_min = amountMatch.min;
+          foundAmount = true;
           await recordEvidence({
-            grantId: g.id, agent: "enricher", field: "amount_cad_max",
-            value: am.max, sourceUrl: g.url, snippet: am.snippet,
-            snippetOffset: am.matchOffset, method: "regex", runId,
+            grantId: g.id,
+            agent: "enricher",
+            field: "amount_cad_min",
+            value: amountMatch.min,
+            sourceUrl: page.url,
+            snippet: amountMatch.snippet,
+            snippetOffset: amountMatch.matchOffset,
+            method: "regex",
+            runId,
+            db,
           });
         }
-        if (am.min != null) {
+        if (needAmountMax && amountMatch.max != null) {
+          patch.amount_cad_max = amountMatch.max;
+          foundAmount = true;
           await recordEvidence({
-            grantId: g.id, agent: "enricher", field: "amount_cad_min",
-            value: am.min, sourceUrl: g.url, snippet: am.snippet,
-            snippetOffset: am.matchOffset, method: "regex", runId,
+            grantId: g.id,
+            agent: "enricher",
+            field: "amount_cad_max",
+            value: amountMatch.max,
+            sourceUrl: page.url,
+            snippet: amountMatch.snippet,
+            snippetOffset: amountMatch.matchOffset,
+            method: "regex",
+            runId,
+            db,
           });
         }
-      } else {
+        if (foundAmount) {
+          methodCounts.regex++;
+          await trace("regex_amount", `Found amount on ${stage} page: $${amountMatch.min ?? "?"} - $${amountMatch.max ?? "?"}`, "ok", {
+            page: page.url,
+            snippet: amountMatch.snippet.slice(0, 200),
+          });
+        } else if (stage === "main") {
+          await trace("regex_amount", "No usable amount detected by regex", "info");
+        }
+      } else if (stage === "main") {
         await trace("regex_amount", "No amount detected by regex", "info");
       }
     }
 
-    if (!hasDeadline) {
-      const dm = extractDeadline(markdown, language);
-      if (dm) {
-        patch.deadline = dm.iso;
+    if (!hasDeadline && patch.deadline == null) {
+      const deadlineMatch = extractDeadline(page.markdown, language);
+      if (deadlineMatch) {
+        patch.deadline = deadlineMatch.iso;
         methodCounts.chrono++;
-        await trace("chrono_deadline", `Found deadline: ${dm.iso}`, "ok", { snippet: dm.snippet.slice(0, 200) });
-        await recordEvidence({
-          grantId: g.id, agent: "enricher", field: "deadline",
-          value: dm.iso, sourceUrl: g.url, snippet: dm.snippet,
-          snippetOffset: dm.matchOffset, method: "chrono", runId,
+        await trace("chrono_deadline", `Found deadline on ${stage} page: ${deadlineMatch.iso}`, "ok", {
+          page: page.url,
+          snippet: deadlineMatch.snippet.slice(0, 200),
         });
-      } else {
+        await recordEvidence({
+          grantId: g.id,
+          agent: "enricher",
+          field: "deadline",
+          value: deadlineMatch.iso,
+          sourceUrl: page.url,
+          snippet: deadlineMatch.snippet,
+          snippetOffset: deadlineMatch.matchOffset,
+          method: "chrono",
+          runId,
+          db,
+        });
+      } else if (stage === "main") {
         await trace("chrono_deadline", "No deadline detected", "info");
       }
     }
 
-    if (!hasEligibility) {
-      const em = extractEligibility(markdown);
-      if (em.length > 0) {
-        const elig: Record<string, true> = {};
-        for (const e of em) {
-          elig[e.tag] = true;
+    if (!hasEligibility && patch.eligibility == null) {
+      const eligibilityMatches = extractEligibility(page.markdown);
+      if (eligibilityMatches.length > 0) {
+        const eligibility: Record<string, true> = {};
+        for (const match of eligibilityMatches) {
+          eligibility[match.tag] = true;
           methodCounts.rule++;
           await recordEvidence({
-            grantId: g.id, agent: "enricher", field: `eligibility.${e.tag}`,
-            value: true, sourceUrl: g.url, snippet: e.snippet,
-            snippetOffset: e.matchOffset, method: "rule", runId,
+            grantId: g.id,
+            agent: "enricher",
+            field: `eligibility.${match.tag}`,
+            value: true,
+            sourceUrl: page.url,
+            snippet: match.snippet,
+            snippetOffset: match.matchOffset,
+            method: "rule",
+            runId,
+            db,
           });
         }
-        patch.eligibility = elig as never;
-        await trace("rule_eligibility", `Matched eligibility tags: ${em.map(e => e.tag).join(", ")}`, "ok", { tags: em.map(e => e.tag) });
-      } else {
+        patch.eligibility = eligibility as never;
+        await trace(
+          "rule_eligibility",
+          `Matched eligibility tags on ${stage} page: ${eligibilityMatches.map((match) => match.tag).join(", ")}`,
+          "ok",
+          { page: page.url, tags: eligibilityMatches.map((match) => match.tag) },
+        );
+      } else if (stage === "main") {
         await trace("rule_eligibility", "No eligibility tags matched", "info");
       }
     }
 
-    if (!hasSectors) {
-      const sm = extractSectors(markdown);
-      if (sm.length > 0) {
-        patch.sectors = sm.map((s) => s.sector);
-        for (const s of sm) {
+    if (!hasSectors && patch.sectors == null) {
+      const sectorMatches = extractSectors(page.markdown);
+      if (sectorMatches.length > 0) {
+        patch.sectors = sectorMatches.map((match) => match.sector);
+        for (const match of sectorMatches) {
           methodCounts.rule++;
           await recordEvidence({
-            grantId: g.id, agent: "enricher", field: `sectors.${s.sector}`,
-            value: s.sector, sourceUrl: g.url, snippet: s.snippet,
-            snippetOffset: s.matchOffset, method: "rule", runId,
+            grantId: g.id,
+            agent: "enricher",
+            field: `sectors.${match.sector}`,
+            value: match.sector,
+            sourceUrl: page.url,
+            snippet: match.snippet,
+            snippetOffset: match.matchOffset,
+            method: "rule",
+            runId,
+            db,
           });
         }
-        await trace("rule_sectors", `Detected sectors: ${sm.map(s => s.sector).join(", ")}`, "ok", { sectors: sm.map(s => s.sector) });
-      } else {
+        await trace(
+          "rule_sectors",
+          `Detected sectors on ${stage} page: ${sectorMatches.map((match) => match.sector).join(", ")}`,
+          "ok",
+          { page: page.url, sectors: sectorMatches.map((match) => match.sector) },
+        );
+      } else if (stage === "main") {
         await trace("rule_sectors", "No sectors detected", "info");
       }
     }
-    await trace("extractors", `Deterministic done — regex:${methodCounts.regex} chrono:${methodCounts.chrono} rule:${methodCounts.rule}`, "done", methodCounts);
+  };
 
-    // ----- Step 4: LLM gap-fill (only if still missing fields) -----
-    const stillMissing: string[] = [];
-    if (!hasAmount && patch.amount_cad_max == null && patch.amount_cad_min == null)
-      stillMissing.push("amount_cad_min", "amount_cad_max");
-    if (!hasDeadline && patch.deadline == null) stillMissing.push("deadline");
-    if (!hasEligibility && patch.eligibility == null) stillMissing.push("eligibility");
-    if (!hasSectors && patch.sectors == null) stillMissing.push("sectors");
+  await runExtractorsOnPage(pages[0], "main");
 
-    let llmInfo: { provider: string; model: string; inputTokens?: number; outputTokens?: number } | null = null;
+  const missingAfterMain = missingFields();
+  if (missingAfterMain.length > 0) {
+    const { gatherDeepMarkdown } = await import("@/lib/deep-crawl.server");
+    await trace(
+      "deep_crawl",
+      `Partial data after main page. Following official detail pages for: ${missingAfterMain.join(", ")}`,
+      "start",
+      { missing: missingAfterMain },
+    );
+    const deepPages = await gatherDeepMarkdown(g.url, scraped.markdown, { max: 3, title: g.title });
+    if (deepPages.length > 0) {
+      pages.push(...deepPages);
+      await trace("deep_crawl", `Fetched ${deepPages.length} official detail page(s)`, "done", {
+        pages: deepPages.map((page) => page.url),
+      });
+      for (const page of deepPages) {
+        if (missingFields().length === 0) break;
+        if (!pageLooksRelevantToGrant(page)) {
+          await trace("deep_crawl_filter", "Skipped low-relevance detail page", "warn", {
+            page: page.url,
+            grant_title: g.title,
+          });
+          continue;
+        }
+        await runExtractorsOnPage(page, "deep");
+      }
+    } else {
+      await trace("deep_crawl", "No additional official detail pages found", "warn");
+    }
+  }
 
-    if (stillMissing.length > 0) {
-      await trace("llm_gap", `Missing fields after extractors: ${stillMissing.join(", ")} — invoking LLM cascade`, "start", { missing: stillMissing });
-      const { callFreeLlm, freeProvidersAvailable } = await import("@/agents/llm-free.server");
-      const available = freeProvidersAvailable();
-      const hasFree = available.length > 0;
-      const { firecrawlAvailable, firecrawlScrape } = await import("@/lib/firecrawl.server");
-      await trace("llm_providers", `Free providers available: ${available.join(", ") || "(none)"} · firecrawl=${firecrawlAvailable()}`, "info", { providers: available, firecrawl: firecrawlAvailable() });
+  await trace("extractors", `Deterministic done - regex:${methodCounts.regex} chrono:${methodCounts.chrono} rule:${methodCounts.rule}`, "done", {
+    ...methodCounts,
+    pages_consulted: pages.map((page) => page.url),
+  });
 
-      let llmResultText: string | null = null;
-      let llmProvider = "none";
-      let llmModel = "none";
-      let llmInTok: number | undefined;
-      let llmOutTok: number | undefined;
+  const stillMissing = missingFields();
+  const combinedMarkdown = pages
+    .map((page, index) => `Source ${index + 1}: ${page.url}\n${page.markdown.slice(0, 6000)}`)
+    .join("\n\n");
 
-      // Tier 1 — free LLM cascade
-      if (hasFree) {
-        const tLlm = Date.now();
-        await trace("llm_cascade", "Calling free LLM cascade (Groq → Gemini → Cerebras)", "start");
-        try {
-          const llm = await callFreeLlm({
-            agent: "enricher", runId, temperature: 0.1, responseFormat: "json",
-            allowLovableFallback: false,
-            messages: [
-              { role: "system", content:
+  let llmInfo: { provider: string; model: string; inputTokens?: number; outputTokens?: number } | null = null;
+
+  if (stillMissing.length > 0) {
+    await trace("llm_gap", `Missing fields after extractors: ${stillMissing.join(", ")} - invoking LLM cascade`, "start", { missing: stillMissing });
+    const { callFreeLlm, freeProvidersAvailable } = await import("@/agents/llm-free.server");
+    const available = freeProvidersAvailable();
+    const hasFree = available.length > 0;
+    const { firecrawlAvailable, firecrawlScrape } = await import("@/lib/firecrawl.server");
+    await trace("llm_providers", `Free providers available: ${available.join(", ") || "(none)"} | firecrawl=${firecrawlAvailable()}`, "info", {
+      providers: available,
+      firecrawl: firecrawlAvailable(),
+    });
+
+    let llmResultText: string | null = null;
+    let llmProvider = "none";
+    let llmModel = "none";
+    let llmInTok: number | undefined;
+    let llmOutTok: number | undefined;
+
+    if (hasFree) {
+      const tLlm = Date.now();
+      await trace("llm_cascade", "Calling free LLM cascade (Groq -> Gemini -> Cerebras)", "start");
+      try {
+        const llm = await callFreeLlm({
+          agent: "enricher",
+          runId,
+          temperature: 0.1,
+          responseFormat: "json",
+          allowLovableFallback: false,
+          messages: [
+            {
+              role: "system",
+              content:
                 `${PROMPTS.enricher.system}\nPrompt version: ${PROMPTS.enricher.version}\n` +
-                `You MUST quote literal text from the source markdown to justify every field you fill. ` +
-                `Return JSON: { "fields": { "<field>": { "value": ..., "quote": "literal text from markdown" } } }. ` +
-                `If you cannot find justification in the markdown, omit the field. Never invent.` },
-              { role: "user", content: JSON.stringify({
-                needs: stillMissing, source_language: language,
-                source_url: g.url, markdown: markdown.slice(0, 9_000),
-              })},
-            ],
-          });
-          llmResultText = llm.text; llmProvider = llm.provider; llmModel = llm.model;
-          llmInTok = llm.inputTokens; llmOutTok = llm.outputTokens;
-          await trace("llm_cascade", `LLM responded via ${llm.provider}/${llm.model} (${llm.outputTokens ?? "?"} tokens, ${Date.now() - tLlm}ms)`, "done", { provider: llm.provider, model: llm.model, in: llm.inputTokens, out: llm.outputTokens });
-        } catch (e) {
-          await trace("llm_cascade", `All free providers failed — ${e instanceof Error ? e.message : String(e)}`, "warn");
-        }
+                `You MUST quote literal text from the provided source pages to justify every field you fill. ` +
+                `Return JSON: { "fields": { "<field>": { "value": ..., "quote": "literal text from source pages" } } }. ` +
+                `If you cannot find justification in the source pages, omit the field. Never invent.`,
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                needs: stillMissing,
+                source_language: language,
+                source_url: g.url,
+                source_pages: pages.map((page) => ({ url: page.url, markdown: page.markdown.slice(0, 6000) })),
+                combined_markdown: combinedMarkdown,
+              }),
+            },
+          ],
+        });
+        llmResultText = llm.text;
+        llmProvider = llm.provider;
+        llmModel = llm.model;
+        llmInTok = llm.inputTokens;
+        llmOutTok = llm.outputTokens;
+        await trace("llm_cascade", `LLM responded via ${llm.provider}/${llm.model} (${llm.outputTokens ?? "?"} tokens, ${Date.now() - tLlm}ms)`, "done", {
+          provider: llm.provider,
+          model: llm.model,
+          in: llm.inputTokens,
+          out: llm.outputTokens,
+        });
+      } catch (e) {
+        await trace("llm_cascade", `All free providers failed - ${e instanceof Error ? e.message : String(e)}`, "warn");
       }
+    }
 
-      // Tier 2 — Firecrawl JSON extraction (zero extra LLM cost)
-      if (!llmResultText && firecrawlAvailable()) {
-        const props: Record<string, unknown> = {};
-        const needSchema = (name: string, type: string) => ({
+    if (!llmResultText && firecrawlAvailable()) {
+      const props: Record<string, unknown> = {};
+      const needSchema = (type: string) => ({
+        type: "object",
+        properties: {
+          value: { type },
+          quote: { type: "string", description: "Verbatim sentence from the page that justifies this value." },
+        },
+        required: ["value", "quote"],
+      });
+      if (stillMissing.includes("amount_cad_min")) props.amount_cad_min = needSchema("number");
+      if (stillMissing.includes("amount_cad_max")) props.amount_cad_max = needSchema("number");
+      if (stillMissing.includes("deadline")) props.deadline = needSchema("string");
+      if (stillMissing.includes("eligibility")) {
+        props.eligibility = {
           type: "object",
-          properties: {
-            value: { type },
-            quote: { type: "string", description: "Verbatim sentence from the page that justifies this value." },
-          },
+          properties: { value: { type: "object" }, quote: { type: "string" } },
           required: ["value", "quote"],
-        });
-        if (stillMissing.includes("amount_cad_min")) props.amount_cad_min = needSchema("amount_cad_min", "number");
-        if (stillMissing.includes("amount_cad_max")) props.amount_cad_max = needSchema("amount_cad_max", "number");
-        if (stillMissing.includes("deadline")) props.deadline = needSchema("deadline", "string");
-        if (stillMissing.includes("eligibility")) {
-          props.eligibility = {
-            type: "object",
-            properties: { value: { type: "object" }, quote: { type: "string" } },
-            required: ["value", "quote"],
-          };
-        }
-        if (stillMissing.includes("sectors")) {
-          props.sectors = {
-            type: "object",
-            properties: { value: { type: "array", items: { type: "string" } }, quote: { type: "string" } },
-            required: ["value", "quote"],
-          };
-        }
-        const fcSchema = { type: "object", properties: { fields: { type: "object", properties: props } } };
-        const fc = await firecrawlScrape(g.url, {
-          jsonSchema: fcSchema,
-          jsonPrompt: "Extract the requested grant fields. For each field, copy a verbatim sentence from the page into `quote`. If the page does not state a field, omit it. Amounts must be in CAD as numbers. Deadlines must be ISO YYYY-MM-DD.",
-        });
-        if (fc.ok && fc.json) {
-          llmResultText = JSON.stringify(fc.json);
-          llmProvider = "firecrawl"; llmModel = "firecrawl-extract";
-        }
+        };
       }
-
-      // Tier 3 — Lovable AI (only if truly nothing else available)
-      if (!llmResultText && !hasFree && !firecrawlAvailable()) {
-        try {
-          const llm = await callFreeLlm({
-            agent: "enricher", runId, temperature: 0.1, responseFormat: "json",
-            allowLovableFallback: true,
-            messages: [
-              { role: "system", content:
-                `${PROMPTS.enricher.system}\nReturn JSON {"fields":{"<field>":{"value":...,"quote":"..."}}}. Quote literal page text. Never invent.` },
-              { role: "user", content: JSON.stringify({
-                needs: stillMissing, source_language: language,
-                source_url: g.url, markdown: markdown.slice(0, 9_000),
-              })},
-            ],
-          });
-          llmResultText = llm.text; llmProvider = llm.provider; llmModel = llm.model;
-          llmInTok = llm.inputTokens; llmOutTok = llm.outputTokens;
-        } catch { /* fall through */ }
+      if (stillMissing.includes("sectors")) {
+        props.sectors = {
+          type: "object",
+          properties: { value: { type: "array", items: { type: "string" } }, quote: { type: "string" } },
+          required: ["value", "quote"],
+        };
       }
+      const fcSchema = { type: "object", properties: { fields: { type: "object", properties: props } } };
+      const fc = await firecrawlScrape(g.url, {
+        jsonSchema: fcSchema,
+        jsonPrompt: "Extract the requested grant fields. For each field, copy a verbatim sentence from the page into quote. If the page does not state a field, omit it. Amounts must be CAD numbers. Deadlines must be ISO YYYY-MM-DD.",
+      });
+      if (fc.ok && fc.json) {
+        llmResultText = JSON.stringify(fc.json);
+        llmProvider = "firecrawl";
+        llmModel = "firecrawl-extract";
+      }
+    }
 
-      llmInfo = { provider: llmProvider, model: llmModel, inputTokens: llmInTok, outputTokens: llmOutTok };
+    if (!llmResultText && !hasFree && !firecrawlAvailable()) {
+      try {
+        const llm = await callFreeLlm({
+          agent: "enricher",
+          runId,
+          temperature: 0.1,
+          responseFormat: "json",
+          allowLovableFallback: true,
+          messages: [
+            {
+              role: "system",
+              content:
+                `${PROMPTS.enricher.system}\nReturn JSON {"fields":{"<field>":{"value":...,"quote":"..."}}}. Quote literal page text. Never invent.`,
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                needs: stillMissing,
+                source_language: language,
+                source_url: g.url,
+                source_pages: pages.map((page) => ({ url: page.url, markdown: page.markdown.slice(0, 6000) })),
+                combined_markdown: combinedMarkdown,
+              }),
+            },
+          ],
+        });
+        llmResultText = llm.text;
+        llmProvider = llm.provider;
+        llmModel = llm.model;
+        llmInTok = llm.inputTokens;
+        llmOutTok = llm.outputTokens;
+      } catch {
+        // fall through
+      }
+    }
 
-      if (llmResultText) try {
-        const llm = { text: llmResultText, model: llmModel };
+    llmInfo = { provider: llmProvider, model: llmModel, inputTokens: llmInTok, outputTokens: llmOutTok };
+
+    if (llmResultText) {
+      try {
         await trace("llm_validate", "Validating LLM output: per-field schema + grounded-quote check", "start");
 
         const FieldShape = z.object({
           value: z.unknown(),
           quote: z.string().min(4).max(1500),
         });
-        const rawJson = JSON.parse(llm.text) as { fields?: Record<string, unknown> };
+        const rawJson = JSON.parse(llmResultText) as { fields?: Record<string, unknown> };
         const fieldsObj = rawJson.fields ?? {};
         const accepted: string[] = [];
         const rejected: string[] = [];
         for (const [field, raw] of Object.entries(fieldsObj)) {
           const parsedField = FieldShape.safeParse(raw);
-          if (!parsedField.success) { rejected.push(`${field}(shape)`); continue; }
+          if (!parsedField.success) {
+            rejected.push(`${field}(shape)`);
+            continue;
+          }
           const payload = parsedField.data;
-          if (!stillMissing.includes(field) && !field.startsWith("eligibility") && !field.startsWith("sectors")) { rejected.push(`${field}(not_needed)`); continue; }
-          if (!snippetIsGrounded(payload.quote, markdown)) { rejected.push(`${field}(hallucination)`); continue; }
+          if (!stillMissing.includes(field) && !field.startsWith("eligibility") && !field.startsWith("sectors")) {
+            rejected.push(`${field}(not_needed)`);
+            continue;
+          }
+          const groundedPage = pageForQuote(payload.quote);
+          if (!groundedPage) {
+            rejected.push(`${field}(hallucination)`);
+            continue;
+          }
           if (field === "amount_cad_max" || field === "amount_cad_min") {
             const n = Number(payload.value);
             if (Number.isFinite(n) && n > 0) {
-              (patch as Record<string, unknown>)[field] = n;
+              patch[field] = n;
+              methodCounts.llm++;
               accepted.push(field);
               await recordEvidence({
-                grantId: g.id, agent: "enricher", field, value: n,
-                sourceUrl: g.url, snippet: payload.quote,
-                method: "llm", sourceMarkdown: markdown,
-                model: llm.model, runId,
+                grantId: g.id,
+                agent: "enricher",
+                field,
+                value: n,
+                sourceUrl: groundedPage.url,
+                snippet: payload.quote,
+                method: "llm",
+                sourceMarkdown: groundedPage.markdown,
+                model: llmModel,
+                runId,
+                db,
               });
-            } else rejected.push(`${field}(not_number)`);
+            } else {
+              rejected.push(`${field}(not_number)`);
+            }
           } else if (field === "deadline") {
             const s = String(payload.value);
             if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-              patch.deadline = s; accepted.push(field);
+              patch.deadline = s;
+              methodCounts.llm++;
+              accepted.push(field);
               await recordEvidence({
-                grantId: g.id, agent: "enricher", field: "deadline", value: s,
-                sourceUrl: g.url, snippet: payload.quote, method: "llm",
-                sourceMarkdown: markdown, model: llm.model, runId,
+                grantId: g.id,
+                agent: "enricher",
+                field: "deadline",
+                value: s,
+                sourceUrl: groundedPage.url,
+                snippet: payload.quote,
+                method: "llm",
+                sourceMarkdown: groundedPage.markdown,
+                model: llmModel,
+                runId,
+                db,
               });
-            } else rejected.push(`${field}(bad_date)`);
+            } else {
+              rejected.push(`${field}(bad_date)`);
+            }
           } else if (field === "eligibility") {
             if (payload.value && typeof payload.value === "object") {
-              patch.eligibility = payload.value as never; accepted.push(field);
+              patch.eligibility = payload.value as never;
+              methodCounts.llm++;
+              accepted.push(field);
               await recordEvidence({
-                grantId: g.id, agent: "enricher", field: "eligibility", value: payload.value,
-                sourceUrl: g.url, snippet: payload.quote, method: "llm",
-                sourceMarkdown: markdown, model: llm.model, runId,
+                grantId: g.id,
+                agent: "enricher",
+                field: "eligibility",
+                value: payload.value,
+                sourceUrl: groundedPage.url,
+                snippet: payload.quote,
+                method: "llm",
+                sourceMarkdown: groundedPage.markdown,
+                model: llmModel,
+                runId,
+                db,
               });
+            } else {
+              rejected.push(`${field}(bad_object)`);
             }
           } else if (field === "sectors") {
             if (Array.isArray(payload.value)) {
-              patch.sectors = payload.value.map(String); accepted.push(field);
+              patch.sectors = payload.value.map(String);
+              methodCounts.llm++;
+              accepted.push(field);
               await recordEvidence({
-                grantId: g.id, agent: "enricher", field: "sectors", value: payload.value,
-                sourceUrl: g.url, snippet: payload.quote, method: "llm",
-                sourceMarkdown: markdown, model: llm.model, runId,
+                grantId: g.id,
+                agent: "enricher",
+                field: "sectors",
+                value: payload.value,
+                sourceUrl: groundedPage.url,
+                snippet: payload.quote,
+                method: "llm",
+                sourceMarkdown: groundedPage.markdown,
+                model: llmModel,
+                runId,
+                db,
               });
+            } else {
+              rejected.push(`${field}(bad_array)`);
             }
           }
         }
-        await trace("llm_validate", `Accepted: ${accepted.join(", ") || "(none)"} · Rejected: ${rejected.join(", ") || "(none)"}`, accepted.length ? "done" : "warn", { accepted, rejected });
+        await trace(
+          "llm_validate",
+          `Accepted: ${accepted.join(", ") || "(none)"} | Rejected: ${rejected.join(", ") || "(none)"}`,
+          accepted.length ? "done" : "warn",
+          { accepted, rejected },
+        );
       } catch (e) {
         const msg = `llm_gap_fill_failed: ${e instanceof Error ? e.message : String(e)}`;
         await trace("llm_validate", msg, "error");
-        await supabaseAdmin.from("agent_runs").insert({
-          run_id: runId, agent: "enricher", status: "degraded",
+        await db.from("agent_runs").insert({
+          run_id: runId,
+          agent: "enricher",
+          status: "degraded",
           model: llmInfo?.model ?? "free-cascade",
-          input_tokens: llmInfo?.inputTokens, output_tokens: llmInfo?.outputTokens,
-          latency_ms: Date.now() - t0, grant_id: g.id,
+          input_tokens: llmInfo?.inputTokens,
+          output_tokens: llmInfo?.outputTokens,
+          latency_ms: Date.now() - t0,
+          user_id: actorUserId,
+          grant_id: g.id,
           error: msg.slice(0, 500),
-          metadata: { provider: llmInfo?.provider, missing: stillMissing, via: scraped.via },
+          metadata: {
+            provider: llmInfo?.provider,
+            missing: stillMissing,
+            via: scraped.via,
+            pages_consulted: pages.map((page) => page.url),
+          },
         });
       }
     }
+  }
 
-    // ----- Step 5: Normalize French → English in patched fields -----
-    // Canonical language is English. Translate any French that slipped through
-    // (sectors, eligibility text values) before persisting.
-    try {
-      const { translateStringsToEnglish, looksFrench } = await import("@/agents/translate.server");
-      if (Array.isArray(patch.sectors)) {
-        const arr = (patch.sectors as unknown[]).map(String);
-        if (arr.some(looksFrench)) {
-          patch.sectors = await translateStringsToEnglish({ strings: arr, agent: "enricher", runId });
-          await trace("translate_sectors", "Translated French sector labels to English", "ok");
-        }
+  try {
+    const { translateStringsToEnglish, looksFrench } = await import("@/agents/translate.server");
+    if (Array.isArray(patch.sectors)) {
+      const arr = (patch.sectors as unknown[]).map(String);
+      if (arr.some(looksFrench)) {
+        patch.sectors = await translateStringsToEnglish({ strings: arr, agent: "enricher", runId });
+        await trace("translate_sectors", "Translated French sector labels to English", "ok");
       }
-      if (patch.eligibility && typeof patch.eligibility === "object") {
-        const elig = patch.eligibility as Record<string, unknown>;
-        const stringEntries = Object.entries(elig).filter(([, v]) => typeof v === "string") as Array<[string, string]>;
-        const frEntries = stringEntries.filter(([, v]) => looksFrench(v));
-        if (frEntries.length) {
-          const translated = await translateStringsToEnglish({
-            strings: frEntries.map(([, v]) => v), agent: "enricher", runId,
-          });
-          frEntries.forEach(([k], i) => { elig[k] = translated[i]; });
-          patch.eligibility = elig as never;
-          await trace("translate_eligibility", `Translated ${frEntries.length} French eligibility value(s)`, "ok");
-        }
+    }
+    if (patch.eligibility && typeof patch.eligibility === "object") {
+      const eligibility = patch.eligibility as Record<string, unknown>;
+      const stringEntries = Object.entries(eligibility).filter(([, value]) => typeof value === "string") as Array<[string, string]>;
+      const frEntries = stringEntries.filter(([, value]) => looksFrench(value));
+      if (frEntries.length) {
+        const translated = await translateStringsToEnglish({
+          strings: frEntries.map(([, value]) => value),
+          agent: "enricher",
+          runId,
+        });
+        frEntries.forEach(([key], index) => {
+          eligibility[key] = translated[index];
+        });
+        patch.eligibility = eligibility as never;
+        await trace("translate_eligibility", `Translated ${frEntries.length} French eligibility value(s)`, "ok");
       }
-    } catch (e) {
-      await trace("translate", `Translation pass failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`, "warn");
     }
+  } catch (e) {
+    await trace("translate", `Translation pass failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`, "warn");
+  }
 
-    // Schema check on the structural shape we built
-    const built = EnricherOutput.partial().safeParse(patch);
-    if (!built.success) {
-      await trace("schema", `Schema validation failed: ${built.error.message}`, "error");
-      await supabaseAdmin.from("grants").update({
-        enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
-        enrich_last_error: `schema_validation: ${built.error.message}`.slice(0, 500),
-        enrich_last_attempt_at: new Date().toISOString(),
-      } as never).eq("id", g.id);
-      return { ok: false, runId, error: "schema_validation" };
-    }
+  const built = EnricherOutput.partial().safeParse(patch);
+  if (!built.success) {
+    await trace("schema", `Schema validation failed: ${built.error.message}`, "error");
+    await db.from("grants").update({
+      enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
+      enrich_last_error: `schema_validation: ${built.error.message}`.slice(0, 500),
+      enrich_last_attempt_at: new Date().toISOString(),
+    } as never).eq("id", g.id);
+    return { ok: false, runId, error: "schema_validation" };
+  }
 
-    // Honest-failure gate: distinguish "page truly has no more data" from
-    // "we couldn't reach any LLM". The first is a legitimate enriched state,
-    // the second is a transient failure that must NOT flip status→enriched.
-    const extractedKeys = Object.keys(patch);
-    const llmCascadeFailed = stillMissing.length > 0 && llmInfo?.provider === "none";
-    if (extractedKeys.length === 0 && llmCascadeFailed) {
-      const reason = "no_extraction: deterministic=0 llm_cascade=all_providers_failed";
-      await trace("commit", reason, "error", { still_missing: stillMissing });
-      await supabaseAdmin.from("grants").update({
-        enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
-        enrich_last_error: reason.slice(0, 500),
-        enrich_last_attempt_at: new Date().toISOString(),
-      } as never).eq("id", g.id);
-      await supabaseAdmin.from("agent_runs").insert({
-        run_id: runId, agent: "enricher", status: "failed",
-        model: "free-cascade",
-        latency_ms: Date.now() - t0, grant_id: g.id,
-        error: reason,
-        metadata: {
-          via: scraped.via, provider: "none",
-          deterministic_counts: methodCounts, still_missing: stillMissing,
-          fetch_attempts: fetchAttempts, scraped_bytes: markdown.length,
-        },
-      });
-      return {
-        ok: false, runId, error: reason,
-        deterministic_counts: methodCounts, provider: "none",
-        attempts: fetchAttempts,
-      };
-    }
-
-
-
-    patch.status = "enriched";
-    patch.enriched_at = new Date().toISOString();
-    const { error: uerr } = await supabaseAdmin.from("grants").update(patch as never).eq("id", g.id);
-    if (uerr) throw new Error(`grant_update_failed: ${uerr.message}`);
-
-    const filled = Object.keys(patch).filter((k) => k !== "status" && k !== "enriched_at");
-    await trace("commit", `Grant marked enriched — fields filled: ${filled.join(", ") || "(none)"} · total ${Date.now() - t0}ms`, "done", { filled, total_ms: Date.now() - t0 });
-
-    await supabaseAdmin.from("agent_runs").insert({
-      run_id: runId, agent: "enricher", status: "succeeded",
-      model: llmInfo?.model ?? "deterministic",
-      input_tokens: llmInfo?.inputTokens ?? 0,
-      output_tokens: llmInfo?.outputTokens ?? 0,
-      latency_ms: Date.now() - t0, grant_id: g.id,
+  const extractedKeys = Object.keys(patch);
+  const llmCascadeFailed = stillMissing.length > 0 && llmInfo?.provider === "none";
+  if (extractedKeys.length === 0 && llmCascadeFailed) {
+    const reason = "no_extraction: deterministic=0 llm_cascade=all_providers_failed";
+    await trace("commit", reason, "error", { still_missing: stillMissing });
+    await db.from("grants").update({
+      enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
+      enrich_last_error: reason.slice(0, 500),
+      enrich_last_attempt_at: new Date().toISOString(),
+    } as never).eq("id", g.id);
+    await db.from("agent_runs").insert({
+      run_id: runId,
+      agent: "enricher",
+      status: "failed",
+      model: "free-cascade",
+      latency_ms: Date.now() - t0,
+      user_id: actorUserId,
+      grant_id: g.id,
+      error: reason,
       metadata: {
         via: scraped.via,
-        provider: llmInfo?.provider ?? "none",
+        provider: "none",
         deterministic_counts: methodCounts,
-        still_missing_after: stillMissing.filter((f) => (patch as Record<string, unknown>)[f] == null),
+        still_missing: stillMissing,
         fetch_attempts: fetchAttempts,
+        scraped_bytes: scraped.markdown.length,
+        pages_consulted: pages.map((page) => page.url),
       },
     });
     return {
-      ok: true, runId, filled,
+      ok: false,
+      runId,
+      error: reason,
       deterministic_counts: methodCounts,
-      provider: llmInfo?.provider ?? "none",
+      provider: "none",
       attempts: fetchAttempts,
     };
+  }
 
+  patch.status = "enriched";
+  patch.enriched_at = new Date().toISOString();
+  patch.enrich_last_error = null;
+  patch.enrich_last_attempt_at = new Date().toISOString();
+  const { error: updateError } = await db.from("grants").update(patch as never).eq("id", g.id);
+  if (updateError) throw new Error(`grant_update_failed: ${updateError.message}`);
+
+  const filled = Object.keys(patch).filter((key) => key !== "status" && key !== "enriched_at");
+  await trace("commit", `Grant marked enriched - fields filled: ${filled.join(", ") || "(none)"} | total ${Date.now() - t0}ms`, "done", {
+    filled,
+    total_ms: Date.now() - t0,
+  });
+
+  await db.from("agent_runs").insert({
+    run_id: runId,
+    agent: "enricher",
+    status: "succeeded",
+    model: llmInfo?.model ?? "deterministic",
+    input_tokens: llmInfo?.inputTokens ?? 0,
+    output_tokens: llmInfo?.outputTokens ?? 0,
+    latency_ms: Date.now() - t0,
+    user_id: actorUserId,
+    grant_id: g.id,
+    metadata: {
+      via: scraped.via,
+      provider: llmInfo?.provider ?? "none",
+      deterministic_counts: methodCounts,
+      still_missing_after: missingFields(),
+      fetch_attempts: fetchAttempts,
+      pages_consulted: pages.map((page) => page.url),
+    },
+  });
+  return {
+    ok: true,
+    runId,
+    filled,
+    deterministic_counts: methodCounts,
+    provider: llmInfo?.provider ?? "none",
+    attempts: fetchAttempts,
+  };
 }
 
-// Thin admin-only serverFn wrapper. Public RPC endpoint is auth-gated:
-// only signed-in admins can trigger ad-hoc enrichment, preventing anyone
-// from burning LLM credits via the public URL.
 export const runEnricher = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ grantId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
-      _user_id: context.userId, _role: "admin",
+    const { assertAdmin } = await import("@/lib/admin-guard");
+    await assertAdmin(context.userId, context.supabase as never);
+    return enrichGrantImpl(data.grantId, {
+      db: context.supabase as never,
+      userId: context.userId,
     });
-    if (!isAdmin) throw new Error("Forbidden: admin role required");
-    return enrichGrantImpl(data.grantId);
   });

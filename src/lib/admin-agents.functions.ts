@@ -46,9 +46,10 @@ export const toggleAgentFlag = createServerFn({ method: "POST" })
   });
 
 // Server-side check used by agent server fns to short-circuit when off.
-export async function assertAgentEnabled(name: string) {
+export async function assertAgentEnabled(name: string, db?: { from: (table: string) => any }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
+  const client = db ?? supabaseAdmin;
+  const { data, error } = await client
     .from("agent_flags" as never)
     .select("enabled")
     .eq("agent", name)

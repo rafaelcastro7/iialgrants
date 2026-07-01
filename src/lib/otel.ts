@@ -59,6 +59,8 @@ function toOtlpLog(evt: GenAIEvent) {
 async function exportOtlp(evt: GenAIEvent) {
   const endpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
   if (!endpoint) return;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
     await fetch(endpoint, {
       method: "POST",
@@ -69,7 +71,8 @@ async function exportOtlp(evt: GenAIEvent) {
           : {}),
       },
       body: JSON.stringify(toOtlpLog(evt)),
-    });
+      signal: ctrl.signal,
+    }).finally(() => clearTimeout(timer));
   } catch {
     /* swallow — observability must never break requests */
   }

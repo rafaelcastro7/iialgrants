@@ -1,8 +1,9 @@
 // Server-side admin assertion shared by all admin server fns.
 // Loads supabaseAdmin lazily to keep client bundle clean.
-export async function assertAdmin(userId: string) {
+export async function assertAdmin(userId: string, db?: { from: (table: string) => any }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
+  const client = db ?? supabaseAdmin;
+  const { data, error } = await client
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)

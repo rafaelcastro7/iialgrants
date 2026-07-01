@@ -14,7 +14,7 @@ export const runStrategist = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
-    await assertAgentEnabled("strategist");
+    await assertAgentEnabled("strategist", context.supabase as never);
     const { callLlm } = await import("@/agents/llm.server");
     const { newRunId } = await import("@/lib/otel");
     const runId = newRunId();
@@ -86,11 +86,10 @@ export const runStrategist = createServerFn({ method: "POST" })
     if (ise) throw new Error(ise.message);
 
     // Transition grant: scored → shortlisted → in_proposal (best-effort).
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("grants").update({ status: "shortlisted" }).eq("id", g.id).eq("status", "scored");
-    await supabaseAdmin.from("grants").update({ status: "in_proposal" }).eq("id", g.id).eq("status", "shortlisted");
+    await context.supabase.from("grants").update({ status: "shortlisted" }).eq("id", g.id).eq("status", "scored");
+    await context.supabase.from("grants").update({ status: "in_proposal" }).eq("id", g.id).eq("status", "shortlisted");
 
-    await supabaseAdmin.from("agent_runs").insert({
+    await context.supabase.from("agent_runs").insert({
       run_id: runId, agent: "strategist", status: "succeeded",
       model: "google/gemini-2.5-flash",
       input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,

@@ -47,8 +47,8 @@ function normalizeTitle(s: string): string {
     .join(" ");
 }
 function canonicalKey(funderId: string, title: string, minAmt: number | null, maxAmt: number | null): string {
-  const band = `${minAmt ?? "_"}_${maxAmt ?? "_"}`;
-  return createHash("sha256").update(`${funderId}|${normalizeTitle(title)}|${band}`).digest("hex");
+  void minAmt; void maxAmt;
+  return createHash("sha256").update(`${funderId}|${normalizeTitle(title)}`).digest("hex");
 }
 
 // Reject titles that are too generic to be real programs.
@@ -165,6 +165,7 @@ export async function discoverFunderImpl(
     await import("@/lib/firecrawl.server");
   const { scrapeWithFallback, jinaSearch } = await import("@/lib/web-fetch.server");
   const { shouldFetch, recordFetch } = await import("@/lib/crawl-ledger.server");
+  const { fetchCandidateLinksFromSitemaps } = await import("@/lib/site-candidates.server");
 
   const runId = newRunId();
   const t0 = Date.now();
@@ -198,17 +199,17 @@ export async function discoverFunderImpl(
         if (m.ok) m.links.forEach((l) => mapped.add(l));
       }
     }
-    // Last-resort seeding: free Jina Search constrained to the funder host.
-    // Helps when Firecrawl map returns nothing (paywalled sitemaps, JS-only nav).
-    let seedSearchUsed = 0;
+    // Last-resort seeding from the funder's own sitemaps so discovery stays
+    // alive even when external search providers throttle or change policy.
+    let sitemapSeedUsed = 0;
     if (mapped.size < 3) {
       try {
-        const host = new URL(F.source_url).host;
-        const r = await jinaSearch(`site:${host} (program OR funding OR grant OR subvention OR financement)`, 20);
-        if (r.ok) {
-          r.hits.forEach((h) => mapped.add(h.url));
-          seedSearchUsed = r.hits.length;
-        }
+        const seeded = await fetchCandidateLinksFromSitemaps(F.source_url, {
+          title: F.name,
+          max: 20,
+        });
+        seeded.forEach((candidate) => mapped.add(candidate.url));
+        sitemapSeedUsed = seeded.length;
       } catch { /* ignore */ }
     }
     indexUrls.forEach((u) => mapped.add(u));
@@ -362,7 +363,7 @@ export async function discoverFunderImpl(
         funder_id: F.id, funder_name: F.name, engine: "firecrawl_v2",
         urls_mapped: mapped.size, urls_scraped: candidates.length,
         urls_skipped: skipped, found: foundTotal, inserted, seen_again: seenAgain,
-        seed_search_used: seedSearchUsed,
+        seed_sitemap_used: sitemapSeedUsed,
         via_counts: viaCounts,
         per_page: perPageStats.slice(0, 12),
       },
@@ -462,10 +463,14 @@ export async function discoverFunderImpl(
     }
   } catch { /* Jina best-effort */ }
 
+  const sitemapSeeded = await fetchCandidateLinksFromSitemaps(F.source_url, {
+    title: F.name,
+    max: FALLBACK_MAX_LINKS,
+  }).catch(() => []);
 
   // Merge index + seeded, dedupe by URL, keep best score, cap at FALLBACK_MAX_LINKS.
   const merged = new Map<string, { url: string; text: string; score: number }>();
-  for (const l of [...linksFromIndex, ...seeded]) {
+  for (const l of [...linksFromIndex, ...seeded, ...sitemapSeeded]) {
     const prev = merged.get(l.url);
     if (!prev || prev.score < l.score) merged.set(l.url, l);
   }
