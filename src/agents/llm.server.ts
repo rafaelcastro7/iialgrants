@@ -54,8 +54,8 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         });
         return { text: r.text, inputTokens: r.inputTokens, outputTokens: r.outputTokens, runId: r.runId, model: r.model, provider: r.provider };
       }
-    } catch {
-      // Fall through to direct Lovable call below.
+    } catch (e) {
+      console.warn("[callLlm] free cascade failed, falling back to Lovable:", e instanceof Error ? e.message : String(e));
     }
   }
 

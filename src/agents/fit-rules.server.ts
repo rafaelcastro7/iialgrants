@@ -155,7 +155,11 @@ function detectCostShare(hay: string): number | null {
     hay.match(/\b(\d{1,3})\s*%\s*(?:cost[- ]?share|match|contribution|funding|grant)/) ||
     hay.match(/\b(\d{1,2})\s*\/\s*(\d{1,2})\b/);
   if (!m) return null;
-  if (m[2] && Number(m[1]) + Number(m[2]) === 100) return 100 - Number(m[1]);
+  if (m[2]) {
+    const a = Number(m[1]), b = Number(m[2]);
+    if (a + b === 100) return 100 - a;
+    if (a + b > 0) return Math.round((b / (a + b)) * 100);
+  }
   const n = Number(m[1]);
   if (n >= 0 && n <= 100) return 100 - n;
   return null;

@@ -689,8 +689,10 @@ export async function enrichGrantImpl(
 
   const extractedKeys = Object.keys(patch);
   const llmCascadeFailed = stillMissing.length > 0 && llmInfo?.provider === "none";
-  if (extractedKeys.length === 0 && llmCascadeFailed) {
-    const reason = "no_extraction: deterministic=0 llm_cascade=all_providers_failed";
+  if (extractedKeys.length === 0) {
+    const reason = llmCascadeFailed
+      ? "no_extraction: deterministic=0 llm_cascade=all_providers_failed"
+      : "no_extraction: deterministic=0 llm_rejected_all_fields";
     await trace("commit", reason, "error", { still_missing: stillMissing });
     await db.from("grants").update({
       enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,

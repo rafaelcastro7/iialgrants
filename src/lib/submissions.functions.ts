@@ -52,7 +52,8 @@ export const submitProposal = createServerFn({ method: "POST" })
       .eq("status", "in_proposal");
     if (ge) throw new Error(ge.message);
 
-    await supabase.from("proposals").update({ status: "submitted" }).eq("id", proposal.id);
+    const { error: pe2 } = await supabase.from("proposals").update({ status: "submitted" }).eq("id", proposal.id);
+    if (pe2) throw new Error(pe2.message);
     return { ok: true, submission: sub };
   });
 
@@ -95,11 +96,12 @@ export const recordOutcome = createServerFn({ method: "POST" })
 
     // Transition grant to terminal state when result is won/lost.
     if (data.result === "won" || data.result === "lost") {
-      await supabase
+      const { error: ge2 } = await supabase
         .from("grants")
         .update({ status: data.result })
         .eq("id", sub.grant_id)
         .eq("status", "submitted");
+      if (ge2) throw new Error(ge2.message);
     }
     return { ok: true };
   });
