@@ -1,0 +1,128 @@
+- main [ref=f8e2]:
+  - generic [ref=f8e4]:
+    - navigation [ref=f8e5]:
+      - link "IIAL" [ref=f8e6] [cursor=pointer]:
+        - /url: /dashboard
+      - link "Dashboard" [ref=f8e7] [cursor=pointer]:
+        - /url: /dashboard
+      - link "Grants" [ref=f8e8] [cursor=pointer]:
+        - /url: /grants
+      - link "Proposals" [ref=f8e9] [cursor=pointer]:
+        - /url: /proposals
+      - link "Organization profile" [ref=f8e10] [cursor=pointer]:
+        - /url: /org
+      - link "Screening Rules" [ref=f8e11] [cursor=pointer]:
+        - /url: /fit-rules
+    - button "Sign out" [ref=f8e12] [cursor=pointer]
+  - generic [ref=f8e13]:
+    - generic [ref=f8e15]:
+      - heading "Grants Workspace" [level=1] [ref=f8e16]
+      - paragraph [ref=f8e17]: Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step.
+    - generic [ref=f8e18]:
+      - generic [ref=f8e19]:
+        - generic [ref=f8e20]:
+          - paragraph [ref=f8e21]: Total Opportunities
+          - paragraph [ref=f8e22]: "02"
+        - generic [ref=f8e23]:
+          - paragraph [ref=f8e24]: Needs Action
+          - paragraph [ref=f8e25]: "01"
+        - generic [ref=f8e26]:
+          - paragraph [ref=f8e27]: Avg Fit
+          - paragraph [ref=f8e28]: 96%
+        - generic [ref=f8e29]:
+          - paragraph [ref=f8e30]: In Pipeline
+          - paragraph [ref=f8e31]: $0
+      - generic [ref=f8e33]:
+        - generic [ref=f8e34]: WORKFLOW
+        - paragraph [ref=f8e35]: Discover funds → Enrich profile → Evaluate fit → Shortlist → Draft → Submit. Each card shows the next action you should take.
+      - generic [ref=f8e36]:
+        - generic [ref=f8e38]:
+          - generic [ref=f8e39]:
+            - img
+            - searchbox "Search grants" [ref=f8e40]
+          - generic [ref=f8e41]:
+            - generic [ref=f8e42]: Sort
+            - combobox "Sort grants" [ref=f8e43]:
+              - option "Best fit" [selected]
+              - option "Deadline"
+              - option "Amount"
+              - option "Newest"
+          - combobox "Jurisdiction" [ref=f8e44]:
+            - option "All jurisdictions" [selected]
+            - option "CA"
+          - button "Eligible only" [ref=f8e45] [cursor=pointer]:
+            - generic [ref=f8e46]: Eligible only
+          - button "With deadline" [ref=f8e47] [cursor=pointer]:
+            - generic [ref=f8e48]: With deadline
+        - generic [ref=f8e49]:
+          - button "NotebookLM" [ref=f8e50] [cursor=pointer]:
+            - img
+            - text: NotebookLM
+          - button "All funders" [ref=f8e51] [cursor=pointer]:
+            - img
+            - text: All funders
+          - button "Discover & Enrich" [ref=f8e52] [cursor=pointer]
+      - generic [ref=f8e53]:
+        - generic [ref=f8e54]:
+          - heading "Discovered 01" [level=3] [ref=f8e56]
+          - paragraph [ref=f8e58]: Found by the discovery agents. Needs enrichment.
+          - generic [ref=f8e60]:
+            - generic [ref=f8e61]:
+              - generic [ref=f8e62]:
+                - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f8e63]
+                - generic [ref=f8e64]: Not scored
+              - generic [ref=f8e65]: No deadline
+            - link "Industrial Research Assistance Program (IRAP)" [ref=f8e66] [cursor=pointer]:
+              - /url: /grants/8704d800-3dd2-4dc6-8e6b-7831e899b490
+            - paragraph [ref=f8e67]: National Research Council Canada (IRAP) · CA
+            - generic [ref=f8e68]:
+              - button "Enrich profile" [ref=f8e69] [cursor=pointer]
+              - link "Open detail" [ref=f8e70] [cursor=pointer]:
+                - /url: /grants/8704d800-3dd2-4dc6-8e6b-7831e899b490
+                - img
+        - generic [ref=f8e71]:
+          - heading "Enriched 00" [level=3] [ref=f8e73]
+          - paragraph [ref=f8e75]: Data fully extracted with citations. Ready for fit evaluation.
+          - generic [ref=f8e77]: No grants in this stage
+        - generic [ref=f8e78]:
+          - heading "Evaluated 01" [level=3] [ref=f8e80]
+          - paragraph [ref=f8e82]: Scored against your screening rules. Review and shortlist.
+          - generic [ref=f8e84]:
+            - generic [ref=f8e85]:
+              - generic [ref=f8e86]:
+                - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f8e87]
+                - generic "Fit score 96/100" [ref=f8e88]: 96% Fit
+              - generic [ref=f8e89]: No deadline
+            - link "Industrial Research Assistance Program (IRAP)" [ref=f8e90] [cursor=pointer]:
+              - /url: /grants/341e8c5a-f334-46d0-b4b2-e10b9258b912
+            - paragraph [ref=f8e91]: National Research Council Canada (IRAP) · CA
+            - generic [ref=f8e93]:
+              - img [ref=f8e94]
+              - text: Evidence cited
+            - generic [ref=f8e97]:
+              - link "Review & shortlist" [ref=f8e98] [cursor=pointer]:
+                - /url: /grants/341e8c5a-f334-46d0-b4b2-e10b9258b912
+              - link "Open detail" [ref=f8e99] [cursor=pointer]:
+                - /url: /grants/341e8c5a-f334-46d0-b4b2-e10b9258b912
+                - img
+        - generic [ref=f8e100]:
+          - heading "Shortlisted 00" [level=3] [ref=f8e102]
+          - paragraph [ref=f8e104]: Curated as a real opportunity. Start drafting.
+          - generic [ref=f8e106]: No grants in this stage
+        - generic [ref=f8e107]:
+          - heading "Drafting 00" [level=3] [ref=f8e109]
+          - paragraph [ref=f8e111]: A proposal exists. Continue writing or send to NotebookLM.
+          - generic [ref=f8e113]: No grants in this stage
+        - generic [ref=f8e114]:
+          - heading "Submitted 00" [level=3] [ref=f8e116]
+          - paragraph [ref=f8e118]: Filed with the funder. Outcome tracking only.
+          - generic [ref=f8e120]: No grants in this stage
+        - generic [ref=f8e121]:
+          - heading "Archived 00" [level=3] [ref=f8e123]
+          - paragraph [ref=f8e125]: Filtered out by screening rules or manually archived.
+          - generic [ref=f8e127]: No grants in this stage
+    - button "Event log Show" [ref=f8e130]:
+      - generic [ref=f8e131]:
+        - img [ref=f8e132]
+        - text: Event log
+      - generic [ref=f8e134]: Show

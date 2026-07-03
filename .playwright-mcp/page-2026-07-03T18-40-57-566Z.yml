@@ -1,0 +1,22 @@
+- generic [ref=f3e3]:
+  - generic [ref=f3e5]: Sign in
+  - generic [ref=f3e6]:
+    - generic [ref=f3e7]:
+      - generic [ref=f3e8]:
+        - text: Email
+        - textbox "Email" [ref=f3e9]
+      - generic [ref=f3e10]:
+        - text: Password
+        - textbox "Password" [ref=f3e11]
+      - alert [ref=f3e12]: "{}"
+      - button "Sign in" [ref=f3e13] [cursor=pointer]
+      - button "Sign up" [ref=f3e14]
+    - generic [ref=f3e15]:
+      - paragraph [ref=f3e16]: Demo autologin
+      - generic [ref=f3e17]:
+        - button "Admin" [ref=f3e18] [cursor=pointer]
+        - button "Member A" [ref=f3e19] [cursor=pointer]
+        - button "Member B" [ref=f3e20] [cursor=pointer]
+      - paragraph [ref=f3e21]:
+        - text: Seeded accounts · password
+        - code [ref=f3e22]: IIAL-Demo-2026!

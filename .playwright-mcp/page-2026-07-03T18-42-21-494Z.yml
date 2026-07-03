@@ -1,0 +1,31 @@
+- main [ref=f4e2]:
+  - generic [ref=f4e3]:
+    - heading "Dashboard" [level=1] [ref=f4e4]
+    - button "Sign out" [ref=f4e6] [cursor=pointer]
+  - generic [ref=f4e7]:
+    - generic [ref=f4e9]: IIAL
+    - generic [ref=f4e10]:
+      - paragraph [ref=f4e11]: —
+      - paragraph [ref=f4e12]: AI-native grant intelligence for Canadian organizations
+      - generic [ref=f4e13]:
+        - link "Grants →" [ref=f4e14] [cursor=pointer]:
+          - /url: /grants
+          - button "Grants →" [ref=f4e15]
+        - link "Organization" [ref=f4e16] [cursor=pointer]:
+          - /url: /org
+          - button "Organization" [ref=f4e17]
+        - link "Fit Rules" [ref=f4e18] [cursor=pointer]:
+          - /url: /fit-rules
+          - button "Fit Rules" [ref=f4e19]
+        - link "Proposals" [ref=f4e20] [cursor=pointer]:
+          - /url: /proposals
+          - button "Proposals" [ref=f4e21]
+        - link "Submissions" [ref=f4e22] [cursor=pointer]:
+          - /url: /submissions
+          - button "Submissions" [ref=f4e23]
+        - link "Privacy" [ref=f4e24] [cursor=pointer]:
+          - /url: /privacy
+          - button "Privacy" [ref=f4e25]
+        - link "Compliance" [ref=f4e26] [cursor=pointer]:
+          - /url: /compliance
+          - button "Compliance" [ref=f4e27]
