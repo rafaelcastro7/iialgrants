@@ -25,6 +25,18 @@ plugins:
         - admin
         - anon
 
+  - name: cors
+    config:
+      origins:
+        - http://localhost:8080
+        - http://localhost:5173
+        - http://localhost:3000
+      methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+      headers: [Accept, Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version, x-retry-count, Prefer, Range, Range-Unit, accept-profile, content-profile]
+      exposed_headers: [Content-Range, X-Total-Count]
+      credentials: true
+      max_age: 3600
+
 services:
   - name: auth
     url: http://auth:9999/
