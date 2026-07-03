@@ -25,7 +25,7 @@ const AMOUNT = String.raw`(?:${CAD}\s*${NUM}${SUFFIX}|${NUM}${SUFFIX}\s*(?:M\s*\
 // Range: "between X and Y", "de X à Y", "$50K-$250K", "$50K–$250K"
 const RANGE = new RegExp(
   String.raw`(?:between|entre|de|from)\s+(${AMOUNT})\s+(?:and|to|et|à|à\s+un\s+maximum\s+de|jusqu['’]à)\s+(${AMOUNT})` +
-  String.raw`|(${AMOUNT})\s*[-–—]\s*(${AMOUNT})`,
+    String.raw`|(${AMOUNT})\s*[-–—]\s*(${AMOUNT})`,
   "gi",
 );
 const UP_TO = new RegExp(
@@ -33,7 +33,8 @@ const UP_TO = new RegExp(
   "gi",
 );
 // Keywords that anchor an amount to grant context.
-const FUNDING_ANCHOR = /\b(?:fund(?:ing|ed)?|grant|award|contribut(?:ion|e)|financ(?:ement|ing)|amount|total\s+value|up\s+to|maximum|max|min(?:imum)?|eligible|approved|per\s+project|annuall?y?)\b/i;
+const FUNDING_ANCHOR =
+  /\b(?:fund(?:ing|ed)?|grant|award|contribut(?:ion|e)|financ(?:ement|ing)|amount|total\s+value|up\s+to|maximum|max|min(?:imum)?|eligible|approved|per\s+project|annuall?y?)\b/i;
 const SINGLE = new RegExp(AMOUNT, "gi");
 
 function parseOne(raw: string): number | null {
@@ -84,9 +85,10 @@ export function extractAmounts(text: string): AmountMatch | null {
     if (!rawMin || !rawMax) continue;
     const min = parseOne(rawMin);
     const max = parseOne(rawMax);
-    if (min != null && max != null && max >= min && max !== min) {
+    if (min != null && max != null && max >= min) {
       return {
-        min, max,
+        min,
+        max,
         snippet: windowAround(text, rm.index, rm[0].length),
         matchOffset: rm.index,
         raw: rm[0],
@@ -101,7 +103,8 @@ export function extractAmounts(text: string): AmountMatch | null {
     const max = parseOne(um[1]);
     if (max != null) {
       return {
-        min: null, max,
+        min: null,
+        max,
         snippet: windowAround(text, um.index, um[0].length),
         matchOffset: um.index,
         raw: um[0],
@@ -120,7 +123,10 @@ export function extractAmounts(text: string): AmountMatch | null {
   while ((m = SINGLE.exec(head)) !== null) {
     const v = parseOne(m[0]);
     if (v == null || v < 1000) continue;
-    const window = head.slice(Math.max(0, m.index - 120), Math.min(head.length, m.index + m[0].length + 120));
+    const window = head.slice(
+      Math.max(0, m.index - 120),
+      Math.min(head.length, m.index + m[0].length + 120),
+    );
     if (FUNDING_ANCHOR.test(window)) {
       anchoredAmounts.push({ value: v, index: m.index, raw: m[0] });
     }
@@ -129,7 +135,8 @@ export function extractAmounts(text: string): AmountMatch | null {
     // Among anchored amounts, prefer the largest (most likely to be the max grant value).
     const best = anchoredAmounts.reduce((a, b) => (b.value > a.value ? b : a));
     return {
-      min: null, max: best.value,
+      min: null,
+      max: best.value,
       snippet: windowAround(text, best.index, best.raw.length),
       matchOffset: best.index,
       raw: best.raw,
@@ -147,7 +154,8 @@ export function extractAmounts(text: string): AmountMatch | null {
   }
   if (fallbackBest) {
     return {
-      min: null, max: fallbackBest.value,
+      min: null,
+      max: fallbackBest.value,
       snippet: windowAround(text, fallbackBest.index, fallbackBest.raw.length),
       matchOffset: fallbackBest.index,
       raw: fallbackBest.raw,

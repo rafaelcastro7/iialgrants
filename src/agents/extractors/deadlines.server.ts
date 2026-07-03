@@ -5,20 +5,40 @@ import * as chrono from "chrono-node";
 import { windowAround } from "@/agents/evidence.server";
 
 const DEADLINE_HINTS_EN = [
-  "deadline", "apply by", "applications close", "closing date", "submission deadline",
-  "due date", "must be received by", "no later than", "expires", "closes on",
+  "deadline",
+  "apply by",
+  "applications close",
+  "closing date",
+  "submission deadline",
+  "due date",
+  "must be received by",
+  "no later than",
+  "expires",
+  "closes on",
 ];
 const DEADLINE_HINTS_FR = [
-  "date limite", "échéance", "avant le", "au plus tard", "fin de l'appel",
-  "clôture", "expire", "date de clôture", "ferme le",
+  "date limite",
+  "échéance",
+  "avant le",
+  "au plus tard",
+  "fin de l'appel",
+  "clôture",
+  "expire",
+  "date de clôture",
+  "ferme le",
 ];
 const ROLLING_HINTS = [
-  "rolling intake", "continuous intake", "open continuously", "accepting applications on an ongoing basis",
-  "admission continue", "réception continue", "en continu",
+  "rolling intake",
+  "continuous intake",
+  "open continuously",
+  "accepting applications on an ongoing basis",
+  "admission continue",
+  "réception continue",
+  "en continu",
 ];
 
 export type DeadlineMatch = {
-  iso: string;            // YYYY-MM-DD
+  iso: string; // YYYY-MM-DD
   snippet: string;
   matchOffset: number;
 };
@@ -51,9 +71,10 @@ export function extractDeadline(text: string, locale: "en" | "fr" = "en"): Deadl
     let idx = 0;
     while ((idx = lower.indexOf(hint, idx)) !== -1) {
       const window = text.slice(idx, Math.min(text.length, idx + 240));
-      const parsed = locale === "fr"
-        ? chrono.fr.parse(window, new Date(), { forwardDate: true })
-        : chrono.parse(window, new Date(), { forwardDate: true });
+      const parsed =
+        locale === "fr"
+          ? chrono.fr.parse(window, new Date(), { forwardDate: true })
+          : chrono.parse(window, new Date(), { forwardDate: true });
       for (const p of parsed) {
         const d = p.date();
         // Allow recent past dates (programs often leave last year's deadline up while preparing the next)
@@ -65,11 +86,18 @@ export function extractDeadline(text: string, locale: "en" | "fr" = "en"): Deadl
     }
   }
 
-  // 3. Pick the earliest future date (>= now) if one exists, otherwise the most recent past date.
+  // 3. Pick the earliest non-past date if one exists, otherwise the most recent past date.
+  // Compare against start-of-today so a deadline dated today (parsed at 00:00)
+  // still counts as "future" regardless of the current time of day.
   if (candidates.length === 0) return null;
-  const now = new Date();
-  const future = candidates.filter((c) => c.date >= now).sort((a, b) => a.date.getTime() - b.date.getTime());
-  const past = candidates.filter((c) => c.date < now).sort((a, b) => b.date.getTime() - a.date.getTime());
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const future = candidates
+    .filter((c) => c.date >= startOfToday)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const past = candidates
+    .filter((c) => c.date < startOfToday)
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
   const pick = future.length > 0 ? future[0] : past[0];
   const iso = pick.date.toISOString().slice(0, 10);
   return {
