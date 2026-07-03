@@ -22,8 +22,16 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const ScopeEnum = z.enum(["single", "selected", "top-fit", "shortlisted", "all-enriched"]);
 
 type GrantStatus =
-  | "discovered" | "enriched" | "scored" | "shortlisted"
-  | "in_proposal" | "submitted" | "won" | "lost" | "expired" | "archived";
+  | "discovered"
+  | "enriched"
+  | "scored"
+  | "shortlisted"
+  | "in_proposal"
+  | "submitted"
+  | "won"
+  | "lost"
+  | "expired"
+  | "archived";
 const ELIGIBLE_STATUSES: GrantStatus[] = ["enriched", "scored", "shortlisted", "in_proposal"];
 
 const MAX_SPANS_PER_GRANT = 25;
@@ -32,12 +40,14 @@ const MAX_EVENTS_PER_GRANT = 12;
 export const buildNotebookBriefing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({
-      scope: ScopeEnum.default("top-fit"),
-      ids: z.array(z.string().uuid()).max(50).optional(),
-      maxItems: z.number().int().min(1).max(50).default(25),
-      autoShortlist: z.boolean().default(true),
-    }).parse(i ?? {}),
+    z
+      .object({
+        scope: ScopeEnum.default("top-fit"),
+        ids: z.array(z.string().uuid()).max(50).optional(),
+        maxItems: z.number().int().min(1).max(50).default(25),
+        autoShortlist: z.boolean().default(true),
+      })
+      .parse(i ?? {}),
   )
   .handler(async ({ data, context }) => {
     return buildNotebookBriefingImpl({ data, supabase: context.supabase, userId: context.userId });
@@ -47,10 +57,18 @@ export const buildNotebookBriefing = createServerFn({ method: "POST" })
 // end-to-end without the auth middleware. Public callers go through the
 // serverFn above; tests pass a mocked supabase client + userId.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" | "selected" | "top-fit" | "shortlisted" | "all-enriched"; ids?: string[]; maxItems: number; autoShortlist: boolean }; supabase: any; userId: string }) {
+export async function buildNotebookBriefingImpl(opts: {
+  data: {
+    scope: "single" | "selected" | "top-fit" | "shortlisted" | "all-enriched";
+    ids?: string[];
+    maxItems: number;
+    autoShortlist: boolean;
+  };
+  supabase: any;
+  userId: string;
+}) {
   const { data, supabase, userId } = opts;
   try {
-
     type Row = {
       id: string;
       title: string;
@@ -69,8 +87,18 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
       enriched_at: string | null;
       scored_at: string | null;
       funder:
-        | { name: string; jurisdiction: string | null; website: string | null; source_url: string | null }
-        | { name: string; jurisdiction: string | null; website: string | null; source_url: string | null }[]
+        | {
+            name: string;
+            jurisdiction: string | null;
+            website: string | null;
+            source_url: string | null;
+          }
+        | {
+            name: string;
+            jurisdiction: string | null;
+            website: string | null;
+            source_url: string | null;
+          }[]
         | null;
     };
 
@@ -89,14 +117,13 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
       }
       q = q.in("id", data.ids);
     } else if (data.scope === "shortlisted") {
-      q = q.eq("status", "shortlisted")
-        .order("fit_score", { ascending: false, nullsFirst: false });
+      q = q.eq("status", "shortlisted").order("fit_score", { ascending: false, nullsFirst: false });
     } else if (data.scope === "all-enriched") {
-      q = q.in("status", ELIGIBLE_STATUSES)
-        .order("discovered_at", { ascending: false });
+      q = q.in("status", ELIGIBLE_STATUSES).order("discovered_at", { ascending: false });
     } else {
       // top-fit (default)
-      q = q.in("status", ELIGIBLE_STATUSES)
+      q = q
+        .in("status", ELIGIBLE_STATUSES)
         .not("fit_score", "is", null)
         .order("fit_score", { ascending: false, nullsFirst: false });
     }
@@ -122,7 +149,10 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
       .eq("user_id", userId)
       .in("grant_id", ids)
       .order("created_at", { ascending: false });
-    const evalByGrant = new Map<string, { fit_score: number; eligibility_pass: boolean; rationale: string }>();
+    const evalByGrant = new Map<
+      string,
+      { fit_score: number; eligibility_pass: boolean; rationale: string }
+    >();
     for (const e of evals ?? []) {
       if (evalByGrant.has(e.grant_id)) continue; // keep latest only
       evalByGrant.set(e.grant_id, {
@@ -167,13 +197,17 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
       if (e == null) return null;
       if (typeof e === "string") return e.trim() || null;
       if (Array.isArray(e)) {
-        const items = e.filter(Boolean).map((x) => typeof x === "string" ? x : JSON.stringify(x));
+        const items = e.filter(Boolean).map((x) => (typeof x === "string" ? x : JSON.stringify(x)));
         return items.length ? items.map((s) => `- ${s}`).join("\n") : null;
       }
       if (typeof e === "object") {
-        const entries = Object.entries(e as Record<string, unknown>).filter(([, v]) => v != null && v !== "");
+        const entries = Object.entries(e as Record<string, unknown>).filter(
+          ([, v]) => v != null && v !== "",
+        );
         if (!entries.length) return null;
-        return entries.map(([k, v]) => `- **${k}**: ${typeof v === "string" ? v : JSON.stringify(v)}`).join("\n");
+        return entries
+          .map(([k, v]) => `- **${k}**: ${typeof v === "string" ? v : JSON.stringify(v)}`)
+          .join("\n");
       }
       return String(e);
     };
@@ -266,7 +300,10 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
             citationIdx++;
             const conf = Math.round(Number(s.confidence ?? 0) * 100);
             const snippet = (s.snippet ?? "").trim().replace(/\s+/g, " ").slice(0, 320);
-            const value = (typeof s.value === "string" ? s.value : JSON.stringify(s.value))?.slice(0, 160);
+            const value = (typeof s.value === "string" ? s.value : JSON.stringify(s.value))?.slice(
+              0,
+              160,
+            );
             parts.push(
               `[${citationIdx}] _${s.agent} · ${s.extraction_method} · ${conf}% confidence_${value ? ` → \`${value}\`` : ""}`,
               `> ${snippet || "(no snippet captured)"}`,
@@ -291,7 +328,9 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
           const who = e.actor_agent ?? "curator";
           const transition = `${e.from_status ?? "∅"} → **${e.to_status}**`;
           const reason = e.reason ? ` · ${e.reason}` : "";
-          parts.push(`- \`${e.created_at.slice(0, 16).replace("T", " ")}\` · ${who} · ${transition}${reason}`);
+          parts.push(
+            `- \`${e.created_at.slice(0, 16).replace("T", " ")}\` · ${who} · ${transition}${reason}`,
+          );
         }
         parts.push(``);
       }
@@ -346,7 +385,12 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
     let shortlistedCount = 0;
     const TERMINAL = new Set(["submitted", "won", "lost", "expired", "archived"]);
     if (data.autoShortlist && !singleScope) {
-      const toBump = rows.filter((r) => r.status !== "shortlisted" && r.status !== "in_proposal" && !TERMINAL.has(r.status as GrantStatus));
+      const toBump = rows.filter(
+        (r) =>
+          r.status !== "shortlisted" &&
+          r.status !== "in_proposal" &&
+          !TERMINAL.has(r.status as GrantStatus),
+      );
       if (toBump.length > 0) {
         const ts = new Date().toISOString();
         for (const r of toBump) {
@@ -356,13 +400,9 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
             .eq("id", r.id);
           if (uerr) continue;
           shortlistedCount++;
-          await supabase.from("grant_events").insert({
-            grant_id: r.id,
-            from_status: r.status as never,
-            to_status: "shortlisted" as never,
-            actor_user_id: userId,
-            metadata: { source: "notebooklm_briefing", scope: data.scope } as never,
-          });
+          // The grants_log_transition trigger records this transition with
+          // actor_user_id = auth.uid() (migration 20260703080000); inserting
+          // here as well would duplicate the immutable audit timeline.
         }
       }
     }
