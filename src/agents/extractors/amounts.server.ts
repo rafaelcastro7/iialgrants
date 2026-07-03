@@ -34,7 +34,9 @@ const UP_TO = new RegExp(
 );
 // Keywords that anchor an amount to grant context.
 const FUNDING_ANCHOR =
-  /\b(?:fund(?:ing|ed)?|grant|award|contribut(?:ion|e)|financ(?:ement|ing)|amount|total\s+value|up\s+to|maximum|max|min(?:imum)?|eligible|approved|per\s+project|annuall?y?)\b/i;
+  /\b(?:fund(?:ing|ed)?|grant|award|subvention|contribut(?:ion|e)|financ(?:ement|ing)|amount|montant|total\s+value|up\s+to|maximum|max|min(?:imum)?|eligible|approved|exceed|project|projet|per\s+project)\b/i;
+const NON_AWARD_CONTEXT =
+  /\b(?:budget|fy\d{2}|fy\s*\d{2}|fiscal|expenditure|spending|spent|pandemic\s+response|program'?s\s+contribution|annual\s+contribution\s+funding|firms\s+receiving|operating\s+costs?|annual\s+report)\b/i;
 const SINGLE = new RegExp(AMOUNT, "gi");
 
 function parseOne(raw: string): number | null {
@@ -46,8 +48,8 @@ function parseOne(raw: string): number | null {
   // Detect suffix
   const lower = raw.toLowerCase();
   let mult = 1;
-  if (/m(?:illion)?s?\b|\bM\$|\bM\b/.test(raw)) mult = 1_000_000;
-  else if (/k\b/i.test(raw)) mult = 1_000;
+  if (/m(?:illion)?s?\b|\bm\$|\bm\b/.test(lower)) mult = 1_000_000;
+  else if (/k\b/.test(lower)) mult = 1_000;
   // Strip suffix letters
   const numStr = cleaned.replace(/[kKmM]|million[s]?/gi, "");
   // EU vs US decimal: if has both . and , the rightmost is decimal
@@ -75,10 +77,19 @@ function parseOne(raw: string): number | null {
 export function extractAmounts(text: string): AmountMatch | null {
   if (!text) return null;
 
+  const isPlausibleAwardContext = (index: number, length: number) => {
+    const context = text.slice(
+      Math.max(0, index - 180),
+      Math.min(text.length, index + length + 180),
+    );
+    return FUNDING_ANCHOR.test(context) && !NON_AWARD_CONTEXT.test(context);
+  };
+
   // 1. Range form is highest priority. Handles: "between X and Y", "de X à Y", "$50K–$250K".
   RANGE.lastIndex = 0;
   let rm: RegExpExecArray | null;
   while ((rm = RANGE.exec(text)) !== null) {
+    if (!isPlausibleAwardContext(rm.index, rm[0].length)) continue;
     // Groups 1,2 from word-range form; groups 3,4 from dash-range form.
     const rawMin = rm[1] ?? rm[3];
     const rawMax = rm[2] ?? rm[4];
@@ -99,7 +110,7 @@ export function extractAmounts(text: string): AmountMatch | null {
   // 2. "up to X" / "maximum X" / "not to exceed X" form.
   UP_TO.lastIndex = 0;
   const um = UP_TO.exec(text);
-  if (um) {
+  if (um && isPlausibleAwardContext(um.index, um[0].length)) {
     const max = parseOne(um[1]);
     if (max != null) {
       return {
@@ -127,7 +138,7 @@ export function extractAmounts(text: string): AmountMatch | null {
       Math.max(0, m.index - 120),
       Math.min(head.length, m.index + m[0].length + 120),
     );
-    if (FUNDING_ANCHOR.test(window)) {
+    if (FUNDING_ANCHOR.test(window) && !NON_AWARD_CONTEXT.test(window)) {
       anchoredAmounts.push({ value: v, index: m.index, raw: m[0] });
     }
   }
@@ -140,25 +151,6 @@ export function extractAmounts(text: string): AmountMatch | null {
       snippet: windowAround(text, best.index, best.raw.length),
       matchOffset: best.index,
       raw: best.raw,
-    };
-  }
-  // Second pass: any amount ≥ $1000 in first 3000 chars (no anchor required).
-  const narrowHead = text.slice(0, 3000);
-  let fallbackBest: { value: number; index: number; raw: string } | null = null;
-  SINGLE.lastIndex = 0;
-  while ((m = SINGLE.exec(narrowHead)) !== null) {
-    const v = parseOne(m[0]);
-    if (v != null && v >= 1000 && (fallbackBest == null || v > fallbackBest.value)) {
-      fallbackBest = { value: v, index: m.index, raw: m[0] };
-    }
-  }
-  if (fallbackBest) {
-    return {
-      min: null,
-      max: fallbackBest.value,
-      snippet: windowAround(text, fallbackBest.index, fallbackBest.raw.length),
-      matchOffset: fallbackBest.index,
-      raw: fallbackBest.raw,
     };
   }
   return null;

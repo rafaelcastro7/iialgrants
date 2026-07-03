@@ -13,6 +13,20 @@ branch syncs pushed commits back to the editor.
 - Kong / Supabase API gateway: `http://localhost:15435`
 - Postgres: `localhost:15432`
 - Dev app: `http://localhost:8080`
+- Ollama: `http://localhost:11434`
+
+## Local LLM settings
+
+The live local smoke path uses Ollama. On this workstation, `qwen3:14b` can
+exceed the default 60s agent timeout and leave Ollama slow for later calls. The
+local `.env` therefore pins:
+
+- `OLLAMA_MODEL=phi4-mini:latest`
+- `OLLAMA_TIMEOUT_MS=120000`
+
+If Ollama starts timing out even for small prompts, restart the local Ollama
+process and confirm `http://localhost:11434/api/ps` is empty before rerunning
+the live pipeline smoke.
 
 ## Health check
 

@@ -105,6 +105,7 @@ export async function evaluateGrantImpl(opts: {
     agent: "evaluator",
     runId,
     temperature: 0.1,
+    maxOutputTokens: 256,
     responseFormat: "json",
     messages: [
       {
@@ -124,7 +125,11 @@ export async function evaluateGrantImpl(opts: {
   const usedModel = llm.model ?? "unknown";
   let parsed: ReturnType<typeof EvaluatorOutput.parse>;
   try {
-    parsed = EvaluatorOutput.parse(JSON.parse(llm.text));
+    const raw = JSON.parse(llm.text);
+    if (raw && typeof raw === "object" && raw.eligibility_pass === undefined) {
+      raw.eligibility_pass = !rulesResult.hard_fail;
+    }
+    parsed = EvaluatorOutput.parse(raw);
   } catch (e) {
     await trace(
       "parse",
