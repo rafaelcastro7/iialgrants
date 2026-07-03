@@ -43,13 +43,25 @@ export async function enrichGrantImpl(
     message: string,
     status: "info" | "ok" | "warn" | "error" | "start" | "done" = "info",
     payload?: Record<string, unknown>,
-  ) => traceStep({ runId, grantId: data.grantId, agent: "enricher", step, status, message, payload, db: db as never });
+  ) =>
+    traceStep({
+      runId,
+      grantId: data.grantId,
+      agent: "enricher",
+      step,
+      status,
+      message,
+      payload,
+      db: db as never,
+    });
 
   await trace("init", `Starting enrichment for grant ${data.grantId.slice(0, 8)}`, "start");
 
   const { data: g, error } = await db
     .from("grants")
-    .select("id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, enrich_attempts")
+    .select(
+      "id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, enrich_attempts",
+    )
     .eq("id", data.grantId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -58,9 +70,32 @@ export async function enrichGrantImpl(
     await trace("skip", `Skipped - status is "${g.status}", not "discovered"`, "warn");
     return { ok: true, skipped: true, reason: `status=${g.status}`, runId };
   }
-  if (((g as { enrich_attempts?: number }).enrich_attempts ?? 0) >= 3) {
+  const currentAttempts = (g as { enrich_attempts?: number }).enrich_attempts ?? 0;
+  if (currentAttempts >= 3) {
     await trace("skip", "Skipped - max 3 enrich attempts reached", "warn");
     return { ok: true, skipped: true, reason: "max_attempts_reached", runId };
+  }
+
+  // Atomically claim this enrichment slot (optimistic lock). The extra .eq()
+  // guards mean only ONE concurrent worker can advance enrich_attempts from
+  // currentAttempts while the grant is still "discovered" — the loser matches
+  // zero rows and skips. This also makes the attempt counter exact (the
+  // increment happens once, here, instead of read-modify-write on each
+  // failure path).
+  const { data: claimed, error: claimErr } = await db
+    .from("grants")
+    .update({
+      enrich_attempts: currentAttempts + 1,
+      enrich_last_attempt_at: new Date().toISOString(),
+    })
+    .eq("id", g.id)
+    .eq("status", "discovered")
+    .eq("enrich_attempts", currentAttempts)
+    .select("id");
+  if (claimErr) throw new Error(claimErr.message);
+  if (!claimed || (Array.isArray(claimed) && claimed.length === 0)) {
+    await trace("skip", "Skipped - another worker claimed this grant concurrently", "warn");
+    return { ok: true, skipped: true, reason: "claimed_by_another_worker", runId };
   }
 
   const hasAmountMin = g.amount_cad_min != null;
@@ -80,10 +115,13 @@ export async function enrichGrantImpl(
 
   if (hasAmount && hasDeadline && hasSectors && hasEligibility) {
     await trace("done", "Grant already complete - marking enriched without scraping", "done");
-    await db.from("grants").update({
-      status: "enriched",
-      enriched_at: new Date().toISOString(),
-    }).eq("id", g.id);
+    await db
+      .from("grants")
+      .update({
+        status: "enriched",
+        enriched_at: new Date().toISOString(),
+      })
+      .eq("id", g.id);
     await db.from("agent_runs").insert({
       run_id: runId,
       agent: "enricher",
@@ -105,12 +143,18 @@ export async function enrichGrantImpl(
   const fetchAttempts = scraped.attempts ?? [];
   if (!scraped.ok) {
     const msg = `scrape_failed: ${scraped.error}`;
-    await trace("scrape", msg, "error", { via: scraped.via, duration_ms: Date.now() - tScrape, attempts: fetchAttempts });
-    await db.from("grants").update({
-      enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
-      enrich_last_error: msg.slice(0, 500),
-      enrich_last_attempt_at: new Date().toISOString(),
-    }).eq("id", g.id);
+    await trace("scrape", msg, "error", {
+      via: scraped.via,
+      duration_ms: Date.now() - tScrape,
+      attempts: fetchAttempts,
+    });
+    await db
+      .from("grants")
+      .update({
+        enrich_last_error: msg.slice(0, 500),
+        enrich_last_attempt_at: new Date().toISOString(),
+      })
+      .eq("id", g.id);
     await db.from("agent_runs").insert({
       run_id: runId,
       agent: "enricher",
@@ -128,7 +172,9 @@ export async function enrichGrantImpl(
   const language = (g.language as "en" | "fr") ?? "en";
   const patch: Record<string, unknown> = {};
   const methodCounts = { regex: 0, chrono: 0, rule: 0, llm: 0 };
-  const pages: Array<{ url: string; markdown: string }> = [{ url: g.url, markdown: scraped.markdown }];
+  const pages: Array<{ url: string; markdown: string }> = [
+    { url: g.url, markdown: scraped.markdown },
+  ];
   const missingFields = () => {
     const missing: string[] = [];
     if (!hasAmountMin && patch.amount_cad_min == null) missing.push("amount_cad_min");
@@ -138,17 +184,34 @@ export async function enrichGrantImpl(
     if (!hasSectors && patch.sectors == null) missing.push("sectors");
     return missing;
   };
-  const pageForQuote = (quote: string) => pages.find((page) => snippetIsGrounded(quote, page.markdown)) ?? null;
-  const grantTitleTokens: string[] = Array.from(new Set<string>(
-    g.title
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim()
-      .split(/\s+/)
-      .filter((token: string) => token.length >= 4 && !["grant", "grants", "fund", "funding", "program", "programme", "award", "awards", "support"].includes(token)),
-  ));
+  const pageForQuote = (quote: string) =>
+    pages.find((page) => snippetIsGrounded(quote, page.markdown)) ?? null;
+  const grantTitleTokens: string[] = Array.from(
+    new Set<string>(
+      g.title
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(
+          (token: string) =>
+            token.length >= 4 &&
+            ![
+              "grant",
+              "grants",
+              "fund",
+              "funding",
+              "program",
+              "programme",
+              "award",
+              "awards",
+              "support",
+            ].includes(token),
+        ),
+    ),
+  );
   const pageLooksRelevantToGrant = (page: { url: string; markdown: string }) => {
     if (grantTitleTokens.length === 0) return true;
     const hay = `${page.url}\n${page.markdown.slice(0, 2_500)}`
@@ -212,10 +275,15 @@ export async function enrichGrantImpl(
         }
         if (foundAmount) {
           methodCounts.regex++;
-          await trace("regex_amount", `Found amount on ${stage} page: $${amountMatch.min ?? "?"} - $${amountMatch.max ?? "?"}`, "ok", {
-            page: page.url,
-            snippet: amountMatch.snippet.slice(0, 200),
-          });
+          await trace(
+            "regex_amount",
+            `Found amount on ${stage} page: $${amountMatch.min ?? "?"} - $${amountMatch.max ?? "?"}`,
+            "ok",
+            {
+              page: page.url,
+              snippet: amountMatch.snippet.slice(0, 200),
+            },
+          );
         } else if (stage === "main") {
           await trace("regex_amount", "No usable amount detected by regex", "info");
         }
@@ -229,10 +297,15 @@ export async function enrichGrantImpl(
       if (deadlineMatch) {
         patch.deadline = deadlineMatch.iso;
         methodCounts.chrono++;
-        await trace("chrono_deadline", `Found deadline on ${stage} page: ${deadlineMatch.iso}`, "ok", {
-          page: page.url,
-          snippet: deadlineMatch.snippet.slice(0, 200),
-        });
+        await trace(
+          "chrono_deadline",
+          `Found deadline on ${stage} page: ${deadlineMatch.iso}`,
+          "ok",
+          {
+            page: page.url,
+            snippet: deadlineMatch.snippet.slice(0, 200),
+          },
+        );
         await recordEvidence({
           grantId: g.id,
           agent: "enricher",
@@ -346,16 +419,22 @@ export async function enrichGrantImpl(
     }
   }
 
-  await trace("extractors", `Deterministic done - regex:${methodCounts.regex} chrono:${methodCounts.chrono} rule:${methodCounts.rule}`, "done", {
-    ...methodCounts,
-    pages_consulted: pages.map((page) => page.url),
-  });
+  await trace(
+    "extractors",
+    `Deterministic done - regex:${methodCounts.regex} chrono:${methodCounts.chrono} rule:${methodCounts.rule}`,
+    "done",
+    {
+      ...methodCounts,
+      pages_consulted: pages.map((page) => page.url),
+    },
+  );
 
   const stillMissing = missingFields();
 
   // Security: sanitize markdown + enforce size limit
-  const { sanitizeMarkdown, validateTotalMarkdownSize } = await import("@/lib/prompt-safety.server");
-  const sanitizedPages = pages.map(p => ({...p, markdown: sanitizeMarkdown(p.markdown)}));
+  const { sanitizeMarkdown, validateTotalMarkdownSize } =
+    await import("@/lib/prompt-safety.server");
+  const sanitizedPages = pages.map((p) => ({ ...p, markdown: sanitizeMarkdown(p.markdown) }));
   const combinedMarkdown = sanitizedPages
     .map((page, index) => `Source ${index + 1}: ${page.url}\n${page.markdown.slice(0, 6000)}`)
     .join("\n\n");
@@ -366,18 +445,33 @@ export async function enrichGrantImpl(
     return { ok: false, runId, error: sizeCheck.error, attempts: fetchAttempts };
   }
 
-  let llmInfo: { provider: string; model: string; inputTokens?: number; outputTokens?: number } | null = null;
+  let llmInfo: {
+    provider: string;
+    model: string;
+    inputTokens?: number;
+    outputTokens?: number;
+  } | null = null;
 
   if (stillMissing.length > 0) {
-    await trace("llm_gap", `Missing fields after extractors: ${stillMissing.join(", ")} - invoking LLM cascade`, "start", { missing: stillMissing });
+    await trace(
+      "llm_gap",
+      `Missing fields after extractors: ${stillMissing.join(", ")} - invoking LLM cascade`,
+      "start",
+      { missing: stillMissing },
+    );
     const { callFreeLlm, freeProvidersAvailable } = await import("@/agents/llm-free.server");
     const available = freeProvidersAvailable();
     const hasFree = available.length > 0;
     const { firecrawlAvailable, firecrawlScrape } = await import("@/lib/firecrawl.server");
-    await trace("llm_providers", `Free providers available: ${available.join(", ") || "(none)"} | firecrawl=${firecrawlAvailable()}`, "info", {
-      providers: available,
-      firecrawl: firecrawlAvailable(),
-    });
+    await trace(
+      "llm_providers",
+      `Free providers available: ${available.join(", ") || "(none)"} | firecrawl=${firecrawlAvailable()}`,
+      "info",
+      {
+        providers: available,
+        firecrawl: firecrawlAvailable(),
+      },
+    );
 
     let llmResultText: string | null = null;
     let llmProvider = "none";
@@ -410,7 +504,10 @@ export async function enrichGrantImpl(
                 needs: stillMissing,
                 source_language: language,
                 source_url: g.url,
-                source_pages: pages.map((page) => ({ url: page.url, markdown: page.markdown.slice(0, 6000) })),
+                source_pages: pages.map((page) => ({
+                  url: page.url,
+                  markdown: page.markdown.slice(0, 6000),
+                })),
                 combined_markdown: combinedMarkdown,
               }),
             },
@@ -421,14 +518,23 @@ export async function enrichGrantImpl(
         llmModel = llm.model;
         llmInTok = llm.inputTokens;
         llmOutTok = llm.outputTokens;
-        await trace("llm_cascade", `LLM responded via ${llm.provider}/${llm.model} (${llm.outputTokens ?? "?"} tokens, ${Date.now() - tLlm}ms)`, "done", {
-          provider: llm.provider,
-          model: llm.model,
-          in: llm.inputTokens,
-          out: llm.outputTokens,
-        });
+        await trace(
+          "llm_cascade",
+          `LLM responded via ${llm.provider}/${llm.model} (${llm.outputTokens ?? "?"} tokens, ${Date.now() - tLlm}ms)`,
+          "done",
+          {
+            provider: llm.provider,
+            model: llm.model,
+            in: llm.inputTokens,
+            out: llm.outputTokens,
+          },
+        );
       } catch (e) {
-        await trace("llm_cascade", `All free providers failed - ${e instanceof Error ? e.message : String(e)}`, "warn");
+        await trace(
+          "llm_cascade",
+          `All free providers failed - ${e instanceof Error ? e.message : String(e)}`,
+          "warn",
+        );
       }
     }
 
@@ -438,7 +544,10 @@ export async function enrichGrantImpl(
         type: "object",
         properties: {
           value: { type },
-          quote: { type: "string", description: "Verbatim sentence from the page that justifies this value." },
+          quote: {
+            type: "string",
+            description: "Verbatim sentence from the page that justifies this value.",
+          },
         },
         required: ["value", "quote"],
       });
@@ -455,14 +564,21 @@ export async function enrichGrantImpl(
       if (stillMissing.includes("sectors")) {
         props.sectors = {
           type: "object",
-          properties: { value: { type: "array", items: { type: "string" } }, quote: { type: "string" } },
+          properties: {
+            value: { type: "array", items: { type: "string" } },
+            quote: { type: "string" },
+          },
           required: ["value", "quote"],
         };
       }
-      const fcSchema = { type: "object", properties: { fields: { type: "object", properties: props } } };
+      const fcSchema = {
+        type: "object",
+        properties: { fields: { type: "object", properties: props } },
+      };
       const fc = await firecrawlScrape(g.url, {
         jsonSchema: fcSchema,
-        jsonPrompt: "Extract the requested grant fields. For each field, copy a verbatim sentence from the page into quote. If the page does not state a field, omit it. Amounts must be CAD numbers. Deadlines must be ISO YYYY-MM-DD.",
+        jsonPrompt:
+          "Extract the requested grant fields. For each field, copy a verbatim sentence from the page into quote. If the page does not state a field, omit it. Amounts must be CAD numbers. Deadlines must be ISO YYYY-MM-DD.",
       });
       if (fc.ok && fc.json) {
         llmResultText = JSON.stringify(fc.json);
@@ -482,8 +598,7 @@ export async function enrichGrantImpl(
           messages: [
             {
               role: "system",
-              content:
-                `${PROMPTS.enricher.system}\nReturn JSON {"fields":{"<field>":{"value":...,"quote":"..."}}}. Quote literal page text. Never invent.`,
+              content: `${PROMPTS.enricher.system}\nReturn JSON {"fields":{"<field>":{"value":...,"quote":"..."}}}. Quote literal page text. Never invent.`,
             },
             {
               role: "user",
@@ -491,7 +606,10 @@ export async function enrichGrantImpl(
                 needs: stillMissing,
                 source_language: language,
                 source_url: g.url,
-                source_pages: pages.map((page) => ({ url: page.url, markdown: page.markdown.slice(0, 6000) })),
+                source_pages: pages.map((page) => ({
+                  url: page.url,
+                  markdown: page.markdown.slice(0, 6000),
+                })),
                 combined_markdown: combinedMarkdown,
               }),
             },
@@ -507,11 +625,20 @@ export async function enrichGrantImpl(
       }
     }
 
-    llmInfo = { provider: llmProvider, model: llmModel, inputTokens: llmInTok, outputTokens: llmOutTok };
+    llmInfo = {
+      provider: llmProvider,
+      model: llmModel,
+      inputTokens: llmInTok,
+      outputTokens: llmOutTok,
+    };
 
     if (llmResultText) {
       try {
-        await trace("llm_validate", "Validating LLM output: per-field schema + grounded-quote check", "start");
+        await trace(
+          "llm_validate",
+          "Validating LLM output: per-field schema + grounded-quote check",
+          "start",
+        );
 
         const FieldShape = z.object({
           value: z.unknown(),
@@ -528,7 +655,11 @@ export async function enrichGrantImpl(
             continue;
           }
           const payload = parsedField.data;
-          if (!stillMissing.includes(field) && !field.startsWith("eligibility") && !field.startsWith("sectors")) {
+          if (
+            !stillMissing.includes(field) &&
+            !field.startsWith("eligibility") &&
+            !field.startsWith("sectors")
+          ) {
             rejected.push(`${field}(not_needed)`);
             continue;
           }
@@ -667,7 +798,9 @@ export async function enrichGrantImpl(
     }
     if (patch.eligibility && typeof patch.eligibility === "object") {
       const eligibility = patch.eligibility as Record<string, unknown>;
-      const stringEntries = Object.entries(eligibility).filter(([, value]) => typeof value === "string") as Array<[string, string]>;
+      const stringEntries = Object.entries(eligibility).filter(
+        ([, value]) => typeof value === "string",
+      ) as Array<[string, string]>;
       const frEntries = stringEntries.filter(([, value]) => looksFrench(value));
       if (frEntries.length) {
         const translated = await translateStringsToEnglish({
@@ -679,21 +812,31 @@ export async function enrichGrantImpl(
           eligibility[key] = translated[index];
         });
         patch.eligibility = eligibility as never;
-        await trace("translate_eligibility", `Translated ${frEntries.length} French eligibility value(s)`, "ok");
+        await trace(
+          "translate_eligibility",
+          `Translated ${frEntries.length} French eligibility value(s)`,
+          "ok",
+        );
       }
     }
   } catch (e) {
-    await trace("translate", `Translation pass failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`, "warn");
+    await trace(
+      "translate",
+      `Translation pass failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`,
+      "warn",
+    );
   }
 
   const built = EnricherOutput.partial().safeParse(patch);
   if (!built.success) {
     await trace("schema", `Schema validation failed: ${built.error.message}`, "error");
-    await db.from("grants").update({
-      enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
-      enrich_last_error: `schema_validation: ${built.error.message}`.slice(0, 500),
-      enrich_last_attempt_at: new Date().toISOString(),
-    }).eq("id", g.id);
+    await db
+      .from("grants")
+      .update({
+        enrich_last_error: `schema_validation: ${built.error.message}`.slice(0, 500),
+        enrich_last_attempt_at: new Date().toISOString(),
+      })
+      .eq("id", g.id);
     return { ok: false, runId, error: "schema_validation" };
   }
 
@@ -705,11 +848,13 @@ export async function enrichGrantImpl(
     parsedPatch.amount_cad_min > parsedPatch.amount_cad_max
   ) {
     await trace("schema", "amount_cad_min > amount_cad_max (halting enrichment)", "error");
-    await db.from("grants").update({
-      enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
-      enrich_last_error: "schema_validation: amount_cad_min must be <= amount_cad_max",
-      enrich_last_attempt_at: new Date().toISOString(),
-    }).eq("id", g.id);
+    await db
+      .from("grants")
+      .update({
+        enrich_last_error: "schema_validation: amount_cad_min must be <= amount_cad_max",
+        enrich_last_attempt_at: new Date().toISOString(),
+      })
+      .eq("id", g.id);
     return { ok: false, runId, error: "schema_validation" };
   }
 
@@ -720,7 +865,8 @@ export async function enrichGrantImpl(
   // retry rather than being marked "enriched" with only cosmetic data.
   const criticalFields = ["amount_cad_min", "amount_cad_max", "deadline", "eligibility"];
   const extractedCritical = extractedKeys.filter((k) => criticalFields.includes(k));
-  const hasCriticalMissing = stillMissing.some((f) => criticalFields.includes(f)) && extractedCritical.length === 0;
+  const hasCriticalMissing =
+    stillMissing.some((f) => criticalFields.includes(f)) && extractedCritical.length === 0;
   if (extractedKeys.length === 0 || hasCriticalMissing) {
     const reason = llmCascadeFailed
       ? "no_extraction: deterministic=0 llm_cascade=all_providers_failed"
@@ -728,11 +874,13 @@ export async function enrichGrantImpl(
         ? `enrichment_insufficient: extracted [${extractedKeys.join(", ") || "none"}] but critical fields missing: ${stillMissing.filter((f) => criticalFields.includes(f)).join(", ")}`
         : "no_extraction: deterministic=0 llm_rejected_all_fields";
     await trace("commit", reason, "error", { still_missing: stillMissing });
-    await db.from("grants").update({
-      enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
-      enrich_last_error: reason.slice(0, 500),
-      enrich_last_attempt_at: new Date().toISOString(),
-    }).eq("id", g.id);
+    await db
+      .from("grants")
+      .update({
+        enrich_last_error: reason.slice(0, 500),
+        enrich_last_attempt_at: new Date().toISOString(),
+      })
+      .eq("id", g.id);
     await db.from("agent_runs").insert({
       run_id: runId,
       agent: "enricher",
@@ -766,14 +914,22 @@ export async function enrichGrantImpl(
   patch.enriched_at = new Date().toISOString();
   patch.enrich_last_error = null;
   patch.enrich_last_attempt_at = new Date().toISOString();
-  const { error: updateError } = await db.from("grants").update(patch as never).eq("id", g.id);
+  const { error: updateError } = await db
+    .from("grants")
+    .update(patch as never)
+    .eq("id", g.id);
   if (updateError) throw new Error(`grant_update_failed: ${updateError.message}`);
 
   const filled = Object.keys(patch).filter((key) => key !== "status" && key !== "enriched_at");
-  await trace("commit", `Grant marked enriched - fields filled: ${filled.join(", ") || "(none)"} | total ${Date.now() - t0}ms`, "done", {
-    filled,
-    total_ms: Date.now() - t0,
-  });
+  await trace(
+    "commit",
+    `Grant marked enriched - fields filled: ${filled.join(", ") || "(none)"} | total ${Date.now() - t0}ms`,
+    "done",
+    {
+      filled,
+      total_ms: Date.now() - t0,
+    },
+  );
 
   await db.from("agent_runs").insert({
     run_id: runId,
