@@ -54,7 +54,26 @@ export const runStrategist = createServerFn({ method: "POST" })
       ],
     });
 
-    const parsed = StrategistOutput.parse(JSON.parse(llm.text));
+    let parsed;
+    try {
+      parsed = StrategistOutput.parse(JSON.parse(llm.text));
+    } catch (parseErr) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("agent_runs").insert({
+        run_id: runId,
+        agent: "strategist",
+        status: "failed",
+        model: "google/gemini-2.5-flash",
+        input_tokens: llm.inputTokens ?? 0,
+        output_tokens: llm.outputTokens ?? 0,
+        latency_ms: Date.now() - t0,
+        user_id: context.userId,
+        grant_id: g.id,
+        error: `parse_error: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
+        metadata: { llm_output: llm.text?.slice(0, 200) },
+      });
+      throw new Error(`strategist_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`);
+    }
 
     // Persist proposal + sections.
     const { data: proposal, error: pe } = await context.supabase

@@ -1,6 +1,6 @@
 // Free-tier LLM gateway with provider cascade.
-// Tries: Groq (fast, generous) → Google AI Studio (huge daily quota) → Cerebras (fast backup).
-// Falls back to Lovable AI Gateway only if `allowLovableFallback: true` (explicit opt-in).
+// Tries: Groq (fast, generous) → Google AI Studio (huge daily quota) → Cerebras (fast backup) → Ollama (local).
+// Falls back to Ollama only if `allowLovableFallback: true` (explicit opt-in).
 //
 // All providers expose an OpenAI-compatible chat-completions endpoint with
 // JSON mode. API keys are optional secrets — if a provider's key is missing,
@@ -18,9 +18,9 @@ export type FreeLlmOptions = {
   maxOutputTokens?: number;
   responseFormat?: "json";
   runId?: string;
-  /** Override provider order; default = ["groq","gemini","cerebras"]. */
+  /** Override provider order; default = ["groq","gemini","cerebras","ollama"]. */
   preferred?: ProviderName[];
-  /** If all free providers fail, fall back to Lovable AI Gateway. Default false. */
+  /** If all free providers fail, fall back to Ollama. Default false. */
   allowLovableFallback?: boolean;
 };
 
@@ -33,7 +33,7 @@ export type FreeLlmResult = {
   model: string;
 };
 
-type ProviderName = "groq" | "gemini" | "cerebras";
+type ProviderName = "groq" | "gemini" | "cerebras" | "ollama";
 
 type ProviderConfig = {
   name: ProviderName;
@@ -65,6 +65,12 @@ const PROVIDERS: Record<ProviderName, ProviderConfig & { fallbackModels?: string
     url: "https://api.cerebras.ai/v1/chat/completions",
     model: "llama-3.3-70b",
   },
+  ollama: {
+    name: "ollama",
+    envKey: "OLLAMA_BASE_URL",
+    url: "http://localhost:11434/v1/chat/completions",
+    model: "qwen3:14b", // MoE 14B equiv, better for complex grant analysis
+  },
 };
 
 
@@ -74,7 +80,7 @@ async function callOpenAICompat(
   modelOverride?: string,
 ): Promise<{ text: string; inputTokens?: number; outputTokens?: number; model: string }> {
   const apiKey = process.env[cfg.envKey];
-  if (!apiKey) throw new Error(`missing_${cfg.envKey}`);
+  if (cfg.name !== "ollama" && !apiKey) throw new Error(`missing_${cfg.envKey}`);
   const model = modelOverride ?? cfg.model;
 
   const body: Record<string, unknown> = {
@@ -88,12 +94,11 @@ async function callOpenAICompat(
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 30_000);
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
     const res = await fetch(cfg.url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
@@ -118,17 +123,20 @@ async function callOpenAICompat(
 
 
 export function freeProvidersAvailable(): ProviderName[] {
-  return (Object.keys(PROVIDERS) as ProviderName[]).filter((p) => !!process.env[PROVIDERS[p].envKey]);
+  return (Object.keys(PROVIDERS) as ProviderName[]).filter((p) => {
+    if (p === "ollama") return true;
+    return !!process.env[PROVIDERS[p].envKey];
+  });
 }
 
 export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> {
   const runId = opts.runId ?? newRunId();
-  const order = opts.preferred ?? (["groq", "gemini", "cerebras"] as ProviderName[]);
+  const order = opts.preferred ?? (["groq", "gemini", "cerebras", "ollama"] as ProviderName[]);
   const errors: string[] = [];
 
   for (const name of order) {
     const cfg = PROVIDERS[name];
-    if (!process.env[cfg.envKey]) {
+    if (name !== "ollama" && !process.env[cfg.envKey]) {
       errors.push(`${name}:no_key`);
       continue;
     }
@@ -191,11 +199,11 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
 
 
 
-  // Optional Lovable fallback
+  // Optional Ollama fallback
   if (opts.allowLovableFallback) {
     const { callLlm } = await import("@/agents/llm.server");
     const r = await callLlm({
-      model: "google/gemini-2.5-flash",
+      model: "qwen2.5-coder:7b",
       messages: opts.messages,
       temperature: opts.temperature,
       maxOutputTokens: opts.maxOutputTokens,
@@ -209,8 +217,8 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       inputTokens: r.inputTokens,
       outputTokens: r.outputTokens,
       runId,
-      provider: "lovable",
-      model: "google/gemini-2.5-flash",
+      provider: "ollama",
+      model: "qwen2.5-coder:7b",
     };
   }
 

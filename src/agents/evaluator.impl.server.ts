@@ -12,7 +12,7 @@ export async function evaluateGrantImpl(opts: {
 }) {
   const { grantId, userId, userSupabase } = opts;
   const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
-  await assertAgentEnabled("evaluator", userSupabase as never);
+  await assertAgentEnabled("evaluator", userSupabase);
   const { callLlm } = await import("@/agents/llm.server");
   const { newRunId } = await import("@/lib/otel");
   const { traceStep } = await import("@/agents/trace.server");
@@ -33,7 +33,7 @@ export async function evaluateGrantImpl(opts: {
       status,
       message,
       payload,
-      db: userSupabase as never,
+      db: userSupabase,
     });
 
   await trace("init", `Starting fit evaluation for grant ${grantId.slice(0, 8)}`, "start");
@@ -206,7 +206,7 @@ export async function evaluateGrantImpl(opts: {
       method: "llm",
       model: usedModel,
       runId,
-      db: userSupabase as never,
+      db: userSupabase,
     });
     await recordEvidence({
       grantId: g.id,
@@ -218,7 +218,7 @@ export async function evaluateGrantImpl(opts: {
       method: "llm",
       model: usedModel,
       runId,
-      db: userSupabase as never,
+      db: userSupabase,
     });
   } catch {
     // Evidence capture should not block the evaluator result.

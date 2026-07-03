@@ -8,7 +8,11 @@ const FRENCH_HINT =
 export function looksFrench(s: string | null | undefined): boolean {
   if (!s) return false;
   const hits = (s.match(FRENCH_HINT) ?? []).length;
-  return hits >= 2 || (/[àâçéèêëîïôûùœ]/.test(s) && hits >= 1);
+  // Require ≥2 French word hits. Accented characters alone (é, ç, à) are
+  // insufficient — common English loan words like "café", "résumé", "naïve"
+  // use them. A single French function word (le, la, les, pour, avec) plus
+  // an accent is still too weak; require at least 2 distinct French hints.
+  return hits >= 2;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));

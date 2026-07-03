@@ -83,7 +83,7 @@ export async function enrichGrantImpl(
     await db.from("grants").update({
       status: "enriched",
       enriched_at: new Date().toISOString(),
-    } as never).eq("id", g.id);
+    }).eq("id", g.id);
     await db.from("agent_runs").insert({
       run_id: runId,
       agent: "enricher",
@@ -110,7 +110,7 @@ export async function enrichGrantImpl(
       enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
       enrich_last_error: msg.slice(0, 500),
       enrich_last_attempt_at: new Date().toISOString(),
-    } as never).eq("id", g.id);
+    }).eq("id", g.id);
     await db.from("agent_runs").insert({
       run_id: runId,
       agent: "enricher",
@@ -352,9 +352,19 @@ export async function enrichGrantImpl(
   });
 
   const stillMissing = missingFields();
-  const combinedMarkdown = pages
+
+  // Security: sanitize markdown + enforce size limit
+  const { sanitizeMarkdown, validateTotalMarkdownSize } = await import("@/lib/prompt-safety.server");
+  const sanitizedPages = pages.map(p => ({...p, markdown: sanitizeMarkdown(p.markdown)}));
+  const combinedMarkdown = sanitizedPages
     .map((page, index) => `Source ${index + 1}: ${page.url}\n${page.markdown.slice(0, 6000)}`)
     .join("\n\n");
+
+  const sizeCheck = validateTotalMarkdownSize(combinedMarkdown.length);
+  if (!sizeCheck.valid) {
+    await trace("security", `Markdown overflow: ${sizeCheck.error}`, "warn");
+    return { ok: false, runId, error: sizeCheck.error, attempts: fetchAttempts };
+  }
 
   let llmInfo: { provider: string; model: string; inputTokens?: number; outputTokens?: number } | null = null;
 
@@ -683,22 +693,46 @@ export async function enrichGrantImpl(
       enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
       enrich_last_error: `schema_validation: ${built.error.message}`.slice(0, 500),
       enrich_last_attempt_at: new Date().toISOString(),
-    } as never).eq("id", g.id);
+    }).eq("id", g.id);
+    return { ok: false, runId, error: "schema_validation" };
+  }
+
+  // Additional validation: min/max invariant
+  const parsedPatch = built.data;
+  if (
+    parsedPatch.amount_cad_min != null &&
+    parsedPatch.amount_cad_max != null &&
+    parsedPatch.amount_cad_min > parsedPatch.amount_cad_max
+  ) {
+    await trace("schema", "amount_cad_min > amount_cad_max (halting enrichment)", "error");
+    await db.from("grants").update({
+      enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
+      enrich_last_error: "schema_validation: amount_cad_min must be <= amount_cad_max",
+      enrich_last_attempt_at: new Date().toISOString(),
+    }).eq("id", g.id);
     return { ok: false, runId, error: "schema_validation" };
   }
 
   const extractedKeys = Object.keys(patch);
   const llmCascadeFailed = stillMissing.length > 0 && llmInfo?.provider === "none";
-  if (extractedKeys.length === 0) {
+  // Critical fields for downstream evaluation. If the LLM returned but extracted
+  // zero critical fields, treat as failure — the grant stays in "discovered" for
+  // retry rather than being marked "enriched" with only cosmetic data.
+  const criticalFields = ["amount_cad_min", "amount_cad_max", "deadline", "eligibility"];
+  const extractedCritical = extractedKeys.filter((k) => criticalFields.includes(k));
+  const hasCriticalMissing = stillMissing.some((f) => criticalFields.includes(f)) && extractedCritical.length === 0;
+  if (extractedKeys.length === 0 || hasCriticalMissing) {
     const reason = llmCascadeFailed
       ? "no_extraction: deterministic=0 llm_cascade=all_providers_failed"
-      : "no_extraction: deterministic=0 llm_rejected_all_fields";
+      : hasCriticalMissing
+        ? `enrichment_insufficient: extracted [${extractedKeys.join(", ") || "none"}] but critical fields missing: ${stillMissing.filter((f) => criticalFields.includes(f)).join(", ")}`
+        : "no_extraction: deterministic=0 llm_rejected_all_fields";
     await trace("commit", reason, "error", { still_missing: stillMissing });
     await db.from("grants").update({
       enrich_attempts: ((g as { enrich_attempts?: number }).enrich_attempts ?? 0) + 1,
       enrich_last_error: reason.slice(0, 500),
       enrich_last_attempt_at: new Date().toISOString(),
-    } as never).eq("id", g.id);
+    }).eq("id", g.id);
     await db.from("agent_runs").insert({
       run_id: runId,
       agent: "enricher",

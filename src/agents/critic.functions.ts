@@ -41,7 +41,26 @@ export const runCritic = createServerFn({ method: "POST" })
         { role: "user", content: JSON.stringify({ grant, sections: sections ?? [] }) },
       ],
     });
-    const parsed = CriticOutput.parse(JSON.parse(llm.text));
+    let parsed;
+    try {
+      parsed = CriticOutput.parse(JSON.parse(llm.text));
+    } catch (parseErr) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("agent_runs").insert({
+        run_id: runId,
+        agent: "critic",
+        status: "failed",
+        model: "google/gemini-2.5-pro",
+        input_tokens: llm.inputTokens ?? 0,
+        output_tokens: llm.outputTokens ?? 0,
+        latency_ms: Date.now() - t0,
+        user_id: context.userId,
+        grant_id: grant?.id ?? null,
+        error: `parse_error: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
+        metadata: { proposal_id: proposal.id, llm_output: llm.text?.slice(0, 200) },
+      });
+      throw new Error(`critic_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`);
+    }
 
     const validIds = new Set((sections ?? []).map((s) => s.id));
     const findings = parsed.findings.filter((f) => validIds.has(f.section_id));

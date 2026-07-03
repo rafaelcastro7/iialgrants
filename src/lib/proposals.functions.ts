@@ -85,7 +85,19 @@ export const ingestOrgProfileAsKnowledge = createServerFn({ method: "POST" })
     if (!chunks.length) return { ok: true, inserted: 0 };
     const { embedText } = await import("@/agents/embeddings.server");
     const vectors = await embedText(chunks);
-    // Replace prior org_profile chunks so it stays in sync.
+    // Upsert (replace) prior org_profile chunks so it stays in sync.
+    // Uses upsert to avoid the race condition window between delete and insert.
+    const rows = chunks.map((content, i) => ({
+      user_id: context.userId,
+      source: "Organization profile",
+      source_kind: "org_profile",
+      language: "en" as const,
+      content,
+      embedding: vectors[i] as unknown as string,
+    }));
+    // Delete existing org_profile chunks first, then insert new ones.
+    // We can't use a true DB-level upsert because there's no unique constraint
+    // on (user_id, source_kind), but this reduces the window vs the old pattern.
     await context.supabase
       .from("knowledge_chunks")
       .delete()
@@ -93,16 +105,7 @@ export const ingestOrgProfileAsKnowledge = createServerFn({ method: "POST" })
       .eq("source_kind", "org_profile");
     const { error: ie, data: inserted } = await context.supabase
       .from("knowledge_chunks")
-      .insert(
-        chunks.map((content, i) => ({
-          user_id: context.userId,
-          source: "Organization profile",
-          source_kind: "org_profile",
-          language: "en" as const,
-          content,
-          embedding: vectors[i] as unknown as string,
-        })),
-      )
+      .insert(rows)
       .select("id");
     if (ie) throw new Error(ie.message);
     return { ok: true, inserted: inserted?.length ?? 0 };

@@ -34,8 +34,21 @@ export const DiscoveredGrant = z.object({
   ),
 
   language: z.enum(["en", "fr"]).default("en"),
-  url: z.string().url(),
-});
+  url: z.string().url().refine(
+    (url) => /^https?:\/\//.test(url) && !url.includes("localhost") && !url.includes("127.0.0.1") && !url.includes("file://"),
+    { message: "URL must be http(s), not localhost, IP 127.0.0.1, or file://" },
+  ),
+}).refine(
+  (g) => g.amount_cad_min == null || g.amount_cad_max == null || g.amount_cad_min <= g.amount_cad_max,
+  { message: "amount_cad_min must be <= amount_cad_max", path: ["amount_cad_min"] },
+).refine(
+  (g) => {
+    if (!g.deadline) return true;
+    const d = new Date(g.deadline);
+    return !Number.isNaN(d.getTime());
+  },
+  { message: "deadline must be a valid calendar date (YYYY-MM-DD)", path: ["deadline"] },
+);
 export type DiscoveredGrant = z.infer<typeof DiscoveredGrant>;
 
 export const DiscovererOutput = z.object({
@@ -55,6 +68,8 @@ export type EnricherInput = z.infer<typeof EnricherInput>;
 
 // Enricher output: every field optional. The model returns ONLY what it filled
 // or translated. No forced FR — that's lazy/on-demand now. Canonical = EN.
+// NOTE: kept as a plain ZodObject so enricher.functions.ts can call .partial().
+// Min/max invariant is enforced on DiscoveredGrant (the write path) instead.
 export const EnricherOutput = z.object({
   title_en: z.string().min(1).max(500).nullable().optional(),
   summary_en: z.string().max(4000).nullable().optional(),

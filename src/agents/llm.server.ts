@@ -1,5 +1,4 @@
-// Lovable AI Gateway client (server-only). Used by all 6 agents.
-// Reads LOVABLE_API_KEY at handler call time (per server-runtime rules).
+// Ollama LLM client (server-only). Used by all 6 agents.
 import { logGenAI, newRunId } from "@/lib/otel";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -13,11 +12,7 @@ export type LlmCallOptions = {
   runId?: string;
   responseFormat?: "json";
   /**
-   * When true, skip the free-provider cascade and go straight to Lovable AI
-   * Gateway. Reserved for the admin playground where the user is explicitly
-   * testing a Lovable-hosted model. Every production agent leaves this OFF
-   * so the workspace never burns Lovable credits while free providers are
-   * configured (Groq / Google AI Studio / Cerebras).
+   * When true, skip the free-provider cascade and use Ollama directly.
    */
   forceLovable?: boolean;
 };
@@ -31,14 +26,9 @@ export type LlmCallResult = {
   provider?: string;
 };
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
-  // ── Free-tier cascade (Groq → Google AI Studio → Cerebras) ──────────────
-  // By default we route through the free cascade and only fall back to the
-  // Lovable Gateway if every free provider fails. This is the contract the
-  // user explicitly asked for: "no Lovable credits when free models are
-  // available". The admin playground passes forceLovable:true to bypass.
   if (!opts.forceLovable) {
     try {
       const { callFreeLlm, freeProvidersAvailable } = await import("@/agents/llm-free.server");
@@ -55,17 +45,10 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         return { text: r.text, inputTokens: r.inputTokens, outputTokens: r.outputTokens, runId: r.runId, model: r.model, provider: r.provider };
       }
     } catch (e) {
-      console.warn("[callLlm] free cascade failed, falling back to Lovable:", e instanceof Error ? e.message : String(e));
+      console.warn("[callLlm] free cascade failed, falling back to Ollama:", e instanceof Error ? e.message : String(e));
     }
   }
 
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY missing in environment");
-
-
-  // Resolve per-agent config (model, temp, max tokens, json mode) from the
-  // agent console. The console-stored value wins over caller-passed values,
-  // so admin edits in /admin/agents take effect within ~30s (cache TTL).
   let resolvedModel = opts.model;
   let resolvedTemp = opts.temperature ?? 0.2;
   let resolvedMax = opts.maxOutputTokens;
@@ -102,16 +85,15 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     };
     if (resolvedMax) body.max_tokens = resolvedMax;
     if (resolvedJson) body.response_format = { type: "json_object" };
-    return fetch(GATEWAY_URL, {
+    return fetch(`${OLLAMA_URL}/v1/chat/completions`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
   };
 
   try {
     let res = await doCall(resolvedModel);
-    // Retry on 429/5xx with exponential backoff, then try fallback model.
     let attempt = 0;
     while (!res.ok && (res.status === 429 || res.status >= 500) && attempt < maxRetries) {
       attempt++;
@@ -123,22 +105,21 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       res = await doCall(fallbackModel);
     }
 
-    if (res.status === 429) throw new Error("rate_limited: AI gateway 429");
-    if (res.status === 402) throw new Error("payment_required: add credits to Lovable AI workspace");
-    if (!res.ok) throw new Error(`gateway_error_${res.status}: ${await res.text()}`);
+    if (res.status === 429) throw new Error("rate_limited: Ollama 429");
+    if (!res.ok) throw new Error(`ollama_error_${res.status}: ${await res.text()}`);
 
     const data = await res.json();
     text = data?.choices?.[0]?.message?.content ?? "";
     inputTokens = data?.usage?.prompt_tokens;
     outputTokens = data?.usage?.completion_tokens;
     ok = true;
-    return { text, inputTokens, outputTokens, runId, model: usedModel, provider: "lovable" };
+    return { text, inputTokens, outputTokens, runId, model: usedModel, provider: "ollama" };
   } catch (err) {
     errMsg = err instanceof Error ? err.message : String(err);
     throw err;
   } finally {
     logGenAI({
-      "gen_ai.system": "lovable.ai",
+      "gen_ai.system": "ollama",
       "gen_ai.request.model": usedModel,
       "gen_ai.operation.name": "chat",
       "gen_ai.usage.input_tokens": inputTokens,
