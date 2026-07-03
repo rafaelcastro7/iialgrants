@@ -8,8 +8,8 @@
 // Filter 2 (role triage) and Filter 6 (effort vs win) are surfaced for human
 // review in the Opportunity Brief - not auto-gated.
 
-export type { FitRules } from "@/agents/fit-rules.shared";
-export { DEFAULT_RULES } from "@/agents/fit-rules.shared";
+export type { FitRules, OrgProfileLite } from "@/agents/fit-rules.shared";
+export { DEFAULT_RULES, deriveRulesFromOrg } from "@/agents/fit-rules.shared";
 
 import type { FitRules } from "@/agents/fit-rules.shared";
 

@@ -80,8 +80,14 @@ export async function evaluateGrantImpl(opts: {
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
-  const { DEFAULT_RULES, evaluateRules } = await import("@/agents/fit-rules.server");
-  const rules = (rulesRow as Parameters<typeof evaluateRules>[0] | null) ?? DEFAULT_RULES;
+  const { DEFAULT_RULES, evaluateRules, deriveRulesFromOrg } =
+    await import("@/agents/fit-rules.server");
+  // Explicit admin-configured fit_rules win; otherwise personalize the screening
+  // rules from the org's real profile (jurisdictions + sectors) so fit reflects
+  // who the applicant actually is instead of the generic CA-only defaults.
+  const rules =
+    (rulesRow as Parameters<typeof evaluateRules>[0] | null) ??
+    deriveRulesFromOrg(org as Parameters<typeof deriveRulesFromOrg>[0], DEFAULT_RULES);
   const rulesResult = evaluateRules(rules, g as Parameters<typeof evaluateRules>[1]);
   for (const c of rulesResult.checks) {
     await trace(
