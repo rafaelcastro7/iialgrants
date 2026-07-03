@@ -155,7 +155,7 @@ export function DiscoveryProgress({
   });
 
   const status = data?.status ?? "queued";
-  const perFunder = (data?.perFunder ?? []) as FunderState[];
+  const perFunder = useMemo(() => (data?.perFunder ?? []) as FunderState[], [data?.perFunder]);
   const processed = perFunder.filter(
     (f) => f.status === "succeeded" || f.status === "failed",
   ).length;

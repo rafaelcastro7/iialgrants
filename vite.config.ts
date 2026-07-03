@@ -17,4 +17,20 @@ export default defineConfig({
     port: 8080,
     strictPort: true,
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Split heavy vendors out of the main bundle: recharts/d3 (dashboard
+        // only), Supabase, and the TanStack stack. Vendor chunks are long-term
+        // cacheable and keep the entry chunk under the size-warning threshold.
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("recharts") || id.includes("d3-") || id.includes("victory-"))
+            return "charts";
+          if (id.includes("@supabase")) return "supabase";
+          if (id.includes("@tanstack")) return "tanstack";
+        },
+      },
+    },
+  },
 });

@@ -18,12 +18,12 @@ import { runStrategist } from "@/agents/strategist.functions";
 import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
+import { GrantFilters } from "@/components/grants/GrantFilters";
 import {
-  GrantFilters,
   applyGrantFilters,
   sortGrants,
   type SortKey,
-} from "@/components/grants/GrantFilters";
+} from "@/components/grants/grant-filters.utils";
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
