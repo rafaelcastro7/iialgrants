@@ -86,3 +86,47 @@ export const DEFAULT_RULES: FitRules = {
   hard_fail_on_runway: true,
   hard_fail_on_capability: false,
 };
+
+// Minimal shape of the org profile the screening engine cares about.
+export type OrgProfileLite = {
+  sectors?: string[] | null;
+  jurisdictions?: string[] | null;
+  stage?: string | null;
+  annual_budget_cad?: number | null;
+  focus_areas?: string | string[] | null;
+};
+
+/**
+ * Personalize screening rules from the organization's real profile.
+ *
+ * Why: the deterministic engine used to score every org against the same static
+ * config (DEFAULT_RULES: jurisdictions=["CA"], no sectors), so "fit" ignored who
+ * the applicant actually is. This is the org-vs-criteria gating the best grant
+ * tools do (Granter.ai/Grantable). We only override a field when the org
+ * actually declares it — otherwise we keep the caller's base rules, so an admin
+ * who configured explicit fit_rules is never overridden.
+ */
+export function deriveRulesFromOrg(
+  org: OrgProfileLite | null | undefined,
+  base: FitRules = DEFAULT_RULES,
+): FitRules {
+  if (!org) return base;
+  const rules: FitRules = { ...base };
+
+  // Where the org can operate → required jurisdictions (soft by default).
+  const juris = (org.jurisdictions ?? []).map((j) => String(j).trim()).filter(Boolean);
+  if (juris.length > 0) rules.required_jurisdictions = Array.from(new Set(juris));
+
+  // Org sectors + focus areas → soft required sectors (drives strategic-fit).
+  const focus = Array.isArray(org.focus_areas)
+    ? org.focus_areas
+    : org.focus_areas
+      ? String(org.focus_areas)
+          .split(/[,;]+/)
+          .map((s) => s.trim())
+      : [];
+  const sectors = [...(org.sectors ?? []), ...focus].map((s) => String(s).trim()).filter(Boolean);
+  if (sectors.length > 0) rules.required_sectors = Array.from(new Set(sectors));
+
+  return rules;
+}

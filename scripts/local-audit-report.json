@@ -1,11 +1,73 @@
 {
-  "model": "qwen3-coder",
-  "startedAt": "2026-07-03T15:27:02.076Z",
+  "model": "qwen2.5-coder:7b",
+  "startedAt": "2026-07-03T20:18:07.286Z",
   "results": [
     {
-      "file": "src/lib/crawl-ledger.server.ts",
-      "error": "fetch_failed: local_llm_timeout"
+      "file": "src/components/grants/grant-filters.utils.ts",
+      "ms": 57498,
+      "findings": [
+        {
+          "line": 24,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `funderOf` function.",
+          "repro": "If `g.funder` is undefined, calling `g.funder[0] ?? null` will throw an error."
+        },
+        {
+          "line": 34,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
+          "repro": "If `g.title` or `funder?.name` is undefined, calling `.toLowerCase()` will throw an error."
+        },
+        {
+          "line": 40,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
+          "repro": "If `g.funder?.jurisdiction` is undefined, calling `.toLowerCase()` will throw an error."
+        },
+        {
+          "line": 46,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
+          "repro": "If `g.evaluation?.eligibility_pass` is undefined, calling `!g.evaluation?.eligibility_pass` will throw an error."
+        },
+        {
+          "line": 52,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
+          "repro": "If `g.deadline` is undefined, calling `deadlineMs(g.deadline)` will throw an error."
+        },
+        {
+          "line": 58,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
+          "repro": "If `g.amount_cad_max` or `g.amount_cad_min` is undefined, calling `(b.amount_cad_max ?? b.amount_cad_min ?? 0) - (a.amount_cad_max ?? a.amount_cad_min ?? 0)` will throw an error."
+        },
+        {
+          "line": 64,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
+          "repro": "If `g.discovered_at` is undefined, calling `deadlineMs(b.discovered_at)` will throw an error."
+        },
+        {
+          "line": 70,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `sortGrants` function.",
+          "repro": "If `g.evaluation?.eligibility_pass` is undefined, calling `a.evaluation?.eligibility_pass ? 1 : 0` will throw an error."
+        },
+        {
+          "line": 72,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `sortGrants` function.",
+          "repro": "If `g.evaluation?.fit_score` is undefined, calling `fitValue(b) - fitValue(a)` will throw an error."
+        },
+        {
+          "line": 74,
+          "severity": "MEDIUM",
+          "issue": "Potential null/undefined dereference in `sortGrants` function.",
+          "repro": "If `g.deadline` is undefined, calling `deadlineMs(a.deadline) - deadlineMs(b.deadline)` will throw an error."
+        }
+      ]
     }
   ],
-  "finishedAt": "2026-07-03T15:42:02.710Z"
+  "finishedAt": "2026-07-03T20:19:04.790Z"
 }
