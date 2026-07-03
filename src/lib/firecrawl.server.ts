@@ -21,11 +21,7 @@ export function firecrawlAvailable(): boolean {
 // Map a site with optional keyword focus (Firecrawl ranks links by relevance
 // when `search` is provided — great for narrowing thousand-link sitemaps to
 // program-style URLs).
-export async function firecrawlMap(
-  url: string,
-  limit = 100,
-  search?: string,
-): Promise<MapResult> {
+export async function firecrawlMap(url: string, limit = 100, search?: string): Promise<MapResult> {
   const key = getKey();
   if (!key) return { ok: false, error: "no_api_key" };
   try {
@@ -35,7 +31,10 @@ export async function firecrawlMap(
       body: JSON.stringify({ url, limit, includeSubdomains: false, ...(search ? { search } : {}) }),
     });
     if (!res.ok) return { ok: false, error: `map_${res.status}` };
-    const json = (await res.json()) as { links?: Array<string | { url: string }>; data?: { links?: Array<string | { url: string }> } };
+    const json = (await res.json()) as {
+      links?: Array<string | { url: string }>;
+      data?: { links?: Array<string | { url: string }> };
+    };
     const raw = json.links ?? json.data?.links ?? [];
     const links = raw
       .map((l) => (typeof l === "string" ? l : l?.url))
@@ -87,16 +86,41 @@ export async function firecrawlScrape(
 
 // Heuristic: filter out URLs unlikely to be funding program pages.
 const SKIP_PATTERNS = [
-  /\/news\b/i, /\/blog\b/i, /\/events?\b/i, /\/contact\b/i, /\/about\b/i,
-  /\/login\b/i, /\/account\b/i, /\/search\b/i, /\/sitemap/i, /\/feed\b/i,
+  /\/news\b/i,
+  /\/blog\b/i,
+  /\/events?\b/i,
+  /\/contact\b/i,
+  /\/about\b/i,
+  /\/login\b/i,
+  /\/account\b/i,
+  /\/search\b/i,
+  /\/sitemap/i,
+  /\/feed\b/i,
   /\.(pdf|zip|docx?|xlsx?|csv|jpg|jpeg|png|gif|svg)(\?|$)/i,
   /\/(careers?|jobs?|press|media|privacy|terms|cookies?)\b/i,
 ];
 const KEEP_PATTERNS = [
-  /program/i, /financ/i, /fund/i, /subsid/i, /grant/i, /tax-credit/i,
-  /innovation/i, /support/i, /scholarship/i, /credit/i, /loan/i, /produit/i,
-  /programme/i, /subvention/i, /bourse/i, /aide/i, /cr[eé]dit/i, /incit/i,
-  /pret/i, /pr[eê]t/i, /investiss/i,
+  /program/i,
+  /financ/i,
+  /fund/i,
+  /subsid/i,
+  /grant/i,
+  /tax-credit/i,
+  /innovation/i,
+  /support/i,
+  /scholarship/i,
+  /credit/i,
+  /loan/i,
+  /produit/i,
+  /programme/i,
+  /subvention/i,
+  /bourse/i,
+  /aide/i,
+  /cr[eé]dit/i,
+  /incit/i,
+  /pret/i,
+  /pr[eê]t/i,
+  /investiss/i,
 ];
 
 export function filterProgramUrls(links: string[], origin: string): string[] {
@@ -104,7 +128,11 @@ export function filterProgramUrls(links: string[], origin: string): string[] {
   const out: string[] = [];
   for (const raw of links) {
     let u: URL;
-    try { u = new URL(raw, origin); } catch { continue; }
+    try {
+      u = new URL(raw, origin);
+    } catch {
+      continue;
+    }
     if (!u.href.startsWith("http")) continue;
     const key = u.origin + u.pathname.replace(/\/$/, "");
     if (seen.has(key)) continue;

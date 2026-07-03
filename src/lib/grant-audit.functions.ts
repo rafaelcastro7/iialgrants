@@ -72,12 +72,22 @@ export const getGrantAudit = createServerFn({ method: "GET" })
       weight_llm: rules.weight_llm,
     };
 
-    const verdict: "accepted" | "rejected" | "pending" =
-      ruleResult.hard_fail ? "rejected" :
-      grant.status === "archived" ? "rejected" :
-      evaluation && evaluation.fit_score != null
-        ? (evaluation.fit_score * 100 >= rules.threshold_fit_pass ? "accepted" : "rejected")
-        : "pending";
+    const verdict: "accepted" | "rejected" | "pending" = ruleResult.hard_fail
+      ? "rejected"
+      : grant.status === "archived"
+        ? "rejected"
+        : evaluation && evaluation.fit_score != null
+          ? evaluation.fit_score * 100 >= rules.threshold_fit_pass
+            ? "accepted"
+            : "rejected"
+          : "pending";
 
-    return { grant, rules: ruleSummary, evaluation, evidence: evidence ?? [], trace: trace ?? [], verdict };
+    return {
+      grant,
+      rules: ruleSummary,
+      evaluation,
+      evidence: evidence ?? [],
+      trace: trace ?? [],
+      verdict,
+    };
   });

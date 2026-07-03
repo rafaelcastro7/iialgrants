@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  FileText,
-  MinusCircle,
-  XCircle,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, MinusCircle, XCircle } from "lucide-react";
 import { generateOpportunityBrief, type Brief } from "@/lib/opportunity-brief.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -172,7 +166,9 @@ export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
                 Mandatory components
               </h4>
               {b.mandatory_components.length === 0 ? (
-                <p className="text-xs italic text-muted-foreground">No mandatory components detected.</p>
+                <p className="text-xs italic text-muted-foreground">
+                  No mandatory components detected.
+                </p>
               ) : (
                 <ul className="list-disc space-y-0.5 pl-4 text-xs">
                   {b.mandatory_components.map((x, i) => (

@@ -50,25 +50,55 @@ const overlap = (a: string[], b: string[]) => {
 };
 // Word-boundary matching to avoid false positives (e.g. "art" in "chart", "start").
 const containsAny = (hay: string, kws: string[]) =>
-  kws.some((k) => new RegExp(`(?:^|[\\s,;:.()\\-])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[\\s,;:.()\\-])`).test(hay));
+  kws.some((k) =>
+    new RegExp(
+      `(?:^|[\\s,;:.()\\-])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[\\s,;:.()\\-])`,
+    ).test(hay),
+  );
 const containsAll = (hay: string, kws: string[]) =>
-  kws.every((k) => new RegExp(`(?:^|[\\s,;:.()\\-])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[\\s,;:.()\\-])`).test(hay));
+  kws.every((k) =>
+    new RegExp(
+      `(?:^|[\\s,;:.()\\-])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[\\s,;:.()\\-])`,
+    ).test(hay),
+  );
 
 // Normalize jurisdiction variants to ISO-2 codes for matching.
 const JURISDICTION_ALIASES: Record<string, string> = {
-  "canada": "ca", "canadian": "ca", "ca": "ca",
-  "ontario": "on", "on": "on",
-  "quebec": "qc", "québec": "qc", "qc": "qc",
-  "british columbia": "bc", "bc": "bc",
-  "alberta": "ab", "ab": "ab",
-  "manitoba": "mb", "mb": "mb",
-  "saskatchewan": "sk", "sk": "sk",
-  "nova scotia": "ns", "ns": "ns",
-  "new brunswick": "nb", "nb": "nb",
-  "newfoundland": "nl", "newfoundland and labrador": "nl", "nl": "nl",
-  "prince edward island": "pe", "pei": "pe", "pe": "pe",
-  "territories": "yt", "yukon": "yt", "nwt": "nt", "nunavut": "nu",
-  "national": "ca", "federal": "ca", "pan-canadian": "ca", "all provinces": "ca", "nationwide": "ca",
+  canada: "ca",
+  canadian: "ca",
+  ca: "ca",
+  ontario: "on",
+  on: "on",
+  quebec: "qc",
+  québec: "qc",
+  qc: "qc",
+  "british columbia": "bc",
+  bc: "bc",
+  alberta: "ab",
+  ab: "ab",
+  manitoba: "mb",
+  mb: "mb",
+  saskatchewan: "sk",
+  sk: "sk",
+  "nova scotia": "ns",
+  ns: "ns",
+  "new brunswick": "nb",
+  nb: "nb",
+  newfoundland: "nl",
+  "newfoundland and labrador": "nl",
+  nl: "nl",
+  "prince edward island": "pe",
+  pei: "pe",
+  pe: "pe",
+  territories: "yt",
+  yukon: "yt",
+  nwt: "nt",
+  nunavut: "nu",
+  national: "ca",
+  federal: "ca",
+  "pan-canadian": "ca",
+  "all provinces": "ca",
+  nationwide: "ca",
 };
 function normalizeJurisdiction(raw: string): string {
   const n = norm(raw);
@@ -78,7 +108,11 @@ function normalizeJurisdiction(raw: string): string {
 function buildHaystack(g: GrantForRules): string {
   return norm(
     [
-      typeof g.eligibility === "string" ? g.eligibility : g.eligibility ? JSON.stringify(g.eligibility) : "",
+      typeof g.eligibility === "string"
+        ? g.eligibility
+        : g.eligibility
+          ? JSON.stringify(g.eligibility)
+          : "",
       g.summary ?? "",
       g.title ?? "",
     ].join(" "),
@@ -104,7 +138,8 @@ function detectCostShare(hay: string): number | null {
     hay.match(/\b(\d{1,2})\s*\/\s*(\d{1,2})\b/);
   if (!m) return null;
   if (m[2]) {
-    const a = Number(m[1]), b = Number(m[2]);
+    const a = Number(m[1]),
+      b = Number(m[2]);
     if (a + b === 100) return 100 - a;
     if (a + b > 0) return Math.round((b / (a + b)) * 100);
   }
@@ -116,8 +151,12 @@ function detectCostShare(hay: string): number | null {
 function isRollingIntake(hay: string, deadline?: string | null): boolean {
   // Detect rolling intake regardless of deadline — text explicitly saying
   // "rolling intake" or "continuous" overrides any deadline presence.
-  return /\b(rolling\s+intake|rolling\s+application|continuous\s+intake|ongoing|open\s+intake|accepting\s+applications\s+on\s+an?\s+ongoing)\b/.test(hay)
-    || (!deadline && /\b(rolling|no deadline|anytime)\b/.test(hay));
+  return (
+    /\b(rolling\s+intake|rolling\s+application|continuous\s+intake|ongoing|open\s+intake|accepting\s+applications\s+on\s+an?\s+ongoing)\b/.test(
+      hay,
+    ) ||
+    (!deadline && /\b(rolling|no deadline|anytime)\b/.test(hay))
+  );
 }
 
 function detectExcludedApplicantTypes(hay: string): string[] {

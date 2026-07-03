@@ -10,9 +10,15 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "IIAL — AI Grant Intelligence" },
-      { name: "description", content: "Discover, evaluate, and win Canadian grants with AI agents. Bilingual EN/FR.." },
+      {
+        name: "description",
+        content: "Discover, evaluate, and win Canadian grants with AI agents. Bilingual EN/FR..",
+      },
       { property: "og:title", content: "IIAL — AI Grant Intelligence" },
-      { property: "og:description", content: "Discover, evaluate, and win Canadian grants with AI agents." },
+      {
+        property: "og:description",
+        content: "Discover, evaluate, and win Canadian grants with AI agents.",
+      },
     ],
   }),
   component: Index,
@@ -20,20 +26,26 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { t } = useTranslation();
-  useEffect(() => { syncClientLocale(); }, []);
+  useEffect(() => {
+    syncClientLocale();
+  }, []);
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="flex items-center justify-between p-4 border-b">
         <span className="font-semibold">{t("app.name")}</span>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
-          <Link to="/auth"><Button size="sm">{t("auth.signIn")}</Button></Link>
+          <Link to="/auth">
+            <Button size="sm">{t("auth.signIn")}</Button>
+          </Link>
         </div>
       </header>
       <section className="max-w-3xl mx-auto px-4 py-20 text-center space-y-6">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight">{t("home.title")}</h1>
         <p className="text-lg text-muted-foreground">{t("home.subtitle")}</p>
-        <Link to="/auth"><Button size="lg">{t("home.cta")}</Button></Link>
+        <Link to="/auth">
+          <Button size="lg">{t("home.cta")}</Button>
+        </Link>
       </section>
     </main>
   );

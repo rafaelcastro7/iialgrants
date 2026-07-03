@@ -7,7 +7,9 @@ export const listProposals = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("proposals")
-      .select("id, title, status, version, critic_score, language, created_at, updated_at, grant:grants(id, title, title_fr, deadline)")
+      .select(
+        "id, title, status, version, critic_score, language, created_at, updated_at, grant:grants(id, title, title_fr, deadline)",
+      )
       .order("updated_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
@@ -21,12 +23,16 @@ export const getProposal = createServerFn({ method: "GET" })
     const [{ data: proposal, error: pe }, { data: sections, error: se }] = await Promise.all([
       context.supabase
         .from("proposals")
-        .select("id, title, status, version, critic_score, language, metadata, grant:grants(id, title, title_fr, summary, summary_fr, deadline, amount_cad_min, amount_cad_max)")
+        .select(
+          "id, title, status, version, critic_score, language, metadata, grant:grants(id, title, title_fr, summary, summary_fr, deadline, amount_cad_min, amount_cad_max)",
+        )
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
         .from("proposal_sections")
-        .select("id, kind, ord, heading_en, heading_fr, content_en, content_fr, citations, critic_notes")
+        .select(
+          "id, kind, ord, heading_en, heading_fr, content_en, content_fr, citations, critic_notes",
+        )
         .eq("proposal_id", data.id)
         .order("ord", { ascending: true }),
     ]);

@@ -12,13 +12,15 @@ const qo = queryOptions({ queryKey: ["admin", "modules"], queryFn: () => listMod
 
 export const Route = createFileRoute("/_authenticated/admin/modules")({
   loader: ({ context }) => context.queryClient.ensureQueryData(qo),
-  errorComponent: ({ error }) => <p className="text-sm text-destructive">Failed: {error.message}</p>,
+  errorComponent: ({ error }) => (
+    <p className="text-sm text-destructive">Failed: {error.message}</p>
+  ),
   component: ModulesPage,
 });
 
 function ModulesPage() {
   const { i18n } = useTranslation();
-  const fr = false /* EN-only */;
+  const fr = false; /* EN-only */
   const qc = useQueryClient();
   const fetchMods = useServerFn(listModuleFlags);
   const toggle = useServerFn(toggleModuleFlag);
@@ -27,14 +29,17 @@ function ModulesPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function onToggle(name: string, enabled: boolean) {
-    setBusy(name); setError(null);
+    setBusy(name);
+    setError(null);
     try {
       await toggle({ data: { module: name, enabled } });
       await qc.invalidateQueries({ queryKey: ["admin", "modules"] });
       await qc.invalidateQueries({ queryKey: ["module-flags"] });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-    } finally { setBusy(null); }
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -42,7 +47,8 @@ function ModulesPage() {
       <div>
         <h1 className="text-2xl font-bold">Modules</h1>
         <p className="text-sm text-muted-foreground">
-          Enable or disable product modules across the workspace. Disabled modules hide from navigation and block their server functions.
+          Enable or disable product modules across the workspace. Disabled modules hide from
+          navigation and block their server functions.
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

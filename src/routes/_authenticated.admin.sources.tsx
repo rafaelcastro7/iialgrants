@@ -4,8 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  listDiscoverySources, setSourceEnabled, runDiscoveryTier,
-  promoteStaleCandidates, recentSourceRuns,
+  listDiscoverySources,
+  setSourceEnabled,
+  runDiscoveryTier,
+  promoteStaleCandidates,
+  recentSourceRuns,
 } from "@/lib/admin-sources.functions";
 import { funderActivityRollup, type FunderActivityRow } from "@/lib/admin-sources-audit.functions";
 import { Button } from "@/components/ui/button";
@@ -13,7 +16,12 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { CrawlLedgerWidget } from "@/components/admin/CrawlLedgerWidget";
 
@@ -96,7 +104,8 @@ function SourcesPage() {
   const healthMap = new Map(health.map((h) => [h.dataset ?? "", h]));
 
   const byTier = sources.reduce<Record<string, SourceRow[]>>((acc, s) => {
-    (acc[s.tier] ??= []).push(s); return acc;
+    (acc[s.tier] ??= []).push(s);
+    return acc;
   }, {});
 
   async function runTier(tier: "A" | "B" | "C" | "scout" | "all") {
@@ -104,9 +113,13 @@ function SourcesPage() {
     try {
       const r = await runFn({ data: { tier } });
       toast.success(`Tier ${tier}: ${r.totals.new} new candidates, ${r.totals.auto} auto-approved`);
-      q.refetch(); qRuns.refetch();
-    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(null); }
+      q.refetch();
+      qRuns.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function toggle(datasetKey: string, enabled: boolean) {
@@ -114,8 +127,11 @@ function SourcesPage() {
     try {
       await toggleFn({ data: { datasetKey, enabled } });
       q.refetch();
-    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(null); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function promote() {
@@ -124,8 +140,11 @@ function SourcesPage() {
       const r = await promoteFn();
       toast.success(`Promoted ${r.promoted.length} candidates`);
       qRuns.refetch();
-    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(null); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -139,26 +158,40 @@ function SourcesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => runTier("A")} disabled={busy !== null}>Run Tier A</Button>
-          <Button variant="outline" onClick={() => runTier("B")} disabled={busy !== null}>Run Tier B</Button>
-          <Button variant="outline" onClick={() => runTier("C")} disabled={busy !== null}>Run Tier C</Button>
-          <Button variant="outline" onClick={() => runTier("scout")} disabled={busy !== null}>Run Scout</Button>
-          <Button onClick={() => runTier("all")} disabled={busy !== null}>Run ALL</Button>
-          <Button variant="secondary" onClick={promote} disabled={busy !== null}>Promote stale</Button>
-          <Link to="/admin/candidates"><Button variant="ghost">View candidates →</Button></Link>
+          <Button variant="outline" onClick={() => runTier("A")} disabled={busy !== null}>
+            Run Tier A
+          </Button>
+          <Button variant="outline" onClick={() => runTier("B")} disabled={busy !== null}>
+            Run Tier B
+          </Button>
+          <Button variant="outline" onClick={() => runTier("C")} disabled={busy !== null}>
+            Run Tier C
+          </Button>
+          <Button variant="outline" onClick={() => runTier("scout")} disabled={busy !== null}>
+            Run Scout
+          </Button>
+          <Button onClick={() => runTier("all")} disabled={busy !== null}>
+            Run ALL
+          </Button>
+          <Button variant="secondary" onClick={promote} disabled={busy !== null}>
+            Promote stale
+          </Button>
+          <Link to="/admin/candidates">
+            <Button variant="ghost">View candidates →</Button>
+          </Link>
         </div>
       </div>
 
       <CrawlLedgerWidget />
-
-
 
       {Object.keys(TIER_LABEL).map((tier) => {
         const rows = byTier[tier] ?? [];
         if (!rows.length) return null;
         return (
           <Card key={tier}>
-            <CardHeader><CardTitle className="text-base">{TIER_LABEL[tier]}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{TIER_LABEL[tier]}</CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
@@ -176,19 +209,27 @@ function SourcesPage() {
                     const h = healthMap.get(s.dataset_key);
                     const successRate = h?.success_rate;
                     const statusVariant: "default" | "secondary" | "destructive" =
-                      s.last_status === "succeeded" ? "default" :
-                      s.last_status === "failed" ? "destructive" : "secondary";
+                      s.last_status === "succeeded"
+                        ? "default"
+                        : s.last_status === "failed"
+                          ? "destructive"
+                          : "secondary";
                     return (
                       <TableRow key={s.id}>
                         <TableCell>
                           <div className="font-medium">{s.label}</div>
                           <div className="text-xs text-muted-foreground">{s.dataset_key}</div>
                         </TableCell>
-                        <TableCell><Badge variant="outline">{s.format}</Badge></TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{s.format}</Badge>
+                        </TableCell>
                         <TableCell className="text-xs">
                           {s.last_run_at ? new Date(s.last_run_at).toLocaleString() : "—"}
                           {s.last_error && (
-                            <div className="text-destructive max-w-xs truncate" title={s.last_error}>
+                            <div
+                              className="text-destructive max-w-xs truncate"
+                              title={s.last_error}
+                            >
                               {s.last_error}
                             </div>
                           )}
@@ -203,7 +244,9 @@ function SourcesPage() {
                                 </div>
                               )}
                             </>
-                          ) : "—"}
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={statusVariant}>{s.last_status ?? "never run"}</Badge>
@@ -229,8 +272,8 @@ function SourcesPage() {
         <CardHeader>
           <CardTitle className="text-base">Per-funder activity (live)</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Verifies every funder is actually being scanned AND that screening rules
-            produce evidence. Counts auto-refresh every 30 s.
+            Verifies every funder is actually being scanned AND that screening rules produce
+            evidence. Counts auto-refresh every 30 s.
           </p>
         </CardHeader>
         <CardContent className="p-0">
@@ -256,7 +299,12 @@ function SourcesPage() {
                     <TableCell>
                       <div className="font-medium">{f.funder_name}</div>
                       {f.source_url && (
-                        <a href={f.source_url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:underline truncate block max-w-xs">
+                        <a
+                          href={f.source_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-muted-foreground hover:underline truncate block max-w-xs"
+                        >
                           {f.source_url}
                         </a>
                       )}
@@ -264,34 +312,56 @@ function SourcesPage() {
                     <TableCell className="text-right tabular-nums">{f.grants_total}</TableCell>
                     <TableCell className="text-right tabular-nums">{f.grants_enriched}</TableCell>
                     <TableCell className="text-right tabular-nums">{f.grants_scored}</TableCell>
-                    <TableCell className="text-right tabular-nums">{f.grants_shortlisted}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      <Badge variant={f.evidences_total > 0 ? "default" : "secondary"}>{f.evidences_total}</Badge>
+                      {f.grants_shortlisted}
                     </TableCell>
-                    <TableCell className="text-xs">{f.last_discovered_at ? new Date(f.last_discovered_at).toLocaleString() : "never"}</TableCell>
-                    <TableCell className="text-xs">{f.last_evidence_at ? new Date(f.last_evidence_at).toLocaleString() : "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <Badge variant={f.evidences_total > 0 ? "default" : "secondary"}>
+                        {f.evidences_total}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {f.last_discovered_at
+                        ? new Date(f.last_discovered_at).toLocaleString()
+                        : "never"}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {f.last_evidence_at ? new Date(f.last_evidence_at).toLocaleString() : "—"}
+                    </TableCell>
                     <TableCell className="text-xs space-y-0.5 max-w-xs">
                       {f.recent_grants.map((g) => (
-                        <Link key={g.id} to="/grants/$id/audit" params={{ id: g.id }} className="block truncate hover:underline">
+                        <Link
+                          key={g.id}
+                          to="/grants/$id/audit"
+                          params={{ id: g.id }}
+                          className="block truncate hover:underline"
+                        >
                           · {g.title}
                         </Link>
                       ))}
-                      {f.recent_grants.length === 0 && <span className="text-muted-foreground">—</span>}
+                      {f.recent_grants.length === 0 && (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
               })}
               {(qFunders.data ?? []).length === 0 && (
-                <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-4">No funders registered.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-4">
+                    No funders registered.
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-
       <Card>
-        <CardHeader><CardTitle className="text-base">Recent runs</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Recent runs</CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -309,10 +379,13 @@ function SourcesPage() {
                   <TableCell className="text-xs">{new Date(r.run_at).toLocaleString()}</TableCell>
                   <TableCell>{r.dataset}</TableCell>
                   <TableCell>
-                    <Badge variant={r.status === "succeeded" ? "default" : "destructive"}>{r.status}</Badge>
+                    <Badge variant={r.status === "succeeded" ? "default" : "destructive"}>
+                      {r.status}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-xs">
-                    {r.rows_in ?? 0} / {r.candidates_out ?? 0} / {r.auto_approved ?? 0} / {r.errors ?? 0}
+                    {r.rows_in ?? 0} / {r.candidates_out ?? 0} / {r.auto_approved ?? 0} /{" "}
+                    {r.errors ?? 0}
                   </TableCell>
                   <TableCell className="text-xs">{r.latency_ms ?? 0} ms</TableCell>
                 </TableRow>

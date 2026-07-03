@@ -40,7 +40,9 @@ export async function fetchT3010Foundations(limit = 500): Promise<Row[]> {
     if (!res.ok) throw new Error(`t3010_${res.status}`);
     const json = (await res.json()) as { result?: { records?: Row[] } };
     return json.result?.records ?? [];
-  } finally { clearTimeout(t); }
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 export function extractT3010Candidates(rows: Row[]): RawCandidate[] {

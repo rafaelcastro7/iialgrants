@@ -1,5 +1,20 @@
 import { useState } from "react";
-import { CheckCircle2, Circle, Loader2, Sparkles, ShieldCheck, ShieldAlert, Trophy, AlertTriangle, XCircle, ChevronDown, Search, Languages, Brain, Gavel } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  Loader2,
+  Sparkles,
+  ShieldCheck,
+  ShieldAlert,
+  Trophy,
+  AlertTriangle,
+  XCircle,
+  ChevronDown,
+  Search,
+  Languages,
+  Brain,
+  Gavel,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Stage = "discovered" | "enriched" | "evaluated" | "verdict";
@@ -45,9 +60,29 @@ function stageReached(stage: Stage, p: Props): "done" | "active" | "pending" {
 }
 
 function tier(score: number) {
-  if (score >= 0.7) return { key: "strong", color: "text-emerald-600", ring: "stroke-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/40", icon: Trophy };
-  if (score >= 0.4) return { key: "partial", color: "text-amber-600", ring: "stroke-amber-500", bg: "bg-amber-50 dark:bg-amber-950/40", icon: AlertTriangle };
-  return { key: "poor", color: "text-rose-600", ring: "stroke-rose-500", bg: "bg-rose-50 dark:bg-rose-950/40", icon: XCircle };
+  if (score >= 0.7)
+    return {
+      key: "strong",
+      color: "text-emerald-600",
+      ring: "stroke-emerald-500",
+      bg: "bg-emerald-50 dark:bg-emerald-950/40",
+      icon: Trophy,
+    };
+  if (score >= 0.4)
+    return {
+      key: "partial",
+      color: "text-amber-600",
+      ring: "stroke-amber-500",
+      bg: "bg-amber-50 dark:bg-amber-950/40",
+      icon: AlertTriangle,
+    };
+  return {
+    key: "poor",
+    color: "text-rose-600",
+    ring: "stroke-rose-500",
+    bg: "bg-rose-50 dark:bg-rose-950/40",
+    icon: XCircle,
+  };
 }
 
 function ScoreGauge({ value }: { value: number }) {
@@ -61,14 +96,19 @@ function ScoreGauge({ value }: { value: number }) {
       <svg viewBox="0 0 88 88" className="w-full h-full -rotate-90">
         <circle cx="44" cy="44" r={r} className="stroke-muted fill-none" strokeWidth="8" />
         <circle
-          cx="44" cy="44" r={r}
+          cx="44"
+          cy="44"
+          r={r}
           className={cn("fill-none transition-all duration-700", t.ring)}
-          strokeWidth="8" strokeLinecap="round"
+          strokeWidth="8"
+          strokeLinecap="round"
           strokeDasharray={`${dash} ${c - dash}`}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className={cn("text-xl font-bold tabular-nums", t.color)}>{Math.round(pct * 100)}</span>
+        <span className={cn("text-xl font-bold tabular-nums", t.color)}>
+          {Math.round(pct * 100)}
+        </span>
         <span className="text-[10px] text-muted-foreground uppercase tracking-wide">fit</span>
       </div>
     </div>
@@ -76,7 +116,12 @@ function ScoreGauge({ value }: { value: number }) {
 }
 
 const LABELS = {
-  stages: { discovered: "Discovered", enriched: "Enriched", evaluated: "Evaluated", verdict: "Verdict" },
+  stages: {
+    discovered: "Discovered",
+    enriched: "Enriched",
+    evaluated: "Evaluated",
+    verdict: "Verdict",
+  },
   stageDesc: {
     discovered: "Sourced from funder",
     enriched: "Normalized",
@@ -121,11 +166,13 @@ function formatTs(iso: string | null) {
   if (!iso) return null;
   try {
     return new Intl.DateTimeFormat("en-CA", {
-      dateStyle: "medium", timeStyle: "short",
+      dateStyle: "medium",
+      timeStyle: "short",
     }).format(new Date(iso));
-  } catch { return iso; }
+  } catch {
+    return iso;
+  }
 }
-
 
 export function FitEvaluation(props: Props) {
   const L = LABELS;
@@ -141,7 +188,6 @@ export function FitEvaluation(props: Props) {
     verdict: e?.created_at ?? null,
   };
 
-
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
       {/* Stepper */}
@@ -153,28 +199,38 @@ export function FitEvaluation(props: Props) {
             return (
               <li key={s} className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <Icon className={cn(
-                    "h-5 w-5 shrink-0",
-                    state === "done" && "text-emerald-600",
-                    state === "active" && "text-primary animate-spin",
-                    state === "pending" && "text-muted-foreground/40",
-                  )} />
+                  <Icon
+                    className={cn(
+                      "h-5 w-5 shrink-0",
+                      state === "done" && "text-emerald-600",
+                      state === "active" && "text-primary animate-spin",
+                      state === "pending" && "text-muted-foreground/40",
+                    )}
+                  />
                   {i < STAGE_ORDER.length - 1 && (
-                    <div className={cn(
-                      "h-0.5 flex-1 rounded transition-colors",
-                      // Line only goes green if THIS stage is done — prevents
-                      // showing a complete pipeline when evaluation ran on raw
-                      // (un-enriched) data and the user thinks enrich succeeded.
-                      state === "done" ? "bg-emerald-500/60" : "bg-border",
-                    )} />
+                    <div
+                      className={cn(
+                        "h-0.5 flex-1 rounded transition-colors",
+                        // Line only goes green if THIS stage is done — prevents
+                        // showing a complete pipeline when evaluation ran on raw
+                        // (un-enriched) data and the user thinks enrich succeeded.
+                        state === "done" ? "bg-emerald-500/60" : "bg-border",
+                      )}
+                    />
                   )}
                 </div>
                 <div className="mt-1.5">
-                  <p className={cn(
-                    "text-xs font-medium",
-                    state === "pending" && "text-muted-foreground/60",
-                  )}>{L.stages[s]}</p>
-                  <p className="text-[10px] text-muted-foreground leading-tight">{L.stageDesc[s]}</p>
+                  <p
+                    className={cn(
+                      "text-xs font-medium",
+                      state === "pending" && "text-muted-foreground/60",
+                    )}
+                  >
+                    {L.stages[s]}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    {L.stageDesc[s]}
+                  </p>
                 </div>
               </li>
             );
@@ -193,17 +249,25 @@ export function FitEvaluation(props: Props) {
                 <span className={cn("text-sm font-semibold", t.color)}>
                   {L.verdict[t.key as "strong" | "partial" | "poor"]}
                 </span>
-                <span className={cn(
-                  "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border",
-                  e.eligibility_pass
-                    ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10"
-                    : "border-rose-500/30 text-rose-700 dark:text-rose-400 bg-rose-500/10",
-                )}>
-                  {e.eligibility_pass ? <ShieldCheck className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border",
+                    e.eligibility_pass
+                      ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10"
+                      : "border-rose-500/30 text-rose-700 dark:text-rose-400 bg-rose-500/10",
+                  )}
+                >
+                  {e.eligibility_pass ? (
+                    <ShieldCheck className="h-3 w-3" />
+                  ) : (
+                    <ShieldAlert className="h-3 w-3" />
+                  )}
                   {e.eligibility_pass ? L.eligiblePass : L.eligibleFail}
                 </span>
               </div>
-              <p className="mt-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">{L.rationale}</p>
+              <p className="mt-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {L.rationale}
+              </p>
               <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">
                 {e.rationale_en || e.rationale_fr || ""}
               </p>
@@ -254,19 +318,24 @@ export function FitEvaluation(props: Props) {
               const text = L.detail[s][state];
               return (
                 <li key={s} className="flex gap-3">
-                  <div className={cn(
-                    "mt-0.5 h-7 w-7 rounded-full flex items-center justify-center shrink-0 border",
-                    state === "done" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-600",
-                    state === "active" && "bg-primary/10 border-primary/30 text-primary",
-                    state === "pending" && "bg-muted border-border text-muted-foreground/60",
-                  )}>
+                  <div
+                    className={cn(
+                      "mt-0.5 h-7 w-7 rounded-full flex items-center justify-center shrink-0 border",
+                      state === "done" &&
+                        "bg-emerald-500/10 border-emerald-500/30 text-emerald-600",
+                      state === "active" && "bg-primary/10 border-primary/30 text-primary",
+                      state === "pending" && "bg-muted border-border text-muted-foreground/60",
+                    )}
+                  >
                     <Icon className={cn("h-3.5 w-3.5", state === "active" && "animate-pulse")} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <p className="text-sm font-medium">{L.stages[s]}</p>
                       {ts && state === "done" && (
-                        <span className="text-[11px] text-muted-foreground">{L.at} {ts}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {L.at} {ts}
+                        </span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{text}</p>

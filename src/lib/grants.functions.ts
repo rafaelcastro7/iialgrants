@@ -45,7 +45,7 @@ export const listGrants = createServerFn({ method: "GET" })
     const grants = rows ?? [];
 
     const ids = grants.map((g) => g.id);
-    let evalsByGrant = new Map<
+    const evalsByGrant = new Map<
       string,
       {
         fit_score: number;

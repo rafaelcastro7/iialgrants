@@ -18,7 +18,10 @@ function makeQuery(table: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const api: any = {};
   api.select = () => api;
-  api.eq = (c: string, v: unknown) => { state.filters.push([c, v]); return api; };
+  api.eq = (c: string, v: unknown) => {
+    state.filters.push([c, v]);
+    return api;
+  };
   const match = () => db[table].filter((r) => state.filters.every(([c, v]) => r[c] === v));
   api.maybeSingle = async () => ({ data: match()[0] ?? null, error: null });
   api.insert = async (p: Row | Row[]) => {
@@ -55,33 +58,69 @@ vi.mock("@/lib/firecrawl.server", () => ({
 
 vi.mock("@/lib/web-fetch.server", () => ({
   scrapeWithFallback: async (url: string) => ({
-    ok: true, url, via: "firecrawl_json" as const, markdown: "x", title: "x",
+    ok: true,
+    url,
+    via: "firecrawl_json" as const,
+    markdown: "x",
+    title: "x",
     json: {
-      grants: url.includes("applied-research") ? [{
-        title: "IIAL Applied Research Catalyst",
-        summary: "Up to $200k for Canadian nonprofits doing applied research and feasibility studies.",
-        amount_cad_min: 50_000, amount_cad_max: 200_000, deadline: null,
-        eligibility: { applicant_types: ["nonprofit"] }, sectors: ["applied research", "feasibility"],
-        language: "en", url, country: "CA",
-      }] : url.includes("smart-city-pilot") ? [{
-        title: "Smart City IoT Pilot Fund",
-        summary: "Climate-aligned AIoT pilots for municipalities partnering with nonprofits.",
-        amount_cad_max: 500_000, eligibility: {}, sectors: ["smart city", "iot", "climate"],
-        language: "en", url, country: "CA",
-      }] : url.includes("wcis-traceability") ? [{
-        title: "WCIS Supply Chain Traceability Grant",
-        summary: "Funds WCIS, traceability and micro-credential delivery for SMEs.",
-        amount_cad_min: 25_000, amount_cad_max: 150_000,
-        eligibility: { applicant_types: ["nonprofit"] },
-        sectors: ["supply chain", "wcis", "certification"], language: "en", url, country: "CA",
-      }] : [],
+      grants: url.includes("applied-research")
+        ? [
+            {
+              title: "IIAL Applied Research Catalyst",
+              summary:
+                "Up to $200k for Canadian nonprofits doing applied research and feasibility studies.",
+              amount_cad_min: 50_000,
+              amount_cad_max: 200_000,
+              deadline: null,
+              eligibility: { applicant_types: ["nonprofit"] },
+              sectors: ["applied research", "feasibility"],
+              language: "en",
+              url,
+              country: "CA",
+            },
+          ]
+        : url.includes("smart-city-pilot")
+          ? [
+              {
+                title: "Smart City IoT Pilot Fund",
+                summary:
+                  "Climate-aligned AIoT pilots for municipalities partnering with nonprofits.",
+                amount_cad_max: 500_000,
+                eligibility: {},
+                sectors: ["smart city", "iot", "climate"],
+                language: "en",
+                url,
+                country: "CA",
+              },
+            ]
+          : url.includes("wcis-traceability")
+            ? [
+                {
+                  title: "WCIS Supply Chain Traceability Grant",
+                  summary: "Funds WCIS, traceability and micro-credential delivery for SMEs.",
+                  amount_cad_min: 25_000,
+                  amount_cad_max: 150_000,
+                  eligibility: { applicant_types: ["nonprofit"] },
+                  sectors: ["supply chain", "wcis", "certification"],
+                  language: "en",
+                  url,
+                  country: "CA",
+                },
+              ]
+            : [],
     },
   }),
   jinaSearch: async () => ({ ok: true, hits: [] }),
 }));
 
 vi.mock("@/agents/llm.server", () => ({
-  callLlm: vi.fn(async () => ({ text: '{"grants":[]}', inputTokens: 0, outputTokens: 0, runId: "stub" })),
+  callLlm: vi.fn(async () => ({
+    text: '{"grants":[]}',
+    inputTokens: 0,
+    outputTokens: 0,
+    runId: "stub",
+  })),
 }));
 vi.mock("@/lib/otel", () => ({ newRunId: () => "run_gate", logGenAI: vi.fn() }));
 
@@ -93,10 +132,15 @@ const FUNDER_ID = "22222222-2222-2222-2222-222222222222";
 const EXPECTED_GRANTS_INSERTED = 3;
 
 beforeEach(() => {
-  db.funders.length = 0; db.grants.length = 0; db.agent_runs.length = 0;
+  db.funders.length = 0;
+  db.grants.length = 0;
+  db.agent_runs.length = 0;
   db.funders.push({
-    id: FUNDER_ID, name: "Gate Funder", source_url: "https://seed.ca/",
-    source_urls: [], source_type: "manual",
+    id: FUNDER_ID,
+    name: "Gate Funder",
+    source_url: "https://seed.ca/",
+    source_urls: [],
+    source_type: "manual",
   });
 });
 

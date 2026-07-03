@@ -9,11 +9,19 @@ const MAX_ATTEMPTS = 2;
 const BACKOFF_MS = [0, 1500]; // pre-attempt wait per attempt index
 const FUNDER_CONCURRENCY = 4; // run up to N funders in parallel
 
-
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms);
-    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
   });
 }
 
@@ -42,7 +50,9 @@ async function logRetry(opts: {
         will_retry: opts.willRetry,
       },
     });
-  } catch { /* logging is best-effort */ }
+  } catch {
+    /* logging is best-effort */
+  }
 }
 
 export type DiscoveryJobResult = {
@@ -50,7 +60,13 @@ export type DiscoveryJobResult = {
   totalSeenAgain: number;
   totalProcessed: number;
   evaluated: number;
-  perFunder: Array<{ funder: string; inserted: number; seenAgain?: number; engine?: string; error?: string }>;
+  perFunder: Array<{
+    funder: string;
+    inserted: number;
+    seenAgain?: number;
+    engine?: string;
+    error?: string;
+  }>;
 };
 
 export async function runDiscoveryJob(
@@ -58,7 +74,6 @@ export async function runDiscoveryJob(
   triggeringUserId: string,
   funderIds?: string[],
 ): Promise<DiscoveryJobResult> {
-
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   // Job started marker (status='running' so UI knows it's in flight).
@@ -84,8 +99,11 @@ export async function runDiscoveryJob(
   const { data: funders, error } = await q;
   if (error) {
     await supabaseAdmin.from("agent_runs").insert({
-      run_id: crypto.randomUUID(), agent: "discoverer", status: "failed",
-      model: "google/gemini-2.5-flash", error: error.message,
+      run_id: crypto.randomUUID(),
+      agent: "discoverer",
+      status: "failed",
+      model: "google/gemini-2.5-flash",
+      error: error.message,
       metadata: { job_id: jobId, stage: "orchestrator_funders_query" },
     });
     return { totalInserted: 0, totalSeenAgain: 0, totalProcessed: 0, evaluated: 0, perFunder: [] };
@@ -110,14 +128,26 @@ export async function runDiscoveryJob(
         totalInserted += r.inserted;
         totalSeenAgain += r.seenAgain ?? 0;
         totalProcessed += 1;
-        perFunder.push({ funder: f.name, inserted: r.inserted, seenAgain: r.seenAgain, engine: r.engine });
+        perFunder.push({
+          funder: f.name,
+          inserted: r.inserted,
+          seenAgain: r.seenAgain,
+          engine: r.engine,
+        });
         success = true;
         return;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         lastError = msg;
         const willRetry = attempt < MAX_ATTEMPTS;
-        await logRetry({ jobId, funderId: f.id, funderName: f.name, attempt, error: msg, willRetry });
+        await logRetry({
+          jobId,
+          funderId: f.id,
+          funderName: f.name,
+          attempt,
+          error: msg,
+          willRetry,
+        });
         if (!willRetry) totalProcessed += 1;
       }
     }
@@ -131,17 +161,21 @@ export async function runDiscoveryJob(
     await Promise.allSettled(batch.map(runOne));
   }
 
-
-
   // Auto-evaluate fit for the triggering user (best effort).
   let evaluated = 0;
   try {
     const { data: org } = await supabaseAdmin
-      .from("org_profiles").select("user_id").eq("user_id", triggeringUserId).maybeSingle();
+      .from("org_profiles")
+      .select("user_id")
+      .eq("user_id", triggeringUserId)
+      .maybeSingle();
     if (org) {
       const { evaluateGrantImpl } = await import("@/agents/evaluator.impl.server");
       const { data: pending } = await supabaseAdmin
-        .from("grants").select("id").eq("status", "discovered").limit(15);
+        .from("grants")
+        .select("id")
+        .eq("status", "discovered")
+        .limit(15);
       // Build a user-scoped client (RLS as the triggering user).
       const { createClient } = await import("@supabase/supabase-js");
       const userSupabase = createClient(
@@ -153,10 +187,14 @@ export async function runDiscoveryJob(
         try {
           await evaluateGrantImpl({ grantId: g.id, userId: triggeringUserId, userSupabase });
           evaluated++;
-        } catch { /* keep going */ }
+        } catch {
+          /* keep going */
+        }
       }
     }
-  } catch { /* evaluator disabled */ }
+  } catch {
+    /* evaluator disabled */
+  }
 
   // Job completed marker — final aggregate metrics.
   await supabaseAdmin.from("agent_runs").insert({
@@ -177,4 +215,3 @@ export async function runDiscoveryJob(
 
   return { totalInserted, totalSeenAgain, totalProcessed, evaluated, perFunder };
 }
-

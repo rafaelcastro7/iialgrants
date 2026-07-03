@@ -7,9 +7,7 @@ export function useModuleFlags() {
     queryKey: ["module-flags"],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("module_flags")
-        .select("module, enabled");
+      const { data, error } = await supabase.from("module_flags").select("module, enabled");
       if (error) throw new Error(error.message);
       const map = new Map<string, boolean>((data ?? []).map((r) => [r.module, r.enabled]));
       return {
@@ -26,7 +24,10 @@ export function useIsAdmin() {
     let cancelled = false;
     (async () => {
       const { data: u } = await supabase.auth.getUser();
-      if (!u.user) { if (!cancelled) setIsAdmin(false); return; }
+      if (!u.user) {
+        if (!cancelled) setIsAdmin(false);
+        return;
+      }
       const { data } = await supabase
         .from("user_roles")
         .select("role")
@@ -35,7 +36,9 @@ export function useIsAdmin() {
         .maybeSingle();
       if (!cancelled) setIsAdmin(!!data);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
   return isAdmin;
 }

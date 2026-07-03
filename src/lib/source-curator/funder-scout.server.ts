@@ -34,7 +34,9 @@ export async function runFunderScout(): Promise<RawCandidate[]> {
   for (const q of QUERIES) {
     const search = await jinaSearch(q, 6);
     if (!search.ok || search.hits.length === 0) continue;
-    const hitBlock = search.hits.map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet}`).join("\n\n");
+    const hitBlock = search.hits
+      .map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet}`)
+      .join("\n\n");
     try {
       const resp = await callLlm({
         agent: "discoverer",
@@ -43,7 +45,7 @@ export async function runFunderScout(): Promise<RawCandidate[]> {
         maxOutputTokens: 600,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user",   content: `Query: ${q}\n\nResults:\n${hitBlock}` },
+          { role: "user", content: `Query: ${q}\n\nResults:\n${hitBlock}` },
         ],
       });
       const parsed = JSON.parse(resp.text) as { hits?: ClassifiedHit[] };
@@ -57,14 +59,20 @@ export async function runFunderScout(): Promise<RawCandidate[]> {
           raw_metadata: { scout_reason: h.reason, scout_query: q },
         });
       }
-    } catch { /* LLM/JSON failure → skip this query */ }
+    } catch {
+      /* LLM/JSON failure → skip this query */
+    }
   }
   // De-dup by host
   const seen = new Set<string>();
   return out.filter((c) => {
     if (!c.website) return false;
     let host = "";
-    try { host = new URL(c.website).host; } catch { return false; }
+    try {
+      host = new URL(c.website).host;
+    } catch {
+      return false;
+    }
     if (seen.has(host)) return false;
     seen.add(host);
     return true;

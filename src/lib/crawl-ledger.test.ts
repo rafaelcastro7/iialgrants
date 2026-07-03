@@ -9,9 +9,18 @@ vi.mock("@/integrations/supabase/client.server", () => {
   const builder = {
     _table: "crawl_ledger",
     _filters: {} as Record<string, unknown>,
-    from(t: string) { this._table = t; this._filters = {}; return this; },
-    select() { return this; },
-    eq(col: string, val: unknown) { this._filters[col] = val; return this; },
+    from(t: string) {
+      this._table = t;
+      this._filters = {};
+      return this;
+    },
+    select() {
+      return this;
+    },
+    eq(col: string, val: unknown) {
+      this._filters[col] = val;
+      return this;
+    },
     maybeSingle() {
       const url = this._filters["url"] as string;
       return Promise.resolve({ data: store.get(url) ?? null, error: null });
@@ -26,7 +35,9 @@ vi.mock("@/integrations/supabase/client.server", () => {
 
 import { shouldFetch, recordFetch } from "@/lib/crawl-ledger.server";
 
-beforeEach(() => { store = new Map(); });
+beforeEach(() => {
+  store = new Map();
+});
 
 describe("crawl-ledger cadence", () => {
   it("new URL → fetch=true with default 24h interval", async () => {
@@ -36,9 +47,17 @@ describe("crawl-ledger cadence", () => {
   });
 
   it("unchanged content stretches interval (×1.5, max 14d)", async () => {
-    await recordFetch("https://x.test/b", { kind: "ok", markdown: "hello world", via: "scrape_engine" });
+    await recordFetch("https://x.test/b", {
+      kind: "ok",
+      markdown: "hello world",
+      via: "scrape_engine",
+    });
     // Simulate same content fetched again.
-    const r2 = await recordFetch("https://x.test/b", { kind: "ok", markdown: "hello world", via: "scrape_engine" });
+    const r2 = await recordFetch("https://x.test/b", {
+      kind: "ok",
+      markdown: "hello world",
+      via: "scrape_engine",
+    });
     expect(r2.changed).toBe(false);
     expect(r2.status).toBe("unchanged");
     // 24 × 1.5 = 36h
@@ -47,7 +66,11 @@ describe("crawl-ledger cadence", () => {
 
   it("changed content tightens interval (×0.5, min 6h)", async () => {
     await recordFetch("https://x.test/c", { kind: "ok", markdown: "first", via: "scrape_engine" });
-    const r2 = await recordFetch("https://x.test/c", { kind: "ok", markdown: "second different", via: "scrape_engine" });
+    const r2 = await recordFetch("https://x.test/c", {
+      kind: "ok",
+      markdown: "second different",
+      via: "scrape_engine",
+    });
     expect(r2.changed).toBe(true);
     expect(r2.status).toBe("changed");
     expect(r2.interval_hours).toBe(12); // 24 × 0.5

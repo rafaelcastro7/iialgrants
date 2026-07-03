@@ -42,10 +42,20 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
           runId: opts.runId,
           allowLovableFallback: true,
         });
-        return { text: r.text, inputTokens: r.inputTokens, outputTokens: r.outputTokens, runId: r.runId, model: r.model, provider: r.provider };
+        return {
+          text: r.text,
+          inputTokens: r.inputTokens,
+          outputTokens: r.outputTokens,
+          runId: r.runId,
+          model: r.model,
+          provider: r.provider,
+        };
       }
     } catch (e) {
-      console.warn("[callLlm] free cascade failed, falling back to Ollama:", e instanceof Error ? e.message : String(e));
+      console.warn(
+        "[callLlm] free cascade failed, falling back to Ollama:",
+        e instanceof Error ? e.message : String(e),
+      );
     }
   }
 
@@ -132,4 +142,3 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     });
   }
 }
-

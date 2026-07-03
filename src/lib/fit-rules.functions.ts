@@ -60,10 +60,12 @@ export const saveFitRules = createServerFn({ method: "POST" })
 export const previewFitRules = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({
-      rules: FitRulesInput,
-      limit: z.number().int().min(1).max(50).default(20),
-    }).parse(input),
+    z
+      .object({
+        rules: FitRulesInput,
+        limit: z.number().int().min(1).max(50).default(20),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase

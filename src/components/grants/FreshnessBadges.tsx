@@ -18,8 +18,14 @@ function relTime(iso: string | null, fr: boolean): string {
 }
 
 export function FreshnessBadges({
-  discoveredAt, deadline, fr,
-}: { discoveredAt: string | null; deadline: string | null; fr: boolean }) {
+  discoveredAt,
+  deadline,
+  fr,
+}: {
+  discoveredAt: string | null;
+  deadline: string | null;
+  fr: boolean;
+}) {
   const ageDays = discoveredAt ? daysBetween(new Date(discoveredAt), new Date()) : null;
   const stale = ageDays != null && ageDays > 30;
 
@@ -49,7 +55,7 @@ export function FreshnessBadges({
     <div className="flex flex-wrap items-center gap-1.5">
       {discoveredAt && (
         <Badge variant={stale ? "outline" : "secondary"} className="font-normal text-[10px]">
-          {stale ? (fr ? "Périmé" : "Stale") : (fr ? "Frais" : "Fresh")} · {relTime(discoveredAt, fr)}
+          {stale ? (fr ? "Périmé" : "Stale") : fr ? "Frais" : "Fresh"} · {relTime(discoveredAt, fr)}
         </Badge>
       )}
       {deadlineLabel && (

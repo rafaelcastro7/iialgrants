@@ -276,11 +276,7 @@ function GrantDetailPage() {
                 {fmtCurrency(g.amount_cad_min)} to {fmtCurrency(g.amount_cad_max)}
               </div>
               {(g.amount_cad_min != null || g.amount_cad_max != null) && (
-                <EvidenceChip
-                  field="amount_cad_max"
-                  label="View citation"
-                  onClick={openEvidence}
-                />
+                <EvidenceChip field="amount_cad_max" label="View citation" onClick={openEvidence} />
               )}
             </CardContent>
           </Card>
@@ -321,7 +317,8 @@ function GrantDetailPage() {
                 What this grant is
               </p>
               <p className="leading-relaxed text-foreground">
-                {summary ?? "A detailed public summary is not available yet. Run enrichment to pull more context from the funder page."}
+                {summary ??
+                  "A detailed public summary is not available yet. Run enrichment to pull more context from the funder page."}
               </p>
             </div>
 
@@ -334,7 +331,9 @@ function GrantDetailPage() {
               {g.discovered_at && <DetailRow label="Discovered" value={fmtDate(g.discovered_at)} />}
               {g.enriched_at && <DetailRow label="Enriched" value={fmtDate(g.enriched_at)} />}
               {g.scored_at && <DetailRow label="Evaluated" value={fmtDate(g.scored_at)} />}
-              {g.times_seen != null && <DetailRow label="Times seen" value={`${g.times_seen} times`} />}
+              {g.times_seen != null && (
+                <DetailRow label="Times seen" value={`${g.times_seen} times`} />
+              )}
               <div className="gap-2 pt-1 sm:grid sm:grid-cols-[180px_1fr] sm:items-baseline">
                 <span className="font-medium text-muted-foreground">Official links</span>
                 <div className="flex flex-col gap-1.5">
@@ -471,13 +470,17 @@ function GrantDetailPage() {
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
           <div className="flex flex-wrap gap-2">
-            {g.status !== "discovered" && <NotebookLMBridge grantId={id} label="Send to NotebookLM" />}
+            {g.status !== "discovered" && (
+              <NotebookLMBridge grantId={id} label="Send to NotebookLM" />
+            )}
             {g.status === "discovered" && (
               <Button
                 size="sm"
                 variant="outline"
                 disabled={busy === "enrich"}
-                onClick={() => run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))}
+                onClick={() =>
+                  run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))
+                }
               >
                 {busy === "enrich" ? t("app.loading") : "Fetch details"}
               </Button>
@@ -488,7 +491,11 @@ function GrantDetailPage() {
               disabled={busy === "eval"}
               onClick={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}
             >
-              {busy === "eval" ? t("app.loading") : data.evaluation ? "Re-evaluate" : t("grants.evaluate")}
+              {busy === "eval"
+                ? t("app.loading")
+                : data.evaluation
+                  ? "Re-evaluate"
+                  : t("grants.evaluate")}
             </Button>
             {isAdmin && g.status === "scored" && (
               <Button size="sm" disabled={busy === "shortlist"} onClick={onShortlist}>
@@ -506,7 +513,9 @@ function GrantDetailPage() {
                 View reasoning
               </Button>
             )}
-            {(g.status === "scored" || g.status === "shortlisted" || g.status === "in_proposal") && (
+            {(g.status === "scored" ||
+              g.status === "shortlisted" ||
+              g.status === "in_proposal") && (
               <Button
                 size="sm"
                 disabled={busy === "draft"}

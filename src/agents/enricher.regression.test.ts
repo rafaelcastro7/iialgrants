@@ -18,13 +18,18 @@ import { scrapeEngineFetch, toFetchedPage } from "@/lib/scrape-engine.server";
 const FIX = (name: string) => readFileSync(resolve("src/agents/__fixtures__/pages", name), "utf8");
 
 function mockFetch(html: string, status = 200, headers: Record<string, string> = {}) {
-  return vi.fn(async () => new Response(html, {
-    status,
-    headers: { "content-type": "text/html; charset=utf-8", ...headers },
-  }));
+  return vi.fn(
+    async () =>
+      new Response(html, {
+        status,
+        headers: { "content-type": "text/html; charset=utf-8", ...headers },
+      }),
+  );
 }
 
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("enrichment click flow — real fixtures", () => {
   it("extracts a valid Wikipedia article into markdown with title and attempts trail", async () => {

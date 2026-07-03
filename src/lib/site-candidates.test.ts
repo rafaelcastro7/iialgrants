@@ -16,7 +16,9 @@ describe("extractAnchorCandidatesFromHtml", () => {
       <a href="https://example.com/program/apply">External mirror</a>
     `;
 
-    const urls = extractAnchorCandidatesFromHtml(html, BASE, { max: 3 }).map((candidate) => candidate.url);
+    const urls = extractAnchorCandidatesFromHtml(html, BASE, { max: 3 }).map(
+      (candidate) => candidate.url,
+    );
     expect(urls).toContain("https://nrc.canada.ca/en/support/how-to-apply");
     expect(urls).toContain("https://nrc.canada.ca/en/support/eligibility");
     expect(urls).not.toContain("https://nrc.canada.ca/en/contact");

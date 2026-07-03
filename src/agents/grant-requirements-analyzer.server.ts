@@ -111,7 +111,9 @@ export function analyzeGrantRequirements(grantMarkdown: string): {
 /**
  * Format requirements for display in UI.
  */
-export function formatGrantRequirements(analysis: ReturnType<typeof analyzeGrantRequirements>): string {
+export function formatGrantRequirements(
+  analysis: ReturnType<typeof analyzeGrantRequirements>,
+): string {
   if (analysis.requirements.length === 0) {
     return analysis.summary;
   }

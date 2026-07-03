@@ -5,8 +5,19 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
-  CheckCircle2, XCircle, MinusCircle, AlertTriangle, ExternalLink,
-  Brain, Gauge, Scale, ListChecks, FileText, Loader2, ChevronDown, ChevronRight,
+  CheckCircle2,
+  XCircle,
+  MinusCircle,
+  AlertTriangle,
+  ExternalLink,
+  Brain,
+  Gauge,
+  Scale,
+  ListChecks,
+  FileText,
+  Loader2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { getGrantAudit } from "@/lib/grant-audit.functions";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +63,13 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
     );
   }
   if (isError) {
-    return <Card><CardContent className="py-4 text-sm text-destructive">{(error as Error).message}</CardContent></Card>;
+    return (
+      <Card>
+        <CardContent className="py-4 text-sm text-destructive">
+          {(error as Error).message}
+        </CardContent>
+      </Card>
+    );
   }
   if (!data) return null;
 
@@ -64,9 +81,13 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
   const skips = rules.checks.filter((c) => c.status === "skip").length;
 
   const verdictBadge =
-    verdict === "accepted" ? <Badge className="bg-emerald-600 hover:bg-emerald-600">Accepted</Badge> :
-    verdict === "rejected" ? <Badge variant="destructive">Rejected</Badge> :
-    <Badge variant="secondary">Pending</Badge>;
+    verdict === "accepted" ? (
+      <Badge className="bg-emerald-600 hover:bg-emerald-600">Accepted</Badge>
+    ) : verdict === "rejected" ? (
+      <Badge variant="destructive">Rejected</Badge>
+    ) : (
+      <Badge variant="secondary">Pending</Badge>
+    );
 
   return (
     <Card className="border-primary/20">
@@ -78,7 +99,9 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
           <div className="flex items-center gap-2">
             {verdictBadge}
             <Button asChild size="sm" variant="ghost">
-              <Link to="/grants/$id/audit" params={{ id: grantId }}>Full audit →</Link>
+              <Link to="/grants/$id/audit" params={{ id: grantId }}>
+                Full audit →
+              </Link>
             </Button>
           </div>
         </div>
@@ -87,15 +110,33 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
       <CardContent className="space-y-4">
         {/* Score breakdown */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-          <Stat icon={<Gauge className="h-3.5 w-3.5" />} label="Rule score" value={`${Math.round(rules.rule_score)}/100`} />
-          <Stat icon={<Brain className="h-3.5 w-3.5" />} label="LLM fit" value={llmPct != null ? `${llmPct}/100` : "—"} />
-          <Stat icon={<Scale className="h-3.5 w-3.5" />} label="Threshold" value={`≥ ${rules.threshold_fit_pass}`} />
-          <Stat icon={<ListChecks className="h-3.5 w-3.5" />} label="Checks" value={`${passes}✓ ${fails}✗ ${skips}∅`} />
+          <Stat
+            icon={<Gauge className="h-3.5 w-3.5" />}
+            label="Rule score"
+            value={`${Math.round(rules.rule_score)}/100`}
+          />
+          <Stat
+            icon={<Brain className="h-3.5 w-3.5" />}
+            label="LLM fit"
+            value={llmPct != null ? `${llmPct}/100` : "—"}
+          />
+          <Stat
+            icon={<Scale className="h-3.5 w-3.5" />}
+            label="Threshold"
+            value={`≥ ${rules.threshold_fit_pass}`}
+          />
+          <Stat
+            icon={<ListChecks className="h-3.5 w-3.5" />}
+            label="Checks"
+            value={`${passes}✓ ${fails}✗ ${skips}∅`}
+          />
         </div>
 
         {/* Why */}
         <div className="rounded-md border bg-muted/30 p-3 text-sm">
-          <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Why this verdict</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase mb-1">
+            Why this verdict
+          </p>
           {blockingFail ? (
             <p>
               <span className="text-rose-600 font-semibold">Hard-fail</span> on{" "}
@@ -103,15 +144,24 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
             </p>
           ) : evaluation && llmPct != null ? (
             <p>
-              Combined fit <b>{llmPct}</b> vs threshold <b>{rules.threshold_fit_pass}</b>.
-              Rule score {Math.round(rules.rule_score)}, LLM weight {Math.round(rules.weight_llm * 100)}%.
+              Combined fit <b>{llmPct}</b> vs threshold <b>{rules.threshold_fit_pass}</b>. Rule
+              score {Math.round(rules.rule_score)}, LLM weight {Math.round(rules.weight_llm * 100)}
+              %.
             </p>
           ) : (
-            <p>Not evaluated yet. Current rule score: <b>{Math.round(rules.rule_score)}</b>.</p>
+            <p>
+              Not evaluated yet. Current rule score: <b>{Math.round(rules.rule_score)}</b>.
+            </p>
           )}
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
-            <span>Detected role: <b>{rules.detected_role}</b></span>
-            {rules.cost_share_pct != null && <span>· Org cost-share: <b>{rules.cost_share_pct}%</b></span>}
+            <span>
+              Detected role: <b>{rules.detected_role}</b>
+            </span>
+            {rules.cost_share_pct != null && (
+              <span>
+                · Org cost-share: <b>{rules.cost_share_pct}%</b>
+              </span>
+            )}
             {rules.rolling_intake && <span>· Rolling intake</span>}
           </div>
         </div>
@@ -131,7 +181,9 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
                 weightLlm={rules.weight_llm}
                 llmPct={llmPct}
                 threshold={rules.threshold_fit_pass}
-                totalEvaluable={rules.checks.filter((x) => x.status === "pass" || x.status === "fail").length}
+                totalEvaluable={
+                  rules.checks.filter((x) => x.status === "pass" || x.status === "fail").length
+                }
               />
             ))}
             {rules.checks.length === 0 && (
@@ -163,13 +215,23 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
               {evidence.slice(0, 8).map((e, i) => (
                 <li key={i} className="px-3 py-2 text-xs space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="text-[10px]">{e.agent}</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {e.agent}
+                    </Badge>
                     <span className="font-medium">{e.field}</span>
-                    <Badge variant="secondary" className="text-[10px]">{e.extraction_method}</Badge>
-                    <span className="text-muted-foreground">conf {Math.round(Number(e.confidence) * 100)}%</span>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {e.extraction_method}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      conf {Math.round(Number(e.confidence) * 100)}%
+                    </span>
                     {e.source_url && (
-                      <a href={e.source_url} target="_blank" rel="noreferrer"
-                         className="ml-auto text-primary hover:underline inline-flex items-center gap-1">
+                      <a
+                        href={e.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ml-auto text-primary hover:underline inline-flex items-center gap-1"
+                      >
                         source <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
@@ -182,7 +244,10 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
             </ul>
             {evidence.length > 8 && (
               <p className="text-[11px] text-muted-foreground mt-1">
-                Showing 8 of {evidence.length}. <Link to="/grants/$id/audit" params={{ id: grantId }} className="underline">See all in audit →</Link>
+                Showing 8 of {evidence.length}.{" "}
+                <Link to="/grants/$id/audit" params={{ id: grantId }} className="underline">
+                  See all in audit →
+                </Link>
               </p>
             )}
           </div>
@@ -204,14 +269,31 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
 }
 
 type EvidenceItem = {
-  agent: string; field: string; value: unknown; source_url: string | null;
-  snippet: string | null; extraction_method: string; confidence: number | string;
+  agent: string;
+  field: string;
+  value: unknown;
+  source_url: string | null;
+  snippet: string | null;
+  extraction_method: string;
+  confidence: number | string;
 };
 
 function RuleRow({
-  check, evidence, ruleScore, weightLlm, llmPct, threshold, totalEvaluable,
+  check,
+  evidence,
+  ruleScore,
+  weightLlm,
+  llmPct,
+  threshold,
+  totalEvaluable,
 }: {
-  check: { id: string; label: string; status: "pass" | "fail" | "warn" | "skip"; hard: boolean; detail: string };
+  check: {
+    id: string;
+    label: string;
+    status: "pass" | "fail" | "warn" | "skip";
+    hard: boolean;
+    detail: string;
+  };
   evidence: EvidenceItem[];
   ruleScore: number;
   weightLlm: number;
@@ -225,8 +307,10 @@ function RuleRow({
   const fields = RULE_FIELD_MAP[check.id] ?? [];
   const related = evidence.filter((e) => {
     const f = (e.field ?? "").toLowerCase();
-    return fields.some((wanted) => f.includes(wanted)) ||
-      (e.snippet ?? "").toLowerCase().includes(check.id);
+    return (
+      fields.some((wanted) => f.includes(wanted)) ||
+      (e.snippet ?? "").toLowerCase().includes(check.id)
+    );
   });
 
   // Math contribution: each evaluable rule contributes 1/N of rule_score (0–100).
@@ -234,9 +318,8 @@ function RuleRow({
   const contributed = check.status === "pass" ? perRulePoints : 0;
   const ruleWeightPct = Math.round((1 - weightLlm) * 100);
   const llmWeightPct = Math.round(weightLlm * 100);
-  const combined = llmPct != null
-    ? Math.round(weightLlm * llmPct + (1 - weightLlm) * ruleScore)
-    : null;
+  const combined =
+    llmPct != null ? Math.round(weightLlm * llmPct + (1 - weightLlm) * ruleScore) : null;
 
   return (
     <li className="text-sm">
@@ -245,43 +328,88 @@ function RuleRow({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-start gap-3 px-3 py-2 hover:bg-muted/40 text-left"
       >
-        {open ? <ChevronDown className="h-4 w-4 mt-0.5 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 mt-0.5 text-muted-foreground" />}
+        {open ? (
+          <ChevronDown className="h-4 w-4 mt-0.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 mt-0.5 text-muted-foreground" />
+        )}
         {STATUS_ICON[check.status]}
         <div className="flex-1 min-w-0">
           <div className="font-medium flex items-center gap-1.5">
             {check.label}
-            {check.hard && <Badge variant="outline" className="text-[10px] py-0">hard</Badge>}
+            {check.hard && (
+              <Badge variant="outline" className="text-[10px] py-0">
+                hard
+              </Badge>
+            )}
           </div>
           <div className="text-xs text-muted-foreground">{check.detail}</div>
         </div>
         <Badge
-          variant={check.status === "fail" ? "destructive" : check.status === "pass" ? "default" : "secondary"}
+          variant={
+            check.status === "fail"
+              ? "destructive"
+              : check.status === "pass"
+                ? "default"
+                : "secondary"
+          }
           className="text-[10px]"
-        >{check.status}</Badge>
+        >
+          {check.status}
+        </Badge>
       </button>
 
       {open && (
         <div className="px-3 pb-3 pl-12 space-y-3 bg-muted/20 border-t">
           {/* Exact math */}
           <div className="rounded-md border bg-card p-2.5 text-xs space-y-1">
-            <p className="font-semibold uppercase tracking-wide text-[10px] text-muted-foreground">Calculation</p>
+            <p className="font-semibold uppercase tracking-wide text-[10px] text-muted-foreground">
+              Calculation
+            </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 tabular-nums">
               <span className="text-muted-foreground">Rule contribution</span>
-              <span><b>{contributed}</b> / {perRulePoints} pts (status: {check.status})</span>
+              <span>
+                <b>{contributed}</b> / {perRulePoints} pts (status: {check.status})
+              </span>
               <span className="text-muted-foreground">Rule score (all rules)</span>
-              <span><b>{Math.round(ruleScore)}</b>/100 · weight {ruleWeightPct}%</span>
+              <span>
+                <b>{Math.round(ruleScore)}</b>/100 · weight {ruleWeightPct}%
+              </span>
               <span className="text-muted-foreground">LLM fit</span>
-              <span>{llmPct != null ? <><b>{llmPct}</b>/100 · weight {llmWeightPct}%</> : <span className="italic">not yet scored</span>}</span>
+              <span>
+                {llmPct != null ? (
+                  <>
+                    <b>{llmPct}</b>/100 · weight {llmWeightPct}%
+                  </>
+                ) : (
+                  <span className="italic">not yet scored</span>
+                )}
+              </span>
               <span className="text-muted-foreground">Combined</span>
               <span>
-                {combined != null ? <><b>{combined}</b>/100 vs threshold {threshold} → {combined >= threshold ? <span className="text-emerald-600 font-semibold">PASS</span> : <span className="text-rose-600 font-semibold">FAIL</span>}</> : "—"}
+                {combined != null ? (
+                  <>
+                    <b>{combined}</b>/100 vs threshold {threshold} →{" "}
+                    {combined >= threshold ? (
+                      <span className="text-emerald-600 font-semibold">PASS</span>
+                    ) : (
+                      <span className="text-rose-600 font-semibold">FAIL</span>
+                    )}
+                  </>
+                ) : (
+                  "—"
+                )}
               </span>
             </div>
             {check.hard && check.status === "fail" && (
-              <p className="text-rose-600 pt-1">⚠ Hard-fail rule — overrides combined score regardless of LLM fit.</p>
+              <p className="text-rose-600 pt-1">
+                ⚠ Hard-fail rule — overrides combined score regardless of LLM fit.
+              </p>
             )}
             {check.status === "skip" && (
-              <p className="text-muted-foreground pt-1">Skipped rules do not affect the rule score.</p>
+              <p className="text-muted-foreground pt-1">
+                Skipped rules do not affect the rule score.
+              </p>
             )}
           </div>
 
@@ -292,26 +420,39 @@ function RuleRow({
             </p>
             {related.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">
-                No evidence span tagged for fields: {fields.join(", ") || "—"}. The rule fired on derived values from the grant record.
+                No evidence span tagged for fields: {fields.join(", ") || "—"}. The rule fired on
+                derived values from the grant record.
               </p>
             ) : (
               <ul className="divide-y rounded-md border bg-card">
                 {related.map((e, i) => (
                   <li key={i} className="px-2.5 py-1.5 text-xs space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-[10px]">{e.agent}</Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        {e.agent}
+                      </Badge>
                       <span className="font-medium">{e.field}</span>
-                      <Badge variant="secondary" className="text-[10px]">{e.extraction_method}</Badge>
-                      <span className="text-muted-foreground">conf {Math.round(Number(e.confidence) * 100)}%</span>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {e.extraction_method}
+                      </Badge>
+                      <span className="text-muted-foreground">
+                        conf {Math.round(Number(e.confidence) * 100)}%
+                      </span>
                       {e.source_url && (
-                        <a href={e.source_url} target="_blank" rel="noreferrer"
-                           className="ml-auto text-primary hover:underline inline-flex items-center gap-1">
+                        <a
+                          href={e.source_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-auto text-primary hover:underline inline-flex items-center gap-1"
+                        >
                           source <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
                     </div>
                     {e.snippet && (
-                      <div className="text-muted-foreground italic" title={e.snippet}>"{e.snippet}"</div>
+                      <div className="text-muted-foreground italic" title={e.snippet}>
+                        "{e.snippet}"
+                      </div>
                     )}
                     {e.value != null && (
                       <div className="font-mono text-[11px] text-foreground/80">

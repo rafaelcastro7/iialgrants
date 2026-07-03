@@ -14,9 +14,7 @@ export const listDiscoverySources = createServerFn({ method: "GET" })
       .order("tier")
       .order("dataset_key");
     if (error) throw error;
-    const { data: health } = await context.supabase
-      .from("source_health_summary")
-      .select("*");
+    const { data: health } = await context.supabase.from("source_health_summary").select("*");
     return { sources: sources ?? [], health: health ?? [] };
   });
 
@@ -35,7 +33,7 @@ export const setSourceEnabled = createServerFn({ method: "POST" })
 
 export const runDiscoveryTier = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ tier: z.enum(["A","B","C","scout","all"]) }).parse(i))
+  .inputValidator((i) => z.object({ tier: z.enum(["A", "B", "C", "scout", "all"]) }).parse(i))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { runSourceCurator } = await import("@/lib/source-curator/orchestrator.server");

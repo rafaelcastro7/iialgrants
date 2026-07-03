@@ -24,20 +24,33 @@ export const Route = createFileRoute("/_authenticated/submissions")({
 
 function SubmissionsPage() {
   const { t, i18n } = useTranslation();
-  const fr = false /* EN-only */;
+  const fr = false; /* EN-only */
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchSubs = useServerFn(listSubmissions);
   const outcome = useServerFn(recordOutcome);
   const { data } = useSuspenseQuery({ queryKey: ["submissions"], queryFn: () => fetchSubs() });
   const [editing, setEditing] = useState<string | null>(null);
-  const [form, setForm] = useState<{ result: string; amount: string; date: string; feedback: string }>({
-    result: "won", amount: "", date: "", feedback: "",
+  const [form, setForm] = useState<{
+    result: string;
+    amount: string;
+    date: string;
+    feedback: string;
+  }>({
+    result: "won",
+    amount: "",
+    date: "",
+    feedback: "",
   });
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => { syncClientLocale(); }, []);
-  async function signOut() { await supabase.auth.signOut(); await navigate({ to: "/" }); }
+  useEffect(() => {
+    syncClientLocale();
+  }, []);
+  async function signOut() {
+    await supabase.auth.signOut();
+    await navigate({ to: "/" });
+  }
 
   async function onSave(subId: string) {
     setErr(null);
@@ -53,7 +66,9 @@ function SubmissionsPage() {
       });
       setEditing(null);
       await qc.invalidateQueries({ queryKey: ["submissions"] });
-    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
   }
 
   return (
@@ -61,14 +76,24 @@ function SubmissionsPage() {
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold">{t("app.name")}</Link>
-            <Link to="/grants" className="text-sm text-muted-foreground hover:underline">{t("nav.grants")}</Link>
-            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">{t("nav.proposals")}</Link>
-            <Link to="/submissions" className="text-sm font-medium hover:underline">{t("nav.submissions")}</Link>
+            <Link to="/dashboard" className="font-semibold">
+              {t("app.name")}
+            </Link>
+            <Link to="/grants" className="text-sm text-muted-foreground hover:underline">
+              {t("nav.grants")}
+            </Link>
+            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">
+              {t("nav.proposals")}
+            </Link>
+            <Link to="/submissions" className="text-sm font-medium hover:underline">
+              {t("nav.submissions")}
+            </Link>
           </nav>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={signOut}>{t("nav.signOut")}</Button>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              {t("nav.signOut")}
+            </Button>
           </div>
         </div>
       </header>
@@ -76,10 +101,18 @@ function SubmissionsPage() {
       <section className="max-w-5xl mx-auto px-4 py-8 space-y-4">
         <h1 className="text-2xl font-semibold">{t("submissions.title")}</h1>
         {err && <p className="text-sm text-destructive">{err}</p>}
-        {data.submissions.length === 0 && <p className="text-muted-foreground">{t("submissions.empty")}</p>}
+        {data.submissions.length === 0 && (
+          <p className="text-muted-foreground">{t("submissions.empty")}</p>
+        )}
         {data.submissions.map((s) => {
           const grant = s.grant as { id: string; title: string; title_fr: string | null } | null;
-          const oc = (s.outcome as Array<{ result: string; amount_awarded_cad: number | null; decision_date: string | null }> | null)?.[0];
+          const oc = (
+            s.outcome as Array<{
+              result: string;
+              amount_awarded_cad: number | null;
+              decision_date: string | null;
+            }> | null
+          )?.[0];
           return (
             <Card key={s.id}>
               <CardHeader>
@@ -90,14 +123,17 @@ function SubmissionsPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="text-muted-foreground">
-                  {t("submissions.submittedAt")}: {new Date(s.submitted_at as string).toLocaleString()}
+                  {t("submissions.submittedAt")}:{" "}
+                  {new Date(s.submitted_at as string).toLocaleString()}
                   {s.confirmation_number && <> · #{s.confirmation_number}</>}
                 </div>
                 {oc ? (
                   <div className="flex gap-2 items-center">
                     <Badge>{t(`submissions.results.${oc.result}`)}</Badge>
                     {oc.amount_awarded_cad != null && <span>CAD {oc.amount_awarded_cad}</span>}
-                    {oc.decision_date && <span className="text-muted-foreground">· {oc.decision_date}</span>}
+                    {oc.decision_date && (
+                      <span className="text-muted-foreground">· {oc.decision_date}</span>
+                    )}
                   </div>
                 ) : editing === s.id ? (
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -116,23 +152,40 @@ function SubmissionsPage() {
                     </div>
                     <div>
                       <Label>{t("submissions.amount")}</Label>
-                      <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                      <Input
+                        type="number"
+                        value={form.amount}
+                        onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                      />
                     </div>
                     <div>
                       <Label>{t("submissions.decisionDate")}</Label>
-                      <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                      <Input
+                        type="date"
+                        value={form.date}
+                        onChange={(e) => setForm({ ...form, date: e.target.value })}
+                      />
                     </div>
                     <div className="sm:col-span-2">
                       <Label>{t("submissions.feedback")}</Label>
-                      <Input value={form.feedback} onChange={(e) => setForm({ ...form, feedback: e.target.value })} />
+                      <Input
+                        value={form.feedback}
+                        onChange={(e) => setForm({ ...form, feedback: e.target.value })}
+                      />
                     </div>
                     <div className="sm:col-span-2 flex gap-2">
-                      <Button size="sm" onClick={() => onSave(s.id)}>{t("submissions.save")}</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>{t("submissions.cancel")}</Button>
+                      <Button size="sm" onClick={() => onSave(s.id)}>
+                        {t("submissions.save")}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                        {t("submissions.cancel")}
+                      </Button>
                     </div>
                   </div>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={() => setEditing(s.id)}>{t("submissions.recordOutcome")}</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditing(s.id)}>
+                    {t("submissions.recordOutcome")}
+                  </Button>
                 )}
               </CardContent>
             </Card>

@@ -34,16 +34,24 @@ export type FetchVia =
 export type FetchAttempt = {
   engine: FetchVia;
   ok: boolean;
-  http_status?: number;          // when the engine actually hit HTTP
+  http_status?: number; // when the engine actually hit HTTP
   latency_ms: number;
-  error?: string;                // short reason
-  url_used?: string;             // resolved/snapshot URL when different
-  bytes?: number;                // markdown char count on success
-  ts: string;                    // ISO timestamp
+  error?: string; // short reason
+  url_used?: string; // resolved/snapshot URL when different
+  bytes?: number; // markdown char count on success
+  ts: string; // ISO timestamp
 };
 
 export type FetchedPage =
-  | { ok: true; url: string; markdown: string; title?: string; json?: unknown; via: FetchVia; attempts: FetchAttempt[] }
+  | {
+      ok: true;
+      url: string;
+      markdown: string;
+      title?: string;
+      json?: unknown;
+      via: FetchVia;
+      attempts: FetchAttempt[];
+    }
   | { ok: false; url: string; error: string; via: FetchVia | "none"; attempts: FetchAttempt[] };
 
 const JINA_READER_BASE = "https://r.jina.ai/";
@@ -51,8 +59,7 @@ const JINA_SEARCH_BASE = "https://s.jina.ai/";
 
 const CHROME_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
-const GOOGLEBOT_UA =
-  "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
+const GOOGLEBOT_UA = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 
 function firecrawlEnabled(): boolean {
   return process.env.USE_FIRECRAWL === "1" && firecrawlAvailable();
@@ -72,7 +79,9 @@ function htmlToMarkdown(html: string, max = 40_000): string {
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ").trim().slice(0, max);
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 }
 
 function titleFromHtml(html: string): string | undefined {
@@ -123,7 +132,9 @@ async function runEngine(
     return finish(await fn(ctrl.signal, ctx));
   } catch (e) {
     return finish({ ok: false, error: e instanceof Error ? e.message : String(e) });
-  } finally { clearTimeout(t); }
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 export async function jinaReader(
@@ -154,7 +165,8 @@ export async function jinaReader(
       const m = markdown.match(/^Title:\s*(.+)$/m);
       if (m) title = m[1].trim();
     }
-    if (markdown.length < minChars) return { ok: false, error: "jina_reader_empty", bytes: markdown.length };
+    if (markdown.length < minChars)
+      return { ok: false, error: "jina_reader_empty", bytes: markdown.length };
     return { ok: true, markdown, title };
   });
 }
@@ -186,7 +198,8 @@ async function rawFetch(
     if (!res.ok) return { ok: false, error: `${engine}_${res.status}` };
     const html = (await res.text()).slice(0, 400_000);
     const markdown = htmlToMarkdown(html, 30_000);
-    if (markdown.length < minChars) return { ok: false, error: `${engine}_too_short`, bytes: markdown.length };
+    if (markdown.length < minChars)
+      return { ok: false, error: `${engine}_too_short`, bytes: markdown.length };
     return { ok: true, markdown, title: titleFromHtml(html) };
   });
 }
@@ -197,12 +210,16 @@ async function waybackFetch(
   minChars = 300,
 ): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
   return runEngine("wayback", url, timeoutMs, async (signal, ctx) => {
-    const av = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(url)}`, { signal });
+    const av = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(url)}`, {
+      signal,
+    });
     if (!av.ok) {
       ctx.httpStatus = av.status;
       return { ok: false, error: `wayback_avail_${av.status}` };
     }
-    const j = (await av.json()) as { archived_snapshots?: { closest?: { url?: string; available?: boolean; timestamp?: string } } };
+    const j = (await av.json()) as {
+      archived_snapshots?: { closest?: { url?: string; available?: boolean; timestamp?: string } };
+    };
     const snap = j.archived_snapshots?.closest;
     if (!snap?.available || !snap.url) return { ok: false, error: "wayback_no_snapshot" };
     ctx.urlUsed = snap.url;
@@ -211,7 +228,8 @@ async function waybackFetch(
     if (!res.ok) return { ok: false, error: `wayback_${res.status}` };
     const html = (await res.text()).slice(0, 500_000);
     const markdown = htmlToMarkdown(html, 40_000);
-    if (markdown.length < minChars) return { ok: false, error: "wayback_too_short", bytes: markdown.length };
+    if (markdown.length < minChars)
+      return { ok: false, error: "wayback_too_short", bytes: markdown.length };
     return { ok: true, markdown, title: titleFromHtml(html) };
   });
 }
@@ -237,7 +255,8 @@ async function archiveTodayFetch(
     }
     const html = (await res.text()).slice(0, 500_000);
     const markdown = htmlToMarkdown(html, 40_000);
-    if (markdown.length < minChars) return { ok: false, error: "archive_today_too_short", bytes: markdown.length };
+    if (markdown.length < minChars)
+      return { ok: false, error: "archive_today_too_short", bytes: markdown.length };
     ctx.urlUsed = res.url;
     return { ok: true, markdown, title: titleFromHtml(html) };
   });
@@ -245,7 +264,11 @@ async function archiveTodayFetch(
 
 export type SearchHit = { url: string; title: string; snippet: string };
 
-export async function jinaSearch(query: string, limit = 10, timeoutMs = 15_000): Promise<{ ok: true; hits: SearchHit[] } | { ok: false; error: string }> {
+export async function jinaSearch(
+  query: string,
+  limit = 10,
+  timeoutMs = 15_000,
+): Promise<{ ok: true; hits: SearchHit[] } | { ok: false; error: string }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -254,16 +277,23 @@ export async function jinaSearch(query: string, limit = 10, timeoutMs = 15_000):
       signal: ctrl.signal,
     });
     if (!res.ok) return { ok: false, error: `jina_search_${res.status}` };
-    const data = (await res.json()) as { data?: Array<{ url?: string; title?: string; description?: string; content?: string }> };
-    const hits = (data.data ?? []).slice(0, limit).map((d) => ({
-      url: String(d.url ?? ""),
-      title: String(d.title ?? ""),
-      snippet: String(d.description ?? d.content ?? "").slice(0, 500),
-    })).filter((h) => h.url.startsWith("http"));
+    const data = (await res.json()) as {
+      data?: Array<{ url?: string; title?: string; description?: string; content?: string }>;
+    };
+    const hits = (data.data ?? [])
+      .slice(0, limit)
+      .map((d) => ({
+        url: String(d.url ?? ""),
+        title: String(d.title ?? ""),
+        snippet: String(d.description ?? d.content ?? "").slice(0, 500),
+      }))
+      .filter((h) => h.url.startsWith("http"));
     return { ok: true, hits };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  } finally { clearTimeout(t); }
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 export async function scrapeWithFallback(
@@ -287,7 +317,10 @@ export async function scrapeWithFallback(
   // prefer-first and last-resort call sites below.
   const tryFirecrawl = async (): Promise<FetchedPage | undefined> => {
     const tFc = Date.now();
-    const fc = await firecrawlScrape(url, { jsonSchema: opts.jsonSchema, jsonPrompt: opts.jsonPrompt });
+    const fc = await firecrawlScrape(url, {
+      jsonSchema: opts.jsonSchema,
+      jsonPrompt: opts.jsonPrompt,
+    });
     push({
       engine: "firecrawl",
       ok: !!fc.ok,
@@ -329,7 +362,14 @@ export async function scrapeWithFallback(
     ts: new Date().toISOString(),
   });
   if (eng.ok && eng.markdown.length >= minContentChars) {
-    return { ok: true, url: eng.url, markdown: eng.markdown, title: eng.title, via: "scrape_engine", attempts };
+    return {
+      ok: true,
+      url: eng.url,
+      markdown: eng.markdown,
+      title: eng.title,
+      via: "scrape_engine",
+      attempts,
+    };
   }
   if (!eng.ok && (eng.gone || eng.blocked || eng.notModified)) {
     return { ok: false, url, error: eng.error, via: "scrape_engine", attempts };
@@ -364,7 +404,10 @@ export async function scrapeWithFallback(
   // 7. Optional Firecrawl
   if (!opts.skipFirecrawl && firecrawlEnabled()) {
     const tFc = Date.now();
-    const fc = await firecrawlScrape(url, { jsonSchema: opts.jsonSchema, jsonPrompt: opts.jsonPrompt });
+    const fc = await firecrawlScrape(url, {
+      jsonSchema: opts.jsonSchema,
+      jsonPrompt: opts.jsonPrompt,
+    });
     push({
       engine: "firecrawl",
       ok: !!fc.ok,
@@ -375,13 +418,20 @@ export async function scrapeWithFallback(
     });
     if (fc.ok && (fc.markdown.length >= minContentChars || fc.json)) {
       return {
-        ok: true, url: fc.url, markdown: fc.markdown, title: fc.title, json: fc.json,
-        via: fc.json ? "firecrawl_json" : "firecrawl", attempts,
+        ok: true,
+        url: fc.url,
+        markdown: fc.markdown,
+        title: fc.title,
+        json: fc.json,
+        via: fc.json ? "firecrawl_json" : "firecrawl",
+        attempts,
       };
     }
   }
 
-  const summary = attempts.map(a => `${a.engine}=${a.error ?? (a.ok ? "ok" : "fail")}`).join(" | ");
+  const summary = attempts
+    .map((a) => `${a.engine}=${a.error ?? (a.ok ? "ok" : "fail")}`)
+    .join(" | ");
   return { ok: false, url, error: `all_engines_failed: ${summary}`, via: "none", attempts };
 }
 

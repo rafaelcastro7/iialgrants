@@ -18,8 +18,6 @@ const FALLBACK_MAX_LINKS = 12;
 // when several pages are processed sequentially for the same funder.
 const FALLBACK_LLM_THROTTLE_MS = 2_200;
 
-
-
 // Hard title normalization for canonical dedup. Strips:
 //   - parenthetical content "(IRAP)" / "(programme XYZ)"
 //   - generic suffix words: program/programme/initiative/fund/funding/grant/
@@ -28,27 +26,65 @@ const FALLBACK_LLM_THROTTLE_MS = 2_200;
 // Result: "NRC IRAP (Industrial Research Assistance Program)" and
 // "NRC IRAP - Industrial Research Assistance" both collapse to the same key.
 const GENERIC_STOPWORDS = new Set([
-  "program","programme","initiative","fund","funding","grant","grants",
-  "subsidy","subsidies","subvention","subventions","aide","aides",
-  "credit","crédit","credits","crédits","loan","loans","prêt","prets","prêts",
-  "scholarship","bourse","bourses","the","a","an","le","la","les","de","du","des",
+  "program",
+  "programme",
+  "initiative",
+  "fund",
+  "funding",
+  "grant",
+  "grants",
+  "subsidy",
+  "subsidies",
+  "subvention",
+  "subventions",
+  "aide",
+  "aides",
+  "credit",
+  "crédit",
+  "credits",
+  "crédits",
+  "loan",
+  "loans",
+  "prêt",
+  "prets",
+  "prêts",
+  "scholarship",
+  "bourse",
+  "bourses",
+  "the",
+  "a",
+  "an",
+  "le",
+  "la",
+  "les",
+  "de",
+  "du",
+  "des",
 ]);
 
 function normalizeTitle(s: string): string {
   return s
-    .replace(/\([^)]*\)/g, " ")              // strip parentheticals
+    .replace(/\([^)]*\)/g, " ") // strip parentheticals
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")          // strip diacritics
+    .replace(/[\u0300-\u036f]/g, "") // strip diacritics
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
     .split(/\s+/)
     .filter((w) => w.length > 1 && !GENERIC_STOPWORDS.has(w))
     .join(" ");
 }
-function canonicalKey(funderId: string, title: string, minAmt: number | null, maxAmt: number | null): string {
-  void minAmt; void maxAmt;
-  return createHash("sha256").update(`${funderId}|${normalizeTitle(title)}`).digest("hex");
+function canonicalKey(
+  funderId: string,
+  title: string,
+  minAmt: number | null,
+  maxAmt: number | null,
+): string {
+  void minAmt;
+  void maxAmt;
+  return createHash("sha256")
+    .update(`${funderId}|${normalizeTitle(title)}`)
+    .digest("hex");
 }
 
 // Reject titles that are too generic to be real programs.
@@ -68,16 +104,38 @@ function isGenericTitle(title: string): boolean {
   return false;
 }
 
-
 // Reject root-ish index URLs that aren't actual program pages.
 // Paths like /financement, /prets, /programmes, /grants, /funding are
 // listing pages that the Discoverer should NOT scrape as a single program.
 const ROOT_INDEX_PATHS = new Set([
-  "/financement","/financements","/funding","/funds","/fund",
-  "/prets","/prêts","/loans","/loan","/subventions","/subvention",
-  "/grants","/grant","/programmes","/programme","/programs","/program",
-  "/aides","/aide","/credits","/crédits","/credit","/crédit",
-  "/scholarships","/bourses","/services","/produits","/products",
+  "/financement",
+  "/financements",
+  "/funding",
+  "/funds",
+  "/fund",
+  "/prets",
+  "/prêts",
+  "/loans",
+  "/loan",
+  "/subventions",
+  "/subvention",
+  "/grants",
+  "/grant",
+  "/programmes",
+  "/programme",
+  "/programs",
+  "/program",
+  "/aides",
+  "/aide",
+  "/credits",
+  "/crédits",
+  "/credit",
+  "/crédit",
+  "/scholarships",
+  "/bourses",
+  "/services",
+  "/produits",
+  "/products",
 ]);
 function isRootIndex(url: string): boolean {
   try {
@@ -89,7 +147,9 @@ function isRootIndex(url: string): boolean {
     const segs = path.split("/").filter(Boolean);
     if (segs.length === 1 && ROOT_INDEX_PATHS.has(`/${segs[0]}`)) return true;
     return false;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 // Multi-grant page output: a page (index or program) may yield 0..N grants.
@@ -133,7 +193,6 @@ const JSON_PROMPT =
   "If the page is an index that lists multiple programs with links, extract one entry per listed program using the link as `url`. " +
   "Use Canadian dollars; never invent amounts or deadlines (null if unknown). " +
   "Deadlines must be ISO YYYY-MM-DD or null. Detect language ('en' or 'fr') from the text.";
-
 
 export type DiscoveryResult = {
   ok: boolean;
@@ -181,7 +240,13 @@ export async function discoverFunderImpl(
     .maybeSingle();
   if (ferr) throw new Error(`funder_lookup_failed: ${ferr.message}`);
   if (!funder?.source_url) throw new Error("funder_has_no_source_url");
-  const F = funder as { id: string; name: string; source_url: string; source_urls?: string[]; source_type?: string };
+  const F = funder as {
+    id: string;
+    name: string;
+    source_url: string;
+    source_urls?: string[];
+    source_type?: string;
+  };
 
   // ----- Path A: structured extraction (Firecrawl preferred, Jina/raw fallback) -----
   if (firecrawlAvailable()) {
@@ -210,7 +275,9 @@ export async function discoverFunderImpl(
         });
         seeded.forEach((candidate) => mapped.add(candidate.url));
         sitemapSeedUsed = seeded.length;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     indexUrls.forEach((u) => mapped.add(u));
 
@@ -223,7 +290,10 @@ export async function discoverFunderImpl(
     let foundTotal = 0;
     let inputTokens = 0;
     let outputTokens = 0;
-    const viaCounts = { firecrawl_json: 0, firecrawl: 0, jina_reader: 0, raw_html: 0 } as Record<string, number>;
+    const viaCounts = { firecrawl_json: 0, firecrawl: 0, jina_reader: 0, raw_html: 0 } as Record<
+      string,
+      number
+    >;
     const perPageStats: Array<{ url: string; found: number; via: string; reason?: string }> = [];
 
     // Scrape pages in parallel (bounded). Firecrawl JSON mode handles many
@@ -253,7 +323,11 @@ export async function discoverFunderImpl(
               const r = raw as Record<string, unknown>;
               // Coerce URL to absolute (Firecrawl sometimes returns relative).
               if (typeof r.url === "string") {
-                try { r.url = new URL(r.url, url).href; } catch { r.url = url; }
+                try {
+                  r.url = new URL(r.url, url).href;
+                } catch {
+                  r.url = url;
+                }
               } else {
                 r.url = url;
               }
@@ -261,7 +335,9 @@ export async function discoverFunderImpl(
               if (parsed.success) pageGrants.push(parsed.data);
             }
           }
-        } catch { /* fall through to LLM */ }
+        } catch {
+          /* fall through to LLM */
+        }
       }
 
       // Fallback to in-process LLM if no structured JSON was returned (e.g.
@@ -280,17 +356,23 @@ export async function discoverFunderImpl(
           temperature: 0.1,
           responseFormat: "json",
           messages: [
-            { role: "system", content:
-              `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}\n` +
-              `Extract every distinct Canadian funding program described on this page. ` +
-              `If the page is an index listing multiple programs, return one entry per listed program. ` +
-              `If nothing is a real program, return { "grants": [] }.` },
-            { role: "user", content:
-              `Funder: ${F.name}\nPage URL: ${url}\nPage title: ${scrape.title ?? ""}\n\n` +
-              `Markdown:\n${md}\n\n` +
-              `Return JSON: { "grants": [ { "title", "title_fr"?, "summary"?, "summary_fr"?, ` +
-              `"amount_cad_min"?, "amount_cad_max"?, "deadline"?, "eligibility"?, "sectors"?, ` +
-              `"language", "url" } ] }` },
+            {
+              role: "system",
+              content:
+                `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}\n` +
+                `Extract every distinct Canadian funding program described on this page. ` +
+                `If the page is an index listing multiple programs, return one entry per listed program. ` +
+                `If nothing is a real program, return { "grants": [] }.`,
+            },
+            {
+              role: "user",
+              content:
+                `Funder: ${F.name}\nPage URL: ${url}\nPage title: ${scrape.title ?? ""}\n\n` +
+                `Markdown:\n${md}\n\n` +
+                `Return JSON: { "grants": [ { "title", "title_fr"?, "summary"?, "summary_fr"?, ` +
+                `"amount_cad_min"?, "amount_cad_max"?, "deadline"?, "eligibility"?, "sectors"?, ` +
+                `"language", "url" } ] }`,
+            },
           ],
         });
         inputTokens += llm.inputTokens ?? 0;
@@ -315,20 +397,28 @@ export async function discoverFunderImpl(
         }
         const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
         const { data: existing } = await supabaseAdmin
-          .from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle();
+          .from("grants")
+          .select("id, times_seen")
+          .eq("canonical_key", ck)
+          .maybeSingle();
         if (existing) {
-          await supabaseAdmin.from("grants").update({
-            last_seen_at: new Date().toISOString(),
-            times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
-          } as never).eq("id", existing.id);
+          await supabaseAdmin
+            .from("grants")
+            .update({
+              last_seen_at: new Date().toISOString(),
+              times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
+            } as never)
+            .eq("id", existing.id);
           seenAgain++;
           continue;
         }
         const sourceHash = createHash("sha256").update(`${g.url}|${g.title}`).digest("hex");
         const { error: ierr } = await supabaseAdmin.from("grants").insert({
           funder_id: F.id,
-          title: g.title, title_fr: g.title_fr ?? null,
-          summary: g.summary ?? null, summary_fr: g.summary_fr ?? null,
+          title: g.title,
+          title_fr: g.title_fr ?? null,
+          summary: g.summary ?? null,
+          summary_fr: g.summary_fr ?? null,
           amount_cad_min: g.amount_cad_min ?? null,
           amount_cad_max: g.amount_cad_max ?? null,
           deadline: g.deadline ?? null,
@@ -336,7 +426,9 @@ export async function discoverFunderImpl(
           sectors: g.sectors ?? [],
           language: g.language,
           url: g.url || url,
-          source_hash: sourceHash, canonical_key: ck, status: "discovered",
+          source_hash: sourceHash,
+          canonical_key: ck,
+          status: "discovered",
         });
         if (!ierr) inserted++;
       }
@@ -353,24 +445,40 @@ export async function discoverFunderImpl(
       .eq("id", F.id);
 
     await supabaseAdmin.from("agent_runs").insert({
-      run_id: runId, agent: "discoverer", status: "succeeded",
+      run_id: runId,
+      agent: "discoverer",
+      status: "succeeded",
       model: "google/gemini-2.5-flash",
       latency_ms: Date.now() - t0,
       input_tokens: inputTokens || null,
       output_tokens: outputTokens || null,
       metadata: {
         ...baseMeta,
-        funder_id: F.id, funder_name: F.name, engine: "firecrawl_v2",
-        urls_mapped: mapped.size, urls_scraped: candidates.length,
-        urls_skipped: skipped, found: foundTotal, inserted, seen_again: seenAgain,
+        funder_id: F.id,
+        funder_name: F.name,
+        engine: "firecrawl_v2",
+        urls_mapped: mapped.size,
+        urls_scraped: candidates.length,
+        urls_skipped: skipped,
+        found: foundTotal,
+        inserted,
+        seen_again: seenAgain,
         seed_sitemap_used: sitemapSeedUsed,
         via_counts: viaCounts,
         per_page: perPageStats.slice(0, 12),
       },
     });
-    return { ok: true, inserted, seenAgain, found: foundTotal, urlsMapped: mapped.size, urlsScraped: candidates.length, runId, engine: "firecrawl_v2" };
+    return {
+      ok: true,
+      inserted,
+      seenAgain,
+      found: foundTotal,
+      urlsMapped: mapped.size,
+      urlsScraped: candidates.length,
+      runId,
+      engine: "firecrawl_v2",
+    };
   }
-
 
   // ----- Path B: Fallback (no Firecrawl) — multi-page link-following crawl -----
   // Strategy: fetch the index, extract anchor links to same-host program-looking
@@ -388,7 +496,9 @@ export async function discoverFunderImpl(
       });
       if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
       return (await res.text()).slice(0, 350_000);
-    } finally { clearTimeout(timer); }
+    } finally {
+      clearTimeout(timer);
+    }
   }
   function htmlToText(html: string, max = 30_000): string {
     return html
@@ -399,20 +509,32 @@ export async function discoverFunderImpl(
       .trim()
       .slice(0, max);
   }
-  const PROGRAM_HINTS = /(program|programme|fund(ing)?|grant|subvention|aide|prêt|pret|bourse|scholarship|prime|credit|crédit|incentive|loan)/i;
+  const PROGRAM_HINTS =
+    /(program|programme|fund(ing)?|grant|subvention|aide|prêt|pret|bourse|scholarship|prime|credit|crédit|incentive|loan)/i;
   // Negative patterns: obviously non-program pages we should never spend an LLM call on.
-  const NON_PROGRAM = /(about|contact|press|news|blog|career|jobs|privacy|terms|legal|cookie|login|sign[\-_]?in|sitemap|search|rss|feed|sponsor|commandite|salle[\-_]de[\-_]presse|nous[\-_]joindre|tout[\-_]sur[\-_]nous|qui[\-_]sommes|esg|publication|rapport|annual[\-_]report|events?|evenements?|webinair|partners?|partenaires)/i;
-  function extractCandidateLinks(html: string, baseUrl: string): Array<{ url: string; text: string; score: number }> {
+  const NON_PROGRAM =
+    /(about|contact|press|news|blog|career|jobs|privacy|terms|legal|cookie|login|sign[-_]?in|sitemap|search|rss|feed|sponsor|commandite|salle[-_]de[-_]presse|nous[-_]joindre|tout[-_]sur[-_]nous|qui[-_]sommes|esg|publication|rapport|annual[-_]report|events?|evenements?|webinair|partners?|partenaires)/i;
+  function extractCandidateLinks(
+    html: string,
+    baseUrl: string,
+  ): Array<{ url: string; text: string; score: number }> {
     const base = new URL(baseUrl);
     const found = new Map<string, { text: string; score: number }>();
     const re = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(html))) {
       const href = m[1];
-      const rawText = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const rawText = m[2]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
       if (!rawText || rawText.length < 5 || rawText.length > 160) continue;
       let abs: URL;
-      try { abs = new URL(href, baseUrl); } catch { continue; }
+      try {
+        abs = new URL(href, baseUrl);
+      } catch {
+        continue;
+      }
       if (abs.host !== base.host) continue;
       if (!/^https?:$/.test(abs.protocol)) continue;
       const path = abs.pathname.replace(/\/+$/, "").toLowerCase();
@@ -431,8 +553,9 @@ export async function discoverFunderImpl(
       const prev = found.get(key);
       if (!prev || prev.score < score) found.set(key, { text: rawText, score });
     }
-    return Array.from(found, ([url, v]) => ({ url, text: v.text, score: v.score }))
-      .sort((a, b) => b.score - a.score);
+    return Array.from(found, ([url, v]) => ({ url, text: v.text, score: v.score })).sort(
+      (a, b) => b.score - a.score,
+    );
   }
 
   const indexHtml = await fetchHtml(F.source_url, 10_000);
@@ -458,10 +581,14 @@ export async function discoverFunderImpl(
           if (u.host !== seedHost) continue;
           if (NON_PROGRAM.test(u.pathname)) continue;
           seeded.push({ url: `${u.origin}${u.pathname}`, text: h.title || u.pathname, score: 4 });
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       }
     }
-  } catch { /* Jina best-effort */ }
+  } catch {
+    /* Jina best-effort */
+  }
 
   const sitemapSeeded = await fetchCandidateLinksFromSitemaps(F.source_url, {
     title: F.name,
@@ -480,14 +607,22 @@ export async function discoverFunderImpl(
 
   if (links.length === 0 && indexText.length < 200) {
     await supabaseAdmin.from("agent_runs").insert({
-      run_id: runId, agent: "discoverer", status: "degraded",
-      model: "google/gemini-2.5-flash", latency_ms: Date.now() - t0,
+      run_id: runId,
+      agent: "discoverer",
+      status: "degraded",
+      model: "google/gemini-2.5-flash",
+      latency_ms: Date.now() - t0,
       error: "page_too_short",
-      metadata: { ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback", links_considered: 0 },
+      metadata: {
+        ...baseMeta,
+        funder_id: F.id,
+        funder_name: F.name,
+        engine: "fallback",
+        links_considered: 0,
+      },
     });
     return { ok: true, inserted: 0, runId, degraded: true, engine: "fallback" };
   }
-
 
   // Scrape candidate pages in parallel (bounded) using the local engine chain.
   // The crawl ledger skips URLs whose `next_fetch_at` hasn't elapsed and records
@@ -501,7 +636,8 @@ export async function discoverFunderImpl(
     const results = await Promise.allSettled(
       batch.map(async (l) => {
         const decision = await shouldFetch(l.url);
-        if (!decision.fetch) return { url: l.url, text: "", skipped: true, reason: decision.reason };
+        if (!decision.fetch)
+          return { url: l.url, text: "", skipped: true, reason: decision.reason };
         const scrape = await scrapeWithFallback(l.url, {
           etag: decision.etag,
           lastModified: decision.lastModified,
@@ -510,19 +646,31 @@ export async function discoverFunderImpl(
           await recordFetch(l.url, { kind: "error", reason: scrape.error }, { funderId: F.id });
           return { url: l.url, text: "", skipped: false, reason: scrape.error };
         }
-        const out = await recordFetch(l.url, {
-          kind: "ok",
-          markdown: scrape.markdown,
-          title: scrape.title,
-          via: scrape.via,
-          bytes: scrape.markdown.length,
-        }, { funderId: F.id });
-        return { url: l.url, text: scrape.markdown.slice(0, 5_000), skipped: false, changed: out.changed };
+        const out = await recordFetch(
+          l.url,
+          {
+            kind: "ok",
+            markdown: scrape.markdown,
+            title: scrape.title,
+            via: scrape.via,
+            bytes: scrape.markdown.length,
+          },
+          { funderId: F.id },
+        );
+        return {
+          url: l.url,
+          text: scrape.markdown.slice(0, 5_000),
+          skipped: false,
+          changed: out.changed,
+        };
       }),
     );
     for (const r of results) {
       if (r.status !== "fulfilled") continue;
-      if (r.value.skipped) { ledgerSkipped++; continue; }
+      if (r.value.skipped) {
+        ledgerSkipped++;
+        continue;
+      }
       if (r.value.text.length >= 400) {
         pageDocs.push({ url: r.value.url, text: r.value.text });
         ledgerFreshHits++;
@@ -530,7 +678,6 @@ export async function discoverFunderImpl(
     }
   }
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 
   let inserted = 0;
   let seenAgain = 0;
@@ -552,20 +699,27 @@ export async function discoverFunderImpl(
       const llmPage = await callLlm({
         model: "google/gemini-2.5-flash",
         agent: "discoverer",
-        runId, temperature: 0.1, responseFormat: "json",
+        runId,
+        temperature: 0.1,
+        responseFormat: "json",
         messages: [
-          { role: "system", content: `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}` },
-          { role: "user", content:
-            `Funder: ${F.name}\nProgram page URL: ${doc.url}\n\nPage text:\n${doc.text}\n\n` +
-            `Return JSON: { "grants": [ one entry describing THIS specific program with fields: ` +
-            `"title", "title_fr"?, "summary"?, "summary_fr"?, "amount_cad_min"?, "amount_cad_max"?, ` +
-            `"deadline"?, "eligibility"?, "sectors"?, "language", "url" ] }. Use "${doc.url}" as the url. ` +
-            `LANGUAGE RULE (CRITICAL): "title" and "summary" MUST always be in ENGLISH. ` +
-            `If the source page is in French, translate them to natural English and put the ORIGINAL French ` +
-            `text in "title_fr" and "summary_fr". Set "language" to the source page language ("en" or "fr"). ` +
-            `Do not leave French strings in "title" or "summary". Translate "eligibility" values and "sectors" to English as well. ` +
-            `If the page is not a specific funding program, return { "grants": [] }.` },
-
+          {
+            role: "system",
+            content: `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}`,
+          },
+          {
+            role: "user",
+            content:
+              `Funder: ${F.name}\nProgram page URL: ${doc.url}\n\nPage text:\n${doc.text}\n\n` +
+              `Return JSON: { "grants": [ one entry describing THIS specific program with fields: ` +
+              `"title", "title_fr"?, "summary"?, "summary_fr"?, "amount_cad_min"?, "amount_cad_max"?, ` +
+              `"deadline"?, "eligibility"?, "sectors"?, "language", "url" ] }. Use "${doc.url}" as the url. ` +
+              `LANGUAGE RULE (CRITICAL): "title" and "summary" MUST always be in ENGLISH. ` +
+              `If the source page is in French, translate them to natural English and put the ORIGINAL French ` +
+              `text in "title_fr" and "summary_fr". Set "language" to the source page language ("en" or "fr"). ` +
+              `Do not leave French strings in "title" or "summary". Translate "eligibility" values and "sectors" to English as well. ` +
+              `If the page is not a specific funding program, return { "grants": [] }.`,
+          },
         ],
       });
       inputTokens += llmPage.inputTokens ?? 0;
@@ -578,11 +732,12 @@ export async function discoverFunderImpl(
     }
 
     // Defensive translation: if the LLM left French in title/summary, translate now.
-    const FRENCH_HINT = /\b(le|la|les|des|du|aux?|pour|avec|sans|sur|programme|subvention|prêt|prets?|aide|crédit|entreprises?|québec|développement|investissement|formation|d['’]|l['’]|qu['’])\b/i;
+    const FRENCH_HINT =
+      /\b(le|la|les|des|du|aux?|pour|avec|sans|sur|programme|subvention|prêt|prets?|aide|crédit|entreprises?|québec|développement|investissement|formation|d['’]|l['’]|qu['’])\b/i;
     function looksFrench(s: string | null | undefined): boolean {
       if (!s) return false;
       const hits = (s.match(FRENCH_HINT) ?? []).length;
-      return hits >= 2 || /[àâçéèêëîïôûùœ]/.test(s) && hits >= 1;
+      return hits >= 2 || (/[àâçéèêëîïôûùœ]/.test(s) && hits >= 1);
     }
     for (const g of pageGrants) {
       if (!looksFrench(g.title) && !looksFrench(g.summary)) continue;
@@ -590,13 +745,22 @@ export async function discoverFunderImpl(
         const tr = await callLlm({
           model: "google/gemini-2.5-flash",
           agent: "discoverer",
-          runId, temperature: 0, responseFormat: "json",
+          runId,
+          temperature: 0,
+          responseFormat: "json",
           messages: [
-            { role: "system", content: "You translate Canadian funding-program text from French to natural English. Return ONLY JSON." },
-            { role: "user", content:
-              `Translate to English. Keep proper nouns (program names, agencies) intact. ` +
-              `Return JSON: {"title_en": string, "summary_en": string}\n\n` +
-              `title: ${g.title}\nsummary: ${g.summary ?? ""}` },
+            {
+              role: "system",
+              content:
+                "You translate Canadian funding-program text from French to natural English. Return ONLY JSON.",
+            },
+            {
+              role: "user",
+              content:
+                `Translate to English. Keep proper nouns (program names, agencies) intact. ` +
+                `Return JSON: {"title_en": string, "summary_en": string}\n\n` +
+                `title: ${g.title}\nsummary: ${g.summary ?? ""}`,
+            },
           ],
         });
         inputTokens += tr.inputTokens ?? 0;
@@ -611,7 +775,9 @@ export async function discoverFunderImpl(
           g.summary = parsed.summary_en;
         }
         await sleep(FALLBACK_LLM_THROTTLE_MS);
-      } catch { /* keep original on failure */ }
+      } catch {
+        /* keep original on failure */
+      }
     }
 
     let pageInserted = 0;
@@ -620,44 +786,65 @@ export async function discoverFunderImpl(
     for (const g of pageGrants) {
       if (isGenericTitle(g.title)) {
         skipReasons.generic_title = (skipReasons.generic_title ?? 0) + 1;
-        if (skippedSamples.length < 5) skippedSamples.push({ title: g.title, url: g.url || doc.url, reason: "generic_title" });
+        if (skippedSamples.length < 5)
+          skippedSamples.push({ title: g.title, url: g.url || doc.url, reason: "generic_title" });
         continue;
       }
       // Force page URL when the LLM omits it or returns the index URL.
-      const effectiveUrl = (g.url && g.url !== F.source_url) ? g.url : doc.url;
+      const effectiveUrl = g.url && g.url !== F.source_url ? g.url : doc.url;
       if (isRootIndex(effectiveUrl)) {
         skipReasons.root_index = (skipReasons.root_index ?? 0) + 1;
-        if (skippedSamples.length < 5) skippedSamples.push({ title: g.title, url: effectiveUrl, reason: "root_index" });
+        if (skippedSamples.length < 5)
+          skippedSamples.push({ title: g.title, url: effectiveUrl, reason: "root_index" });
         continue;
       }
       const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
-      const sourceHash = createHash("sha256").update(`${(g.url && g.url !== F.source_url) ? g.url : doc.url}|${g.title}`).digest("hex");
+      const sourceHash = createHash("sha256")
+        .update(`${g.url && g.url !== F.source_url ? g.url : doc.url}|${g.title}`)
+        .digest("hex");
       // Look up existing by canonical_key OR source_hash to absorb retries/dupes.
       const { data: existing } = await supabaseAdmin
-        .from("grants").select("id, times_seen")
+        .from("grants")
+        .select("id, times_seen")
         .or(`canonical_key.eq.${ck},source_hash.eq.${sourceHash}`)
         .maybeSingle();
       if (existing) {
-        await supabaseAdmin.from("grants").update({
-          last_seen_at: new Date().toISOString(),
-          times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
-        } as never).eq("id", existing.id);
-        seenAgain++; continue;
+        await supabaseAdmin
+          .from("grants")
+          .update({
+            last_seen_at: new Date().toISOString(),
+            times_seen: ((existing as { times_seen?: number }).times_seen ?? 1) + 1,
+          } as never)
+          .eq("id", existing.id);
+        seenAgain++;
+        continue;
       }
-      const effectiveUrl2 = (g.url && g.url !== F.source_url) ? g.url : doc.url;
+      const effectiveUrl2 = g.url && g.url !== F.source_url ? g.url : doc.url;
       const { error: ierr } = await supabaseAdmin.from("grants").insert({
-        funder_id: F.id, title: g.title, title_fr: g.title_fr ?? null,
-        summary: g.summary ?? null, summary_fr: g.summary_fr ?? null,
-        amount_cad_min: g.amount_cad_min ?? null, amount_cad_max: g.amount_cad_max ?? null,
+        funder_id: F.id,
+        title: g.title,
+        title_fr: g.title_fr ?? null,
+        summary: g.summary ?? null,
+        summary_fr: g.summary_fr ?? null,
+        amount_cad_min: g.amount_cad_min ?? null,
+        amount_cad_max: g.amount_cad_max ?? null,
         deadline: g.deadline ?? null,
         eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
-        sectors: g.sectors ?? [], language: g.language, url: effectiveUrl2,
-        source_hash: sourceHash, canonical_key: ck, status: "discovered",
+        sectors: g.sectors ?? [],
+        language: g.language,
+        url: effectiveUrl2,
+        source_hash: sourceHash,
+        canonical_key: ck,
+        status: "discovered",
       });
-      if (!ierr) { inserted++; pageInserted++; }
-      else if (/duplicate key/i.test(ierr.message)) { seenAgain++; }
-      else { insertErrors.push({ title: g.title, error: ierr.message }); }
-
+      if (!ierr) {
+        inserted++;
+        pageInserted++;
+      } else if (/duplicate key/i.test(ierr.message)) {
+        seenAgain++;
+      } else {
+        insertErrors.push({ title: g.title, error: ierr.message });
+      }
     }
     perPage.push({ url: doc.url, found: pageGrants.length, inserted: pageInserted });
   }
@@ -668,22 +855,38 @@ export async function discoverFunderImpl(
     .eq("id", F.id);
 
   await supabaseAdmin.from("agent_runs").insert({
-    run_id: runId, agent: "discoverer", status: "succeeded",
+    run_id: runId,
+    agent: "discoverer",
+    status: "succeeded",
     model: "google/gemini-2.5-flash",
-    input_tokens: inputTokens || null, output_tokens: outputTokens || null,
+    input_tokens: inputTokens || null,
+    output_tokens: outputTokens || null,
     latency_ms: Date.now() - t0,
     metadata: {
-      ...baseMeta, funder_id: F.id, funder_name: F.name, engine: "fallback",
-      links_extracted: links.length, pages_scraped: pageDocs.length,
-      ledger_skipped: ledgerSkipped, ledger_fresh_hits: ledgerFreshHits,
-      found: foundTotal, inserted, seen_again: seenAgain,
+      ...baseMeta,
+      funder_id: F.id,
+      funder_name: F.name,
+      engine: "fallback",
+      links_extracted: links.length,
+      pages_scraped: pageDocs.length,
+      ledger_skipped: ledgerSkipped,
+      ledger_fresh_hits: ledgerFreshHits,
+      found: foundTotal,
+      inserted,
+      seen_again: seenAgain,
       skip_reasons: skipReasons,
       skipped_samples: skippedSamples,
       insert_errors: insertErrors.slice(0, 5),
       per_page: perPage.slice(0, 15),
     },
   });
-  return { ok: true, inserted, seenAgain, found: foundTotal, urlsScraped: pageDocs.length, runId, engine: "fallback" };
+  return {
+    ok: true,
+    inserted,
+    seenAgain,
+    found: foundTotal,
+    urlsScraped: pageDocs.length,
+    runId,
+    engine: "fallback",
+  };
 }
-
-

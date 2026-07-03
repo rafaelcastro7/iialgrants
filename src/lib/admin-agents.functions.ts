@@ -46,6 +46,7 @@ export const toggleAgentFlag = createServerFn({ method: "POST" })
   });
 
 // Server-side check used by agent server fns to short-circuit when off.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped Supabase query builder is intentional here
 export async function assertAgentEnabled(name: string, db?: { from: (table: string) => any }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const client = db ?? supabaseAdmin;

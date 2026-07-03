@@ -1,5 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, ToggleLeft, Bot, History, ArrowLeft, Sparkles, Globe } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  ToggleLeft,
+  Bot,
+  History,
+  ArrowLeft,
+  Sparkles,
+  Globe,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,

@@ -6,7 +6,14 @@
 // Ref: https://opentelemetry.io/docs/specs/semconv/gen-ai/
 
 export type GenAIEvent = {
-  "gen_ai.system": "google.gemini" | "openai" | "ollama" | "free.groq" | "free.gemini" | "free.cerebras" | "free.ollama";
+  "gen_ai.system":
+    | "google.gemini"
+    | "openai"
+    | "ollama"
+    | "free.groq"
+    | "free.gemini"
+    | "free.cerebras"
+    | "free.ollama";
   "gen_ai.request.model": string;
   "gen_ai.operation.name": "chat" | "embedding" | "generate_content";
   "gen_ai.usage.input_tokens"?: number;
@@ -30,29 +37,42 @@ function severity(ok: boolean): { number: number; text: string } {
 }
 
 function toOtlpLog(evt: GenAIEvent) {
-  const attrs: Array<{ key: string; value: { stringValue?: string; intValue?: string; doubleValue?: number; boolValue?: boolean } }> = [];
+  const attrs: Array<{
+    key: string;
+    value: { stringValue?: string; intValue?: string; doubleValue?: number; boolValue?: boolean };
+  }> = [];
   for (const [k, v] of Object.entries(evt)) {
     if (v == null) continue;
     if (typeof v === "string") attrs.push({ key: k, value: { stringValue: v } });
-    else if (typeof v === "number") attrs.push({ key: k, value: Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v } });
+    else if (typeof v === "number")
+      attrs.push({
+        key: k,
+        value: Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v },
+      });
     else if (typeof v === "boolean") attrs.push({ key: k, value: { boolValue: v } });
     else attrs.push({ key: k, value: { stringValue: JSON.stringify(v) } });
   }
   const sev = severity(evt.ok);
   return {
-    resourceLogs: [{
-      resource: { attributes: [{ key: "service.name", value: { stringValue: "iial" } }] },
-      scopeLogs: [{
-        scope: { name: "gen_ai" },
-        logRecords: [{
-          timeUnixNano: nowNs(),
-          severityNumber: sev.number,
-          severityText: sev.text,
-          body: { stringValue: `${evt.agent} ${evt["gen_ai.operation.name"]}` },
-          attributes: attrs,
-        }],
-      }],
-    }],
+    resourceLogs: [
+      {
+        resource: { attributes: [{ key: "service.name", value: { stringValue: "iial" } }] },
+        scopeLogs: [
+          {
+            scope: { name: "gen_ai" },
+            logRecords: [
+              {
+                timeUnixNano: nowNs(),
+                severityNumber: sev.number,
+                severityText: sev.text,
+                body: { stringValue: `${evt.agent} ${evt["gen_ai.operation.name"]}` },
+                attributes: attrs,
+              },
+            ],
+          },
+        ],
+      },
+    ],
   };
 }
 
@@ -79,12 +99,13 @@ async function exportOtlp(evt: GenAIEvent) {
 }
 
 export function logGenAI(evt: GenAIEvent) {
-  // eslint-disable-next-line no-console
   console.log(JSON.stringify({ kind: "gen_ai", ts: new Date().toISOString(), ...evt }));
   // Fire-and-forget OTLP export (no await — handler returns promptly).
   void exportOtlp(evt);
 }
 
 export function newRunId(): string {
-  return (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  return (
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
 }

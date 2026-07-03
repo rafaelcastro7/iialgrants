@@ -48,7 +48,9 @@ export async function ragRetrieve(
           .eq("user_id", userId)
           .textSearch("content", tsQuery, { type: "websearch", config: "simple" })
           .limit(topK * 2)
-      : Promise.resolve({ data: [] as Array<{ id: string; content: string; source: string; language: "en" | "fr" }> }),
+      : Promise.resolve({
+          data: [] as Array<{ id: string; content: string; source: string; language: "en" | "fr" }>,
+        }),
     embedText(query),
   ]);
 
@@ -60,11 +62,25 @@ export async function ragRetrieve(
   });
   if (vecErr) console.warn("[rag] vector search failed, falling back to FTS only:", vecErr.message);
 
-  const fts = (ftsRows ?? []) as Array<{ id: string; content: string; source: string; language: "en" | "fr" }>;
-  const vec = (vecRows ?? []) as Array<{ id: string; content: string; source: string; language: "en" | "fr"; similarity: number }>;
+  const fts = (ftsRows ?? []) as Array<{
+    id: string;
+    content: string;
+    source: string;
+    language: "en" | "fr";
+  }>;
+  const vec = (vecRows ?? []) as Array<{
+    id: string;
+    content: string;
+    source: string;
+    language: "en" | "fr";
+    similarity: number;
+  }>;
 
   const fused = rrf([fts.map((r) => r.id), vec.map((r) => r.id)]);
-  const byId = new Map<string, { id: string; content: string; source: string; language: "en" | "fr" }>();
+  const byId = new Map<
+    string,
+    { id: string; content: string; source: string; language: "en" | "fr" }
+  >();
   for (const r of [...fts, ...vec]) byId.set(r.id, r);
 
   return [...fused.entries()]

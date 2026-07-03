@@ -9,28 +9,34 @@ export const Route = createFileRoute("/api/public/hooks/rss-poll")({
     handlers: {
       POST: async ({ request }) => {
         const apiKey = request.headers.get("apikey") ?? "";
-        const expected = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
+        const expected =
+          process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
         if (!expected || apiKey !== expected) {
           return new Response(JSON.stringify({ error: "unauthorized" }), {
-            status: 401, headers: { "Content-Type": "application/json" },
+            status: 401,
+            headers: { "Content-Type": "application/json" },
           });
         }
         try {
           const { ingestRssFeeds } = await import("@/lib/rss-ingestor.server");
           const result = await ingestRssFeeds();
           return new Response(JSON.stringify({ ok: true, ...result }), {
-            status: 200, headers: { "Content-Type": "application/json" },
+            status: 200,
+            headers: { "Content-Type": "application/json" },
           });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           return new Response(JSON.stringify({ ok: false, error: msg }), {
-            status: 500, headers: { "Content-Type": "application/json" },
+            status: 500,
+            headers: { "Content-Type": "application/json" },
           });
         }
       },
-      GET: async () => new Response(JSON.stringify({ status: "ok", hook: "rss-poll" }), {
-        status: 200, headers: { "Content-Type": "application/json" },
-      }),
+      GET: async () =>
+        new Response(JSON.stringify({ status: "ok", hook: "rss-poll" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
     },
   },
 });

@@ -28,23 +28,27 @@ export const Route = createFileRoute("/compliance")({
 
 function ComplianceRoute() {
   const { t, i18n } = useTranslation();
-  useEffect(() => { syncClientLocale(); }, []);
-  const fr = false /* EN-only */;
+  useEffect(() => {
+    syncClientLocale();
+  }, []);
+  const fr = false; /* EN-only */
 
   return (
     <main className="min-h-screen bg-background text-foreground p-6 max-w-3xl mx-auto">
       <header className="flex items-center justify-between mb-6">
-        <Link to="/" className="text-sm text-muted-foreground hover:underline">← {t("app.name")}</Link>
+        <Link to="/" className="text-sm text-muted-foreground hover:underline">
+          ← {t("app.name")}
+        </Link>
         <LanguageSwitcher />
       </header>
 
       <h1 className="text-3xl font-bold mb-2">{t("compliance.title")}</h1>
-      <p className="text-sm text-muted-foreground mb-6">
-        {t("compliance.maintainedBy")}
-      </p>
+      <p className="text-sm text-muted-foreground mb-6">{t("compliance.maintainedBy")}</p>
 
       <Card className="mb-4">
-        <CardHeader><CardTitle>{t("compliance.dataResidency")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("compliance.dataResidency")}</CardTitle>
+        </CardHeader>
         <CardContent className="text-sm space-y-2">
           <p>
             {fr
@@ -60,20 +64,44 @@ function ComplianceRoute() {
       </Card>
 
       <Card className="mb-4">
-        <CardHeader><CardTitle>{t("compliance.frameworks")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("compliance.frameworks")}</CardTitle>
+        </CardHeader>
         <CardContent className="text-sm space-y-2">
           <ul className="list-disc pl-5 space-y-1">
-            <li><strong>PIPEDA</strong> — {fr ? "Loi sur la protection des renseignements personnels et les documents électroniques." : "Personal Information Protection and Electronic Documents Act."}</li>
-            <li><strong>Quebec Law 25</strong> — {fr ? "Loi modernisant des dispositions législatives en matière de protection des renseignements personnels." : "Quebec modernization of personal information protection."}</li>
-            <li><strong>AIDA (Bill C-27)</strong> — {fr ? "Loi sur l'intelligence artificielle et les données (en cours d'adoption)." : "Artificial Intelligence and Data Act (pending)."}</li>
-            <li><strong>TBS Directive</strong> — {fr ? "Directive sur la prise de décision automatisée (référence pour les contrôles humains dans la boucle)." : "Treasury Board Directive on Automated Decision-Making (reference for human-in-the-loop controls)."}</li>
+            <li>
+              <strong>PIPEDA</strong> —{" "}
+              {fr
+                ? "Loi sur la protection des renseignements personnels et les documents électroniques."
+                : "Personal Information Protection and Electronic Documents Act."}
+            </li>
+            <li>
+              <strong>Quebec Law 25</strong> —{" "}
+              {fr
+                ? "Loi modernisant des dispositions législatives en matière de protection des renseignements personnels."
+                : "Quebec modernization of personal information protection."}
+            </li>
+            <li>
+              <strong>AIDA (Bill C-27)</strong> —{" "}
+              {fr
+                ? "Loi sur l'intelligence artificielle et les données (en cours d'adoption)."
+                : "Artificial Intelligence and Data Act (pending)."}
+            </li>
+            <li>
+              <strong>TBS Directive</strong> —{" "}
+              {fr
+                ? "Directive sur la prise de décision automatisée (référence pour les contrôles humains dans la boucle)."
+                : "Treasury Board Directive on Automated Decision-Making (reference for human-in-the-loop controls)."}
+            </li>
           </ul>
           <p className="text-xs text-muted-foreground pt-2">{t("compliance.notCertification")}</p>
         </CardContent>
       </Card>
 
       <Card className="mb-4">
-        <CardHeader><CardTitle>{t("compliance.aiTransparency")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("compliance.aiTransparency")}</CardTitle>
+        </CardHeader>
         <CardContent className="text-sm space-y-2">
           <p>
             {fr
@@ -89,25 +117,46 @@ function ComplianceRoute() {
       </Card>
 
       <Card className="mb-4">
-        <CardHeader><CardTitle>{t("compliance.rights")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("compliance.rights")}</CardTitle>
+        </CardHeader>
         <CardContent className="text-sm space-y-2">
           <ul className="list-disc pl-5 space-y-1">
-            <li>{fr ? "Droit d'accès et de portabilité — exportez vos données en JSON depuis Paramètres → Confidentialité." : "Right of access and portability — export your data as JSON from Settings → Privacy."}</li>
-            <li>{fr ? "Droit de rectification — modifiez votre profil et votre profil d'organisation à tout moment." : "Right of rectification — edit your profile and organization profile at any time."}</li>
-            <li>{fr ? "Droit à l'effacement — demandez la suppression de votre compte ; traitement sous 30 jours." : "Right to erasure — request account deletion; processed within 30 days."}</li>
-            <li>{fr ? "Droit de retrait du consentement — révoquez vos consentements depuis le ledger." : "Right to withdraw consent — revoke consents from the ledger."}</li>
+            <li>
+              {fr
+                ? "Droit d'accès et de portabilité — exportez vos données en JSON depuis Paramètres → Confidentialité."
+                : "Right of access and portability — export your data as JSON from Settings → Privacy."}
+            </li>
+            <li>
+              {fr
+                ? "Droit de rectification — modifiez votre profil et votre profil d'organisation à tout moment."
+                : "Right of rectification — edit your profile and organization profile at any time."}
+            </li>
+            <li>
+              {fr
+                ? "Droit à l'effacement — demandez la suppression de votre compte ; traitement sous 30 jours."
+                : "Right to erasure — request account deletion; processed within 30 days."}
+            </li>
+            <li>
+              {fr
+                ? "Droit de retrait du consentement — révoquez vos consentements depuis le ledger."
+                : "Right to withdraw consent — revoke consents from the ledger."}
+            </li>
           </ul>
           <div className="pt-3">
             <Link to="/privacy">
-              <Button variant="outline" size="sm">{t("compliance.openPrivacyCenter")}</Button>
+              <Button variant="outline" size="sm">
+                {t("compliance.openPrivacyCenter")}
+              </Button>
             </Link>
           </div>
-
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>{t("compliance.contact")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("compliance.contact")}</CardTitle>
+        </CardHeader>
         <CardContent className="text-sm">
           <p>
             {fr

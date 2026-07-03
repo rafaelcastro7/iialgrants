@@ -14,15 +14,25 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-  DialogDescription, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  BookOpenText, Copy, Download, ExternalLink, Sparkles,
-  CheckCircle2, AlertCircle,
+  BookOpenText,
+  Copy,
+  Download,
+  ExternalLink,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildNotebookBriefing } from "@/lib/notebooklm.functions";
@@ -30,17 +40,36 @@ import { buildNotebookBriefing } from "@/lib/notebooklm.functions";
 type Scope = "single" | "top-fit" | "shortlisted" | "all-enriched";
 
 const MULTI_SCOPES: { id: Exclude<Scope, "single">; title: string; subtitle: string }[] = [
-  { id: "top-fit", title: "Top 25 by fit", subtitle: "Highest-scoring grants the Evaluator has ranked. Best default." },
-  { id: "shortlisted", title: "My shortlist", subtitle: "Only grants already moved to Shortlisted. Curated set." },
-  { id: "all-enriched", title: "Everything enriched", subtitle: "All grants with verified evidence. Broadest scan." },
+  {
+    id: "top-fit",
+    title: "Top 25 by fit",
+    subtitle: "Highest-scoring grants the Evaluator has ranked. Best default.",
+  },
+  {
+    id: "shortlisted",
+    title: "My shortlist",
+    subtitle: "Only grants already moved to Shortlisted. Curated set.",
+  },
+  {
+    id: "all-enriched",
+    title: "Everything enriched",
+    subtitle: "All grants with verified evidence. Broadest scan.",
+  },
 ];
 
-type Result = {
-  ok: true;
-  generatedAt: string; scope: string; count: number;
-  grantsWithEvidence: number; totalSpans: number;
-  shortlistedCount: number; markdown: string; ids: string[];
-} | { ok: false; reason: string; message: string };
+type Result =
+  | {
+      ok: true;
+      generatedAt: string;
+      scope: string;
+      count: number;
+      grantsWithEvidence: number;
+      totalSpans: number;
+      shortlistedCount: number;
+      markdown: string;
+      ids: string[];
+    }
+  | { ok: false; reason: string; message: string };
 
 export function NotebookLMBridge({
   grantId,
@@ -64,11 +93,14 @@ export function NotebookLMBridge({
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
-    setResult(null); setCopied(false); setError(null);
+    setResult(null);
+    setCopied(false);
+    setError(null);
   }
 
   async function onGenerate() {
-    setBusy(true); reset();
+    setBusy(true);
+    reset();
     try {
       const r = await build({
         data: isSingle
@@ -104,7 +136,9 @@ export function NotebookLMBridge({
     const a = document.createElement("a");
     a.href = url;
     a.download = `iial-briefing-${result.generatedAt.slice(0, 10)}.md`;
-    document.body.appendChild(a); a.click(); a.remove();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     URL.revokeObjectURL(url);
   }
 
@@ -113,7 +147,13 @@ export function NotebookLMBridge({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" variant={variant} className="gap-2">
           <BookOpenText className="h-4 w-4" />
@@ -127,7 +167,8 @@ export function NotebookLMBridge({
             Generate a NotebookLM briefing
           </DialogTitle>
           <DialogDescription>
-            We build a single evidence-cited Markdown document. Paste it into NotebookLM as one source — every claim links to the funder's own page.
+            We build a single evidence-cited Markdown document. Paste it into NotebookLM as one
+            source — every claim links to the funder's own page.
           </DialogDescription>
         </DialogHeader>
 
@@ -138,7 +179,9 @@ export function NotebookLMBridge({
               <div className="rounded-md border p-3 bg-primary/5 text-xs">
                 <p className="font-medium text-sm mb-1">Deep-dive briefing</p>
                 <p className="text-muted-foreground">
-                  Generates a single high-fidelity NotebookLM source for this grant only — every field, every citation, the full workflow timeline, and tuned questions for deep analysis.
+                  Generates a single high-fidelity NotebookLM source for this grant only — every
+                  field, every citation, the full workflow timeline, and tuned questions for deep
+                  analysis.
                 </p>
               </div>
             ) : (
@@ -148,7 +191,8 @@ export function NotebookLMBridge({
                     const active = scope === s.id;
                     return (
                       <button
-                        key={s.id} type="button"
+                        key={s.id}
+                        type="button"
                         onClick={() => setScope(s.id)}
                         className={cn(
                           "w-full text-left rounded-md border p-3 transition-all hover:border-primary/60",
@@ -157,7 +201,11 @@ export function NotebookLMBridge({
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-sm">{s.title}</span>
-                          {active && <Badge variant="default" className="text-[10px] h-4">Selected</Badge>}
+                          {active && (
+                            <Badge variant="default" className="text-[10px] h-4">
+                              Selected
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{s.subtitle}</p>
                       </button>
@@ -169,7 +217,8 @@ export function NotebookLMBridge({
                   <div className="space-y-0.5 min-w-0">
                     <Label className="text-xs font-medium">Auto-mark as Shortlisted</Label>
                     <p className="text-[11px] text-muted-foreground">
-                      Move the included grants to your shortlist when the briefing is generated. Skips grants already in a proposal.
+                      Move the included grants to your shortlist when the briefing is generated.
+                      Skips grants already in a proposal.
                     </p>
                   </div>
                   <Switch checked={autoShortlist} onCheckedChange={setAutoShortlist} />
@@ -211,16 +260,30 @@ export function NotebookLMBridge({
             <div className="rounded-md border bg-card p-3 text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
               <p className="font-medium text-foreground">How to load it</p>
               <ol className="list-decimal list-inside space-y-0.5">
-                <li>Click <strong>Open NotebookLM</strong> below.</li>
-                <li>Create a notebook → <strong>Add source</strong> → <strong>Paste text</strong>.</li>
-                <li>Paste (your briefing is already in the clipboard if you copied it), or upload the downloaded .md file.</li>
-                <li>Generate an Audio Overview or use the suggested questions at the bottom of the briefing.</li>
+                <li>
+                  Click <strong>Open NotebookLM</strong> below.
+                </li>
+                <li>
+                  Create a notebook → <strong>Add source</strong> → <strong>Paste text</strong>.
+                </li>
+                <li>
+                  Paste (your briefing is already in the clipboard if you copied it), or upload the
+                  downloaded .md file.
+                </li>
+                <li>
+                  Generate an Audio Overview or use the suggested questions at the bottom of the
+                  briefing.
+                </li>
               </ol>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
               <Button variant="outline" size="sm" onClick={onCopy}>
-                {copied ? <CheckCircle2 className="h-4 w-4 mr-1.5 text-emerald-600" /> : <Copy className="h-4 w-4 mr-1.5" />}
+                {copied ? (
+                  <CheckCircle2 className="h-4 w-4 mr-1.5 text-emerald-600" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-1.5" />
+                )}
                 {copied ? "Copied" : "Copy"}
               </Button>
               <Button variant="outline" size="sm" onClick={onDownload}>

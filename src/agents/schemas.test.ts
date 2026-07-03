@@ -24,10 +24,14 @@ describe("agents/schemas", () => {
 
   it("rejects invalid deadlines", () => {
     const bad = {
-      grants: [{
-        title: "X", url: "https://example.ca", language: "en",
-        deadline: "30/09/2026",
-      }],
+      grants: [
+        {
+          title: "X",
+          url: "https://example.ca",
+          language: "en",
+          deadline: "30/09/2026",
+        },
+      ],
     };
     expect(() => DiscovererOutput.parse(bad)).toThrow();
   });

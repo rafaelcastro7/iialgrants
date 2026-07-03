@@ -3,7 +3,13 @@
 // hammering the DB on every LLM call.
 import { PROMPTS } from "@/agents/schemas";
 
-export type AgentName = "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";
+export type AgentName =
+  | "discoverer"
+  | "enricher"
+  | "evaluator"
+  | "strategist"
+  | "writer"
+  | "critic";
 
 export type AgentConfig = {
   agent: AgentName;
@@ -13,8 +19,8 @@ export type AgentConfig = {
   top_p: number;
   max_output_tokens: number;
   json_mode: boolean;
-  system_prompt: string;       // resolved (override OR built-in)
-  builtin_prompt: string;      // built-in for diff/reset
+  system_prompt: string; // resolved (override OR built-in)
+  builtin_prompt: string; // built-in for diff/reset
   has_override: boolean;
   prompt_version: string;
   timeout_ms: number;
@@ -44,9 +50,12 @@ export async function resolveAgentConfig(agent: AgentName): Promise<AgentConfig>
   if (error) throw new Error(`agent_config_load: ${error.message}`);
 
   const row = (data ?? {}) as Record<string, unknown>;
-  const builtin = (PROMPTS as Record<string, { system: string; version: string }>)[agent]?.system ?? "";
-  const override = typeof row.system_prompt === "string" && row.system_prompt.trim().length > 0
-    ? (row.system_prompt as string) : null;
+  const builtin =
+    (PROMPTS as Record<string, { system: string; version: string }>)[agent]?.system ?? "";
+  const override =
+    typeof row.system_prompt === "string" && row.system_prompt.trim().length > 0
+      ? (row.system_prompt as string)
+      : null;
 
   const cfg: AgentConfig = {
     agent,

@@ -34,7 +34,10 @@ export const listAdminUsers = createServerFn({ method: "GET" })
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 200,
+    });
     if (error) throw new Error(error.message);
 
     const ids = users.users.map((u) => u.id);
@@ -97,7 +100,9 @@ export const setUserAdminRole = createServerFn({ method: "POST" })
 
 export const inviteAdminUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ email: z.string().email(), asAdmin: z.boolean().default(false) }).parse(i))
+  .inputValidator((i) =>
+    z.object({ email: z.string().email(), asAdmin: z.boolean().default(false) }).parse(i),
+  )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -143,10 +148,9 @@ export const setUserBanned = createServerFn({ method: "POST" })
     if (data.userId === context.userId) throw new Error("You cannot ban yourself.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const ban_duration = data.banned ? "876000h" : "none";
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(
-      data.userId,
-      { ban_duration } as { ban_duration: string },
-    );
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      ban_duration,
+    } as { ban_duration: string });
     if (error) throw new Error(error.message);
     await audit({
       user_id: context.userId,

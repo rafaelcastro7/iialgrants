@@ -9,7 +9,9 @@ import { z } from "zod";
 import { callFreeLlm } from "@/agents/llm-free.server";
 
 const AxisScoreSchema = z.object({
-  axis: z.string().describe("Axis name (relevance, budget_fit, timeline, capability, winning_probability)"),
+  axis: z
+    .string()
+    .describe("Axis name (relevance, budget_fit, timeline, capability, winning_probability)"),
   score: z.number().min(0).max(10).describe("Score 0-10"),
   reasoning: z.string().describe("Why this score (1-2 sentences)"),
   evidence: z.string().optional().describe("Quote or data point supporting this score"),

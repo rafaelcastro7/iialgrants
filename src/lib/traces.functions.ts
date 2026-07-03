@@ -23,16 +23,24 @@ export const getAgentTrace = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("agent_trace_steps")
-      .select("id, run_id, grant_id, agent, step, status, message, payload, duration_ms, created_at")
+      .select(
+        "id, run_id, grant_id, agent, step, status, message, payload, duration_ms, created_at",
+      )
       .eq("run_id", data.runId)
       .order("created_at", { ascending: true })
       .limit(500);
     if (error) throw new Error(error.message);
     const steps: TraceStepDTO[] = (rows ?? []).map((r) => ({
-      id: r.id, run_id: r.run_id, grant_id: r.grant_id, agent: r.agent,
-      step: r.step, status: r.status, message: r.message,
+      id: r.id,
+      run_id: r.run_id,
+      grant_id: r.grant_id,
+      agent: r.agent,
+      step: r.step,
+      status: r.status,
+      message: r.message,
       payload: r.payload == null ? null : JSON.stringify(r.payload),
-      duration_ms: r.duration_ms, created_at: r.created_at,
+      duration_ms: r.duration_ms,
+      created_at: r.created_at,
     }));
     return { steps };
   });
@@ -41,10 +49,16 @@ export const getAgentTrace = createServerFn({ method: "GET" })
 // user opens the panel without an explicit runId.
 export const getLatestRunForGrant = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({
-    grantId: z.string().uuid(),
-    agent: z.enum(["enricher", "evaluator", "strategist", "writer", "critic", "discoverer"]).optional(),
-  }).parse(i))
+  .inputValidator((i) =>
+    z
+      .object({
+        grantId: z.string().uuid(),
+        agent: z
+          .enum(["enricher", "evaluator", "strategist", "writer", "critic", "discoverer"])
+          .optional(),
+      })
+      .parse(i),
+  )
   .handler(async ({ data, context }) => {
     let q = context.supabase
       .from("agent_trace_steps")

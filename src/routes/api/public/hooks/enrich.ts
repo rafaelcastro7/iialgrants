@@ -28,7 +28,11 @@ export const Route = createFileRoute("/api/public/hooks/enrich")({
             await enrichGrantImpl(g.id);
             results.push({ id: g.id, ok: true });
           } catch (e) {
-            results.push({ id: g.id, ok: false, error: e instanceof Error ? e.message : String(e) });
+            results.push({
+              id: g.id,
+              ok: false,
+              error: e instanceof Error ? e.message : String(e),
+            });
           }
         }
         return Response.json({ ok: true, processed: results.length, results });

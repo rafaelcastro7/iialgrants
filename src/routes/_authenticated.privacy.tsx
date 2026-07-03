@@ -26,12 +26,34 @@ export const Route = createFileRoute("/_authenticated/privacy")({
   component: PrivacyCenter,
 });
 
-type Consent = { id: string; consent_type: string; action: string; policy_version: string; created_at: string };
-type Dsar = { id: string; kind: string; status: string; created_at: string; completed_at: string | null };
+type Consent = {
+  id: string;
+  consent_type: string;
+  action: string;
+  policy_version: string;
+  created_at: string;
+};
+type Dsar = {
+  id: string;
+  kind: string;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+};
+
+type ConsentType =
+  | "terms_of_service"
+  | "privacy_policy"
+  | "ai_processing"
+  | "cross_border_transfer"
+  | "marketing";
+
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 function PrivacyCenter() {
   const { t, i18n } = useTranslation();
-  const lang = (false /* EN-only */ ? "fr" : "en") as "en" | "fr";
+  const lang: "en" | "fr" = "en"; // EN-only for now
+
   const [consents, setConsents] = useState<Consent[]>([]);
   const [dsars, setDsars] = useState<Dsar[]>([]);
   const [busy, setBusy] = useState(false);
@@ -50,15 +72,20 @@ function PrivacyCenter() {
     setDsars(d as Dsar[]);
   }
 
-  useEffect(() => { syncClientLocale(); refresh(); }, []);
+  useEffect(() => {
+    syncClientLocale();
+    refresh();
+  }, []);
 
   async function toggleConsent(type: string, action: "granted" | "revoked") {
     setBusy(true);
     try {
-      await fnRecord({ data: { consent_type: type as any, action, language: lang } });
+      await fnRecord({ data: { consent_type: type as ConsentType, action, language: lang } });
       await refresh();
       setMsg(t("privacy.saved"));
-    } catch (e: any) { setMsg(e.message); }
+    } catch (e) {
+      setMsg(errMsg(e));
+    }
     setBusy(false);
   }
 
@@ -75,7 +102,9 @@ function PrivacyCenter() {
       URL.revokeObjectURL(url);
       await refresh();
       setMsg(t("privacy.exportDone"));
-    } catch (e: any) { setMsg(e.message); }
+    } catch (e) {
+      setMsg(errMsg(e));
+    }
     setBusy(false);
   }
 
@@ -86,7 +115,9 @@ function PrivacyCenter() {
       await fnDelete({ data: { reason: null } });
       await refresh();
       setMsg(t("privacy.deleteRequested"));
-    } catch (e: any) { setMsg(e.message); }
+    } catch (e) {
+      setMsg(errMsg(e));
+    }
     setBusy(false);
   }
 
@@ -96,18 +127,28 @@ function PrivacyCenter() {
       await fnDsar({ data: { kind, reason: null } });
       await refresh();
       setMsg(t("privacy.requestFiled"));
-    } catch (e: any) { setMsg(e.message); }
+    } catch (e) {
+      setMsg(errMsg(e));
+    }
     setBusy(false);
   }
 
-  const types = ["terms_of_service", "privacy_policy", "ai_processing", "cross_border_transfer", "marketing"] as const;
+  const types = [
+    "terms_of_service",
+    "privacy_policy",
+    "ai_processing",
+    "cross_border_transfer",
+    "marketing",
+  ] as const;
   const latestByType: Record<string, Consent | undefined> = {};
   for (const c of consents) if (!latestByType[c.consent_type]) latestByType[c.consent_type] = c;
 
   return (
     <main className="min-h-screen bg-background text-foreground p-6 max-w-3xl mx-auto">
       <header className="flex items-center justify-between mb-6">
-        <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">← {t("nav.dashboard")}</Link>
+        <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
+          ← {t("nav.dashboard")}
+        </Link>
         <LanguageSwitcher />
       </header>
 
@@ -117,14 +158,19 @@ function PrivacyCenter() {
       {msg && <div className="mb-4 text-sm rounded border border-border bg-muted p-2">{msg}</div>}
 
       <Card className="mb-4">
-        <CardHeader><CardTitle>{t("privacy.consents")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("privacy.consents")}</CardTitle>
+        </CardHeader>
         <CardContent>
           <ul className="text-sm space-y-2">
             {types.map((tp) => {
               const last = latestByType[tp];
               const granted = last?.action === "granted";
               return (
-                <li key={tp} className="flex items-center justify-between border-b border-border pb-2">
+                <li
+                  key={tp}
+                  className="flex items-center justify-between border-b border-border pb-2"
+                >
                   <div>
                     <div className="font-medium">{t(`privacy.types.${tp}`)}</div>
                     <div className="text-xs text-muted-foreground">
@@ -147,20 +193,32 @@ function PrivacyCenter() {
       </Card>
 
       <Card className="mb-4">
-        <CardHeader><CardTitle>{t("privacy.dataRights")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("privacy.dataRights")}</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex flex-wrap gap-2">
-            <Button onClick={doExport} disabled={busy}>{t("privacy.exportData")}</Button>
-            <Button variant="outline" onClick={() => requestAccess("access")} disabled={busy}>{t("privacy.requestAccess")}</Button>
-            <Button variant="outline" onClick={() => requestAccess("rectify")} disabled={busy}>{t("privacy.requestRectify")}</Button>
-            <Button variant="destructive" onClick={doDelete} disabled={busy}>{t("privacy.requestDelete")}</Button>
+            <Button onClick={doExport} disabled={busy}>
+              {t("privacy.exportData")}
+            </Button>
+            <Button variant="outline" onClick={() => requestAccess("access")} disabled={busy}>
+              {t("privacy.requestAccess")}
+            </Button>
+            <Button variant="outline" onClick={() => requestAccess("rectify")} disabled={busy}>
+              {t("privacy.requestRectify")}
+            </Button>
+            <Button variant="destructive" onClick={doDelete} disabled={busy}>
+              {t("privacy.requestDelete")}
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground pt-2">{t("privacy.dsarSla")}</p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>{t("privacy.dsarHistory")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("privacy.dsarHistory")}</CardTitle>
+        </CardHeader>
         <CardContent>
           {dsars.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("privacy.dsarEmpty")}</p>
@@ -169,7 +227,9 @@ function PrivacyCenter() {
               {dsars.map((d) => (
                 <li key={d.id} className="py-2 flex items-center justify-between">
                   <span>{t(`privacy.kinds.${d.kind}`)}</span>
-                  <span className="text-xs text-muted-foreground">{d.status} · {new Date(d.created_at).toLocaleDateString()}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {d.status} · {new Date(d.created_at).toLocaleDateString()}
+                  </span>
                 </li>
               ))}
             </ul>

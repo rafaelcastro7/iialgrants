@@ -16,9 +16,7 @@ const TOLERANCE_SEC = 300; // ±5 minutes
 const RATE_LIMIT_WINDOW_SEC = 60;
 const RATE_LIMIT_MAX = 60; // max requests per IP per endpoint per window
 
-export type WebhookAuthResult =
-  | { ok: true }
-  | { ok: false; status: number; reason: string };
+export type WebhookAuthResult = { ok: true } | { ok: false; status: number; reason: string };
 
 function clientIp(request: Request): string {
   return (
@@ -47,7 +45,10 @@ export async function verifyWebhookRequest(
     .eq("client_ip", ip)
     .gte("seen_at", windowStart);
   if (rlErr) {
-    return { result: { ok: false, status: 500, reason: `rate_limit_error:${rlErr.message}` }, rawBody };
+    return {
+      result: { ok: false, status: 500, reason: `rate_limit_error:${rlErr.message}` },
+      rawBody,
+    };
   }
   if ((recent ?? 0) >= RATE_LIMIT_MAX) {
     return { result: { ok: false, status: 429, reason: "rate_limited" }, rawBody };
@@ -56,7 +57,6 @@ export async function verifyWebhookRequest(
   // Best-effort GC of old rate-limit rows.
   const rlCutoff = new Date(Date.now() - 2 * RATE_LIMIT_WINDOW_SEC * 1000).toISOString();
   await supabaseAdmin.from("webhook_rate_limit").delete().lt("seen_at", rlCutoff);
-
 
   const { data: cfg, error: cfgErr } = await supabaseAdmin
     .from("webhook_config")
@@ -77,7 +77,7 @@ export async function verifyWebhookRequest(
   if (!ts || !nonce || !sig) {
     return { result: { ok: false, status: 401, reason: "missing_signature_headers" }, rawBody };
   }
-  if (nonce.length < 16 || nonce.length > 128 || !/^[A-Za-z0-9_\-]+$/.test(nonce)) {
+  if (nonce.length < 16 || nonce.length > 128 || !/^[A-Za-z0-9_-]+$/.test(nonce)) {
     return { result: { ok: false, status: 401, reason: "invalid_nonce_format" }, rawBody };
   }
 
@@ -90,9 +90,7 @@ export async function verifyWebhookRequest(
     return { result: { ok: false, status: 401, reason: "timestamp_out_of_window" }, rawBody };
   }
 
-  const expected = createHmac("sha256", secret)
-    .update(`${ts}.${nonce}.${rawBody}`)
-    .digest("hex");
+  const expected = createHmac("sha256", secret).update(`${ts}.${nonce}.${rawBody}`).digest("hex");
   const a = Buffer.from(expected, "hex");
   let b: Buffer;
   try {
@@ -106,8 +104,6 @@ export async function verifyWebhookRequest(
 
   // Replay protection: nonce must not have been seen before. Insert with
   // PK conflict → 401. Old rows are GC'd by the seen_at predicate below.
-
-
 
   // Best-effort GC: delete nonces older than 2× tolerance window.
   const cutoff = new Date(Date.now() - 2 * TOLERANCE_SEC * 1000).toISOString();

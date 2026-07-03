@@ -23,7 +23,10 @@ function makeQuery(table: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const api: any = {};
   api.select = () => api;
-  api.eq = (c: string, v: unknown) => { state.filters.push([c, v]); return api; };
+  api.eq = (c: string, v: unknown) => {
+    state.filters.push([c, v]);
+    return api;
+  };
   const match = () => db[table].filter((r) => state.filters.every(([c, v]) => r[c] === v));
   api.maybeSingle = async () => ({ data: match()[0] ?? null, error: null });
   api.insert = async (p: Row | Row[]) => {
@@ -108,7 +111,9 @@ describe("Discovery runs with zero Lovable credits when free providers are confi
   const calls: string[] = [];
 
   beforeEach(() => {
-    db.funders.length = 0; db.grants.length = 0; db.agent_runs.length = 0;
+    db.funders.length = 0;
+    db.grants.length = 0;
+    db.agent_runs.length = 0;
     calls.length = 0;
 
     // Critical: NO LOVABLE_API_KEY. Free providers only.
@@ -123,31 +128,40 @@ describe("Discovery runs with zero Lovable credits when free providers are confi
         const url = typeof input === "string" ? input : input.toString();
         calls.push(url);
         if (url === LOVABLE_URL) {
-          throw new Error("REGRESSION: Lovable Gateway was called despite free providers being available");
+          throw new Error(
+            "REGRESSION: Lovable Gateway was called despite free providers being available",
+          );
         }
         if (url === GROQ_URL) {
           // Groq returns valid JSON discovery output → succeeds first try.
-          return okBody(JSON.stringify({
-            grants: [{
-              title: "Applied Research Catalyst (No-Token Edition)",
-              summary: "Up to $250k for nonprofits doing applied research.",
-              amount_cad_min: null,
-              amount_cad_max: 250000,
-              deadline: null,
-              eligibility: { applicant_types: ["nonprofit"] },
-              sectors: ["applied research", "wcis", "smart city"],
-              language: "en",
-              url: "https://seed.ca/programs/no-token-applied-research",
-            }],
-          }));
+          return okBody(
+            JSON.stringify({
+              grants: [
+                {
+                  title: "Applied Research Catalyst (No-Token Edition)",
+                  summary: "Up to $250k for nonprofits doing applied research.",
+                  amount_cad_min: null,
+                  amount_cad_max: 250000,
+                  deadline: null,
+                  eligibility: { applicant_types: ["nonprofit"] },
+                  sectors: ["applied research", "wcis", "smart city"],
+                  language: "en",
+                  url: "https://seed.ca/programs/no-token-applied-research",
+                },
+              ],
+            }),
+          );
         }
         throw new Error(`unexpected fetch in no-token test: ${url}`);
       },
     );
 
     db.funders.push({
-      id: FUNDER_ID, name: "No-Token Funder",
-      source_url: "https://seed.ca/", source_urls: [], source_type: "manual",
+      id: FUNDER_ID,
+      name: "No-Token Funder",
+      source_url: "https://seed.ca/",
+      source_urls: [],
+      source_type: "manual",
     });
 
     vi.resetModules();

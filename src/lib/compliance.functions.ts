@@ -83,7 +83,6 @@ export const createDsarRequest = createServerFn({ method: "POST" })
     return row;
   });
 
-
 export const listMyDsarRequests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -104,28 +103,20 @@ export const exportMyData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const [
-      profile,
-      org,
-      proposals,
-      submissions,
-      outcomes,
-      consents,
-      dsar,
-      knowledge,
-    ] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase.from("org_profiles").select("*").eq("user_id", userId),
-      supabase.from("proposals").select("*").eq("user_id", userId),
-      supabase.from("submissions").select("*").eq("user_id", userId),
-      supabase.from("outcomes").select("*").eq("user_id", userId),
-      supabase.from("consent_ledger").select("*").eq("user_id", userId),
-      supabase.from("dsar_requests").select("*").eq("user_id", userId),
-      supabase
-        .from("knowledge_chunks")
-        .select("id, source, language, content, created_at")
-        .eq("user_id", userId),
-    ]);
+    const [profile, org, proposals, submissions, outcomes, consents, dsar, knowledge] =
+      await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        supabase.from("org_profiles").select("*").eq("user_id", userId),
+        supabase.from("proposals").select("*").eq("user_id", userId),
+        supabase.from("submissions").select("*").eq("user_id", userId),
+        supabase.from("outcomes").select("*").eq("user_id", userId),
+        supabase.from("consent_ledger").select("*").eq("user_id", userId),
+        supabase.from("dsar_requests").select("*").eq("user_id", userId),
+        supabase
+          .from("knowledge_chunks")
+          .select("id, source, language, content, created_at")
+          .eq("user_id", userId),
+      ]);
 
     const bundle = {
       _meta: {
@@ -151,23 +142,22 @@ export const exportMyData = createServerFn({ method: "POST" })
       action: "dsar.export",
       resource_type: "self",
       resource_id: userId,
-      metadata: { counts: {
-        proposals: bundle.proposals.length,
-        submissions: bundle.submissions.length,
-      } },
+      metadata: {
+        counts: {
+          proposals: bundle.proposals.length,
+          submissions: bundle.submissions.length,
+        },
+      },
     });
 
     return { json: JSON.stringify(bundle, null, 2) };
   });
 
-
 // Self-service deletion request — creates a pending DSAR delete request.
 // Actual hard-delete is performed by an admin (verified identity, retention checks).
 export const requestAccountDeletion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) =>
-    z.object({ reason: z.string().max(2000).optional().nullable() }).parse(i),
-  )
+  .inputValidator((i) => z.object({ reason: z.string().max(2000).optional().nullable() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: row, error } = await supabase
@@ -185,4 +175,3 @@ export const requestAccountDeletion = createServerFn({ method: "POST" })
     });
     return row;
   });
-

@@ -29,7 +29,7 @@ const POSITIVE_KEYWORDS = [
 ];
 
 const NEGATIVE_PATTERN =
-  /(\babout\b|\bcontact\b|\bpress\b|\bnews\b|\bblog\b|\bcareer\b|\bjobs\b|\bprivacy\b|\bterms\b|\blegal\b|\bcookie\b|\blogin\b|\bsign[\-_ ]?in\b|\bsitemap\b|\bsearch\b|\brss\b|\bfeed\b|\bsponsor\b|\bcommandite\b|\bannual[\-_ ]report\b|\bevents?\b|\bevenements?\b|\bwebinair\b|\bpartners?\b|\bpartenaires\b)/i;
+  /(\babout\b|\bcontact\b|\bpress\b|\bnews\b|\bblog\b|\bcareer\b|\bjobs\b|\bprivacy\b|\bterms\b|\blegal\b|\bcookie\b|\blogin\b|\bsign[-_ ]?in\b|\bsitemap\b|\bsearch\b|\brss\b|\bfeed\b|\bsponsor\b|\bcommandite\b|\bannual[-_ ]report\b|\bevents?\b|\bevenements?\b|\bwebinair\b|\bpartners?\b|\bpartenaires\b)/i;
 
 const TITLE_STOPWORDS = new Set([
   "and",
@@ -103,10 +103,7 @@ function rankCandidates(
   baseUrl: string,
   opts: { seenUrls?: string[]; title?: string; max?: number; minimumTitleOverlap?: number } = {},
 ): OfficialCandidate[] {
-  const seen = new Set<string>([
-    normalizeUrl(baseUrl),
-    ...(opts.seenUrls ?? []).map(normalizeUrl),
-  ]);
+  const seen = new Set<string>([normalizeUrl(baseUrl), ...(opts.seenUrls ?? []).map(normalizeUrl)]);
   const ranked = new Map<string, OfficialCandidate>();
   let baseHost = "";
   try {
@@ -177,7 +174,7 @@ function decodeXml(value: string): string {
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"")
+    .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
 }
 
@@ -195,7 +192,10 @@ function childSitemapUrls(origin: string, xml: string): string[] {
   return extractSitemapLocs(xml).filter((url) => {
     try {
       const parsed = new URL(url);
-      return parsed.origin === origin && (/\.xml($|\?)/i.test(parsed.pathname) || parsed.pathname.toLowerCase().includes("sitemap"));
+      return (
+        parsed.origin === origin &&
+        (/\.xml($|\?)/i.test(parsed.pathname) || parsed.pathname.toLowerCase().includes("sitemap"))
+      );
     } catch {
       return false;
     }
@@ -232,16 +232,32 @@ export function extractSitemapCandidatesFromXml(
 
 export async function fetchCandidateLinksFromPage(
   baseUrl: string,
-  opts: { seenUrls?: string[]; title?: string; max?: number; timeoutMs?: number; minimumTitleOverlap?: number } = {},
+  opts: {
+    seenUrls?: string[];
+    title?: string;
+    max?: number;
+    timeoutMs?: number;
+    minimumTitleOverlap?: number;
+  } = {},
 ): Promise<OfficialCandidate[]> {
-  const html = await fetchText(baseUrl, opts.timeoutMs ?? 10_000, "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8");
+  const html = await fetchText(
+    baseUrl,
+    opts.timeoutMs ?? 10_000,
+    "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+  );
   if (!html) return [];
   return extractAnchorCandidatesFromHtml(html, baseUrl, opts);
 }
 
 export async function fetchCandidateLinksFromSitemaps(
   baseUrl: string,
-  opts: { seenUrls?: string[]; title?: string; max?: number; timeoutMs?: number; minimumTitleOverlap?: number } = {},
+  opts: {
+    seenUrls?: string[];
+    title?: string;
+    max?: number;
+    timeoutMs?: number;
+    minimumTitleOverlap?: number;
+  } = {},
 ): Promise<OfficialCandidate[]> {
   let origin = "";
   try {
@@ -250,10 +266,7 @@ export async function fetchCandidateLinksFromSitemaps(
     return [];
   }
 
-  const sitemapEntries = new Set<string>([
-    `${origin}/sitemap.xml`,
-    `${origin}/sitemap_index.xml`,
-  ]);
+  const sitemapEntries = new Set<string>([`${origin}/sitemap.xml`, `${origin}/sitemap_index.xml`]);
 
   const robotsText = await fetchText(`${origin}/robots.txt`, 4_000, "text/plain,*/*");
   if (robotsText) {
@@ -269,7 +282,11 @@ export async function fetchCandidateLinksFromSitemaps(
 
   for (let i = 0; i < queue.length && i < 6; i++) {
     const sitemapUrl = queue[i];
-    const xml = await fetchText(sitemapUrl, opts.timeoutMs ?? 10_000, "application/xml,text/xml;q=0.9,*/*;q=0.8");
+    const xml = await fetchText(
+      sitemapUrl,
+      opts.timeoutMs ?? 10_000,
+      "application/xml,text/xml;q=0.9,*/*;q=0.8",
+    );
     if (!xml) continue;
 
     const candidates = extractSitemapCandidatesFromXml(xml, baseUrl, {

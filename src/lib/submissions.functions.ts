@@ -52,7 +52,10 @@ export const submitProposal = createServerFn({ method: "POST" })
       .eq("status", "in_proposal");
     if (ge) throw new Error(ge.message);
 
-    const { error: pe2 } = await supabase.from("proposals").update({ status: "submitted" }).eq("id", proposal.id);
+    const { error: pe2 } = await supabase
+      .from("proposals")
+      .update({ status: "submitted" })
+      .eq("id", proposal.id);
     if (pe2) throw new Error(pe2.message);
     return { ok: true, submission: sub };
   });
@@ -61,7 +64,11 @@ const OutcomeInput = z.object({
   submissionId: z.string().uuid(),
   result: z.enum(["won", "lost", "withdrawn", "no_response"]),
   amount_awarded_cad: z.number().nonnegative().nullable().optional(),
-  decision_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  decision_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
   feedback: z.string().max(4000).nullable().optional(),
   lessons_learned: z.string().max(4000).nullable().optional(),
 });
@@ -156,7 +163,9 @@ export const exportProposalMarkdown = createServerFn({ method: "GET" })
     const [{ data: proposal, error: pe }, { data: sections, error: se }] = await Promise.all([
       context.supabase
         .from("proposals")
-        .select("id, title, status, version, critic_score, grant:grants(title, title_fr, deadline, amount_cad_min, amount_cad_max)")
+        .select(
+          "id, title, status, version, critic_score, grant:grants(title, title_fr, deadline, amount_cad_min, amount_cad_max)",
+        )
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
@@ -169,7 +178,13 @@ export const exportProposalMarkdown = createServerFn({ method: "GET" })
     if (se) throw new Error(se.message);
     if (!proposal) throw new Error("proposal_not_found");
 
-    const grant = proposal.grant as { title: string; title_fr: string | null; deadline: string | null; amount_cad_min: number | null; amount_cad_max: number | null } | null;
+    const grant = proposal.grant as {
+      title: string;
+      title_fr: string | null;
+      deadline: string | null;
+      amount_cad_min: number | null;
+      amount_cad_max: number | null;
+    } | null;
     const lines: string[] = [];
     lines.push(`# ${proposal.title}`);
     lines.push("");
@@ -177,10 +192,14 @@ export const exportProposalMarkdown = createServerFn({ method: "GET" })
       lines.push(`> ${fr ? "Subvention" : "Grant"}: ${(fr && grant.title_fr) || grant.title}`);
       if (grant.deadline) lines.push(`> ${fr ? "Échéance" : "Deadline"}: ${grant.deadline}`);
       if (grant.amount_cad_min || grant.amount_cad_max)
-        lines.push(`> ${fr ? "Montant (CAD)" : "Amount (CAD)"}: ${grant.amount_cad_min ?? "?"} – ${grant.amount_cad_max ?? "?"}`);
+        lines.push(
+          `> ${fr ? "Montant (CAD)" : "Amount (CAD)"}: ${grant.amount_cad_min ?? "?"} – ${grant.amount_cad_max ?? "?"}`,
+        );
     }
     lines.push("");
-    lines.push(`*${fr ? "Version" : "Version"}: ${proposal.version} · ${fr ? "Score critique" : "Critic score"}: ${proposal.critic_score ?? "—"}*`);
+    lines.push(
+      `*${fr ? "Version" : "Version"}: ${proposal.version} · ${fr ? "Score critique" : "Critic score"}: ${proposal.critic_score ?? "—"}*`,
+    );
     lines.push("");
     for (const s of sections ?? []) {
       const heading = (fr ? s.heading_fr : s.heading_en) || s.heading_en;

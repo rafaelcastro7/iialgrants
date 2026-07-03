@@ -19,7 +19,10 @@ function AdminLayout() {
     let cancelled = false;
     (async () => {
       const { data: u } = await supabase.auth.getUser();
-      if (!u.user) { if (!cancelled) setState("denied"); return; }
+      if (!u.user) {
+        if (!cancelled) setState("denied");
+        return;
+      }
       const { data } = await supabase
         .from("user_roles")
         .select("role")
@@ -28,18 +31,28 @@ function AdminLayout() {
         .maybeSingle();
       if (!cancelled) setState(data ? "admin" : "denied");
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (state === "checking") {
-    return <main className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Checking permissions…</main>;
+    return (
+      <main className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+        Checking permissions…
+      </main>
+    );
   }
   if (state === "denied") {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
         <h1 className="text-2xl font-bold">Admin only</h1>
-        <p className="text-sm text-muted-foreground">You do not have access to the admin console.</p>
-        <Link to="/dashboard"><Button>Back to dashboard</Button></Link>
+        <p className="text-sm text-muted-foreground">
+          You do not have access to the admin console.
+        </p>
+        <Link to="/dashboard">
+          <Button>Back to dashboard</Button>
+        </Link>
       </main>
     );
   }

@@ -22,12 +22,24 @@ async function findCsvResource(): Promise<string | null> {
 
 function parseCsvLine(line: string): string[] {
   const out: string[] = [];
-  let cur = "", inQ = false;
+  let cur = "",
+    inQ = false;
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
-    if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; continue; }
-    if (c === '"') { inQ = !inQ; continue; }
-    if (c === "," && !inQ) { out.push(cur); cur = ""; continue; }
+    if (c === '"' && line[i + 1] === '"') {
+      cur += '"';
+      i++;
+      continue;
+    }
+    if (c === '"') {
+      inQ = !inQ;
+      continue;
+    }
+    if (c === "," && !inQ) {
+      out.push(cur);
+      cur = "";
+      continue;
+    }
     cur += c;
   }
   out.push(cur);
@@ -45,7 +57,9 @@ export async function fetchBbfPrograms(): Promise<RawCandidate[]> {
   const header = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
   const idx = {
     title: header.findIndex((h) => h.includes("title") || h.includes("name")),
-    org: header.findIndex((h) => h.includes("organization") || h.includes("department") || h.includes("ministry")),
+    org: header.findIndex(
+      (h) => h.includes("organization") || h.includes("department") || h.includes("ministry"),
+    ),
     url: header.findIndex((h) => h === "url" || h.includes("link") || h.includes("more info")),
     province: header.findIndex((h) => h === "province" || h.includes("jurisdiction")),
   };
@@ -58,7 +72,7 @@ export async function fetchBbfPrograms(): Promise<RawCandidate[]> {
     if (!org || org.length < 3) continue;
     const key = org.toLowerCase();
     if (seen.has(key)) {
-      seen.get(key)!.source_signals.push(`bbf:${(row[idx.title] ?? "").slice(0,40)}`);
+      seen.get(key)!.source_signals.push(`bbf:${(row[idx.title] ?? "").slice(0, 40)}`);
       continue;
     }
     seen.set(key, {
