@@ -65,11 +65,11 @@ export function extractDeadline(text: string, locale: "en" | "fr" = "en"): Deadl
     }
   }
 
-  // 3. Pick the earliest future date if one exists, otherwise the most recent past date.
+  // 3. Pick the earliest future date (>= now) if one exists, otherwise the most recent past date.
   if (candidates.length === 0) return null;
   const now = new Date();
-  const future = candidates.filter((c) => c.date > now).sort((a, b) => a.date.getTime() - b.date.getTime());
-  const past = candidates.filter((c) => c.date <= now).sort((a, b) => b.date.getTime() - a.date.getTime());
+  const future = candidates.filter((c) => c.date >= now).sort((a, b) => a.date.getTime() - b.date.getTime());
+  const past = candidates.filter((c) => c.date < now).sort((a, b) => b.date.getTime() - a.date.getTime());
   const pick = future.length > 0 ? future[0] : past[0];
   const iso = pick.date.toISOString().slice(0, 10);
   return {

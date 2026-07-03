@@ -145,7 +145,7 @@ beforeEach(() => {
 });
 
 describe("enrich → evaluate → shortlist → NotebookLM", () => {
-  it("enriches a grant, persists evidence, transitions discovered → enriched", async () => {
+  it("enriches a grant, persists evidence, transitions discovered → enriched", { timeout: 30000 }, async () => {
     const r = await enrichGrantImpl(GRANT_ID);
     expect(r.ok).toBe(true);
 

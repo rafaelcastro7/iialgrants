@@ -1,0 +1,46 @@
+_format_version: "3.0"
+
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiYXVkIjoiYXV0aGVudGljYXRlZCIsImV4cCI6MjA5ODMwNzc1M30.V2kIuJ5jhIFSF8fggp2_JRW1QkS06BrK2ij5wlKJrwM
+  - username: service_role
+    keyauth_credentials:
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoyMDk4MzA3NzUzfQ.o6YD5ulurS5oZihQYqKP5NefZpJBgFEe0idYY3gBQa8
+
+acls:
+  - consumer: anon
+    group: anon
+  - consumer: service_role
+    group: admin
+
+plugins:
+  - name: key-auth
+    config:
+      hide_credentials: false
+  - name: acl
+    config:
+      hide_groups_header: true
+      allow:
+        - admin
+        - anon
+
+services:
+  - name: auth
+    url: http://auth:9999/
+    routes:
+      - name: auth_v1_open
+        strip_path: true
+        paths:
+          - /auth/v1
+      - name: auth_v1_private
+        strip_path: true
+        paths:
+          - /auth/v1
+  - name: rest
+    url: http://rest:3000/
+    routes:
+      - name: rest_v1
+        strip_path: true
+        paths:
+          - /rest/v1

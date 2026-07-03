@@ -43,9 +43,15 @@ function normalizeWs(s: string): string {
 export function snippetIsGrounded(snippet: string, markdown: string): boolean {
   if (!snippet || !markdown) return false;
   const haystack = normalizeWs(markdown);
-  const needle = normalizeWs(snippet).slice(0, 200);
+  const needle = normalizeWs(snippet).slice(0, 400);
   if (needle.length < 12) return false;
-  return haystack.includes(needle);
+  // Try exact match first.
+  if (haystack.includes(needle)) return true;
+  // Fallback: try the first 120 chars of the needle to handle
+  // multi-paragraph snippets where normalization shifts word boundaries.
+  const shortNeedle = needle.slice(0, 120);
+  if (shortNeedle.length >= 12 && haystack.includes(shortNeedle)) return true;
+  return false;
 }
 
 export async function recordEvidence(input: EvidenceInput): Promise<{ ok: boolean; id?: string; reason?: string }> {

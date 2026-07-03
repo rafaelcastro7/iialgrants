@@ -8,86 +8,10 @@
 // Filter 2 (role triage) and Filter 6 (effort vs win) are surfaced for human
 // review in the Opportunity Brief - not auto-gated.
 
-export type FitRules = {
-  min_amount_cad: number | null;
-  max_amount_cad: number | null;
-  required_jurisdictions: string[];
-  excluded_jurisdictions: string[];
-  required_sectors: string[];
-  excluded_sectors: string[];
-  required_keywords: string[];
-  excluded_keywords: string[];
-  min_days_to_deadline: number | null;
-  weight_llm: number;
-  threshold_fit_pass: number;
-  hard_fail_on_jurisdiction: boolean;
-  hard_fail_on_excluded_keyword: boolean;
-  hard_fail_on_amount: boolean;
-  hard_fail_on_deadline: boolean;
-  auto_archive_on_fail: boolean;
-  applicant_types_allowed: string[];
-  applicant_types_excluded: string[];
-  lead_min_weeks: number | null;
-  partner_min_weeks: number | null;
-  iial_capabilities: string[];
-  max_cost_share_pct_org_carries: number | null;
-  require_match_verification: boolean;
-  rolling_intake_passes_runway: boolean;
-  hard_fail_on_applicant_type: boolean;
-  hard_fail_on_runway: boolean;
-  hard_fail_on_capability: boolean;
-};
+export type { FitRules } from "@/agents/fit-rules.shared";
+export { DEFAULT_RULES } from "@/agents/fit-rules.shared";
 
-export const DEFAULT_RULES: FitRules = {
-  min_amount_cad: null,
-  max_amount_cad: null,
-  required_jurisdictions: ["CA"],
-  excluded_jurisdictions: [],
-  required_sectors: [],
-  excluded_sectors: [],
-  required_keywords: [],
-  excluded_keywords: [],
-  min_days_to_deadline: null,
-  weight_llm: 0.4,
-  threshold_fit_pass: 60,
-  hard_fail_on_jurisdiction: true,
-  hard_fail_on_excluded_keyword: true,
-  hard_fail_on_amount: false,
-  hard_fail_on_deadline: false,
-  auto_archive_on_fail: true,
-  applicant_types_allowed: ["nonprofit", "non-profit", "not-for-profit"],
-  applicant_types_excluded: [
-    "charity_only",
-    "municipality_only",
-    "university_only",
-    "individual_only",
-    "for_profit_only",
-  ],
-  lead_min_weeks: 4,
-  partner_min_weeks: 8,
-  iial_capabilities: [
-    "supply chain",
-    "wcis",
-    "traceability",
-    "certification",
-    "micro-credential",
-    "microcredential",
-    "applied research",
-    "feasibility",
-    "smart city",
-    "aiot",
-    "iot",
-    "climate",
-    "sustainability",
-    "international development",
-  ],
-  max_cost_share_pct_org_carries: 50,
-  require_match_verification: true,
-  rolling_intake_passes_runway: true,
-  hard_fail_on_applicant_type: true,
-  hard_fail_on_runway: true,
-  hard_fail_on_capability: false,
-};
+import type { FitRules } from "@/agents/fit-rules.shared";
 
 export type GrantForRules = {
   amount_cad_min?: number | null;
@@ -124,8 +48,32 @@ const overlap = (a: string[], b: string[]) => {
   const set = new Set(a.map(norm));
   return b.some((x) => set.has(norm(x)));
 };
-const containsAny = (hay: string, kws: string[]) => kws.some((k) => hay.includes(norm(k)));
-const containsAll = (hay: string, kws: string[]) => kws.every((k) => hay.includes(norm(k)));
+// Word-boundary matching to avoid false positives (e.g. "art" in "chart", "start").
+const containsAny = (hay: string, kws: string[]) =>
+  kws.some((k) => new RegExp(`(?:^|[\\s,;:.()\\-])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[\\s,;:.()\\-])`).test(hay));
+const containsAll = (hay: string, kws: string[]) =>
+  kws.every((k) => new RegExp(`(?:^|[\\s,;:.()\\-])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[\\s,;:.()\\-])`).test(hay));
+
+// Normalize jurisdiction variants to ISO-2 codes for matching.
+const JURISDICTION_ALIASES: Record<string, string> = {
+  "canada": "ca", "canadian": "ca", "ca": "ca",
+  "ontario": "on", "on": "on",
+  "quebec": "qc", "québec": "qc", "qc": "qc",
+  "british columbia": "bc", "bc": "bc",
+  "alberta": "ab", "ab": "ab",
+  "manitoba": "mb", "mb": "mb",
+  "saskatchewan": "sk", "sk": "sk",
+  "nova scotia": "ns", "ns": "ns",
+  "new brunswick": "nb", "nb": "nb",
+  "newfoundland": "nl", "newfoundland and labrador": "nl", "nl": "nl",
+  "prince edward island": "pe", "pei": "pe", "pe": "pe",
+  "territories": "yt", "yukon": "yt", "nwt": "nt", "nunavut": "nu",
+  "national": "ca", "federal": "ca", "pan-canadian": "ca", "all provinces": "ca", "nationwide": "ca",
+};
+function normalizeJurisdiction(raw: string): string {
+  const n = norm(raw);
+  return JURISDICTION_ALIASES[n] ?? n;
+}
 
 function buildHaystack(g: GrantForRules): string {
   return norm(
@@ -145,7 +93,7 @@ function detectRole(hay: string): "lead" | "partner" | "unknown" {
   const lead = /\b(non[- ]?profit|charity|organization|business|smes?|enterprise)\b/.test(hay);
   if (partner && !lead) return "partner";
   if (lead && !partner) return "lead";
-  if (partner && lead) return "partner";
+  if (partner && lead) return "lead"; // prefer lead when both signals (IIAL is an org)
   return "unknown";
 }
 
@@ -166,10 +114,10 @@ function detectCostShare(hay: string): number | null {
 }
 
 function isRollingIntake(hay: string, deadline?: string | null): boolean {
-  if (!deadline) {
-    return /\b(rolling|continuous|ongoing|open intake|no deadline|anytime)\b/.test(hay);
-  }
-  return false;
+  // Detect rolling intake regardless of deadline — text explicitly saying
+  // "rolling intake" or "continuous" overrides any deadline presence.
+  return /\b(rolling\s+intake|rolling\s+application|continuous\s+intake|ongoing|open\s+intake|accepting\s+applications\s+on\s+an?\s+ongoing)\b/.test(hay)
+    || (!deadline && /\b(rolling|no deadline|anytime)\b/.test(hay));
 }
 
 function detectExcludedApplicantTypes(hay: string): string[] {
@@ -231,8 +179,9 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
   }
 
   if (rules.required_jurisdictions.length > 0) {
-    const ok = grantCountry
-      ? rules.required_jurisdictions.map(norm).includes(norm(grantCountry))
+    const normGrant = grantCountry ? normalizeJurisdiction(grantCountry) : "";
+    const ok = normGrant
+      ? rules.required_jurisdictions.map(normalizeJurisdiction).includes(normGrant)
       : false;
     checks.push({
       id: "jurisdiction_required",
@@ -246,7 +195,8 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
   }
 
   if (rules.excluded_jurisdictions.length > 0 && grantCountry) {
-    const bad = rules.excluded_jurisdictions.map(norm).includes(norm(grantCountry));
+    const normGrant = normalizeJurisdiction(grantCountry);
+    const bad = rules.excluded_jurisdictions.map(normalizeJurisdiction).includes(normGrant);
     checks.push({
       id: "jurisdiction_excluded",
       label: "Excluded jurisdiction",

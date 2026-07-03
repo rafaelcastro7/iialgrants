@@ -16,7 +16,7 @@ import {
   Scale, Briefcase, DollarSign, Target, Clock, Eye,
   Save, FlaskConical, ChevronDown, RotateCcw, Sparkles, ShieldCheck,
 } from "lucide-react";
-import { DEFAULT_RULES, type FitRules } from "@/agents/fit-rules.server";
+import { DEFAULT_RULES, type FitRules } from "@/agents/fit-rules.shared";
 import { cn } from "@/lib/utils";
 
 const rulesQO = queryOptions({ queryKey: ["fit-rules"], queryFn: () => getFitRules() });

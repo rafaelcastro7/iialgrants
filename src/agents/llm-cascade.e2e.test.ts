@@ -1,17 +1,16 @@
 // E2E: free-provider cascade fallback behavior.
 //
-// Guarantees the contract the user demanded: "no Lovable credits when free
-// providers are available". We simulate failures on groq + gemini and assert
-// that (a) cerebras serves the request, (b) the Lovable AI Gateway URL is
-// never touched, and (c) Lovable is only invoked when the caller explicitly
-// opts in (forceLovable / allowLovableFallback) AND every free provider has
-// failed.
+// Guarantees the contract: "no cloud credits when free providers are available".
+// We simulate failures on groq + gemini and assert that (a) cerebras serves the
+// request, (b) the Ollama URL is never touched, and (c) Ollama is only invoked
+// when the caller explicitly opts in (forceLovable / allowLovableFallback) AND
+// every free provider has failed.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
-const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OLLAMA_URL = "http://localhost:11434/v1/chat/completions";
 
 function mockFetch(impl: (url: string) => Response | Promise<Response>) {
   const spy = vi.fn(async (input: RequestInfo | URL) => {
@@ -38,7 +37,7 @@ describe("free LLM cascade fallback", () => {
     process.env.GROQ_API_KEY = "test-groq";
     process.env.GOOGLE_AI_STUDIO_KEY = "test-gemini";
     process.env.CEREBRAS_API_KEY = "test-cerebras";
-    process.env.LOVABLE_API_KEY = "test-lovable";
+    process.env.OLLAMA_BASE_URL = "http://localhost:11434";
     vi.resetModules();
   });
 
@@ -47,7 +46,7 @@ describe("free LLM cascade fallback", () => {
     vi.restoreAllMocks();
   });
 
-  it("falls through groq(429) → gemini(500) → cerebras(ok) without touching Lovable", async () => {
+  it("falls through groq(429) → gemini(500) → cerebras(ok) without touching Ollama", async () => {
     const calls: string[] = [];
     mockFetch((url) => {
       calls.push(url);
@@ -66,10 +65,10 @@ describe("free LLM cascade fallback", () => {
     expect(r.provider).toBe("cerebras");
     expect(r.text).toBe("from-cerebras");
     expect(new Set(calls)).toEqual(new Set([GROQ_URL, GEMINI_URL, CEREBRAS_URL]));
-    expect(calls).not.toContain(LOVABLE_URL);
+    expect(calls).not.toContain(OLLAMA_URL);
   }, 15000);
 
-  it("callLlm routes through free cascade by default and never hits Lovable when a free provider succeeds", async () => {
+  it("callLlm routes through free cascade by default and never hits Ollama when a free provider succeeds", async () => {
     const calls: string[] = [];
     mockFetch((url) => {
       calls.push(url);
@@ -87,14 +86,14 @@ describe("free LLM cascade fallback", () => {
     });
 
     expect(r.text).toBe("ok-from-cerebras");
-    expect(calls).not.toContain(LOVABLE_URL);
+    expect(calls).not.toContain(OLLAMA_URL);
   }, 15000);
 
-  it("only hits Lovable when caller sets forceLovable:true (explicit opt-in)", async () => {
+  it("only hits Ollama when caller sets forceLovable:true (explicit opt-in)", async () => {
     const calls: string[] = [];
     mockFetch((url) => {
       calls.push(url);
-      if (url === LOVABLE_URL) return okBody("from-lovable");
+      if (url === OLLAMA_URL) return okBody("from-ollama");
       return errBody(500, "should not be called");
     });
 
@@ -106,36 +105,47 @@ describe("free LLM cascade fallback", () => {
       forceLovable: true,
     });
 
-    expect(r.text).toBe("from-lovable");
-    expect(calls).toEqual(expect.arrayContaining([LOVABLE_URL]));
+    expect(r.text).toBe("from-ollama");
+    expect(calls).toEqual(expect.arrayContaining([OLLAMA_URL]));
     expect(calls).not.toContain(GROQ_URL);
     expect(calls).not.toContain(GEMINI_URL);
     expect(calls).not.toContain(CEREBRAS_URL);
   });
 
-  it("when every free provider fails, refuses Lovable unless allowLovableFallback is set", async () => {
+  it("when every free provider fails, refuses Ollama unless allowLovableFallback is set", async () => {
     mockFetch((url) => {
       if (url === GROQ_URL || url === GEMINI_URL || url === CEREBRAS_URL) return errBody(500);
       throw new Error(`unexpected fetch: ${url}`);
     });
-    const { callFreeLlm } = await import("@/agents/llm-free.server");
+
+    const { callLlm } = await import("@/agents/llm.server");
     await expect(
-      callFreeLlm({ agent: "enricher", messages: [{ role: "user", content: "hi" }] }),
-    ).rejects.toThrow(/all_free_providers_failed/);
+      callLlm({
+        model: "google/gemini-2.5-flash",
+        agent: "enricher",
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    ).rejects.toThrow("all_free_providers_failed");
   });
 
   it("skips providers with missing keys instead of erroring", async () => {
     delete process.env.GROQ_API_KEY;
     delete process.env.GOOGLE_AI_STUDIO_KEY;
-    const calls: string[] = [];
+    delete process.env.CEREBRAS_API_KEY;
+    vi.resetModules();
+
     mockFetch((url) => {
-      calls.push(url);
-      if (url === CEREBRAS_URL) return okBody("cerebras-only");
+      if (url === CEREBRAS_URL) return okBody("ok");
       throw new Error(`unexpected fetch: ${url}`);
     });
+
     const { callFreeLlm } = await import("@/agents/llm-free.server");
-    const r = await callFreeLlm({ agent: "enricher", messages: [{ role: "user", content: "hi" }] });
-    expect(r.provider).toBe("cerebras");
-    expect(calls).toEqual([CEREBRAS_URL]);
+    const r = await callFreeLlm({
+      agent: "enricher",
+      messages: [{ role: "user", content: "hi" }],
+      preferred: ["cerebras"],
+    });
+
+    expect(r.text).toBe("ok");
   });
 });

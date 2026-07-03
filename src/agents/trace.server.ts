@@ -28,7 +28,7 @@ export async function traceStep(input: TraceInput): Promise<void> {
       step: input.step,
       status: input.status ?? "info",
       message: input.message?.slice(0, 1000) ?? null,
-      payload: (input.payload ?? null) as never,
+      payload: input.payload ?? null,
       duration_ms: input.durationMs ?? null,
     });
   } catch {

@@ -85,7 +85,26 @@ export const draftSection = createServerFn({ method: "POST" })
       ],
     });
 
-    const parsed = WriterOutput.parse(JSON.parse(llm.text));
+    let parsed;
+    try {
+      parsed = WriterOutput.parse(JSON.parse(llm.text));
+    } catch (parseErr) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("agent_runs").insert({
+        run_id: runId,
+        agent: "writer",
+        status: "failed",
+        model: "google/gemini-2.5-flash",
+        input_tokens: llm.inputTokens ?? 0,
+        output_tokens: llm.outputTokens ?? 0,
+        latency_ms: Date.now() - t0,
+        user_id: context.userId,
+        grant_id: grant.id,
+        error: `parse_error: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
+        metadata: { section_id: section.id, llm_output: llm.text?.slice(0, 200) },
+      });
+      throw new Error(`writer_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`);
+    }
     const check = validateCitations(parsed.content_en, parsed.citations, allowed);
     if (!check.ok) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

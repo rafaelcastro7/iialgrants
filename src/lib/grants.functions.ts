@@ -567,6 +567,8 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
 
 // Curator action: mark a list of grant IDs as shortlisted, with optional note.
 // Records who curated it and the note inside grant_events for full audit.
+// Enforces forward-only state transitions: discovered → enriched → scored →
+// shortlisted → in_proposal → submitted → won/lost/expired/archived.
 export const markGrantsCurated = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
@@ -577,16 +579,24 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
+    const STATUS_ORDER = ["discovered", "enriched", "scored", "shortlisted", "in_proposal", "submitted", "won", "lost", "expired", "archived"];
+    const terminalStatuses = new Set(["submitted", "won", "lost", "expired", "archived"]);
     const ts = new Date().toISOString();
     let updated = 0;
+    let skipped = 0;
     for (const id of data.grantIds) {
       const { data: prev } = await context.supabase.from("grants").select("status").eq("id", id).maybeSingle();
       const fromStatus = (prev as { status?: string } | null)?.status ?? null;
+      // Block backward transitions and transitions into terminal states.
+      if (!fromStatus || terminalStatuses.has(fromStatus) || STATUS_ORDER.indexOf(fromStatus) >= STATUS_ORDER.indexOf("shortlisted")) {
+        skipped++;
+        continue;
+      }
       const { error: uerr } = await context.supabase
         .from("grants")
         .update({ status: "shortlisted", updated_at: ts } as never)
         .eq("id", id);
-      if (uerr) continue;
+      if (uerr) { skipped++; continue; }
       updated++;
       await context.supabase.from("grant_events").insert({
         grant_id: id,
@@ -596,6 +606,6 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
         metadata: { source: "curator_notebooklm", note: data.note ?? null } as never,
       });
     }
-    return { ok: true, updated };
+    return { ok: true, updated, skipped };
   });
 

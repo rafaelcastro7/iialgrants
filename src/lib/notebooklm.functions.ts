@@ -342,9 +342,11 @@ export async function buildNotebookBriefingImpl(opts: { data: { scope: "single" 
     const markdown = parts.join("\n");
 
     // ── Optional auto-shortlist (skip in single-grant deep-dives).
+    // Enforce forward-only: only bump from earlier statuses, never from terminal.
     let shortlistedCount = 0;
+    const TERMINAL = new Set(["submitted", "won", "lost", "expired", "archived"]);
     if (data.autoShortlist && !singleScope) {
-      const toBump = rows.filter((r) => r.status !== "shortlisted" && r.status !== "in_proposal");
+      const toBump = rows.filter((r) => r.status !== "shortlisted" && r.status !== "in_proposal" && !TERMINAL.has(r.status as GrantStatus));
       if (toBump.length > 0) {
         const ts = new Date().toISOString();
         for (const r of toBump) {
