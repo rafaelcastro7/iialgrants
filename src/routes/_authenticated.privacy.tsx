@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,16 +66,16 @@ function PrivacyCenter() {
   const fnExport = useServerFn(exportMyData);
   const fnDelete = useServerFn(requestAccountDeletion);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const [c, d] = await Promise.all([fnList({}), fnDsarList({})]);
     setConsents(c as Consent[]);
     setDsars(d as Dsar[]);
-  }
+  }, [fnList, fnDsarList]);
 
   useEffect(() => {
     syncClientLocale();
     refresh();
-  }, []);
+  }, [refresh]);
 
   async function toggleConsent(type: string, action: "granted" | "revoked") {
     setBusy(true);

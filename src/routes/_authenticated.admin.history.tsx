@@ -1,52 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertAdmin } from "@/lib/admin-guard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-export const listDiscoveryHistory = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [funders, sources, runs] = await Promise.all([
-      supabaseAdmin
-        .from("funders")
-        .select("id, name, jurisdiction, source_url, active, last_discovered_at")
-        .order("name"),
-      supabaseAdmin
-        .from("discovery_sources" as never)
-        .select(
-          "funder_id, url, http_status, text_length, grants_found, grants_inserted, times_seen, first_seen_at, last_fetched_at",
-        )
-        .order("last_fetched_at", { ascending: false })
-        .limit(50),
-      supabaseAdmin
-        .from("agent_runs")
-        .select("run_id, agent, status, latency_ms, metadata, created_at")
-        .eq("agent", "discoverer")
-        .order("created_at", { ascending: false })
-        .limit(20),
-    ]);
-    return {
-      funders: funders.data ?? [],
-      sources: (sources.data ?? []) as unknown as Array<{
-        funder_id: string;
-        url: string;
-        http_status: number | null;
-        text_length: number | null;
-        grants_found: number;
-        grants_inserted: number;
-        times_seen: number;
-        first_seen_at: string;
-        last_fetched_at: string;
-      }>,
-      runs: runs.data ?? [],
-    };
-  });
+import { listDiscoveryHistory } from "@/lib/admin-history.functions";
 
 const qo = queryOptions({ queryKey: ["admin", "history"], queryFn: () => listDiscoveryHistory() });
 

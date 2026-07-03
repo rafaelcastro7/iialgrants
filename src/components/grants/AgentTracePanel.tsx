@@ -200,15 +200,19 @@ export function AgentTracePanel({
     staleTime: 500,
   });
 
-  const steps = (data?.steps ?? []) as Array<{
-    id: string;
-    step: string;
-    status: string;
-    message: string | null;
-    payload: string | null;
-    duration_ms: number | null;
-    created_at: string;
-  }>;
+  const steps = useMemo(
+    () =>
+      (data?.steps ?? []) as Array<{
+        id: string;
+        step: string;
+        status: string;
+        message: string | null;
+        payload: string | null;
+        duration_ms: number | null;
+        created_at: string;
+      }>,
+    [data?.steps],
+  );
 
   const t0Ms = useMemo(() => (steps[0] ? new Date(steps[0].created_at).getTime() : 0), [steps]);
   const scrollRef = useRef<HTMLDivElement>(null);
