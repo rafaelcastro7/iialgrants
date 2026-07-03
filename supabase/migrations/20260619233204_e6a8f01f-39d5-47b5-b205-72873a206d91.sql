@@ -131,7 +131,9 @@ returns table (
   similarity float
 )
 language sql stable security definer
-set search_path = public
+-- must include `extensions`: the pgvector `<=>` operator lives there, and a
+-- bare `search_path = public` makes it unresolvable inside the function body.
+set search_path = public, extensions
 as $$
   select k.id, k.content, k.source, k.language,
          1 - (k.embedding <=> query_embedding) as similarity

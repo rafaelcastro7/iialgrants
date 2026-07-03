@@ -20,7 +20,7 @@ services:
       - db-data:/var/lib/postgresql/data
     command: >
       postgres
-        -c shared_preload_libraries=pg_cron
+        -c shared_preload_libraries=pg_cron,pg_net
         -c cron.database_name=postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]

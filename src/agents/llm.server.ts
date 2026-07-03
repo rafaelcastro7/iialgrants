@@ -27,6 +27,18 @@ export type LlmCallResult = {
 };
 
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+const DEFAULT_LOCAL_MODEL = process.env.OLLAMA_MODEL || "qwen3:14b";
+
+// Cloud model ids ("google/gemini-2.5-pro", "gpt-4o", "claude-…") are
+// meaningless to Ollama and 404 there. When executing against the LOCAL
+// Ollama endpoint, map any non-local model id to the configured local default
+// so the local-first fallback actually runs instead of crashing.
+function toLocalModel(model: string | null | undefined): string {
+  if (!model) return DEFAULT_LOCAL_MODEL;
+  const looksCloud =
+    model.includes("/") || /^(gpt|o1|o3|claude|gemini|command|mistral-large)/i.test(model);
+  return looksCloud ? DEFAULT_LOCAL_MODEL : model;
+}
 
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   if (!opts.forceLovable) {
@@ -77,6 +89,10 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   } catch {
     // If config table unreachable, fall back to caller values.
   }
+
+  // This code path talks to Ollama — coerce any cloud model id to a local one.
+  resolvedModel = toLocalModel(resolvedModel);
+  fallbackModel = fallbackModel ? toLocalModel(fallbackModel) : null;
 
   const runId = opts.runId ?? newRunId();
   const t0 = Date.now();
