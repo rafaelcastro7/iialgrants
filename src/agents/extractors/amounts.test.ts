@@ -10,8 +10,20 @@ describe("extractAmounts", () => {
     ["Jusqu'à 2,5 M$ par projet.", { min: null, max: 2_500_000 }],
     ["This project offers $50K–$250K in funding.", { min: 50_000, max: 250_000 }],
     ["Subvention de 100 000 $ - 1 M$.", { min: 100_000, max: 1_000_000 }],
+    [
+      "Larger projects ($1M up to $10M) are supported through contributions.",
+      { min: null, max: 10_000_000 },
+    ],
     ["Not to exceed $75,000.", { min: null, max: 75_000 }],
     ["No funding mentioned here at all.", { min: null, max: null }],
+    [
+      "IRAP's budget has more than doubled (vs FY19-20) from $364M to $831M during the pandemic response.",
+      { min: null, max: null },
+    ],
+    [
+      "$336M in annual contribution funding to SMEs and 8,034 firms receiving advisory services.",
+      { min: null, max: null },
+    ],
   ];
   for (const [text, expected] of cases) {
     it(text, () => {

@@ -28,6 +28,7 @@ export type LlmCallResult = {
 
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const DEFAULT_LOCAL_MODEL = process.env.OLLAMA_MODEL || "qwen3:14b";
+const LOCAL_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 0) || null;
 
 // Cloud model ids ("google/gemini-2.5-pro", "gpt-4o", "claude-…") are
 // meaningless to Ollama and 404 there. When executing against the LOCAL
@@ -77,15 +78,17 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   let resolvedJson = opts.responseFormat === "json";
   let fallbackModel: string | null = null;
   let maxRetries = 2;
+  let timeoutMs = 60_000;
   try {
     const { resolveAgentConfig } = await import("@/lib/agent-config.server");
     const cfg = await resolveAgentConfig(opts.agent);
     resolvedModel = cfg.model;
     resolvedTemp = cfg.temperature;
-    resolvedMax = cfg.max_output_tokens;
+    resolvedMax = opts.maxOutputTokens ?? cfg.max_output_tokens;
     resolvedJson = cfg.json_mode || resolvedJson;
     fallbackModel = cfg.fallback_model;
     maxRetries = cfg.max_retries;
+    timeoutMs = cfg.timeout_ms;
   } catch {
     // If config table unreachable, fall back to caller values.
   }
@@ -115,6 +118,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(LOCAL_TIMEOUT_MS ?? timeoutMs),
     });
   };
 

@@ -14,7 +14,7 @@ const db = createClient(url, key, { auth: { persistSession: false, autoRefreshTo
 
 // A real, content-rich Canadian grant page (NRC IRAP) — good enrichment target.
 const GRANT_URL =
-  "https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation-irap";
+  "https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation";
 
 async function main() {
   // 1. Create a pilot user (auth) to own the org profile + evaluation.
