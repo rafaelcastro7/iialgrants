@@ -640,127 +640,37 @@ export async function enrichGrantImpl(
           "start",
         );
 
-        const FieldShape = z.object({
-          value: z.unknown(),
-          quote: z.string().min(4).max(1500),
-        });
         const rawJson = JSON.parse(llmResultText) as { fields?: Record<string, unknown> };
-        const fieldsObj = rawJson.fields ?? {};
-        const accepted: string[] = [];
-        const rejected: string[] = [];
-        for (const [field, raw] of Object.entries(fieldsObj)) {
-          const parsedField = FieldShape.safeParse(raw);
-          if (!parsedField.success) {
-            rejected.push(`${field}(shape)`);
-            continue;
-          }
-          const payload = parsedField.data;
-          if (
-            !stillMissing.includes(field) &&
-            !field.startsWith("eligibility") &&
-            !field.startsWith("sectors")
-          ) {
-            rejected.push(`${field}(not_needed)`);
-            continue;
-          }
-          const groundedPage = pageForQuote(payload.quote);
-          if (!groundedPage) {
-            rejected.push(`${field}(hallucination)`);
-            continue;
-          }
-          if (field === "amount_cad_max" || field === "amount_cad_min") {
-            const n = Number(payload.value);
-            if (Number.isFinite(n) && n > 0) {
-              patch[field] = n;
-              methodCounts.llm++;
-              accepted.push(field);
-              await recordEvidence({
-                grantId: g.id,
-                agent: "enricher",
-                field,
-                value: n,
-                sourceUrl: groundedPage.url,
-                snippet: payload.quote,
-                method: "llm",
-                sourceMarkdown: groundedPage.markdown,
-                model: llmModel,
-                runId,
-                db,
-              });
-            } else {
-              rejected.push(`${field}(not_number)`);
-            }
-          } else if (field === "deadline") {
-            const s = String(payload.value);
-            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-              patch.deadline = s;
-              methodCounts.llm++;
-              accepted.push(field);
-              await recordEvidence({
-                grantId: g.id,
-                agent: "enricher",
-                field: "deadline",
-                value: s,
-                sourceUrl: groundedPage.url,
-                snippet: payload.quote,
-                method: "llm",
-                sourceMarkdown: groundedPage.markdown,
-                model: llmModel,
-                runId,
-                db,
-              });
-            } else {
-              rejected.push(`${field}(bad_date)`);
-            }
-          } else if (field === "eligibility") {
-            if (payload.value && typeof payload.value === "object") {
-              patch.eligibility = payload.value as never;
-              methodCounts.llm++;
-              accepted.push(field);
-              await recordEvidence({
-                grantId: g.id,
-                agent: "enricher",
-                field: "eligibility",
-                value: payload.value,
-                sourceUrl: groundedPage.url,
-                snippet: payload.quote,
-                method: "llm",
-                sourceMarkdown: groundedPage.markdown,
-                model: llmModel,
-                runId,
-                db,
-              });
-            } else {
-              rejected.push(`${field}(bad_object)`);
-            }
-          } else if (field === "sectors") {
-            if (Array.isArray(payload.value)) {
-              patch.sectors = payload.value.map(String);
-              methodCounts.llm++;
-              accepted.push(field);
-              await recordEvidence({
-                grantId: g.id,
-                agent: "enricher",
-                field: "sectors",
-                value: payload.value,
-                sourceUrl: groundedPage.url,
-                snippet: payload.quote,
-                method: "llm",
-                sourceMarkdown: groundedPage.markdown,
-                model: llmModel,
-                runId,
-                db,
-              });
-            } else {
-              rejected.push(`${field}(bad_array)`);
-            }
-          }
+        const { evaluateLlmFields } = await import("@/agents/enricher-steps.server");
+        // Pure decision step (unit-tested in enricher-steps.test.ts); the IO
+        // below just applies accepted decisions and records their evidence.
+        const { accepted, rejected } = evaluateLlmFields({
+          fieldsObj: rawJson.fields ?? {},
+          stillMissing,
+          pageForQuote,
+        });
+        for (const d of accepted) {
+          patch[d.field] = d.value as never;
+          methodCounts.llm++;
+          await recordEvidence({
+            grantId: g.id,
+            agent: "enricher",
+            field: d.field,
+            value: d.value,
+            sourceUrl: d.page.url,
+            snippet: d.quote,
+            method: "llm",
+            sourceMarkdown: d.page.markdown,
+            model: llmModel,
+            runId,
+            db,
+          });
         }
         await trace(
           "llm_validate",
-          `Accepted: ${accepted.join(", ") || "(none)"} | Rejected: ${rejected.join(", ") || "(none)"}`,
+          `Accepted: ${accepted.map((d) => d.field).join(", ") || "(none)"} | Rejected: ${rejected.join(", ") || "(none)"}`,
           accepted.length ? "done" : "warn",
-          { accepted, rejected },
+          { accepted: accepted.map((d) => d.field), rejected },
         );
       } catch (e) {
         const msg = `llm_gap_fill_failed: ${e instanceof Error ? e.message : String(e)}`;
