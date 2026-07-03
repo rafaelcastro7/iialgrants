@@ -52,7 +52,7 @@ export async function enrichGrantImpl(
       status,
       message,
       payload,
-      db: db as never,
+      db,
     });
 
   await trace("init", `Starting enrichment for grant ${data.grantId.slice(0, 8)}`, "start");
@@ -441,7 +441,28 @@ export async function enrichGrantImpl(
 
   const sizeCheck = validateTotalMarkdownSize(combinedMarkdown.length);
   if (!sizeCheck.valid) {
-    await trace("security", `Markdown overflow: ${sizeCheck.error}`, "warn");
+    const msg = `markdown_overflow: ${sizeCheck.error}`;
+    await trace("security", msg, "warn");
+    // Persist the diagnosis like every other failure path — the attempt was
+    // already consumed by the atomic claim, so leave a visible reason behind.
+    await db
+      .from("grants")
+      .update({
+        enrich_last_error: msg.slice(0, 500),
+        enrich_last_attempt_at: new Date().toISOString(),
+      })
+      .eq("id", g.id);
+    await db.from("agent_runs").insert({
+      run_id: runId,
+      agent: "enricher",
+      status: "failed",
+      model: "security-gate",
+      latency_ms: Date.now() - t0,
+      user_id: actorUserId,
+      grant_id: g.id,
+      error: msg.slice(0, 500),
+      metadata: { via: scraped.via, pages_consulted: pages.map((p) => p.url) },
+    });
     return { ok: false, runId, error: sizeCheck.error, attempts: fetchAttempts };
   }
 

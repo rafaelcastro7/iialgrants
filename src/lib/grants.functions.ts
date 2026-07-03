@@ -683,13 +683,9 @@ export const moveGrants = createServerFn({ method: "POST" })
         continue;
       }
       updated++;
-      await context.supabase.from("grant_events").insert({
-        grant_id: id,
-        from_status: fromStatus as never,
-        to_status: data.toStatus as never,
-        actor_user_id: context.userId,
-        metadata: { source: "board_move" } as never,
-      });
+      // No explicit grant_events insert here: the AFTER UPDATE trigger
+      // grants_log_transition already records the transition; a second
+      // app-side insert would duplicate the (now immutable) audit timeline.
     }
     return { ok: true, updated, skipped };
   });

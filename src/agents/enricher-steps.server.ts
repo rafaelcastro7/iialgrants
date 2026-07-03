@@ -41,11 +41,10 @@ export function evaluateLlmFields(opts: {
       continue;
     }
     const payload = parsedField.data;
-    if (
-      !stillMissing.includes(field) &&
-      !field.startsWith("eligibility") &&
-      !field.startsWith("sectors")
-    ) {
+    // Only fields that were actually requested are accepted — an unsolicited
+    // eligibility/sectors answer must not overwrite deterministic-extractor
+    // or pre-existing DB values.
+    if (!stillMissing.includes(field)) {
       rejected.push(`${field}(not_needed)`);
       continue;
     }
