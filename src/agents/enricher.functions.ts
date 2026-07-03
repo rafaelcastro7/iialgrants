@@ -16,6 +16,7 @@ export type EnricherResult = {
 };
 
 type EnricherDb = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped Supabase query builder is intentional
   from: (table: string) => any;
 };
 

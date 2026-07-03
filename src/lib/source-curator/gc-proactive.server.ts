@@ -44,25 +44,42 @@ export async function fetchRecentGcRows(daysBack = 35, limit = 5000): Promise<Gc
     if (!res.ok) throw new Error(`gc_datastore_${res.status}`);
     const json = (await res.json()) as { result?: { records?: GcRow[] } };
     return json.result?.records ?? [];
-  } finally { clearTimeout(t); }
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 /** Aggregate rows into funder candidates (one per unique BN/name). */
 export function extractGcCandidates(rows: GcRow[]): RawCandidate[] {
-  const agg = new Map<string, {
-    name: string; bn?: string; province?: string; type?: string;
-    total: number; count: number;
-  }>();
+  const agg = new Map<
+    string,
+    {
+      name: string;
+      bn?: string;
+      province?: string;
+      type?: string;
+      total: number;
+      count: number;
+    }
+  >();
   for (const r of rows) {
     const name = (r.recipient_legal_name ?? "").trim();
     if (!name) continue;
     // Only recipients that look like re-granting entities are useful as funders.
-    if (!REGRANT_KEYWORDS.test(name) && !(r.recipient_type && /foundation|trust/i.test(r.recipient_type))) continue;
+    if (
+      !REGRANT_KEYWORDS.test(name) &&
+      !(r.recipient_type && /foundation|trust/i.test(r.recipient_type))
+    )
+      continue;
     const bn = (r.recipient_business_number ?? "").replace(/\s/g, "").slice(0, 9) || undefined;
     const key = bn ?? name.toLowerCase();
     const cur = agg.get(key) ?? {
-      name, bn, province: r.recipient_province ?? undefined, type: r.recipient_type ?? undefined,
-      total: 0, count: 0,
+      name,
+      bn,
+      province: r.recipient_province ?? undefined,
+      type: r.recipient_type ?? undefined,
+      total: 0,
+      count: 0,
     };
     cur.total += Number(r.agreement_value ?? 0) || 0;
     cur.count += 1;

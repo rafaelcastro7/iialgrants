@@ -16,7 +16,10 @@ const PFC_SCHEMA = {
         properties: {
           name: { type: "string" },
           website: { type: ["string", "null"] },
-          province: { type: ["string", "null"], description: "Two-letter Canadian province code if visible" },
+          province: {
+            type: ["string", "null"],
+            description: "Two-letter Canadian province code if visible",
+          },
         },
         required: ["name"],
       },
@@ -35,7 +38,9 @@ export async function scrapePfcMembers(): Promise<RawCandidate[]> {
       "Return name, website URL if linked, and the Canadian province code if visible.",
   });
   if (!r.ok) return [];
-  const members = ((r.json as { members?: unknown })?.members) as Array<{ name?: string; website?: string | null; province?: string | null }> | undefined;
+  const members = (r.json as { members?: unknown })?.members as
+    | Array<{ name?: string; website?: string | null; province?: string | null }>
+    | undefined;
   if (!Array.isArray(members)) return [];
   const tag = "pfc_members:" + new Date().toISOString().slice(0, 7);
   return members

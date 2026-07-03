@@ -6,14 +6,31 @@ import type { RawCandidate } from "./scoring.server";
 import { parseFeed, type FeedItem } from "@/lib/rss-ingestor.server";
 
 export const GRANT_FEEDS: Array<{ key: string; url: string; defaultAgency?: string }> = [
-  { key: "grants_gov",   url: "https://www.grants.gov/rss/GG_NewOppByCategory.xml" },
-  { key: "idrc_rss",     url: "https://www.idrc.ca/en/rss.xml",        defaultAgency: "International Development Research Centre (IDRC)" },
-  { key: "nserc_news",   url: "https://www.nserc-crsng.gc.ca/Media-Media/NewsRelease-CommuniqueDePresse_RSS_eng.asp", defaultAgency: "Natural Sciences and Engineering Research Council of Canada (NSERC)" },
-  { key: "sshrc_news",   url: "https://www.sshrc-crsh.gc.ca/news_room-salle_de_presse/rss-eng.aspx", defaultAgency: "Social Sciences and Humanities Research Council of Canada (SSHRC)" },
-  { key: "cihr_news",    url: "https://cihr-irsc.gc.ca/e/rss.html",    defaultAgency: "Canadian Institutes of Health Research (CIHR)" },
+  { key: "grants_gov", url: "https://www.grants.gov/rss/GG_NewOppByCategory.xml" },
+  {
+    key: "idrc_rss",
+    url: "https://www.idrc.ca/en/rss.xml",
+    defaultAgency: "International Development Research Centre (IDRC)",
+  },
+  {
+    key: "nserc_news",
+    url: "https://www.nserc-crsng.gc.ca/Media-Media/NewsRelease-CommuniqueDePresse_RSS_eng.asp",
+    defaultAgency: "Natural Sciences and Engineering Research Council of Canada (NSERC)",
+  },
+  {
+    key: "sshrc_news",
+    url: "https://www.sshrc-crsh.gc.ca/news_room-salle_de_presse/rss-eng.aspx",
+    defaultAgency: "Social Sciences and Humanities Research Council of Canada (SSHRC)",
+  },
+  {
+    key: "cihr_news",
+    url: "https://cihr-irsc.gc.ca/e/rss.html",
+    defaultAgency: "Canadian Institutes of Health Research (CIHR)",
+  },
 ];
 
-const AGENCY_RE = /^\s*([A-Z][A-Za-z &.,'\-]{4,80}?)(?:\s*[-—:|]\s*|\s+announces|\s+awards|\s+launches|\s+opens)/;
+const AGENCY_RE =
+  /^\s*([A-Z][A-Za-z &.,'-]{4,80}?)(?:\s*[-—:|]\s*|\s+announces|\s+awards|\s+launches|\s+opens)/;
 
 function extractAgency(item: FeedItem, fallback?: string): string | null {
   if (fallback) return fallback;
@@ -23,7 +40,9 @@ function extractAgency(item: FeedItem, fallback?: string): string | null {
   try {
     const host = new URL(item.sourceFeed).hostname.replace(/^www\./, "");
     return host.split(".")[0].toUpperCase();
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchRssGrantCandidates(): Promise<RawCandidate[]> {
@@ -32,7 +51,10 @@ export async function fetchRssGrantCandidates(): Promise<RawCandidate[]> {
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 12_000);
-      const res = await fetch(feed.url, { signal: ctrl.signal, headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" } });
+      const res = await fetch(feed.url, {
+        signal: ctrl.signal,
+        headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
+      });
       clearTimeout(t);
       if (!res.ok) continue;
       const xml = await res.text();
@@ -46,7 +68,11 @@ export async function fetchRssGrantCandidates(): Promise<RawCandidate[]> {
           continue;
         }
         let host = "";
-        try { host = new URL(item.link).origin; } catch { /* skip */ }
+        try {
+          host = new URL(item.link).origin;
+        } catch {
+          /* skip */
+        }
         seen.set(key, {
           name: agency,
           funder_type: feed.key === "grants_gov" ? "US Federal" : "Federal",
@@ -55,7 +81,9 @@ export async function fetchRssGrantCandidates(): Promise<RawCandidate[]> {
           raw_metadata: { sample_title: item.title.slice(0, 200), sample_link: item.link },
         });
       }
-    } catch { /* skip feed on error */ }
+    } catch {
+      /* skip feed on error */
+    }
   }
   return Array.from(seen.values());
 }

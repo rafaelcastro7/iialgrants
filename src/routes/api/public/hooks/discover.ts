@@ -27,7 +27,11 @@ export const Route = createFileRoute("/api/public/hooks/discover")({
             const r = await discoverFunderImpl(f.id);
             results.push({ funder: f.name, result: r });
           } catch (e) {
-            results.push({ funder: f.name, result: null, error: e instanceof Error ? e.message : String(e) });
+            results.push({
+              funder: f.name,
+              result: null,
+              error: e instanceof Error ? e.message : String(e),
+            });
           }
         }
         return Response.json({ ok: true, results });

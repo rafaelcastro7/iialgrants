@@ -14,15 +14,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const qo = queryOptions({ queryKey: ["admin", "users"], queryFn: () => listAdminUsers() });
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   loader: ({ context }) => context.queryClient.ensureQueryData(qo),
-  errorComponent: ({ error }) => <p className="text-sm text-destructive">Failed: {error.message}</p>,
+  errorComponent: ({ error }) => (
+    <p className="text-sm text-destructive">Failed: {error.message}</p>
+  ),
   component: UsersPage,
 });
 
@@ -49,27 +65,34 @@ function UsersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const filtered = data.users.filter((u) =>
-    !search || u.email?.toLowerCase().includes(search.toLowerCase()),
+  const filtered = data.users.filter(
+    (u) => !search || u.email?.toLowerCase().includes(search.toLowerCase()),
   );
 
   async function run(id: string, fn: () => Promise<unknown>) {
-    setBusyId(id); setError(null);
+    setBusyId(id);
+    setError(null);
     try {
       await fn();
       await qc.invalidateQueries({ queryKey: ["admin", "users"] });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-    } finally { setBusyId(null); }
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function doInvite() {
     setError(null);
     try {
       await invite({ data: { email: inviteEmail, asAdmin: inviteAdmin } });
-      setInviteEmail(""); setInviteAdmin(false); setInviteOpen(false);
+      setInviteEmail("");
+      setInviteAdmin(false);
+      setInviteOpen(false);
       await qc.invalidateQueries({ queryKey: ["admin", "users"] });
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   return (
@@ -80,19 +103,31 @@ function UsersPage() {
           <p className="text-sm text-muted-foreground">Manage workspace members and roles.</p>
         </div>
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-          <DialogTrigger asChild><Button>Invite user</Button></DialogTrigger>
+          <DialogTrigger asChild>
+            <Button>Invite user</Button>
+          </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Invite a new user</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>Invite a new user</DialogTitle>
+            </DialogHeader>
             <div className="space-y-3">
-              <Input placeholder="email@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+              <Input
+                placeholder="email@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
               <label className="flex items-center gap-2 text-sm">
                 <Switch checked={inviteAdmin} onCheckedChange={setInviteAdmin} />
                 Grant admin role on signup
               </label>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-              <Button onClick={doInvite} disabled={!inviteEmail}>Send invite</Button>
+              <Button variant="outline" onClick={() => setInviteOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={doInvite} disabled={!inviteEmail}>
+                Send invite
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -102,7 +137,12 @@ function UsersPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-base">{filtered.length} users</CardTitle>
-            <Input placeholder="Search email…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+            <Input
+              placeholder="Search email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -125,38 +165,70 @@ function UsersPage() {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">
                       {u.email ?? <em className="text-muted-foreground">no email</em>}
-                      {u.org_name && <div className="text-xs text-muted-foreground">{u.org_name}</div>}
+                      {u.org_name && (
+                        <div className="text-xs text-muted-foreground">{u.org_name}</div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      {u.is_admin
-                        ? <Badge>admin</Badge>
-                        : <Badge variant="secondary">member</Badge>}
+                      {u.is_admin ? (
+                        <Badge>admin</Badge>
+                      ) : (
+                        <Badge variant="secondary">member</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs uppercase">{u.preferred_lang ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{fmt(u.last_sign_in_at)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {fmt(u.last_sign_in_at)}
+                    </TableCell>
                     <TableCell>
-                      {isBanned
-                        ? <Badge variant="destructive">banned</Badge>
-                        : <Badge variant="outline">active</Badge>}
+                      {isBanned ? (
+                        <Badge variant="destructive">banned</Badge>
+                      ) : (
+                        <Badge variant="outline">active</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-wrap gap-1 justify-end">
-                        <Button size="sm" variant="outline" disabled={busy}
-                          onClick={() => run(u.id, () => setRole({ data: { userId: u.id, admin: !u.is_admin } }))}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() =>
+                            run(u.id, () => setRole({ data: { userId: u.id, admin: !u.is_admin } }))
+                          }
+                        >
                           {u.is_admin ? "Revoke admin" : "Make admin"}
                         </Button>
                         {u.email && (
-                          <Button size="sm" variant="ghost" disabled={busy}
-                            onClick={() => run(u.id, () => sendRecovery({ data: { email: u.email! } }))}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy}
+                            onClick={() =>
+                              run(u.id, () => sendRecovery({ data: { email: u.email! } }))
+                            }
+                          >
                             Reset pw
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" disabled={busy}
-                          onClick={() => run(u.id, () => setBanned({ data: { userId: u.id, banned: !isBanned } }))}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={busy}
+                          onClick={() =>
+                            run(u.id, () =>
+                              setBanned({ data: { userId: u.id, banned: !isBanned } }),
+                            )
+                          }
+                        >
                           {isBanned ? "Unban" : "Ban"}
                         </Button>
-                        <Button size="sm" variant="destructive" disabled={busy}
-                          onClick={() => setConfirmDelete(u.id)}>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={busy}
+                          onClick={() => setConfirmDelete(u.id)}
+                        >
                           Delete
                         </Button>
                       </div>
@@ -172,17 +244,28 @@ function UsersPage() {
 
       <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Delete user permanently?</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Delete user permanently?</DialogTitle>
+          </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This will delete the auth account and cascade-remove all of their data. This cannot be undone.
+            This will delete the auth account and cascade-remove all of their data. This cannot be
+            undone.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={async () => {
-              if (!confirmDelete) return;
-              const id = confirmDelete; setConfirmDelete(null);
-              await run(id, () => delUser({ data: { userId: id } }));
-            }}>Delete forever</Button>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!confirmDelete) return;
+                const id = confirmDelete;
+                setConfirmDelete(null);
+                await run(id, () => delUser({ data: { userId: id } }));
+              }}
+            >
+              Delete forever
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -21,7 +21,11 @@ export const Route = createFileRoute("/_authenticated/proposals")({
   head: () => ({
     meta: [
       { title: "Proposals — IIAL" },
-      { name: "description", content: "AI-drafted grant proposals with cited evidence from your organization knowledge base." },
+      {
+        name: "description",
+        content:
+          "AI-drafted grant proposals with cited evidence from your organization knowledge base.",
+      },
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(proposalsQueryOptions),
@@ -30,26 +34,38 @@ export const Route = createFileRoute("/_authenticated/proposals")({
 
 function ProposalsPage() {
   const { t, i18n } = useTranslation();
-  const fr = false /* EN-only */;
+  const fr = false; /* EN-only */
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchProposals = useServerFn(listProposals);
   const ingest = useServerFn(ingestOrgProfileAsKnowledge);
   const [ingesting, setIngesting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const { data } = useSuspenseQuery({ queryKey: ["proposals", "all"], queryFn: () => fetchProposals() });
+  const { data } = useSuspenseQuery({
+    queryKey: ["proposals", "all"],
+    queryFn: () => fetchProposals(),
+  });
 
-  useEffect(() => { syncClientLocale(); }, []);
+  useEffect(() => {
+    syncClientLocale();
+  }, []);
 
-  async function signOut() { await supabase.auth.signOut(); await navigate({ to: "/" }); }
+  async function signOut() {
+    await supabase.auth.signOut();
+    await navigate({ to: "/" });
+  }
   async function onIngest() {
-    setIngesting(true); setMsg(null);
+    setIngesting(true);
+    setMsg(null);
     try {
       const r = await ingest();
       setMsg(`+${r.inserted}`);
       await qc.invalidateQueries({ queryKey: ["proposals"] });
-    } catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
-    finally { setIngesting(false); }
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIngesting(false);
+    }
   }
 
   return (
@@ -57,15 +73,27 @@ function ProposalsPage() {
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold">{t("app.name")}</Link>
-            <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">{t("nav.dashboard")}</Link>
-            <Link to="/grants" className="text-sm text-muted-foreground hover:underline">{t("nav.grants")}</Link>
-            <Link to="/proposals" className="text-sm font-medium">{t("nav.proposals")}</Link>
-            <Link to="/org" className="text-sm text-muted-foreground hover:underline">{t("org.title")}</Link>
+            <Link to="/dashboard" className="font-semibold">
+              {t("app.name")}
+            </Link>
+            <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
+              {t("nav.dashboard")}
+            </Link>
+            <Link to="/grants" className="text-sm text-muted-foreground hover:underline">
+              {t("nav.grants")}
+            </Link>
+            <Link to="/proposals" className="text-sm font-medium">
+              {t("nav.proposals")}
+            </Link>
+            <Link to="/org" className="text-sm text-muted-foreground hover:underline">
+              {t("org.title")}
+            </Link>
           </nav>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={signOut}>{t("nav.signOut")}</Button>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              {t("nav.signOut")}
+            </Button>
           </div>
         </div>
       </header>
@@ -80,12 +108,20 @@ function ProposalsPage() {
         {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
 
         {data.proposals.length === 0 ? (
-          <Card><CardContent className="py-10 text-center text-muted-foreground">{t("proposals.empty")}</CardContent></Card>
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              {t("proposals.empty")}
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid gap-4">
             {data.proposals.map((p) => {
               const grant = Array.isArray(p.grant) ? p.grant[0] : p.grant;
-              const grantTitle = grant ? (fr && grant.title_fr ? grant.title_fr : grant.title) : "—";
+              const grantTitle = grant
+                ? fr && grant.title_fr
+                  ? grant.title_fr
+                  : grant.title
+                : "—";
               return (
                 <Card key={p.id}>
                   <CardHeader>
@@ -100,8 +136,14 @@ function ProposalsPage() {
                   </CardHeader>
                   <CardContent className="flex items-center justify-between">
                     <div className="text-xs text-muted-foreground flex gap-4">
-                      <span>{t("proposals.version")} {p.version}</span>
-                      {p.critic_score != null && <span>{t("proposals.score")}: {(Number(p.critic_score) * 100).toFixed(0)}%</span>}
+                      <span>
+                        {t("proposals.version")} {p.version}
+                      </span>
+                      {p.critic_score != null && (
+                        <span>
+                          {t("proposals.score")}: {(Number(p.critic_score) * 100).toFixed(0)}%
+                        </span>
+                      )}
                     </div>
                     <Link to="/proposals/$id" params={{ id: p.id }}>
                       <Button size="sm">{t("proposals.open")} →</Button>

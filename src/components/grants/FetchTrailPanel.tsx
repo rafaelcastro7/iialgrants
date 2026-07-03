@@ -104,7 +104,9 @@ export function FetchTrailPanel({
                       {a.ts ? new Date(a.ts).toLocaleTimeString() : ""}
                     </div>
                     {a.error && (
-                      <div className="break-all font-mono text-[10px] text-destructive">{a.error}</div>
+                      <div className="break-all font-mono text-[10px] text-destructive">
+                        {a.error}
+                      </div>
                     )}
                     {a.url_used && a.url_used !== grantId && (
                       <div className="truncate font-mono text-[10px] text-muted-foreground">

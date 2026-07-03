@@ -13,16 +13,17 @@ export type Agent = "discoverer" | "enricher" | "evaluator" | "strategist" | "wr
 export type EvidenceInput = {
   grantId: string;
   agent: Agent;
-  field: string;                     // e.g. "amount_cad_max", "deadline", "fit_score"
-  value: unknown;                    // the value extracted
+  field: string; // e.g. "amount_cad_max", "deadline", "fit_score"
+  value: unknown; // the value extracted
   sourceUrl: string;
-  sourceMarkdown?: string;           // raw page text used for validation
-  snippet: string;                   // literal excerpt that proves the value
+  sourceMarkdown?: string; // raw page text used for validation
+  snippet: string; // literal excerpt that proves the value
   snippetOffset?: number;
   method: ExtractionMethod;
-  confidence?: number;               // 0..1 (defaults from method)
+  confidence?: number; // 0..1 (defaults from method)
   model?: string;
   runId?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped Supabase query builder is intentional
   db?: { from: (table: string) => any };
 };
 
@@ -54,7 +55,9 @@ export function snippetIsGrounded(snippet: string, markdown: string): boolean {
   return false;
 }
 
-export async function recordEvidence(input: EvidenceInput): Promise<{ ok: boolean; id?: string; reason?: string }> {
+export async function recordEvidence(
+  input: EvidenceInput,
+): Promise<{ ok: boolean; id?: string; reason?: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const db = input.db ?? supabaseAdmin;
 
@@ -92,7 +95,12 @@ export async function recordEvidence(input: EvidenceInput): Promise<{ ok: boolea
 }
 
 /** Best-effort helper: extracts a window of ±120 chars around a match. */
-export function windowAround(text: string, matchStart: number, matchLen: number, pad = 120): string {
+export function windowAround(
+  text: string,
+  matchStart: number,
+  matchLen: number,
+  pad = 120,
+): string {
   const start = Math.max(0, matchStart - pad);
   const end = Math.min(text.length, matchStart + matchLen + pad);
   return text.slice(start, end).replace(/\s+/g, " ").trim();

@@ -43,13 +43,17 @@ export function EventLog({ fr }: { fr: boolean }) {
   const fetchEvents = useServerFn(listAgentEvents);
   const { data, isFetching, refetch, error } = useQuery({
     queryKey: ["agent-events", agentFilter, statusFilter],
-    queryFn: () => fetchEvents({
-      data: {
-        limit: 80,
-        agent: agentFilter === "all" ? undefined : agentFilter,
-        status: statusFilter === "all" ? undefined : (statusFilter as "succeeded" | "failed" | "degraded" | "running"),
-      },
-    }),
+    queryFn: () =>
+      fetchEvents({
+        data: {
+          limit: 80,
+          agent: agentFilter === "all" ? undefined : agentFilter,
+          status:
+            statusFilter === "all"
+              ? undefined
+              : (statusFilter as "succeeded" | "failed" | "degraded" | "running"),
+        },
+      }),
     enabled: open,
     refetchInterval: open && autoRefresh ? 5_000 : false,
     staleTime: 2_000,
@@ -61,7 +65,8 @@ export function EventLog({ fr }: { fr: boolean }) {
   function toggleExpand(id: string) {
     setExpanded((s) => {
       const n = new Set(s);
-      if (n.has(id)) n.delete(id); else n.add(id);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
       return n;
     });
   }
@@ -77,11 +82,13 @@ export function EventLog({ fr }: { fr: boolean }) {
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           {fr ? "Journal d'événements" : "Event log"}
           {failed > 0 && open && (
-            <Badge variant="destructive" className="ml-1">{failed} {fr ? "erreurs" : "errors"}</Badge>
+            <Badge variant="destructive" className="ml-1">
+              {failed} {fr ? "erreurs" : "errors"}
+            </Badge>
           )}
         </span>
         <span className="text-xs text-muted-foreground">
-          {open ? (fr ? "Masquer" : "Hide") : (fr ? "Afficher" : "Show")}
+          {open ? (fr ? "Masquer" : "Hide") : fr ? "Afficher" : "Show"}
         </span>
       </button>
 
@@ -122,7 +129,13 @@ export function EventLog({ fr }: { fr: boolean }) {
               {autoRefresh ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               <span className="ml-1">{autoRefresh ? "5s" : "off"}</span>
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => refetch()} className="h-7 px-2" disabled={isFetching}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => refetch()}
+              className="h-7 px-2"
+              disabled={isFetching}
+            >
               <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
             <span className="ml-auto text-muted-foreground">
@@ -131,7 +144,9 @@ export function EventLog({ fr }: { fr: boolean }) {
           </div>
 
           {error && (
-            <p className="px-4 py-3 text-xs text-destructive">{error instanceof Error ? error.message : String(error)}</p>
+            <p className="px-4 py-3 text-xs text-destructive">
+              {error instanceof Error ? error.message : String(error)}
+            </p>
           )}
 
           <div className="max-h-96 overflow-auto divide-y">
@@ -143,7 +158,8 @@ export function EventLog({ fr }: { fr: boolean }) {
             {runs.map((r) => {
               const isOpen = expanded.has(r.id);
               const meta = r.metadata as Record<string, unknown> | null;
-              const funderName = meta && typeof meta.funder_name === "string" ? meta.funder_name : undefined;
+              const funderName =
+                meta && typeof meta.funder_name === "string" ? meta.funder_name : undefined;
               return (
                 <div key={r.id} className="px-4 py-2 text-xs">
                   <button
@@ -151,13 +167,28 @@ export function EventLog({ fr }: { fr: boolean }) {
                     className="w-full flex items-center gap-2 text-left"
                     onClick={() => toggleExpand(r.id)}
                   >
-                    {isOpen ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
-                    <span className="text-muted-foreground tabular-nums w-20">{fmtTime(r.created_at)}</span>
-                    <Badge variant="outline" className={`${STATUS_COLOR[r.status] ?? ""} font-mono`}>{r.status}</Badge>
+                    {isOpen ? (
+                      <ChevronDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3 shrink-0" />
+                    )}
+                    <span className="text-muted-foreground tabular-nums w-20">
+                      {fmtTime(r.created_at)}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`${STATUS_COLOR[r.status] ?? ""} font-mono`}
+                    >
+                      {r.status}
+                    </Badge>
                     <span className="font-mono font-medium">{r.agent}</span>
-                    {funderName && <span className="text-muted-foreground truncate">· {funderName}</span>}
+                    {funderName && (
+                      <span className="text-muted-foreground truncate">· {funderName}</span>
+                    )}
                     {r.latency_ms != null && (
-                      <span className="ml-auto text-muted-foreground tabular-nums">{r.latency_ms}ms</span>
+                      <span className="ml-auto text-muted-foreground tabular-nums">
+                        {r.latency_ms}ms
+                      </span>
                     )}
                   </button>
                   {r.error && !isOpen && (
@@ -165,18 +196,29 @@ export function EventLog({ fr }: { fr: boolean }) {
                   )}
                   {isOpen && (
                     <div className="ml-8 mt-2 space-y-1 text-muted-foreground">
-                      <div><span className="font-mono">run_id:</span> {r.run_id}</div>
-                      {r.model && <div><span className="font-mono">model:</span> {r.model}</div>}
+                      <div>
+                        <span className="font-mono">run_id:</span> {r.run_id}
+                      </div>
+                      {r.model && (
+                        <div>
+                          <span className="font-mono">model:</span> {r.model}
+                        </div>
+                      )}
                       {(r.input_tokens != null || r.output_tokens != null) && (
                         <div>
-                          <span className="font-mono">tokens:</span> in={r.input_tokens ?? "—"} / out={r.output_tokens ?? "—"}
+                          <span className="font-mono">tokens:</span> in={r.input_tokens ?? "—"} /
+                          out={r.output_tokens ?? "—"}
                         </div>
                       )}
                       {r.error && (
-                        <pre className="text-destructive whitespace-pre-wrap break-words bg-destructive/5 rounded p-2">{r.error}</pre>
+                        <pre className="text-destructive whitespace-pre-wrap break-words bg-destructive/5 rounded p-2">
+                          {r.error}
+                        </pre>
                       )}
                       {meta && (
-                        <pre className="whitespace-pre-wrap break-words bg-muted/40 rounded p-2 font-mono">{JSON.stringify(meta, null, 2)}</pre>
+                        <pre className="whitespace-pre-wrap break-words bg-muted/40 rounded p-2 font-mono">
+                          {JSON.stringify(meta, null, 2)}
+                        </pre>
                       )}
                     </div>
                   )}

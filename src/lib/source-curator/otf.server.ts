@@ -12,12 +12,24 @@ const REGRANT_KEYWORDS = /(foundation|fondation|community|trust|society|council|
 
 function parseCsvLine(line: string): string[] {
   const out: string[] = [];
-  let cur = "", inQ = false;
+  let cur = "",
+    inQ = false;
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
-    if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; continue; }
-    if (c === '"') { inQ = !inQ; continue; }
-    if (c === "," && !inQ) { out.push(cur); cur = ""; continue; }
+    if (c === '"' && line[i + 1] === '"') {
+      cur += '"';
+      i++;
+      continue;
+    }
+    if (c === '"') {
+      inQ = !inQ;
+      continue;
+    }
+    if (c === "," && !inQ) {
+      out.push(cur);
+      cur = "";
+      continue;
+    }
     cur += c;
   }
   out.push(cur);
@@ -32,7 +44,9 @@ export async function fetchOtfRecipients(): Promise<RawCandidate[]> {
     const res = await fetch(OTF_CSV, { signal: ctrl.signal });
     if (!res.ok) return [];
     text = await res.text();
-  } finally { clearTimeout(t); }
+  } finally {
+    clearTimeout(t);
+  }
   const lines = text.split(/\r?\n/);
   if (lines.length < 2) return [];
   const header = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase());

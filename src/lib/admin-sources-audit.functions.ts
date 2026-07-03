@@ -65,7 +65,8 @@ export const funderActivityRollup = createServerFn({ method: "GET" })
           evTotal += m.count;
           if (m.last && (!lastEv || m.last > lastEv)) lastEv = m.last;
         }
-        if (g.discovered_at && (!lastDisc || g.discovered_at > lastDisc)) lastDisc = g.discovered_at;
+        if (g.discovered_at && (!lastDisc || g.discovered_at > lastDisc))
+          lastDisc = g.discovered_at;
       }
       return {
         funder_id: f.id,
@@ -74,12 +75,17 @@ export const funderActivityRollup = createServerFn({ method: "GET" })
         grants_total: own.length,
         grants_enriched: own.filter((g) => !!g.enriched_at).length,
         grants_scored: own.filter((g) => !!g.scored_at).length,
-        grants_shortlisted: own.filter((g) => g.status === "shortlisted" || g.status === "in_proposal").length,
+        grants_shortlisted: own.filter(
+          (g) => g.status === "shortlisted" || g.status === "in_proposal",
+        ).length,
         evidences_total: evTotal,
         last_discovered_at: lastDisc,
         last_evidence_at: lastEv,
         recent_grants: own.slice(0, 5).map((g) => ({
-          id: g.id, title: g.title, status: g.status, fit_score: g.fit_score,
+          id: g.id,
+          title: g.title,
+          status: g.status,
+          fit_score: g.fit_score,
         })),
       };
     });

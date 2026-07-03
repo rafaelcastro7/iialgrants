@@ -23,9 +23,11 @@ function makeQuery(table: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const api: any = {};
   api.select = () => api;
-  api.eq = (col: string, val: unknown) => { state.filters.push([col, val]); return api; };
-  const rowsMatching = () =>
-    db[table].filter((r) => state.filters.every(([c, v]) => r[c] === v));
+  api.eq = (col: string, val: unknown) => {
+    state.filters.push([col, val]);
+    return api;
+  };
+  const rowsMatching = () => db[table].filter((r) => state.filters.every(([c, v]) => r[c] === v));
   api.maybeSingle = async () => ({ data: rowsMatching()[0] ?? null, error: null });
   api.insert = async (payload: Row | Row[]) => {
     const rows = Array.isArray(payload) ? payload : [payload];
@@ -54,11 +56,10 @@ vi.mock("@/lib/firecrawl.server", () => ({
       "https://example.ca/programs/innovation-boost",
       "https://example.ca/programs/clean-tech-fund",
       "https://example.ca/financement", // root index — must be filtered
-      "https://example.ca/about",       // skip pattern
+      "https://example.ca/about", // skip pattern
     ],
   }),
-  filterProgramUrls: (links: string[]) =>
-    links.filter((u) => !u.endsWith("/about")), // mimic real filter minimally
+  filterProgramUrls: (links: string[]) => links.filter((u) => !u.endsWith("/about")), // mimic real filter minimally
 }));
 
 // ---------- Web fetch (Firecrawl JSON path) ----------
@@ -107,7 +108,12 @@ vi.mock("@/lib/web-fetch.server", () => ({
 
 // ---------- LLM (shouldn't be hit on JSON path, but stub anyway) ----------
 vi.mock("@/agents/llm.server", () => ({
-  callLlm: vi.fn(async () => ({ text: '{"grants":[]}', inputTokens: 0, outputTokens: 0, runId: "stub" })),
+  callLlm: vi.fn(async () => ({
+    text: '{"grants":[]}',
+    inputTokens: 0,
+    outputTokens: 0,
+    runId: "stub",
+  })),
 }));
 
 vi.mock("@/lib/otel", () => ({ newRunId: () => "run_test_1", logGenAI: vi.fn() }));
@@ -141,10 +147,7 @@ describe("discoverFunderImpl — end-to-end pipeline", () => {
     expect(res.inserted).toBe(2);
 
     const titles = db.grants.map((g) => g.title).sort();
-    expect(titles).toEqual([
-      "Clean Tech Acceleration Fund",
-      "Innovation Boost Program for SMEs",
-    ]);
+    expect(titles).toEqual(["Clean Tech Acceleration Fund", "Innovation Boost Program for SMEs"]);
     for (const g of db.grants) {
       expect(g.funder_id).toBe(FUNDER_ID);
       expect(g.status).toBe("discovered");

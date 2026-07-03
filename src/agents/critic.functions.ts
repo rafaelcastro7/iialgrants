@@ -16,7 +16,9 @@ export const runCritic = createServerFn({ method: "POST" })
 
     const { data: proposal, error } = await context.supabase
       .from("proposals")
-      .select("id, title, language, grant:grants(id, title, summary, eligibility, amount_cad_min, amount_cad_max, deadline)")
+      .select(
+        "id, title, language, grant:grants(id, title, summary, eligibility, amount_cad_min, amount_cad_max, deadline)",
+      )
       .eq("id", data.proposalId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -37,7 +39,10 @@ export const runCritic = createServerFn({ method: "POST" })
       temperature: 0.1,
       responseFormat: "json",
       messages: [
-        { role: "system", content: `${PROMPTS.critic.system}\nPrompt version: ${PROMPTS.critic.version}` },
+        {
+          role: "system",
+          content: `${PROMPTS.critic.system}\nPrompt version: ${PROMPTS.critic.version}`,
+        },
         { role: "user", content: JSON.stringify({ grant, sections: sections ?? [] }) },
       ],
     });
@@ -59,7 +64,9 @@ export const runCritic = createServerFn({ method: "POST" })
         error: `parse_error: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
         metadata: { proposal_id: proposal.id, llm_output: llm.text?.slice(0, 200) },
       });
-      throw new Error(`critic_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`);
+      throw new Error(
+        `critic_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
+      );
     }
 
     const validIds = new Set((sections ?? []).map((s) => s.id));
@@ -77,7 +84,6 @@ export const runCritic = createServerFn({ method: "POST" })
       })
       .eq("id", proposal.id);
 
-
     // Attach findings into each section's critic_notes.
     for (const s of sections ?? []) {
       const sFindings = findings.filter((f) => f.section_id === s.id);
@@ -90,11 +96,20 @@ export const runCritic = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("agent_runs").insert({
-      run_id: runId, agent: "critic", status: "succeeded",
+      run_id: runId,
+      agent: "critic",
+      status: "succeeded",
       model: "google/gemini-2.5-pro",
-      input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,
-      latency_ms: Date.now() - t0, user_id: context.userId, grant_id: grant?.id ?? null,
-      metadata: { proposal_id: proposal.id, score: parsed.overall_score, findings: findings.length },
+      input_tokens: llm.inputTokens,
+      output_tokens: llm.outputTokens,
+      latency_ms: Date.now() - t0,
+      user_id: context.userId,
+      grant_id: grant?.id ?? null,
+      metadata: {
+        proposal_id: proposal.id,
+        score: parsed.overall_score,
+        findings: findings.length,
+      },
     });
     return { ok: true, score: parsed.overall_score, findings: findings.length, runId };
   });

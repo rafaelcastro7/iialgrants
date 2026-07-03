@@ -6,7 +6,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DEFAULT_RULES, evaluateRules, type FitRules, type GrantForRules } from "@/agents/fit-rules.server";
+import {
+  DEFAULT_RULES,
+  evaluateRules,
+  type FitRules,
+  type GrantForRules,
+} from "@/agents/fit-rules.server";
 
 export type Brief = {
   program_snapshot: {
@@ -44,11 +49,19 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     const [{ data: g, error: gerr }, { data: rulesRow }, { data: org }] = await Promise.all([
-      supabase.from("grants")
-        .select("id, title, summary, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, url, funder:funders(name)")
-        .eq("id", grantId).maybeSingle(),
+      supabase
+        .from("grants")
+        .select(
+          "id, title, summary, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, url, funder:funders(name)",
+        )
+        .eq("id", grantId)
+        .maybeSingle(),
       supabase.from("fit_rules").select("*").eq("user_id", userId).maybeSingle(),
-      supabase.from("org_profiles").select("org_name, sectors, jurisdictions, stage, focus_areas").eq("user_id", userId).maybeSingle(),
+      supabase
+        .from("org_profiles")
+        .select("org_name, sectors, jurisdictions, stage, focus_areas")
+        .eq("user_id", userId)
+        .maybeSingle(),
     ]);
     if (gerr) throw new Error(gerr.message);
     if (!g) throw new Error("grant_not_found");
@@ -57,8 +70,11 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
     const rr = evaluateRules(rules, g as GrantForRules);
 
     // Determine intake type
-    const intake: "fixed" | "rolling" | "unknown" =
-      rr.rolling_intake ? "rolling" : g.deadline ? "fixed" : "unknown";
+    const intake: "fixed" | "rolling" | "unknown" = rr.rolling_intake
+      ? "rolling"
+      : g.deadline
+        ? "fixed"
+        : "unknown";
 
     // Recommendation logic (tri-state per SOP Stage 4)
     const hardFails = rr.checks.filter((c) => c.status === "fail" && c.hard);
@@ -82,7 +98,9 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
     }
 
     if (rr.cost_share_pct !== null && rr.cost_share_pct > 0 && rules.require_match_verification) {
-      conditions.push(`Verificar disponibilidad de cash match (~${rr.cost_share_pct}%) con liderazgo`);
+      conditions.push(
+        `Verificar disponibilidad de cash match (~${rr.cost_share_pct}%) con liderazgo`,
+      );
       if (verdict === "go") verdict = "go_conditional";
     }
 
@@ -97,28 +115,47 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
       const llm = await callLlm({
         model: "groq/llama-3.3-70b-versatile",
         agent: "strategist",
-        runId, temperature: 0.2, responseFormat: "json",
+        runId,
+        temperature: 0.2,
+        responseFormat: "json",
         messages: [
-          { role: "system", content:
-            "You generate one section of an IIAL Opportunity Brief (SOP v2). " +
-            "Return strict JSON: {strategic_angle:string, mandatory_components:string[], risks:string[]}. " +
-            "Output language: ENGLISH only. " +
-            "strategic_angle = 2-3 sentences explaining which IIAL capability this program leverages and what we gain. " +
-            "mandatory_components = bullet list of required studies/assessments/deliverables explicitly named in the grant. " +
-            "risks = bullet list of eligibility ambiguities, capacity constraints, or open questions. " +
-            "Never invent: if unknown, return an empty array." },
-          { role: "user", content: JSON.stringify({
-              grant: { title: g.title, summary: g.summary, eligibility: g.eligibility, sectors: g.sectors, country: g.country, deadline: g.deadline },
+          {
+            role: "system",
+            content:
+              "You generate one section of an IIAL Opportunity Brief (SOP v2). " +
+              "Return strict JSON: {strategic_angle:string, mandatory_components:string[], risks:string[]}. " +
+              "Output language: ENGLISH only. " +
+              "strategic_angle = 2-3 sentences explaining which IIAL capability this program leverages and what we gain. " +
+              "mandatory_components = bullet list of required studies/assessments/deliverables explicitly named in the grant. " +
+              "risks = bullet list of eligibility ambiguities, capacity constraints, or open questions. " +
+              "Never invent: if unknown, return an empty array.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              grant: {
+                title: g.title,
+                summary: g.summary,
+                eligibility: g.eligibility,
+                sectors: g.sectors,
+                country: g.country,
+                deadline: g.deadline,
+              },
               organization: org ?? { org_name: "(unconfigured)" },
               iial_capabilities: rules.iial_capabilities,
-            }) },
+            }),
+          },
         ],
       });
       const parsed = JSON.parse(llm.text) as {
-        strategic_angle?: string; mandatory_components?: string[]; risks?: string[];
+        strategic_angle?: string;
+        mandatory_components?: string[];
+        risks?: string[];
       };
       strategic_angle = parsed.strategic_angle?.trim() || "—";
-      mandatory_components = Array.isArray(parsed.mandatory_components) ? parsed.mandatory_components.slice(0, 10) : [];
+      mandatory_components = Array.isArray(parsed.mandatory_components)
+        ? parsed.mandatory_components.slice(0, 10)
+        : [];
       risks = Array.isArray(parsed.risks) ? parsed.risks.slice(0, 10) : [];
     } catch (e) {
       risks.push(`(LLM narrative unavailable: ${e instanceof Error ? e.message : String(e)})`);
@@ -147,7 +184,13 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
       },
       risks,
       recommendation: { verdict, reason, conditions },
-      filters: rr.checks.map((c) => ({ id: c.id, label: c.label, status: c.status, hard: c.hard, detail: c.detail })),
+      filters: rr.checks.map((c) => ({
+        id: c.id,
+        label: c.label,
+        status: c.status,
+        hard: c.hard,
+        detail: c.detail,
+      })),
     };
 
     return { brief };

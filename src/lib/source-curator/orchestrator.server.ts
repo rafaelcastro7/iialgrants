@@ -51,37 +51,67 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
     for (const c of raw) {
       try {
         const dupe = await findDuplicate(c);
-        if (dupe.kind !== "new") { bucket.dup++; continue; }
+        if (dupe.kind !== "new") {
+          bucket.dup++;
+          continue;
+        }
         const score = scoreCandidate(c);
-        if (score < REVIEW_MIN_THRESHOLD) { bucket.dup++; continue; }
+        if (score < REVIEW_MIN_THRESHOLD) {
+          bucket.dup++;
+          continue;
+        }
         const cStatus = score >= AUTO_APPROVE_THRESHOLD ? "approved" : "pending_review";
-        const { data: inserted, error } = await supabaseAdmin.from("funder_candidates").insert({
-          name: c.name, name_fr: c.name_fr ?? null,
-          bn_number: c.bn_number ?? null, province: c.province ?? null,
-          funder_type: c.funder_type ?? null, website: c.website ?? null,
-          source_signals: c.source_signals, score, status: cStatus,
-          raw_metadata: (c.raw_metadata ?? {}) as never,
-        }).select("id").single();
-        if (error) { bucket.err++; continue; }
+        const { data: inserted, error } = await supabaseAdmin
+          .from("funder_candidates")
+          .insert({
+            name: c.name,
+            name_fr: c.name_fr ?? null,
+            bn_number: c.bn_number ?? null,
+            province: c.province ?? null,
+            funder_type: c.funder_type ?? null,
+            website: c.website ?? null,
+            source_signals: c.source_signals,
+            score,
+            status: cStatus,
+            raw_metadata: (c.raw_metadata ?? {}) as never,
+          })
+          .select("id")
+          .single();
+        if (error) {
+          bucket.err++;
+          continue;
+        }
         bucket.new++;
         if (cStatus === "approved" && inserted) {
           const { error: fErr } = await supabaseAdmin.from("funders").insert({
-            name: c.name, name_fr: c.name_fr ?? null,
-            country: "CA", jurisdiction: c.province ?? null,
-            website: c.website ?? null, source_url: c.website ?? null,
-            source_type: "manual", bn_number: c.bn_number ?? null,
-            disbursed_annual: c.disbursed_annual ?? null, active: true,
+            name: c.name,
+            name_fr: c.name_fr ?? null,
+            country: "CA",
+            jurisdiction: c.province ?? null,
+            website: c.website ?? null,
+            source_url: c.website ?? null,
+            source_type: "manual",
+            bn_number: c.bn_number ?? null,
+            disbursed_annual: c.disbursed_annual ?? null,
+            active: true,
           });
           if (!fErr) bucket.auto++;
         }
-      } catch { bucket.err++; }
+      } catch {
+        bucket.err++;
+      }
     }
   }
 
   await supabaseAdmin.from("source_ingest_runs").insert({
-    dataset: name, rows_in: bucket.rows, candidates_out: bucket.new,
-    auto_approved: bucket.auto, duplicates: bucket.dup, errors: bucket.err,
-    latency_ms: Date.now() - t0, status,
+    dataset: name,
+    rows_in: bucket.rows,
+    candidates_out: bucket.new,
+    auto_approved: bucket.auto,
+    duplicates: bucket.dup,
+    errors: bucket.err,
+    latency_ms: Date.now() - t0,
+    status,
     error_message: errorMessage,
     metadata: { run_id: result.runId, tier: result.tier },
   });
@@ -126,11 +156,17 @@ async function ingestorsForTier(tier: Tier): Promise<Array<{ key: string; fn: So
     const { fetchT3010Foundations, extractT3010Candidates } = await import("./t3010.server");
     const { fetchOtfRecipients } = await import("./otf.server");
     const { fetchAlbertaGrants } = await import("./alberta-ckan.server");
-    out.push({ key: "tbs_gc",           fn: async () => extractGcCandidates(await fetchRecentGcRows(35, 5000)) });
-    out.push({ key: "pfc_members",      fn: scrapePfcMembers });
-    out.push({ key: "t3010_charities",  fn: async () => extractT3010Candidates(await fetchT3010Foundations(500)) });
-    out.push({ key: "otf_open",         fn: fetchOtfRecipients });
-    out.push({ key: "alberta_ckan",     fn: fetchAlbertaGrants });
+    out.push({
+      key: "tbs_gc",
+      fn: async () => extractGcCandidates(await fetchRecentGcRows(35, 5000)),
+    });
+    out.push({ key: "pfc_members", fn: scrapePfcMembers });
+    out.push({
+      key: "t3010_charities",
+      fn: async () => extractT3010Candidates(await fetchT3010Foundations(500)),
+    });
+    out.push({ key: "otf_open", fn: fetchOtfRecipients });
+    out.push({ key: "alberta_ckan", fn: fetchAlbertaGrants });
   }
 
   // Respect registry enabled flag.
@@ -139,14 +175,24 @@ async function ingestorsForTier(tier: Tier): Promise<Array<{ key: string; fn: So
     const { data } = await supabaseAdmin
       .from("discovery_sources_registry")
       .select("dataset_key, enabled");
-    const enabled = new Map((data ?? []).map((r: { dataset_key: string; enabled: boolean }) => [r.dataset_key, r.enabled]));
+    const enabled = new Map(
+      (data ?? []).map((r: { dataset_key: string; enabled: boolean }) => [
+        r.dataset_key,
+        r.enabled,
+      ]),
+    );
     return out.filter((i) => enabled.get(i.key) !== false);
-  } catch { return out; }
+  } catch {
+    return out;
+  }
 }
 
 export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResult> {
   const result: CuratorResult = {
-    runId: newRunId(), tier, durationMs: 0, perSource: {},
+    runId: newRunId(),
+    tier,
+    durationMs: 0,
+    perSource: {},
     totals: { rows: 0, new: 0, dup: 0, auto: 0, err: 0 },
   };
   const t0 = Date.now();
@@ -155,8 +201,10 @@ export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResul
     await runSource(ing.key, ing.fn, result);
   }
   for (const b of Object.values(result.perSource)) {
-    result.totals.rows += b.rows; result.totals.new += b.new;
-    result.totals.dup += b.dup; result.totals.auto += b.auto;
+    result.totals.rows += b.rows;
+    result.totals.new += b.new;
+    result.totals.dup += b.dup;
+    result.totals.auto += b.auto;
     result.totals.err += b.err;
   }
   result.durationMs = Date.now() - t0;

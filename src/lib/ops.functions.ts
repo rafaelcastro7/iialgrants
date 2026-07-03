@@ -20,19 +20,15 @@ export const getOpsMetrics = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [daily, recent, pipeline] = await Promise.all([
-      supabaseAdmin
-        .from("agent_runs_daily")
-        .select("*")
-        .limit(200),
+      supabaseAdmin.from("agent_runs_daily").select("*").limit(200),
       supabaseAdmin
         .from("agent_runs")
-        .select("id, agent, status, model, latency_ms, input_tokens, output_tokens, cost_usd, error, created_at")
+        .select(
+          "id, agent, status, model, latency_ms, input_tokens, output_tokens, cost_usd, error, created_at",
+        )
         .order("created_at", { ascending: false })
         .limit(50),
-      supabaseAdmin
-        .from("grants")
-        .select("status")
-        .limit(2000),
+      supabaseAdmin.from("grants").select("status").limit(2000),
     ]);
     if (daily.error) throw new Error(daily.error.message);
     if (recent.error) throw new Error(recent.error.message);

@@ -16,7 +16,12 @@ describe("evals/evaluator golden set", () => {
     id: string;
     agent: string;
     input: { grant: Record<string, unknown>; organization: Record<string, unknown> };
-    expected: { fit_score_min?: number; fit_score_max?: number; eligibility_pass?: boolean; must_not_contain?: string[] };
+    expected: {
+      fit_score_min?: number;
+      fit_score_max?: number;
+      eligibility_pass?: boolean;
+      must_not_contain?: string[];
+    };
   }>) {
     it(`case shape: ${c.id}`, () => {
       expect(c.agent).toBe("evaluator");
@@ -28,24 +33,38 @@ describe("evals/evaluator golden set", () => {
     });
   }
 
-  it.skipIf(!runLlm)("LLM evaluator passes all golden bands", async () => {
-    const { callLlm } = await import("@/agents/llm.server");
-    const { PROMPTS } = await import("@/agents/schemas");
-    for (const c of cases as Array<{ id: string; input: unknown; expected: { fit_score_min?: number; fit_score_max?: number; eligibility_pass?: boolean } }>) {
-      const r = await callLlm({
-        model: "google/gemini-2.5-flash",
-        agent: "evaluator",
-        temperature: 0,
-        responseFormat: "json",
-        messages: [
-          { role: "system", content: `${PROMPTS.evaluator.system}\nPrompt version: ${PROMPTS.evaluator.version}` },
-          { role: "user", content: JSON.stringify(c.input) },
-        ],
-      });
-      const parsed = EvaluatorOutput.parse(JSON.parse(r.text));
-      if (c.expected.fit_score_min != null) expect(parsed.fit_score, c.id).toBeGreaterThanOrEqual(c.expected.fit_score_min);
-      if (c.expected.fit_score_max != null) expect(parsed.fit_score, c.id).toBeLessThanOrEqual(c.expected.fit_score_max);
-      if (c.expected.eligibility_pass != null) expect(parsed.eligibility_pass, c.id).toBe(c.expected.eligibility_pass);
-    }
-  }, 60_000);
+  it.skipIf(!runLlm)(
+    "LLM evaluator passes all golden bands",
+    async () => {
+      const { callLlm } = await import("@/agents/llm.server");
+      const { PROMPTS } = await import("@/agents/schemas");
+      for (const c of cases as Array<{
+        id: string;
+        input: unknown;
+        expected: { fit_score_min?: number; fit_score_max?: number; eligibility_pass?: boolean };
+      }>) {
+        const r = await callLlm({
+          model: "google/gemini-2.5-flash",
+          agent: "evaluator",
+          temperature: 0,
+          responseFormat: "json",
+          messages: [
+            {
+              role: "system",
+              content: `${PROMPTS.evaluator.system}\nPrompt version: ${PROMPTS.evaluator.version}`,
+            },
+            { role: "user", content: JSON.stringify(c.input) },
+          ],
+        });
+        const parsed = EvaluatorOutput.parse(JSON.parse(r.text));
+        if (c.expected.fit_score_min != null)
+          expect(parsed.fit_score, c.id).toBeGreaterThanOrEqual(c.expected.fit_score_min);
+        if (c.expected.fit_score_max != null)
+          expect(parsed.fit_score, c.id).toBeLessThanOrEqual(c.expected.fit_score_max);
+        if (c.expected.eligibility_pass != null)
+          expect(parsed.eligibility_pass, c.id).toBe(c.expected.eligibility_pass);
+      }
+    },
+    60_000,
+  );
 });

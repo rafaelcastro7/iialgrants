@@ -78,9 +78,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "IIAL — AI-native grant intelligence for Canada" },
-      { name: "description", content: "Discover, evaluate, draft and win Canadian grants with bilingual AI agents. PIPEDA, Quebec Law 25 and AIDA aligned." },
+      {
+        name: "description",
+        content:
+          "Discover, evaluate, draft and win Canadian grants with bilingual AI agents. PIPEDA, Quebec Law 25 and AIDA aligned.",
+      },
       { property: "og:title", content: "IIAL — AI-native grant intelligence for Canada" },
-      { property: "og:description", content: "Discover, evaluate, draft and win Canadian grants with bilingual AI agents." },
+      {
+        property: "og:description",
+        content: "Discover, evaluate, draft and win Canadian grants with bilingual AI agents.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -88,7 +95,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@300;400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@300;400;500;600;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

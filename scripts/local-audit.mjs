@@ -39,8 +39,10 @@ const MODEL = process.argv[2] ?? "qwen2.5-coder:7b";
 const OLLAMA = "http://localhost:11434/v1/chat/completions";
 const ROOT = resolve(import.meta.dirname, "..");
 
+// Optional single-file mode: node scripts/local-audit.mjs <model> <file>
+const SINGLE = process.argv[3];
 // Files not yet audited this cycle + phase-8 touched files.
-const TARGETS = [
+const DEFAULT_TARGETS = [
   "src/agents/translate.server.ts",
   "src/lib/notebooklm.functions.ts",
   "src/lib/source-curator/orchestrator.server.ts",
@@ -52,6 +54,7 @@ const TARGETS = [
   "src/lib/search-hybrid.server.ts",
   "src/lib/embeddings-cache.server.ts",
 ];
+const TARGETS = SINGLE ? [SINGLE] : DEFAULT_TARGETS;
 
 const SYSTEM = `You are a strict senior code auditor. Analyze the TypeScript file for REAL, reproducible bugs only:
 - race conditions, lost updates, unsafe concurrency

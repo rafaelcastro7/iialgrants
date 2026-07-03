@@ -14,15 +14,24 @@ const sb = createClient(url, key);
 async function main() {
   // Order matters: FK constraints
   console.log("Clearing evidence_spans...");
-  const e1 = await sb.from("evidence_spans").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  const e1 = await sb
+    .from("evidence_spans")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
   console.log("  evidence_spans:", e1.error?.message ?? "OK");
 
   console.log("Clearing grant_evaluations...");
-  const e2 = await sb.from("grant_evaluations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  const e2 = await sb
+    .from("grant_evaluations")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
   console.log("  grant_evaluations:", e2.error?.message ?? "OK");
 
   console.log("Clearing grant_events...");
-  const e3 = await sb.from("grant_events").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  const e3 = await sb
+    .from("grant_events")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
   console.log("  grant_events:", e3.error?.message ?? "OK");
 
   console.log("Clearing agent_runs...");

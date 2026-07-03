@@ -21,7 +21,9 @@ export const Route = createFileRoute("/_authenticated/ops")({
   errorComponent: ({ error }) => (
     <main className="p-8 text-sm">
       <p className="text-destructive font-medium">{String(error?.message || error)}</p>
-      <Link to="/dashboard" className="underline">← dashboard</Link>
+      <Link to="/dashboard" className="underline">
+        ← dashboard
+      </Link>
     </main>
   ),
 });
@@ -32,11 +34,16 @@ function OpsPage() {
   const fetchOps = useServerFn(getOpsMetrics);
   const { data } = useSuspenseQuery({ queryKey: ["ops"], queryFn: () => fetchOps() });
 
-  useEffect(() => { syncClientLocale(); }, []);
-  async function signOut() { await supabase.auth.signOut(); await navigate({ to: "/" }); }
+  useEffect(() => {
+    syncClientLocale();
+  }, []);
+  async function signOut() {
+    await supabase.auth.signOut();
+    await navigate({ to: "/" });
+  }
 
   const totalRuns = data.daily.reduce((s, d) => s + Number(d.runs), 0);
-  const totalErr  = data.daily.reduce((s, d) => s + Number(d.error_runs), 0);
+  const totalErr = data.daily.reduce((s, d) => s + Number(d.error_runs), 0);
   const totalCost = data.daily.reduce((s, d) => s + Number(d.cost_usd ?? 0), 0);
   const errPct = totalRuns ? ((totalErr / totalRuns) * 100).toFixed(1) : "0.0";
 
@@ -45,12 +52,18 @@ function OpsPage() {
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold">{t("app.name")}</Link>
-            <Link to="/ops" className="text-sm font-medium hover:underline">{t("ops.title")}</Link>
+            <Link to="/dashboard" className="font-semibold">
+              {t("app.name")}
+            </Link>
+            <Link to="/ops" className="text-sm font-medium hover:underline">
+              {t("ops.title")}
+            </Link>
           </nav>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={signOut}>{t("nav.signOut")}</Button>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              {t("nav.signOut")}
+            </Button>
           </div>
         </div>
       </header>
@@ -63,21 +76,40 @@ function OpsPage() {
           <Stat label={t("ops.runs30d")} value={String(totalRuns)} />
           <Stat label={t("ops.errorRate")} value={`${errPct}%`} />
           <Stat label={t("ops.cost30d")} value={`$${totalCost.toFixed(2)}`} />
-          <Stat label={t("ops.pipeline")} value={String(Object.values(data.pipeline).reduce((a, b) => a + b, 0))} />
+          <Stat
+            label={t("ops.pipeline")}
+            value={String(Object.values(data.pipeline).reduce((a, b) => a + b, 0))}
+          />
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">{t("ops.byAgent")}</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">{t("ops.byAgent")}</CardTitle>
+          </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-xs uppercase text-muted-foreground">
-                <tr><th className="text-left p-2">Day</th><th className="text-left p-2">Agent</th><th className="p-2">Runs</th><th className="p-2">OK</th><th className="p-2">Err</th><th className="p-2">Degr</th><th className="p-2">In tok</th><th className="p-2">Out tok</th><th className="p-2">p50 ms</th><th className="p-2">p95 ms</th><th className="p-2">Cost $</th></tr>
+                <tr>
+                  <th className="text-left p-2">Day</th>
+                  <th className="text-left p-2">Agent</th>
+                  <th className="p-2">Runs</th>
+                  <th className="p-2">OK</th>
+                  <th className="p-2">Err</th>
+                  <th className="p-2">Degr</th>
+                  <th className="p-2">In tok</th>
+                  <th className="p-2">Out tok</th>
+                  <th className="p-2">p50 ms</th>
+                  <th className="p-2">p95 ms</th>
+                  <th className="p-2">Cost $</th>
+                </tr>
               </thead>
               <tbody>
                 {data.daily.map((d, i) => (
                   <tr key={i} className="border-t">
                     <td className="p-2 font-mono text-xs">{String(d.day).slice(0, 10)}</td>
-                    <td className="p-2"><Badge variant="outline">{d.agent}</Badge></td>
+                    <td className="p-2">
+                      <Badge variant="outline">{d.agent}</Badge>
+                    </td>
                     <td className="p-2 text-right">{d.runs}</td>
                     <td className="p-2 text-right">{d.ok_runs}</td>
                     <td className="p-2 text-right text-destructive">{d.error_runs}</td>
@@ -95,16 +127,26 @@ function OpsPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">{t("ops.recent")}</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">{t("ops.recent")}</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-2">
             {data.recent.map((r) => (
               <div key={r.id} className="text-xs flex flex-wrap gap-2 items-center border-b py-1">
-                <span className="font-mono">{new Date(r.created_at as string).toLocaleString()}</span>
+                <span className="font-mono">
+                  {new Date(r.created_at as string).toLocaleString()}
+                </span>
                 <Badge variant="outline">{r.agent}</Badge>
-                <Badge variant={r.status === "failed" ? "destructive" : "secondary"}>{r.status}</Badge>
+                <Badge variant={r.status === "failed" ? "destructive" : "secondary"}>
+                  {r.status}
+                </Badge>
                 <span className="text-muted-foreground">{r.model}</span>
                 {r.latency_ms != null && <span>{r.latency_ms} ms</span>}
-                {r.error && <span className="text-destructive truncate max-w-md" title={r.error}>{r.error}</span>}
+                {r.error && (
+                  <span className="text-destructive truncate max-w-md" title={r.error}>
+                    {r.error}
+                  </span>
+                )}
               </div>
             ))}
           </CardContent>
@@ -116,9 +158,11 @@ function OpsPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <Card><CardContent className="p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold mt-1">{value}</p>
-    </CardContent></Card>
+    <Card>
+      <CardContent className="p-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-2xl font-semibold mt-1">{value}</p>
+      </CardContent>
+    </Card>
   );
 }

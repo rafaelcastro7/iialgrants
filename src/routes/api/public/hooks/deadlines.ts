@@ -28,7 +28,12 @@ export const Route = createFileRoute("/api/public/hooks/deadlines")({
 
         let created = 0;
         for (const row of rows ?? []) {
-          const g = row.grant as { id: string; title: string; title_fr: string | null; deadline: string };
+          const g = row.grant as {
+            id: string;
+            title: string;
+            title_fr: string | null;
+            deadline: string;
+          };
           if (!g?.deadline) continue;
 
           const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();

@@ -42,7 +42,9 @@ export async function evaluateGrantImpl(opts: {
   const [{ data: g, error: gerr }, { data: org, error: oerr }] = await Promise.all([
     userSupabase
       .from("grants")
-      .select("id, title, summary, url, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, status, funder:funders(name, jurisdiction)")
+      .select(
+        "id, title, summary, url, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, status, funder:funders(name, jurisdiction)",
+      )
       .eq("id", grantId)
       .maybeSingle(),
     userSupabase
@@ -105,7 +107,10 @@ export async function evaluateGrantImpl(opts: {
     temperature: 0.1,
     responseFormat: "json",
     messages: [
-      { role: "system", content: `${PROMPTS.evaluator.system}\nPrompt version: ${PROMPTS.evaluator.version}` },
+      {
+        role: "system",
+        content: `${PROMPTS.evaluator.system}\nPrompt version: ${PROMPTS.evaluator.version}`,
+      },
       { role: "user", content: JSON.stringify({ grant: g, organization: org }) },
     ],
   });
@@ -121,7 +126,11 @@ export async function evaluateGrantImpl(opts: {
   try {
     parsed = EvaluatorOutput.parse(JSON.parse(llm.text));
   } catch (e) {
-    await trace("parse", `Schema validation failed: ${e instanceof Error ? e.message : String(e)}`, "error");
+    await trace(
+      "parse",
+      `Schema validation failed: ${e instanceof Error ? e.message : String(e)}`,
+      "error",
+    );
     await userSupabase.from("agent_runs").insert({
       run_id: runId,
       agent: "evaluator",
@@ -142,9 +151,7 @@ export async function evaluateGrantImpl(opts: {
   const combinedFit = rulesResult.combined_score(llmFit);
   const combinedFitUnit = Math.max(0, Math.min(1, combinedFit / 100));
   const eligibilityPass =
-    !rulesResult.hard_fail &&
-    parsed.eligibility_pass &&
-    combinedFit >= rules.threshold_fit_pass;
+    !rulesResult.hard_fail && parsed.eligibility_pass && combinedFit >= rules.threshold_fit_pass;
   parsed.fit_score = combinedFitUnit;
   parsed.eligibility_pass = eligibilityPass;
   await trace(

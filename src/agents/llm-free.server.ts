@@ -73,7 +73,6 @@ const PROVIDERS: Record<ProviderName, ProviderConfig & { fallbackModels?: string
   },
 };
 
-
 async function callOpenAICompat(
   cfg: ProviderConfig,
   opts: FreeLlmOptions,
@@ -120,7 +119,6 @@ async function callOpenAICompat(
   }
 }
 
-
 export function freeProvidersAvailable(): ProviderName[] {
   return (Object.keys(PROVIDERS) as ProviderName[]).filter((p) => {
     if (p === "ollama") return true;
@@ -149,7 +147,10 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
     // Per-provider escalation:
     //   try primary model → on 429 wait + retry → on second 429 try
     //   each fallbackModel (different quota bucket on Groq/Gemini free tiers).
-    const modelChain = [cfg.model, ...((cfg as { fallbackModels?: string[] }).fallbackModels ?? [])];
+    const modelChain = [
+      cfg.model,
+      ...((cfg as { fallbackModels?: string[] }).fallbackModels ?? []),
+    ];
     let lastErr: string | undefined;
     outer: for (let mi = 0; mi < modelChain.length; mi++) {
       const model = modelChain[mi];
@@ -157,7 +158,9 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
         const t0 = Date.now();
         let ok = false;
         let errMsg: string | undefined;
-        let result: { text: string; inputTokens?: number; outputTokens?: number; model: string } | undefined;
+        let result:
+          | { text: string; inputTokens?: number; outputTokens?: number; model: string }
+          | undefined;
         try {
           result = await callOpenAICompat(cfg, opts, model);
           ok = true;
@@ -202,8 +205,6 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
     }
     errors.push(`${name}:${lastErr ?? "unknown"}`);
   }
-
-
 
   // Optional Ollama fallback
   if (opts.allowLovableFallback) {

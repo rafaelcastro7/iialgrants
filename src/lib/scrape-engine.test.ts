@@ -34,7 +34,11 @@ describe("scrape-engine", () => {
       }
       return new Response(SAMPLE_HTML, {
         status: 200,
-        headers: { "content-type": "text/html", etag: 'W/"abc123"', "last-modified": "Wed, 01 Jan 2025 00:00:00 GMT" },
+        headers: {
+          "content-type": "text/html",
+          etag: 'W/"abc123"',
+          "last-modified": "Wed, 01 Jan 2025 00:00:00 GMT",
+        },
       });
     }) as typeof fetch;
     try {
@@ -48,7 +52,9 @@ describe("scrape-engine", () => {
       expect(r.markdown).not.toMatch(/tracker\(\)/);
       expect(r.markdown).not.toMatch(/© NRC/);
       expect(r.etag).toBe('W/"abc123"');
-    } finally { globalThis.fetch = orig; }
+    } finally {
+      globalThis.fetch = orig;
+    }
   });
 
   it("honours robots.txt Disallow", async () => {
@@ -67,6 +73,8 @@ describe("scrape-engine", () => {
         expect(r.error).toBe("robots_disallow");
         expect(r.blocked).toBe(true);
       }
-    } finally { globalThis.fetch = orig; }
+    } finally {
+      globalThis.fetch = orig;
+    }
   });
 });

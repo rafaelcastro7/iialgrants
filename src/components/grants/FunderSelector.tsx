@@ -22,13 +22,17 @@ export function FunderSelector({
     staleTime: 60_000,
   });
   const funders = data?.funders ?? [];
-  const label = selected.size === 0
-    ? (fr ? "Tous les fournisseurs" : "All funders")
-    : `${selected.size} ${fr ? "sélectionné(s)" : "selected"}`;
+  const label =
+    selected.size === 0
+      ? fr
+        ? "Tous les fournisseurs"
+        : "All funders"
+      : `${selected.size} ${fr ? "sélectionné(s)" : "selected"}`;
 
   function toggle(id: string) {
     const next = new Set(selected);
-    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     onChange(next);
   }
 
@@ -42,7 +46,9 @@ export function FunderSelector({
       </PopoverTrigger>
       <PopoverContent className="w-72 p-2" align="end">
         <div className="flex items-center justify-between px-2 pb-2 border-b mb-2">
-          <p className="text-xs font-semibold">{fr ? "Fournisseurs à exécuter" : "Funders to run"}</p>
+          <p className="text-xs font-semibold">
+            {fr ? "Fournisseurs à exécuter" : "Funders to run"}
+          </p>
           <button
             type="button"
             className="text-[11px] text-muted-foreground hover:text-foreground"
@@ -53,14 +59,18 @@ export function FunderSelector({
         </div>
         <ul className="max-h-64 overflow-auto space-y-0.5">
           {funders.length === 0 && (
-            <li className="text-xs text-muted-foreground px-2 py-2">{fr ? "Chargement…" : "Loading…"}</li>
+            <li className="text-xs text-muted-foreground px-2 py-2">
+              {fr ? "Chargement…" : "Loading…"}
+            </li>
           )}
           {funders.map((f) => (
             <li key={f.id}>
               <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-xs">
                 <Checkbox checked={selected.has(f.id)} onCheckedChange={() => toggle(f.id)} />
                 <span className="flex-1 truncate">{fr && f.name_fr ? f.name_fr : f.name}</span>
-                {f.jurisdiction && <span className="text-[10px] text-muted-foreground">{f.jurisdiction}</span>}
+                {f.jurisdiction && (
+                  <span className="text-[10px] text-muted-foreground">{f.jurisdiction}</span>
+                )}
               </label>
             </li>
           ))}

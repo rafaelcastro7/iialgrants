@@ -30,7 +30,8 @@ export async function fetchAlbertaGrants(limit = 2000): Promise<RawCandidate[]> 
       if (!name || !REGRANT.test(name)) continue;
       const cur = agg.get(name) ?? { total: 0, bn: null, signals: 0 };
       cur.total += Number(r.amount ?? 0) || 0;
-      cur.bn = cur.bn ?? ((r.recipient_business_number ?? "").replace(/\D/g, "").slice(0, 9) || null);
+      cur.bn =
+        cur.bn ?? ((r.recipient_business_number ?? "").replace(/\D/g, "").slice(0, 9) || null);
       cur.signals += 1;
       agg.set(name, cur);
     }
@@ -48,5 +49,7 @@ export async function fetchAlbertaGrants(limit = 2000): Promise<RawCandidate[]> 
       });
     }
     return out.slice(0, 150);
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }

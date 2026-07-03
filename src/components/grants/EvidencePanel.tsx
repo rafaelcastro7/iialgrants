@@ -1,7 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getGrantEvidence } from "@/lib/evidence.functions";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, ShieldCheck, Bot, Regex, FileCheck2, Calendar } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -29,13 +35,17 @@ const METHOD_ICON: Record<string, React.ComponentType<{ className?: string }>> =
 };
 
 function confColor(c: number): string {
-  if (c >= 0.9) return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
+  if (c >= 0.9)
+    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
   if (c >= 0.7) return "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
   return "bg-destructive/15 text-destructive border-destructive/30";
 }
 
 export function EvidencePanel({
-  grantId, field, open, onOpenChange,
+  grantId,
+  field,
+  open,
+  onOpenChange,
 }: {
   grantId: string;
   field: string | null;
@@ -50,17 +60,18 @@ export function EvidencePanel({
     enabled: open && !!field,
   });
 
-  const spans: Span[] = field && data?.byField?.[field]
-    ? (data.byField[field] as unknown as Span[])
-    : (field?.startsWith("eligibility")
+  const spans: Span[] =
+    field && data?.byField?.[field]
+      ? (data.byField[field] as unknown as Span[])
+      : field?.startsWith("eligibility")
         ? Object.entries(data?.byField ?? {})
             .filter(([k]) => k.startsWith("eligibility"))
             .flatMap(([, v]) => v as unknown as Span[])
         : field?.startsWith("sectors")
-        ? Object.entries(data?.byField ?? {})
-            .filter(([k]) => k.startsWith("sectors"))
-            .flatMap(([, v]) => v as unknown as Span[])
-        : []);
+          ? Object.entries(data?.byField ?? {})
+              .filter(([k]) => k.startsWith("sectors"))
+              .flatMap(([, v]) => v as unknown as Span[])
+          : [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -78,7 +89,9 @@ export function EvidencePanel({
           {isLoading && <p className="text-xs text-muted-foreground">{t("app.loading")}...</p>}
           {error && <p className="text-xs text-destructive">{String(error)}</p>}
           {!isLoading && spans.length === 0 && (
-            <p className="text-xs text-muted-foreground">No linked citation is currently available for this field.</p>
+            <p className="text-xs text-muted-foreground">
+              No linked citation is currently available for this field.
+            </p>
           )}
           {spans.map((s) => {
             const Icon = METHOD_ICON[s.extraction_method] ?? Bot;
@@ -100,8 +113,8 @@ export function EvidencePanel({
                   {s.value == null
                     ? "—"
                     : typeof s.value === "object"
-                    ? JSON.stringify(s.value)
-                    : String(s.value)}
+                      ? JSON.stringify(s.value)
+                      : String(s.value)}
                 </div>
 
                 <blockquote className="text-xs leading-relaxed text-muted-foreground border-l-2 border-primary/40 pl-3 italic">
@@ -129,7 +142,10 @@ export function EvidencePanel({
 }
 
 export function EvidenceChip({
-  field, label, onClick, count,
+  field,
+  label,
+  onClick,
+  count,
 }: {
   field: string;
   label: React.ReactNode;

@@ -19,10 +19,27 @@ import {
 } from "@/lib/site-candidates.server";
 
 const KEYWORDS = [
-  "eligib", "who can apply", "apply", "application", "how-to-apply", "how to apply",
-  "deadline", "dates", "timeline", "intake",
-  "fund", "funding", "amount", "award", "value", "contribution",
-  "guideline", "guidelines", "criteria", "requirement", "detail",
+  "eligib",
+  "who can apply",
+  "apply",
+  "application",
+  "how-to-apply",
+  "how to apply",
+  "deadline",
+  "dates",
+  "timeline",
+  "intake",
+  "fund",
+  "funding",
+  "amount",
+  "award",
+  "value",
+  "contribution",
+  "guideline",
+  "guidelines",
+  "criteria",
+  "requirement",
+  "detail",
 ];
 
 export type DeepPage = { url: string; markdown: string };

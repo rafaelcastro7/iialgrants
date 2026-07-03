@@ -2,53 +2,65 @@
 // Per ADR-009: every agent has a versioned system prompt + input/output schemas.
 import { z } from "zod";
 
-export const DiscoveredGrant = z.object({
-  title: z.string().min(3).max(500),
-  title_fr: z.string().max(500).nullable().optional(),
-  summary: z.string().max(4000).nullable().optional(),
-  summary_fr: z.string().max(4000).nullable().optional(),
-  amount_cad_min: z.number().nonnegative().nullable().optional(),
-  amount_cad_max: z.number().nonnegative().nullable().optional(),
-  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  // Accept null from LLMs that emit explicit nulls for missing optional fields,
-  // then normalize to safe defaults so a single null doesn't fail the batch.
-  eligibility: z.preprocess(
-    (v) => {
+export const DiscoveredGrant = z
+  .object({
+    title: z.string().min(3).max(500),
+    title_fr: z.string().max(500).nullable().optional(),
+    summary: z.string().max(4000).nullable().optional(),
+    summary_fr: z.string().max(4000).nullable().optional(),
+    amount_cad_min: z.number().nonnegative().nullable().optional(),
+    amount_cad_max: z.number().nonnegative().nullable().optional(),
+    deadline: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+    // Accept null from LLMs that emit explicit nulls for missing optional fields,
+    // then normalize to safe defaults so a single null doesn't fail the batch.
+    eligibility: z.preprocess((v) => {
       if (v == null) return {};
       if (typeof v === "string") return v.trim() ? { description: v } : {};
       if (Array.isArray(v)) return { items: v };
       if (typeof v === "object") return v;
       return {};
-    },
-    z.record(z.string(), z.unknown()).default({}),
-  ),
-  sectors: z.preprocess(
-    (v) => {
+    }, z.record(z.string(), z.unknown()).default({})),
+    sectors: z.preprocess((v) => {
       if (v == null) return [];
       if (Array.isArray(v)) return v.filter((x) => typeof x === "string");
       if (typeof v === "string")
-        return v.split(/[,;|/]+/).map((s) => s.trim()).filter(Boolean);
+        return v
+          .split(/[,;|/]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
       return [];
-    },
-    z.array(z.string()).default([]),
-  ),
+    }, z.array(z.string()).default([])),
 
-  language: z.enum(["en", "fr"]).default("en"),
-  url: z.string().url().refine(
-    (url) => /^https?:\/\//.test(url) && !url.includes("localhost") && !url.includes("127.0.0.1") && !url.includes("file://"),
-    { message: "URL must be http(s), not localhost, IP 127.0.0.1, or file://" },
-  ),
-}).refine(
-  (g) => g.amount_cad_min == null || g.amount_cad_max == null || g.amount_cad_min <= g.amount_cad_max,
-  { message: "amount_cad_min must be <= amount_cad_max", path: ["amount_cad_min"] },
-).refine(
-  (g) => {
-    if (!g.deadline) return true;
-    const d = new Date(g.deadline);
-    return !Number.isNaN(d.getTime());
-  },
-  { message: "deadline must be a valid calendar date (YYYY-MM-DD)", path: ["deadline"] },
-);
+    language: z.enum(["en", "fr"]).default("en"),
+    url: z
+      .string()
+      .url()
+      .refine(
+        (url) =>
+          /^https?:\/\//.test(url) &&
+          !url.includes("localhost") &&
+          !url.includes("127.0.0.1") &&
+          !url.includes("file://"),
+        { message: "URL must be http(s), not localhost, IP 127.0.0.1, or file://" },
+      ),
+  })
+  .refine(
+    (g) =>
+      g.amount_cad_min == null || g.amount_cad_max == null || g.amount_cad_min <= g.amount_cad_max,
+    { message: "amount_cad_min must be <= amount_cad_max", path: ["amount_cad_min"] },
+  )
+  .refine(
+    (g) => {
+      if (!g.deadline) return true;
+      const d = new Date(g.deadline);
+      return !Number.isNaN(d.getTime());
+    },
+    { message: "deadline must be a valid calendar date (YYYY-MM-DD)", path: ["deadline"] },
+  );
 export type DiscoveredGrant = z.infer<typeof DiscoveredGrant>;
 
 export const DiscovererOutput = z.object({
@@ -75,7 +87,11 @@ export const EnricherOutput = z.object({
   summary_en: z.string().max(4000).nullable().optional(),
   amount_cad_min: z.number().nonnegative().nullable().optional(),
   amount_cad_max: z.number().nonnegative().nullable().optional(),
-  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  deadline: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
   eligibility: z.record(z.string(), z.unknown()).optional(),
   sectors: z.array(z.string()).optional(),
 });
@@ -93,8 +109,16 @@ export type EvaluatorOutput = z.infer<typeof EvaluatorOutput>;
 // per-section angles informed by the org profile and grant.
 export const StrategistSectionPlan = z.object({
   kind: z.enum([
-    "summary","problem","solution","impact","budget","team","timeline",
-    "sustainability","evaluation","other",
+    "summary",
+    "problem",
+    "solution",
+    "impact",
+    "budget",
+    "team",
+    "timeline",
+    "sustainability",
+    "evaluation",
+    "other",
   ]),
   heading_en: z.string().min(1).max(200),
   heading_fr: z.string().max(200).nullable().optional().default(""),
@@ -136,7 +160,6 @@ export const CriticOutput = z.object({
   findings: z.array(CriticFinding).max(30).default([]),
 });
 export type CriticOutput = z.infer<typeof CriticOutput>;
-
 
 export const PROMPTS = {
   discoverer: {
@@ -221,5 +244,4 @@ Rules:
 - Output language: ENGLISH only. Omit message_fr / summary_fr (or set them to "").
 - Respond ONLY with strict JSON.`,
   },
-
 } as const;

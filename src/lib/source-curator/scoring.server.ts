@@ -4,11 +4,11 @@
 export type RawCandidate = {
   name: string;
   name_fr?: string | null;
-  bn_number?: string | null;     // CRA Business Number (9 digits, primary dedup key)
+  bn_number?: string | null; // CRA Business Number (9 digits, primary dedup key)
   province?: string | null;
   funder_type?: string | null;
   website?: string | null;
-  source_signals: string[];      // e.g. ["tbs_gc:2026-06", "pfc_members"]
+  source_signals: string[]; // e.g. ["tbs_gc:2026-06", "pfc_members"]
   raw_metadata?: Record<string, unknown>;
   disbursed_annual?: number | null;
 };
@@ -27,7 +27,8 @@ export function nameSimilarity(a: string, b: string): number {
     for (let i = 0; i < s.length - 1; i++) out.add(s.slice(i, i + 2));
     return out;
   };
-  const A = bi(na), B = bi(nb);
+  const A = bi(na),
+    B = bi(nb);
   if (!A.size || !B.size) return 0;
   let inter = 0;
   for (const g of A) if (B.has(g)) inter++;
@@ -35,8 +36,12 @@ export function nameSimilarity(a: string, b: string): number {
 }
 
 export function normalizeName(s: string): string {
-  return s.toLowerCase()
-    .replace(/\b(inc|incorporated|ltd|limited|llc|corp|corporation|foundation|fondation|society|société|association)\b/g, "")
+  return s
+    .toLowerCase()
+    .replace(
+      /\b(inc|incorporated|ltd|limited|llc|corp|corporation|foundation|fondation|society|société|association)\b/g,
+      "",
+    )
     .replace(/[^a-z0-9 ]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -66,22 +71,36 @@ export async function findDuplicate(c: RawCandidate): Promise<DupeResult> {
   // 1. BN match (deterministic)
   if (c.bn_number) {
     const bn = c.bn_number.replace(/\s/g, "").slice(0, 9);
-    const { data: f } = await supabaseAdmin.from("funders").select("id").eq("bn_number", bn).maybeSingle();
+    const { data: f } = await supabaseAdmin
+      .from("funders")
+      .select("id")
+      .eq("bn_number", bn)
+      .maybeSingle();
     if (f?.id) return { kind: "existing_funder", funderId: f.id };
-    const { data: c2 } = await supabaseAdmin.from("funder_candidates").select("id,status").eq("bn_number", bn).maybeSingle();
+    const { data: c2 } = await supabaseAdmin
+      .from("funder_candidates")
+      .select("id,status")
+      .eq("bn_number", bn)
+      .maybeSingle();
     if (c2?.id) return { kind: "existing_candidate", candidateId: c2.id, status: c2.status };
   }
   // 2. Fuzzy name match within province
-  const { data: funders } = await supabaseAdmin
-    .from("funders").select("id,name").limit(2000);
+  const { data: funders } = await supabaseAdmin.from("funders").select("id,name").limit(2000);
   for (const f of funders ?? []) {
-    if (nameSimilarity(c.name, f.name as string) >= 0.88) return { kind: "existing_funder", funderId: f.id as string };
+    if (nameSimilarity(c.name, f.name as string) >= 0.88)
+      return { kind: "existing_funder", funderId: f.id as string };
   }
   const { data: cands } = await supabaseAdmin
-    .from("funder_candidates").select("id,name,status").limit(2000);
+    .from("funder_candidates")
+    .select("id,name,status")
+    .limit(2000);
   for (const ec of cands ?? []) {
     if (nameSimilarity(c.name, ec.name as string) >= 0.88) {
-      return { kind: "existing_candidate", candidateId: ec.id as string, status: ec.status as string };
+      return {
+        kind: "existing_candidate",
+        candidateId: ec.id as string,
+        status: ec.status as string,
+      };
     }
   }
   return { kind: "new" };

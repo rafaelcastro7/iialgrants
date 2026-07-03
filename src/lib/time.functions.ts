@@ -9,11 +9,14 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const getServerNow = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .rpc("has_role", { _user_id: context.userId, _role: "admin" } as never);
+    const { data, error } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    } as never);
     // rpc call doubles as a cheap round-trip; we read the response Date header
     // and the DB clock so the caller can detect drift.
-    void data; void error;
+    void data;
+    void error;
     const { data: row } = await context.supabase
       .from("agent_runs")
       .select("created_at")

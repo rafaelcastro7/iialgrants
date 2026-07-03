@@ -7,10 +7,12 @@ import { PROMPTS, StrategistOutput } from "@/agents/schemas";
 export const runStrategist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({
-      grantId: z.string().uuid(),
-      templateId: z.string().uuid().optional(),
-    }).parse(i),
+    z
+      .object({
+        grantId: z.string().uuid(),
+        templateId: z.string().uuid().optional(),
+      })
+      .parse(i),
   )
   .handler(async ({ data, context }) => {
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
@@ -20,21 +22,34 @@ export const runStrategist = createServerFn({ method: "POST" })
     const runId = newRunId();
     const t0 = Date.now();
 
-    const [{ data: g, error: ge }, { data: org, error: oe }, { data: tpl, error: te }] = await Promise.all([
-      context.supabase
-        .from("grants")
-        .select("id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, language, funder:funders(name, jurisdiction)")
-        .eq("id", data.grantId)
-        .maybeSingle(),
-      context.supabase
-        .from("org_profiles")
-        .select("org_name, sectors, jurisdictions, stage, annual_budget_cad, focus_areas")
-        .eq("user_id", context.userId)
-        .maybeSingle(),
-      data.templateId
-        ? context.supabase.from("proposal_templates").select("id, sections").eq("id", data.templateId).maybeSingle()
-        : context.supabase.from("proposal_templates").select("id, sections").eq("is_global", true).order("created_at", { ascending: true }).limit(1).maybeSingle(),
-    ]);
+    const [{ data: g, error: ge }, { data: org, error: oe }, { data: tpl, error: te }] =
+      await Promise.all([
+        context.supabase
+          .from("grants")
+          .select(
+            "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, language, funder:funders(name, jurisdiction)",
+          )
+          .eq("id", data.grantId)
+          .maybeSingle(),
+        context.supabase
+          .from("org_profiles")
+          .select("org_name, sectors, jurisdictions, stage, annual_budget_cad, focus_areas")
+          .eq("user_id", context.userId)
+          .maybeSingle(),
+        data.templateId
+          ? context.supabase
+              .from("proposal_templates")
+              .select("id, sections")
+              .eq("id", data.templateId)
+              .maybeSingle()
+          : context.supabase
+              .from("proposal_templates")
+              .select("id, sections")
+              .eq("is_global", true)
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle(),
+      ]);
     if (ge) throw new Error(ge.message);
     if (!g) throw new Error("grant_not_found");
     if (oe) throw new Error(oe.message);
@@ -49,8 +64,14 @@ export const runStrategist = createServerFn({ method: "POST" })
       temperature: 0.2,
       responseFormat: "json",
       messages: [
-        { role: "system", content: `${PROMPTS.strategist.system}\nPrompt version: ${PROMPTS.strategist.version}` },
-        { role: "user", content: JSON.stringify({ grant: g, organization: org, template_sections: tpl.sections }) },
+        {
+          role: "system",
+          content: `${PROMPTS.strategist.system}\nPrompt version: ${PROMPTS.strategist.version}`,
+        },
+        {
+          role: "user",
+          content: JSON.stringify({ grant: g, organization: org, template_sections: tpl.sections }),
+        },
       ],
     });
 
@@ -72,7 +93,9 @@ export const runStrategist = createServerFn({ method: "POST" })
         error: `parse_error: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
         metadata: { llm_output: llm.text?.slice(0, 200) },
       });
-      throw new Error(`strategist_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`);
+      throw new Error(
+        `strategist_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
+      );
     }
 
     // Persist proposal + sections.
@@ -105,14 +128,27 @@ export const runStrategist = createServerFn({ method: "POST" })
     if (ise) throw new Error(ise.message);
 
     // Transition grant: scored → shortlisted → in_proposal (best-effort).
-    await context.supabase.from("grants").update({ status: "shortlisted" }).eq("id", g.id).eq("status", "scored");
-    await context.supabase.from("grants").update({ status: "in_proposal" }).eq("id", g.id).eq("status", "shortlisted");
+    await context.supabase
+      .from("grants")
+      .update({ status: "shortlisted" })
+      .eq("id", g.id)
+      .eq("status", "scored");
+    await context.supabase
+      .from("grants")
+      .update({ status: "in_proposal" })
+      .eq("id", g.id)
+      .eq("status", "shortlisted");
 
     await context.supabase.from("agent_runs").insert({
-      run_id: runId, agent: "strategist", status: "succeeded",
+      run_id: runId,
+      agent: "strategist",
+      status: "succeeded",
       model: "google/gemini-2.5-flash",
-      input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,
-      latency_ms: Date.now() - t0, user_id: context.userId, grant_id: g.id,
+      input_tokens: llm.inputTokens,
+      output_tokens: llm.outputTokens,
+      latency_ms: Date.now() - t0,
+      user_id: context.userId,
+      grant_id: g.id,
       metadata: { proposal_id: proposal.id, sections: parsed.sections.length },
     });
 

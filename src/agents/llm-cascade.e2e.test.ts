@@ -23,12 +23,14 @@ function mockFetch(impl: (url: string) => Response | Promise<Response>) {
 
 const okBody = (text: string) =>
   new Response(
-    JSON.stringify({ choices: [{ message: { content: text } }], usage: { prompt_tokens: 1, completion_tokens: 1 } }),
+    JSON.stringify({
+      choices: [{ message: { content: text } }],
+      usage: { prompt_tokens: 1, completion_tokens: 1 },
+    }),
     { status: 200, headers: { "content-type": "application/json" } },
   );
 
-const errBody = (status: number, msg = "boom") =>
-  new Response(msg, { status });
+const errBody = (status: number, msg = "boom") => new Response(msg, { status });
 
 describe("free LLM cascade fallback", () => {
   const originalEnv = { ...process.env };

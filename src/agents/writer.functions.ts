@@ -17,7 +17,8 @@ export function validateCitations(
     if (!allowedChunkIds.has(id)) return { ok: false, reason: `marker ${m} cites unknown chunk` };
   }
   for (const c of citations) {
-    if (!allowedChunkIds.has(c.chunk_id)) return { ok: false, reason: `citation chunk_id ${c.chunk_id} not in retrieved set` };
+    if (!allowedChunkIds.has(c.chunk_id))
+      return { ok: false, reason: `citation chunk_id ${c.chunk_id} not in retrieved set` };
   }
   return { ok: true };
 }
@@ -25,10 +26,12 @@ export function validateCitations(
 export const draftSection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({
-      sectionId: z.string().uuid(),
-      topK: z.number().int().min(2).max(12).default(6),
-    }).parse(i),
+    z
+      .object({
+        sectionId: z.string().uuid(),
+        topK: z.number().int().min(2).max(12).default(6),
+      })
+      .parse(i),
   )
   .handler(async ({ data, context }) => {
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
@@ -41,14 +44,20 @@ export const draftSection = createServerFn({ method: "POST" })
 
     const { data: section, error: se } = await context.supabase
       .from("proposal_sections")
-      .select("id, kind, heading_en, heading_fr, critic_notes, proposal_id, proposal:proposals(id, title, language, grant:grants(id, title, summary, deadline, amount_cad_min, amount_cad_max, eligibility, sectors))")
+      .select(
+        "id, kind, heading_en, heading_fr, critic_notes, proposal_id, proposal:proposals(id, title, language, grant:grants(id, title, summary, deadline, amount_cad_min, amount_cad_max, eligibility, sectors))",
+      )
       .eq("id", data.sectionId)
       .maybeSingle();
     if (se) throw new Error(se.message);
     if (!section) throw new Error("section_not_found");
 
     const proposal = Array.isArray(section.proposal) ? section.proposal[0] : section.proposal;
-    const grant = proposal ? (Array.isArray(proposal.grant) ? proposal.grant[0] : proposal.grant) : null;
+    const grant = proposal
+      ? Array.isArray(proposal.grant)
+        ? proposal.grant[0]
+        : proposal.grant
+      : null;
     if (!grant) throw new Error("grant_not_found");
 
     const notes = (section.critic_notes ?? {}) as { angle?: string; must_cover?: string[] };
@@ -57,7 +66,9 @@ export const draftSection = createServerFn({ method: "POST" })
       notes.angle ?? "",
       (notes.must_cover ?? []).join(", "),
       grant.title,
-    ].filter(Boolean).join(" — ");
+    ]
+      .filter(Boolean)
+      .join(" — ");
 
     const hits = await ragRetrieve(context.supabase, context.userId, query, data.topK);
     if (hits.length === 0) {
@@ -73,13 +84,36 @@ export const draftSection = createServerFn({ method: "POST" })
       temperature: 0.3,
       responseFormat: "json",
       messages: [
-        { role: "system", content: `${PROMPTS.writer.system}\nPrompt version: ${PROMPTS.writer.version}` },
+        {
+          role: "system",
+          content: `${PROMPTS.writer.system}\nPrompt version: ${PROMPTS.writer.version}`,
+        },
         {
           role: "user",
           content: JSON.stringify({
-            grant: { title: grant.title, summary: grant.summary, deadline: grant.deadline, amount_cad_min: grant.amount_cad_min, amount_cad_max: grant.amount_cad_max, eligibility: grant.eligibility, sectors: grant.sectors },
-            section: { kind: section.kind, heading_en: section.heading_en, heading_fr: section.heading_fr, angle: notes.angle, must_cover: notes.must_cover },
-            chunks: numbered.map((c) => ({ marker: c.marker, id: c.id, source: c.source, language: c.language, content: c.content })),
+            grant: {
+              title: grant.title,
+              summary: grant.summary,
+              deadline: grant.deadline,
+              amount_cad_min: grant.amount_cad_min,
+              amount_cad_max: grant.amount_cad_max,
+              eligibility: grant.eligibility,
+              sectors: grant.sectors,
+            },
+            section: {
+              kind: section.kind,
+              heading_en: section.heading_en,
+              heading_fr: section.heading_fr,
+              angle: notes.angle,
+              must_cover: notes.must_cover,
+            },
+            chunks: numbered.map((c) => ({
+              marker: c.marker,
+              id: c.id,
+              source: c.source,
+              language: c.language,
+              content: c.content,
+            })),
           }),
         },
       ],
@@ -103,26 +137,41 @@ export const draftSection = createServerFn({ method: "POST" })
         error: `parse_error: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
         metadata: { section_id: section.id, llm_output: llm.text?.slice(0, 200) },
       });
-      throw new Error(`writer_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`);
+      throw new Error(
+        `writer_parse_failed: ${parseErr instanceof Error ? parseErr.message : "unknown"}`,
+      );
     }
     const check = validateCitations(parsed.content_en, parsed.citations, allowed);
     if (!check.ok) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("agent_runs").insert({
-        run_id: runId, agent: "writer", status: "failed",
+        run_id: runId,
+        agent: "writer",
+        status: "failed",
         model: "google/gemini-2.5-flash",
-        input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,
-        latency_ms: Date.now() - t0, user_id: context.userId, grant_id: grant.id,
+        input_tokens: llm.inputTokens,
+        output_tokens: llm.outputTokens,
+        latency_ms: Date.now() - t0,
+        user_id: context.userId,
+        grant_id: grant.id,
         error: `citation_validation: ${check.reason}`,
         metadata: { section_id: section.id },
       });
       throw new Error(`writer_citation_invalid: ${check.reason}`);
     }
 
-    const citationsForStorage = parsed.citations.map((c) => ({ marker: c.marker, chunk_id: c.chunk_id, snippet: c.snippet }));
+    const citationsForStorage = parsed.citations.map((c) => ({
+      marker: c.marker,
+      chunk_id: c.chunk_id,
+      snippet: c.snippet,
+    }));
     const { error: ue } = await context.supabase
       .from("proposal_sections")
-      .update({ content_en: parsed.content_en, content_fr: parsed.content_fr, citations: citationsForStorage })
+      .update({
+        content_en: parsed.content_en,
+        content_fr: parsed.content_fr,
+        citations: citationsForStorage,
+      })
       .eq("id", section.id);
     if (ue) throw new Error(ue.message);
 
@@ -141,10 +190,15 @@ export const draftSection = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("agent_runs").insert({
-      run_id: runId, agent: "writer", status: "succeeded",
+      run_id: runId,
+      agent: "writer",
+      status: "succeeded",
       model: "google/gemini-2.5-flash",
-      input_tokens: llm.inputTokens, output_tokens: llm.outputTokens,
-      latency_ms: Date.now() - t0, user_id: context.userId, grant_id: grant.id,
+      input_tokens: llm.inputTokens,
+      output_tokens: llm.outputTokens,
+      latency_ms: Date.now() - t0,
+      user_id: context.userId,
+      grant_id: grant.id,
       metadata: { section_id: section.id, citations: parsed.citations.length, hits: hits.length },
     });
 

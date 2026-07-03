@@ -30,26 +30,41 @@ function funderOf(g: GrantLite): FunderLite | null {
 
 export function GrantFilters({
   grants,
-  search, setSearch,
-  jurisdiction, setJurisdiction,
-  sortKey, setSortKey,
-  eligibleOnly, setEligibleOnly,
-  onlyWithDeadline, setOnlyWithDeadline,
+  search,
+  setSearch,
+  jurisdiction,
+  setJurisdiction,
+  sortKey,
+  setSortKey,
+  eligibleOnly,
+  setEligibleOnly,
+  onlyWithDeadline,
+  setOnlyWithDeadline,
 }: {
   grants: GrantLite[];
-  search: string; setSearch: (v: string) => void;
-  jurisdiction: string; setJurisdiction: (v: string) => void;
-  sortKey: SortKey; setSortKey: (v: SortKey) => void;
-  eligibleOnly: boolean; setEligibleOnly: (v: boolean) => void;
-  onlyWithDeadline: boolean; setOnlyWithDeadline: (v: boolean) => void;
+  search: string;
+  setSearch: (v: string) => void;
+  jurisdiction: string;
+  setJurisdiction: (v: string) => void;
+  sortKey: SortKey;
+  setSortKey: (v: SortKey) => void;
+  eligibleOnly: boolean;
+  setEligibleOnly: (v: boolean) => void;
+  onlyWithDeadline: boolean;
+  setOnlyWithDeadline: (v: boolean) => void;
 }) {
-  const jurisdictions = Array.from(new Set(
-    grants.map((g) => funderOf(g)?.jurisdiction ?? null).filter((x): x is string => Boolean(x)),
-  )).sort();
+  const jurisdictions = Array.from(
+    new Set(
+      grants.map((g) => funderOf(g)?.jurisdiction ?? null).filter((x): x is string => Boolean(x)),
+    ),
+  ).sort();
 
   const active = search.trim() !== "" || jurisdiction !== "all" || eligibleOnly || onlyWithDeadline;
   const clearAll = () => {
-    setSearch(""); setJurisdiction("all"); setEligibleOnly(false); setOnlyWithDeadline(false);
+    setSearch("");
+    setJurisdiction("all");
+    setEligibleOnly(false);
+    setOnlyWithDeadline(false);
   };
 
   return (
@@ -77,7 +92,9 @@ export function GrantFilters({
           aria-label="Sort grants"
         >
           {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
-            <option key={k} value={k}>{SORT_LABELS[k]}</option>
+            <option key={k} value={k}>
+              {SORT_LABELS[k]}
+            </option>
           ))}
         </select>
       </label>
@@ -91,14 +108,24 @@ export function GrantFilters({
       >
         <option value="all">All jurisdictions</option>
         {jurisdictions.map((j) => (
-          <option key={j} value={j}>{j}</option>
+          <option key={j} value={j}>
+            {j}
+          </option>
         ))}
       </select>
 
-      <button type="button" onClick={() => setEligibleOnly(!eligibleOnly)} className="cursor-pointer">
+      <button
+        type="button"
+        onClick={() => setEligibleOnly(!eligibleOnly)}
+        className="cursor-pointer"
+      >
         <Badge variant={eligibleOnly ? "default" : "outline"}>Eligible only</Badge>
       </button>
-      <button type="button" onClick={() => setOnlyWithDeadline(!onlyWithDeadline)} className="cursor-pointer">
+      <button
+        type="button"
+        onClick={() => setOnlyWithDeadline(!onlyWithDeadline)}
+        className="cursor-pointer"
+      >
         <Badge variant={onlyWithDeadline ? "default" : "outline"}>With deadline</Badge>
       </button>
 
@@ -152,7 +179,10 @@ export function sortGrants<T extends GrantLite>(grants: T[], sortKey: SortKey): 
     case "deadline":
       return arr.sort((a, b) => deadlineMs(a.deadline) - deadlineMs(b.deadline));
     case "amount":
-      return arr.sort((a, b) => (b.amount_cad_max ?? b.amount_cad_min ?? 0) - (a.amount_cad_max ?? a.amount_cad_min ?? 0));
+      return arr.sort(
+        (a, b) =>
+          (b.amount_cad_max ?? b.amount_cad_min ?? 0) - (a.amount_cad_max ?? a.amount_cad_min ?? 0),
+      );
     case "newest":
       return arr.sort((a, b) => deadlineMs(b.discovered_at) - deadlineMs(a.discovered_at));
     case "fit":

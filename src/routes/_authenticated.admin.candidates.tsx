@@ -4,8 +4,11 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
-  listFunderCandidates, approveFunderCandidate, rejectFunderCandidate,
-  runSourceCuratorNow, listSourceIngestRuns,
+  listFunderCandidates,
+  approveFunderCandidate,
+  rejectFunderCandidate,
+  runSourceCuratorNow,
+  listSourceIngestRuns,
 } from "@/lib/funder-candidates.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,25 +37,42 @@ function CandidatesPage() {
 
   async function handleApprove(id: string) {
     setBusy(true);
-    try { await approve({ data: { id } }); toast.success("Approved & seeded"); router.invalidate(); }
-    catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(false); }
+    try {
+      await approve({ data: { id } });
+      toast.success("Approved & seeded");
+      router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }
   async function handleReject(id: string) {
     const reason = window.prompt("Reject reason (optional)") ?? undefined;
     setBusy(true);
-    try { await reject({ data: { id, reason } }); toast.success("Rejected"); router.invalidate(); }
-    catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(false); }
+    try {
+      await reject({ data: { id, reason } });
+      toast.success("Rejected");
+      router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }
   async function handleRunNow() {
     setBusy(true);
     try {
       const r = await runNow();
-      toast.success(`Curator: ${r.totals.new} new, ${r.totals.auto} auto-seeded, ${r.totals.dup} dup`);
+      toast.success(
+        `Curator: ${r.totals.new} new, ${r.totals.auto} auto-seeded, ${r.totals.dup} dup`,
+      );
       router.invalidate();
-    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(false); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -61,7 +81,8 @@ function CandidatesPage() {
         <div>
           <h1 className="text-2xl font-bold">Funder Candidates</h1>
           <p className="text-sm text-muted-foreground">
-            Auto-discovered funders from CRA / TBS G&amp;C / PFC. Review and approve to add to the catalog.
+            Auto-discovered funders from CRA / TBS G&amp;C / PFC. Review and approve to add to the
+            catalog.
           </p>
         </div>
         <Button onClick={handleRunNow} disabled={busy}>
@@ -77,18 +98,26 @@ function CandidatesPage() {
         </TabsList>
         <TabsContent value={tab} className="space-y-3 pt-4">
           {qCands.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-          {qCands.data?.length === 0 && <p className="text-sm text-muted-foreground">No candidates.</p>}
+          {qCands.data?.length === 0 && (
+            <p className="text-sm text-muted-foreground">No candidates.</p>
+          )}
           {qCands.data?.map((c) => (
             <Card key={c.id as string}>
               <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
                 <div>
                   <CardTitle className="text-base">{c.name as string}</CardTitle>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {c.bn_number ? <Badge variant="outline">BN {c.bn_number as string}</Badge> : null}
+                    {c.bn_number ? (
+                      <Badge variant="outline">BN {c.bn_number as string}</Badge>
+                    ) : null}
                     {c.province ? <Badge variant="outline">{c.province as string}</Badge> : null}
-                    {c.funder_type ? <Badge variant="outline">{c.funder_type as string}</Badge> : null}
+                    {c.funder_type ? (
+                      <Badge variant="outline">{c.funder_type as string}</Badge>
+                    ) : null}
                     {(c.source_signals as string[] | null)?.map((s) => (
-                      <Badge key={s} variant="secondary">{s}</Badge>
+                      <Badge key={s} variant="secondary">
+                        {s}
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -100,19 +129,37 @@ function CandidatesPage() {
               <CardContent className="flex items-center justify-between gap-4 text-sm">
                 <div className="text-muted-foreground truncate">
                   {c.website ? (
-                    <a href={c.website as string} target="_blank" rel="noreferrer" className="underline">
+                    <a
+                      href={c.website as string}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                    >
                       {c.website as string}
                     </a>
-                  ) : <span>No website</span>}
+                  ) : (
+                    <span>No website</span>
+                  )}
                 </div>
                 {tab === "pending_review" && (
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" disabled={busy} onClick={() => handleReject(c.id as string)}>Reject</Button>
-                    <Button size="sm" disabled={busy} onClick={() => handleApprove(c.id as string)}>Approve</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => handleReject(c.id as string)}
+                    >
+                      Reject
+                    </Button>
+                    <Button size="sm" disabled={busy} onClick={() => handleApprove(c.id as string)}>
+                      Approve
+                    </Button>
                   </div>
                 )}
                 {tab === "rejected" && c.reject_reason ? (
-                  <div className="text-xs text-muted-foreground italic">{c.reject_reason as string}</div>
+                  <div className="text-xs text-muted-foreground italic">
+                    {c.reject_reason as string}
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
@@ -121,21 +168,29 @@ function CandidatesPage() {
       </Tabs>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Recent ingest runs</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Recent ingest runs</CardTitle>
+        </CardHeader>
         <CardContent>
           {qRuns.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-          {qRuns.data?.length === 0 && <p className="text-sm text-muted-foreground">No runs yet.</p>}
+          {qRuns.data?.length === 0 && (
+            <p className="text-sm text-muted-foreground">No runs yet.</p>
+          )}
           <ul className="text-xs space-y-1 font-mono">
             {qRuns.data?.map((r) => (
               <li key={r.id as string} className="flex gap-2">
-                <span className="text-muted-foreground">{new Date(r.run_at as string).toISOString().slice(0, 16)}</span>
+                <span className="text-muted-foreground">
+                  {new Date(r.run_at as string).toISOString().slice(0, 16)}
+                </span>
                 <span className="font-semibold">{r.dataset as string}</span>
                 <span>rows={r.rows_in as number}</span>
                 <span>new={r.candidates_out as number}</span>
                 <span>auto={r.auto_approved as number}</span>
                 <span>dup={r.duplicates as number}</span>
                 <span>err={r.errors as number}</span>
-                <span className={r.status === "succeeded" ? "text-emerald-600" : "text-red-600"}>{r.status as string}</span>
+                <span className={r.status === "succeeded" ? "text-emerald-600" : "text-red-600"}>
+                  {r.status as string}
+                </span>
               </li>
             ))}
           </ul>

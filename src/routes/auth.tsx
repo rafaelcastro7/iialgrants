@@ -76,9 +76,6 @@ function AuthPage() {
     }
   }
 
-
-
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -90,48 +87,69 @@ function AuthPage() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">{t("auth.email")}</Label>
-              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">{t("auth.password")}</Label>
-              <Input id="password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Input
+                id="password"
+                type="password"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t("app.loading") : mode === "signin" ? t("auth.signIn") : t("auth.signUp")}
             </Button>
-            <button type="button" className="text-sm underline w-full text-center" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
+            <button
+              type="button"
+              className="text-sm underline w-full text-center"
+              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+            >
               {mode === "signin" ? t("auth.signUp") : t("auth.signIn")}
             </button>
           </form>
 
           {import.meta.env.DEV && (
-          <div className="mt-6 pt-6 border-t">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2 text-center">
-              Demo autologin
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {DEMO_USERS.map((u) => (
-                <Button
-                  key={u.email}
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={loading}
-                  onClick={() => demoLogin(u.email)}
-                >
-                  {u.label}
-                </Button>
-              ))}
+            <div className="mt-6 pt-6 border-t">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2 text-center">
+                Demo autologin
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {DEMO_USERS.map((u) => (
+                  <Button
+                    key={u.email}
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={loading}
+                    onClick={() => demoLogin(u.email)}
+                  >
+                    {u.label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2 text-center">
+                Seeded accounts · password <code className="font-mono">{DEMO_PASSWORD}</code>
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2 text-center">
-              Seeded accounts · password <code className="font-mono">{DEMO_PASSWORD}</code>
-            </p>
-          </div>
           )}
-
         </CardContent>
-
       </Card>
     </div>
   );

@@ -51,23 +51,55 @@ function Dashboard() {
             </Link>
           )}
           <LanguageSwitcher />
-          <Button variant="outline" size="sm" onClick={signOut}>{t("nav.signOut")}</Button>
+          <Button variant="outline" size="sm" onClick={signOut}>
+            {t("nav.signOut")}
+          </Button>
         </div>
       </header>
       <Card>
-        <CardHeader><CardTitle>{t("app.name")}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{t("app.name")}</CardTitle>
+        </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">{email ?? "—"}</p>
           <p className="mt-4 text-sm">{t("app.tagline")}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {on("grants") && <Link to="/grants"><Button>{t("nav.grants")} →</Button></Link>}
-            <Link to="/org"><Button variant="outline">Organization</Button></Link>
-            <Link to="/fit-rules"><Button variant="outline">Fit Rules</Button></Link>
-            {on("proposals") && <Link to="/proposals"><Button variant="outline">{t("nav.proposals")}</Button></Link>}
-            {on("submissions") && <Link to="/submissions"><Button variant="outline">{t("nav.submissions")}</Button></Link>}
-            {isAdmin && on("analytics") && <Link to="/ops"><Button variant="ghost">{t("ops.title")}</Button></Link>}
-            {on("privacy") && <Link to="/privacy"><Button variant="ghost">{t("privacy.link")}</Button></Link>}
-            {on("compliance") && <Link to="/compliance"><Button variant="ghost">{t("compliance.link")}</Button></Link>}
+            {on("grants") && (
+              <Link to="/grants">
+                <Button>{t("nav.grants")} →</Button>
+              </Link>
+            )}
+            <Link to="/org">
+              <Button variant="outline">Organization</Button>
+            </Link>
+            <Link to="/fit-rules">
+              <Button variant="outline">Fit Rules</Button>
+            </Link>
+            {on("proposals") && (
+              <Link to="/proposals">
+                <Button variant="outline">{t("nav.proposals")}</Button>
+              </Link>
+            )}
+            {on("submissions") && (
+              <Link to="/submissions">
+                <Button variant="outline">{t("nav.submissions")}</Button>
+              </Link>
+            )}
+            {isAdmin && on("analytics") && (
+              <Link to="/ops">
+                <Button variant="ghost">{t("ops.title")}</Button>
+              </Link>
+            )}
+            {on("privacy") && (
+              <Link to="/privacy">
+                <Button variant="ghost">{t("privacy.link")}</Button>
+              </Link>
+            )}
+            {on("compliance") && (
+              <Link to="/compliance">
+                <Button variant="ghost">{t("compliance.link")}</Button>
+              </Link>
+            )}
           </div>
         </CardContent>
       </Card>

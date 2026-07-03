@@ -21,16 +21,36 @@ export type AgentConfigRow = {
   concurrency: number;
   updated_at: string;
   updated_by: string | null;
-  stats: { runs_24h: number; success_rate: number; avg_latency_ms: number; total_tokens_24h: number };
+  stats: {
+    runs_24h: number;
+    success_rate: number;
+    avg_latency_ms: number;
+    total_tokens_24h: number;
+  };
 };
 
 const AGENTS = ["discoverer", "enricher", "evaluator", "strategist", "writer", "critic"] as const;
 
 // Curated catalog from Lovable AI Gateway (free tier covers Gemini family).
 export const MODEL_CATALOG = [
-  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", tier: "free", notes: "Fast, JSON-native, default." },
-  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", tier: "free", notes: "Higher reasoning; slower." },
-  { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite", tier: "free", notes: "Cheapest; weakest." },
+  {
+    id: "google/gemini-2.5-flash",
+    label: "Gemini 2.5 Flash",
+    tier: "free",
+    notes: "Fast, JSON-native, default.",
+  },
+  {
+    id: "google/gemini-2.5-pro",
+    label: "Gemini 2.5 Pro",
+    tier: "free",
+    notes: "Higher reasoning; slower.",
+  },
+  {
+    id: "google/gemini-2.5-flash-lite",
+    label: "Gemini 2.5 Flash-Lite",
+    tier: "free",
+    notes: "Cheapest; weakest.",
+  },
   { id: "openai/gpt-5", label: "GPT-5", tier: "paid", notes: "Premium reasoning." },
   { id: "openai/gpt-5-mini", label: "GPT-5 Mini", tier: "paid", notes: "Balanced cost/quality." },
   { id: "openai/gpt-5-nano", label: "GPT-5 Nano", tier: "paid", notes: "Cheapest OpenAI." },
@@ -44,9 +64,19 @@ export const listAgentConfigs = createServerFn({ method: "GET" })
     const { data: flags } = await context.supabase
       .from("agent_flags" as never)
       .select("agent, enabled, description, updated_at, updated_by");
-    const flagsMap = new Map<string, { enabled: boolean; description: string; updated_at: string; updated_by: string | null }>(
-      ((flags ?? []) as Array<{ agent: string; enabled: boolean; description: string; updated_at: string; updated_by: string | null }>)
-        .map((f) => [f.agent, f]),
+    const flagsMap = new Map<
+      string,
+      { enabled: boolean; description: string; updated_at: string; updated_by: string | null }
+    >(
+      (
+        (flags ?? []) as Array<{
+          agent: string;
+          enabled: boolean;
+          description: string;
+          updated_at: string;
+          updated_by: string | null;
+        }>
+      ).map((f) => [f.agent, f]),
     );
 
     // 24h rolling stats per agent.
@@ -56,7 +86,13 @@ export const listAgentConfigs = createServerFn({ method: "GET" })
       .select("agent, status, latency_ms, input_tokens, output_tokens")
       .gte("created_at", since);
     const statsBy = new Map<string, { n: number; ok: number; lat: number; tok: number }>();
-    for (const r of ((runs ?? []) as Array<{ agent: string; status: string; latency_ms: number | null; input_tokens: number | null; output_tokens: number | null }>)) {
+    for (const r of (runs ?? []) as Array<{
+      agent: string;
+      status: string;
+      latency_ms: number | null;
+      input_tokens: number | null;
+      output_tokens: number | null;
+    }>) {
       const s = statsBy.get(r.agent) ?? { n: 0, ok: 0, lat: 0, tok: 0 };
       s.n++;
       if (r.status === "succeeded") s.ok++;
@@ -126,7 +162,9 @@ export const updateAgentConfig = createServerFn({ method: "POST" })
     // Load current row so we can write a per-field audit diff.
     const { data: before } = await supabaseAdmin
       .from("agent_configs" as never)
-      .select("*").eq("agent", agent).maybeSingle();
+      .select("*")
+      .eq("agent", agent)
+      .maybeSingle();
     const prev = (before ?? {}) as Record<string, unknown>;
 
     const update: Record<string, unknown> = { ...patch, updated_by: context.userId };
@@ -143,7 +181,9 @@ export const updateAgentConfig = createServerFn({ method: "POST" })
       const oldVal = prev[field];
       if (JSON.stringify(oldVal ?? null) === JSON.stringify(newVal ?? null)) continue;
       auditRows.push({
-        agent, user_id: context.userId, field,
+        agent,
+        user_id: context.userId,
+        field,
         old_value: oldVal ?? null,
         new_value: newVal ?? null,
         is_prompt: field === "system_prompt",
@@ -165,7 +205,11 @@ export const updateAgentConfig = createServerFn({ method: "POST" })
 
 export const listAgentConfigAudit = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ agent: z.enum(AGENTS), limit: z.number().int().min(1).max(100).optional() }).parse(i))
+  .inputValidator((i) =>
+    z
+      .object({ agent: z.enum(AGENTS), limit: z.number().int().min(1).max(100).optional() })
+      .parse(i),
+  )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { data: rows, error } = await context.supabase
@@ -177,7 +221,13 @@ export const listAgentConfigAudit = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
 
     // Resolve user emails for display.
-    const ids = Array.from(new Set(((rows ?? []) as Array<{ user_id: string | null }>).map((r) => r.user_id).filter(Boolean) as string[]));
+    const ids = Array.from(
+      new Set(
+        ((rows ?? []) as Array<{ user_id: string | null }>)
+          .map((r) => r.user_id)
+          .filter(Boolean) as string[],
+      ),
+    );
     const emailById = new Map<string, string>();
     if (ids.length > 0) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -186,22 +236,47 @@ export const listAgentConfigAudit = createServerFn({ method: "GET" })
         if (u?.user?.email) emailById.set(uid, u.user.email);
       }
     }
-    type AuditRow = { id: string; user_id: string | null; changed_at: string; field: string; old_value: unknown; new_value: unknown; is_prompt: boolean };
-    type AuditEvent = { id: string; user_id: string | null; changed_at: string; field: string; old_value: string | null; new_value: string | null; is_prompt: boolean; user_email: string | null };
+    type AuditRow = {
+      id: string;
+      user_id: string | null;
+      changed_at: string;
+      field: string;
+      old_value: unknown;
+      new_value: unknown;
+      is_prompt: boolean;
+    };
+    type AuditEvent = {
+      id: string;
+      user_id: string | null;
+      changed_at: string;
+      field: string;
+      old_value: string | null;
+      new_value: string | null;
+      is_prompt: boolean;
+      user_email: string | null;
+    };
     const events: AuditEvent[] = ((rows ?? []) as AuditRow[]).map((r) => ({
       id: r.id,
       user_id: r.user_id,
       changed_at: r.changed_at,
       field: r.field,
-      old_value: r.old_value == null ? null : typeof r.old_value === "string" ? r.old_value : JSON.stringify(r.old_value),
-      new_value: r.new_value == null ? null : typeof r.new_value === "string" ? r.new_value : JSON.stringify(r.new_value),
+      old_value:
+        r.old_value == null
+          ? null
+          : typeof r.old_value === "string"
+            ? r.old_value
+            : JSON.stringify(r.old_value),
+      new_value:
+        r.new_value == null
+          ? null
+          : typeof r.new_value === "string"
+            ? r.new_value
+            : JSON.stringify(r.new_value),
       is_prompt: r.is_prompt,
-      user_email: r.user_id ? emailById.get(r.user_id) ?? null : null,
+      user_email: r.user_id ? (emailById.get(r.user_id) ?? null) : null,
     }));
     return { events };
   });
-
-
 
 export const resetAgentPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -222,10 +297,12 @@ export const resetAgentPrompt = createServerFn({ method: "POST" })
 export const testAgentPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({
-      agent: z.enum(AGENTS),
-      user_message: z.string().min(1).max(8000),
-    }).parse(i),
+    z
+      .object({
+        agent: z.enum(AGENTS),
+        user_message: z.string().min(1).max(8000),
+      })
+      .parse(i),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -268,12 +345,16 @@ export const testAgentPrompt = createServerFn({ method: "POST" })
 
 export const listAgentRuns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ agent: z.enum(AGENTS), limit: z.number().int().min(1).max(50).optional() }).parse(i))
+  .inputValidator((i) =>
+    z.object({ agent: z.enum(AGENTS), limit: z.number().int().min(1).max(50).optional() }).parse(i),
+  )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { data: rows, error } = await context.supabase
       .from("agent_runs")
-      .select("run_id, agent, status, model, input_tokens, output_tokens, latency_ms, created_at, grant_id, metadata")
+      .select(
+        "run_id, agent, status, model, input_tokens, output_tokens, latency_ms, created_at, grant_id, metadata",
+      )
       .eq("agent", data.agent)
       .order("created_at", { ascending: false })
       .limit(data.limit ?? 20);

@@ -14,8 +14,7 @@ const admin = createClient(url, key, {
 });
 
 const stamp = Date.now();
-const PUBLIC_BASE =
-  process.env.PUBLIC_BASE_URL ?? "https://text-teller-ace.lovable.app";
+const PUBLIC_BASE = process.env.PUBLIC_BASE_URL ?? "https://text-teller-ace.lovable.app";
 
 const users = [
   { email: `e2e-admin-${stamp}@iial.test`, role: "admin", label: "Admin (tenant A)" },

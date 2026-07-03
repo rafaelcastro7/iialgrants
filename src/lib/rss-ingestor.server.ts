@@ -59,12 +59,25 @@ function pickTag(xml: string, tag: string): string {
   const re = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
   const m = xml.match(re);
   if (!m) return "";
-  return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return m[1]
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 const GRANT_KEYWORDS = [
-  /grant/i, /funding/i, /program/i, /subvention/i, /financement/i, /bourse/i,
-  /aide/i, /cr[eé]dit/i, /pr[eê]t/i, /investiss/i, /scholarship/i,
+  /grant/i,
+  /funding/i,
+  /program/i,
+  /subvention/i,
+  /financement/i,
+  /bourse/i,
+  /aide/i,
+  /cr[eé]dit/i,
+  /pr[eê]t/i,
+  /investiss/i,
+  /scholarship/i,
 ];
 
 export function looksLikeFundingNews(item: FeedItem): boolean {
@@ -100,7 +113,9 @@ export async function ingestRssFeeds(opts: { feeds?: string[] } = {}): Promise<I
       const items = parseFeed(xml, url);
       itemsParsed += items.length;
       for (const it of items) if (looksLikeFundingNews(it)) relevant.push(it);
-    } catch { /* skip bad feed */ }
+    } catch {
+      /* skip bad feed */
+    }
   }
 
   // Refresh `last_seen_at` for any existing grant whose URL was re-announced
@@ -135,10 +150,18 @@ export async function ingestRssFeeds(opts: { feeds?: string[] } = {}): Promise<I
   const matchedNames: string[] = [];
   for (const f of funders ?? []) {
     let host = "";
-    try { host = new URL((f as { source_url: string }).source_url).host.replace(/^www\./, ""); } catch { continue; }
+    try {
+      host = new URL((f as { source_url: string }).source_url).host.replace(/^www\./, "");
+    } catch {
+      continue;
+    }
     for (const it of relevant) {
       let ihost = "";
-      try { ihost = new URL(it.link).host.replace(/^www\./, ""); } catch { continue; }
+      try {
+        ihost = new URL(it.link).host.replace(/^www\./, "");
+      } catch {
+        continue;
+      }
       if (ihost === host || ihost.endsWith("." + host) || host.endsWith("." + ihost)) {
         if (!matched.has(f.id)) {
           matched.add(f.id);

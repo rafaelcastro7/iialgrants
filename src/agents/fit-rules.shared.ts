@@ -79,7 +79,7 @@ export const DEFAULT_RULES: FitRules = {
     "digitization",
     "digital transformation",
   ],
-  max_cost_share_pct_org_carries: 0.50,
+  max_cost_share_pct_org_carries: 0.5,
   require_match_verification: true,
   rolling_intake_passes_runway: true,
   hard_fail_on_applicant_type: true,

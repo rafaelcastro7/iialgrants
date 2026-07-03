@@ -3,6 +3,7 @@
 // underlying agent run.
 
 export type TraceStatus = "info" | "ok" | "warn" | "error" | "start" | "done";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped Supabase query builder is intentional
 type TraceDb = { from: (table: string) => any };
 
 export type TraceInput = {
@@ -50,8 +51,11 @@ export async function traced<T>(
     return out;
   } catch (e) {
     await traceStep({
-      ...base, status: "error", durationMs: Date.now() - t0,
-      message: (base.message ? base.message + " - " : "") + (e instanceof Error ? e.message : String(e)),
+      ...base,
+      status: "error",
+      durationMs: Date.now() - t0,
+      message:
+        (base.message ? base.message + " - " : "") + (e instanceof Error ? e.message : String(e)),
     });
     throw e;
   }

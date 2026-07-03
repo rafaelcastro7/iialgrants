@@ -10,13 +10,15 @@ export const getGrantEvidence = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("evidence_spans")
-      .select("id, agent, field, value, source_url, snippet, snippet_offset, extraction_method, confidence, model, created_at")
+      .select(
+        "id, agent, field, value, source_url, snippet, snippet_offset, extraction_method, confidence, model, created_at",
+      )
       .eq("grant_id", data.grantId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
     // Group by field for the UI panel.
-    const byField: Record<string, Array<typeof rows[number]>> = {};
+    const byField: Record<string, Array<(typeof rows)[number]>> = {};
     for (const r of rows ?? []) {
       (byField[r.field] ||= []).push(r);
     }
