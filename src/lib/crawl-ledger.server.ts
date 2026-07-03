@@ -68,9 +68,12 @@ export async function shouldFetch(url: string): Promise<LedgerDecision> {
     status: string;
     interval_hours: number;
   };
-  if (row.status === "gone") return { fetch: false, reason: "gone" };
-  if (row.status === "blocked") return { fetch: false, reason: "blocked" };
   const due = new Date(row.next_fetch_at).getTime() <= Date.now();
+  // gone/blocked pages are skipped only until their sanity-recheck window
+  // (recordFetch schedules 30d / 7d respectively) elapses — a transient 404
+  // or a temporary robots.txt block must not kill the URL forever.
+  if (row.status === "gone" && !due) return { fetch: false, reason: "gone" };
+  if (row.status === "blocked" && !due) return { fetch: false, reason: "blocked" };
   if (!due)
     return {
       fetch: false,

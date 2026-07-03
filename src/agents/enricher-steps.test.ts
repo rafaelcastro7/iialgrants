@@ -50,6 +50,21 @@ describe("evaluateLlmFields", () => {
     expect(rejected).toEqual(["amount_cad_max(not_needed)"]);
   });
 
+  it("rejects unsolicited eligibility/sectors (must not overwrite extractor values)", () => {
+    const { accepted, rejected } = evaluateLlmFields({
+      fieldsObj: {
+        eligibility: field({ nonprofit: true }, "Open to non-profits"),
+        sectors: field(["health"], "Open to non-profits"),
+      },
+      stillMissing: ["deadline"],
+      pageForQuote,
+    });
+    expect(accepted).toEqual([]);
+    expect(rejected).toEqual(
+      expect.arrayContaining(["eligibility(not_needed)", "sectors(not_needed)"]),
+    );
+  });
+
   it("rejects type-invalid values with a reason tag", () => {
     const { accepted, rejected } = evaluateLlmFields({
       fieldsObj: {
