@@ -1,28 +1,90 @@
 // Trust-navy pipeline board for /grants. Six stages, one CTA per card,
 // inline filters, KPI strip and workflow ribbon. Mirrors the approved
-// "Trust navy pipeline" prototype.
+// "Trust navy pipeline" prototype. Admins can drag cards between columns and
+// bulk-move a selection; transitions are pre-checked against the shared state
+// machine (pipeline-stages.shared.ts) and re-validated server-side + by the
+// DB trigger.
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, ExternalLink, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, ExternalLink, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { canTransition, isGrantStatus, type GrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "./GrantRow";
 
 type Stage = {
   key: string;
   label: string;
   statuses: string[];
+  /** Status a card acquires when dropped on this column (undefined = not a drop target). */
+  dropStatus?: GrantStatus;
   dot: string;
   helper: string;
 };
 
 const STAGES: Stage[] = [
-  { key: "discovered",  label: "Discovered",  statuses: ["discovered"],                  dot: "bg-slate-300",      helper: "Found by the discovery agents. Needs enrichment." },
-  { key: "enriched",    label: "Enriched",    statuses: ["enriched"],                    dot: "bg-blue-300",       helper: "Data fully extracted with citations. Ready for fit evaluation." },
-  { key: "evaluated",   label: "Evaluated",   statuses: ["scored"],                      dot: "bg-[#3b6fa0]",      helper: "Scored against your screening rules. Review and shortlist." },
-  { key: "shortlisted", label: "Shortlisted", statuses: ["shortlisted"],                 dot: "bg-[#1e3a5f]",      helper: "Curated as a real opportunity. Start drafting." },
-  { key: "drafting",    label: "Drafting",    statuses: ["in_proposal"],                 dot: "bg-orange-400",     helper: "A proposal exists. Continue writing or send to NotebookLM." },
-  { key: "submitted",   label: "Submitted",   statuses: ["submitted","won","lost","expired"], dot: "bg-emerald-500", helper: "Filed with the funder. Outcome tracking only." },
-  { key: "archived",    label: "Archived",    statuses: ["archived"],                    dot: "bg-slate-400",      helper: "Filtered out by screening rules or manually archived." },
+  {
+    key: "discovered",
+    label: "Discovered",
+    statuses: ["discovered"],
+    dot: "bg-slate-300",
+    helper: "Found by the discovery agents. Needs enrichment.",
+  },
+  {
+    key: "enriched",
+    label: "Enriched",
+    statuses: ["enriched"],
+    dropStatus: "enriched",
+    dot: "bg-blue-300",
+    helper: "Data fully extracted with citations. Ready for fit evaluation.",
+  },
+  {
+    key: "evaluated",
+    label: "Evaluated",
+    statuses: ["scored"],
+    dropStatus: "scored",
+    dot: "bg-[#3b6fa0]",
+    helper: "Scored against your screening rules. Review and shortlist.",
+  },
+  {
+    key: "shortlisted",
+    label: "Shortlisted",
+    statuses: ["shortlisted"],
+    dropStatus: "shortlisted",
+    dot: "bg-[#1e3a5f]",
+    helper: "Curated as a real opportunity. Start drafting.",
+  },
+  {
+    key: "drafting",
+    label: "Drafting",
+    statuses: ["in_proposal"],
+    dropStatus: "in_proposal",
+    dot: "bg-orange-400",
+    helper: "A proposal exists. Continue writing or send to NotebookLM.",
+  },
+  {
+    key: "submitted",
+    label: "Submitted",
+    statuses: ["submitted", "won", "lost", "expired"],
+    dropStatus: "submitted",
+    dot: "bg-emerald-500",
+    helper: "Filed with the funder. Outcome tracking only.",
+  },
+  {
+    key: "archived",
+    label: "Archived",
+    statuses: ["archived"],
+    dropStatus: "archived",
+    dot: "bg-slate-400",
+    helper: "Filtered out by screening rules or manually archived.",
+  },
+];
+
+/** Bulk-move targets offered in the selection bar. */
+const BULK_TARGETS: Array<{ status: GrantStatus; label: string }> = [
+  { status: "shortlisted", label: "Shortlist" },
+  { status: "archived", label: "Archive" },
+  { status: "expired", label: "Mark expired" },
 ];
 
 function daysLeft(deadline: string | null): number | null {
@@ -34,17 +96,28 @@ function daysLeft(deadline: string | null): number | null {
 
 function FitChip({ value, eligible }: { value: number | null; eligible: boolean | null }) {
   if (value == null) {
-    return <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-dashed border-slate-200 text-slate-400">Not scored</span>;
+    return (
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-dashed border-slate-200 text-slate-400">
+        Not scored
+      </span>
+    );
   }
   const pct = Math.round(value * 100);
   const tone =
-    value >= 0.8 ? "bg-emerald-50 text-emerald-700" :
-    value >= 0.6 ? "bg-blue-50 text-blue-700" :
-    value >= 0.4 ? "bg-amber-50 text-amber-700" :
-                   "bg-rose-50 text-rose-700";
+    value >= 0.8
+      ? "bg-emerald-50 text-emerald-700"
+      : value >= 0.6
+        ? "bg-blue-50 text-blue-700"
+        : value >= 0.4
+          ? "bg-amber-50 text-amber-700"
+          : "bg-rose-50 text-rose-700";
   return (
     <span
-      className={cn("text-[10px] font-bold px-2 py-0.5 rounded tabular-nums", tone, eligible === false && "line-through opacity-70")}
+      className={cn(
+        "text-[10px] font-bold px-2 py-0.5 rounded tabular-nums",
+        tone,
+        eligible === false && "line-through opacity-70",
+      )}
       title={eligible === false ? "Eligibility failed" : `Fit score ${pct}/100`}
     >
       {pct}% Fit
@@ -54,11 +127,17 @@ function FitChip({ value, eligible }: { value: number | null; eligible: boolean 
 
 function Deadline({ deadline }: { deadline: string | null }) {
   const d = daysLeft(deadline);
-  if (d == null) return <span className="text-[10px] text-slate-400 font-medium italic">No deadline</span>;
+  if (d == null)
+    return <span className="text-[10px] text-slate-400 font-medium italic">No deadline</span>;
   if (d < 0) return <span className="text-[10px] font-bold italic text-slate-400">Closed</span>;
   const urgent = d <= 7;
   return (
-    <span className={cn("text-[10px] font-medium italic", urgent ? "text-red-500 font-bold" : "text-slate-400")}>
+    <span
+      className={cn(
+        "text-[10px] font-medium italic",
+        urgent ? "text-red-500 font-bold" : "text-slate-400",
+      )}
+    >
       {d === 0 ? "Due today" : `${d}d left`}
     </span>
   );
@@ -72,6 +151,8 @@ export type KanbanProps = {
   onEnrich: (id: string) => void;
   onEvaluate: (id: string) => void;
   onDraft: (id: string) => void;
+  /** Present for admins only. Enables drag-to-move and bulk actions. */
+  onMove?: (grantIds: string[], toStatus: GrantStatus) => void;
   filters: React.ReactNode;
   kpis: { total: number; needsAction: number; avgFit: number | null; pipelineValueCad: number };
   toolbarRight: React.ReactNode;
@@ -84,30 +165,85 @@ function fmtCad(n: number): string {
 }
 
 export function GrantKanban({
-  grants, isAdmin, pending, evaluatingIds,
-  onEnrich, onEvaluate, onDraft, filters, kpis, toolbarRight,
+  grants,
+  isAdmin,
+  pending,
+  evaluatingIds,
+  onEnrich,
+  onEvaluate,
+  onDraft,
+  onMove,
+  filters,
+  kpis,
+  toolbarRight,
 }: KanbanProps) {
   const buckets = STAGES.map((s) => ({
     ...s,
     items: grants.filter((g) => s.statuses.includes(g.status)),
   }));
 
+  // Drag + selection state (admin-only interactions, gated by onMove).
+  const [dragStatus, setDragStatus] = useState<GrantStatus | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSelected = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const clearSelection = () => setSelected(new Set());
+
+  const handleDrop = (e: React.DragEvent, target: GrantStatus | undefined) => {
+    if (!onMove || !target) return;
+    e.preventDefault();
+    setDragStatus(null);
+    try {
+      const payload = JSON.parse(e.dataTransfer.getData("text/plain")) as {
+        id?: string;
+        status?: string;
+      };
+      if (!payload.id || !isGrantStatus(payload.status ?? "")) return;
+      if (!canTransition(payload.status as GrantStatus, target) || payload.status === target)
+        return;
+      onMove([payload.id], target);
+    } catch {
+      /* foreign drag payload — ignore */
+    }
+  };
+
+  const bulkMove = (target: GrantStatus) => {
+    if (!onMove || selected.size === 0) return;
+    onMove([...selected], target);
+    clearSelection();
+  };
+
   return (
     <div className="space-y-6">
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Kpi label="Total Opportunities" value={String(kpis.total).padStart(2, "0")} />
-        <Kpi label="Needs Action" value={String(kpis.needsAction).padStart(2, "0")} accent={kpis.needsAction > 0 ? "danger" : undefined} />
-        <Kpi label="Avg Fit" value={kpis.avgFit == null ? "—" : `${Math.round(kpis.avgFit * 100)}%`} />
+        <Kpi
+          label="Needs Action"
+          value={String(kpis.needsAction).padStart(2, "0")}
+          accent={kpis.needsAction > 0 ? "danger" : undefined}
+        />
+        <Kpi
+          label="Avg Fit"
+          value={kpis.avgFit == null ? "—" : `${Math.round(kpis.avgFit * 100)}%`}
+        />
         <Kpi label="In Pipeline" value={fmtCad(kpis.pipelineValueCad)} dark />
       </div>
 
       {/* Workflow ribbon */}
       <div className="bg-[hsl(213,30%,93%)] border-l-4 border-[#3b6fa0] px-4 py-3 rounded-r-md flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="bg-[#3b6fa0] text-white text-[10px] font-bold px-2 py-0.5 rounded shrink-0">WORKFLOW</span>
+          <span className="bg-[#3b6fa0] text-white text-[10px] font-bold px-2 py-0.5 rounded shrink-0">
+            WORKFLOW
+          </span>
           <p className="text-xs text-[#1e3a5f] font-medium">
-            Discover funds → Enrich profile → Evaluate fit → Shortlist → Draft → Submit. Each card shows the next action you should take.
+            Discover funds → Enrich profile → Evaluate fit → Shortlist → Draft → Submit. Each card
+            shows the next action you should take.
           </p>
         </div>
       </div>
@@ -125,60 +261,129 @@ export function GrantKanban({
           <p className="text-xs text-slate-400 mt-1">Try clearing the search or filters above.</p>
         </div>
       ) : (
-      <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2">
-        {buckets.map((col) => (
-          <div key={col.key} className="flex-shrink-0 w-72">
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                {col.label} <span className="ml-1 text-slate-300 tabular-nums">{String(col.items.length).padStart(2, "0")}</span>
-              </h3>
-              <span className={cn("w-2 h-2 rounded-full", col.dot)} />
-            </div>
-            <p className="text-[10px] text-slate-400 mb-3 px-1 leading-snug">{col.helper}</p>
-            <div className="space-y-3">
-              {col.items.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-[11px] text-slate-400">
-                  No grants in this stage
+        <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2">
+          {buckets.map((col) => {
+            const droppable =
+              !!onMove &&
+              !!col.dropStatus &&
+              !!dragStatus &&
+              dragStatus !== col.dropStatus &&
+              canTransition(dragStatus, col.dropStatus);
+            return (
+              <div
+                key={col.key}
+                className={cn(
+                  "flex-shrink-0 w-72 rounded-xl transition-colors",
+                  droppable && "bg-blue-50/60 outline-dashed outline-2 outline-blue-300/60",
+                )}
+                onDragOver={(e) => {
+                  if (droppable) e.preventDefault();
+                }}
+                onDrop={(e) => handleDrop(e, col.dropStatus)}
+              >
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                    {col.label}{" "}
+                    <span className="ml-1 text-slate-300 tabular-nums">
+                      {String(col.items.length).padStart(2, "0")}
+                    </span>
+                  </h3>
+                  <span className={cn("w-2 h-2 rounded-full", col.dot)} />
                 </div>
-              ) : col.items.map((g) => (
-                <KanbanCard
-                  key={g.id}
-                  g={g}
-                  stage={col.key}
-                  isAdmin={isAdmin}
-                  pending={pending}
-                  evaluating={evaluatingIds.has(g.id)}
-                  onEnrich={onEnrich}
-                  onEvaluate={onEvaluate}
-                  onDraft={onDraft}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+                <p className="text-[10px] text-slate-400 mb-3 px-1 leading-snug">{col.helper}</p>
+                <div className="space-y-3">
+                  {col.items.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-[11px] text-slate-400">
+                      No grants in this stage
+                    </div>
+                  ) : (
+                    col.items.map((g) => (
+                      <KanbanCard
+                        key={g.id}
+                        g={g}
+                        stage={col.key}
+                        isAdmin={isAdmin}
+                        pending={pending}
+                        evaluating={evaluatingIds.has(g.id)}
+                        onEnrich={onEnrich}
+                        onEvaluate={onEvaluate}
+                        onDraft={onDraft}
+                        draggable={!!onMove}
+                        selected={selected.has(g.id)}
+                        onToggleSelect={onMove ? toggleSelected : undefined}
+                        onDragStatus={setDragStatus}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {onMove && selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#0f1b3d] text-white rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
+          <span className="text-xs font-semibold tabular-nums">{selected.size} selected</span>
+          <span className="w-px h-4 bg-white/20" />
+          {BULK_TARGETS.map((t) => (
+            <Button
+              key={t.status}
+              size="sm"
+              variant="secondary"
+              className="h-7 text-[11px] font-bold"
+              onClick={() => bulkMove(t.status)}
+            >
+              {t.label}
+            </Button>
+          ))}
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="ml-1 text-white/60 hover:text-white"
+            aria-label="Clear selection"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
-function Kpi({ label, value, dark, accent }: { label: string; value: string; dark?: boolean; accent?: "danger" }) {
+function Kpi({
+  label,
+  value,
+  dark,
+  accent,
+}: {
+  label: string;
+  value: string;
+  dark?: boolean;
+  accent?: "danger";
+}) {
   return (
-    <div className={cn(
-      "border rounded-lg p-4 shadow-sm",
-      dark ? "bg-[#0f1b3d] border-[#0f1b3d]" : "bg-card",
-    )}>
-      <p className={cn(
-        "text-[10px] uppercase tracking-wider font-semibold mb-1",
-        dark ? "text-slate-300" : accent === "danger" ? "text-red-500" : "text-slate-400",
-      )}>
+    <div
+      className={cn(
+        "border rounded-lg p-4 shadow-sm",
+        dark ? "bg-[#0f1b3d] border-[#0f1b3d]" : "bg-card",
+      )}
+    >
+      <p
+        className={cn(
+          "text-[10px] uppercase tracking-wider font-semibold mb-1",
+          dark ? "text-slate-300" : accent === "danger" ? "text-red-500" : "text-slate-400",
+        )}
+      >
         {label}
       </p>
-      <p className={cn(
-        "text-2xl font-semibold tabular-nums",
-        dark ? "text-white" : "text-[#0f1b3d]",
-      )}
-      style={{ fontFamily: "'Instrument Serif', ui-serif, Georgia, serif" }}
+      <p
+        className={cn(
+          "text-2xl font-semibold tabular-nums",
+          dark ? "text-white" : "text-[#0f1b3d]",
+        )}
+        style={{ fontFamily: "'Instrument Serif', ui-serif, Georgia, serif" }}
       >
         {value}
       </p>
@@ -187,7 +392,18 @@ function Kpi({ label, value, dark, accent }: { label: string; value: string; dar
 }
 
 function KanbanCard({
-  g, stage, isAdmin, pending, evaluating, onEnrich, onEvaluate, onDraft,
+  g,
+  stage,
+  isAdmin,
+  pending,
+  evaluating,
+  onEnrich,
+  onEvaluate,
+  onDraft,
+  draggable,
+  selected,
+  onToggleSelect,
+  onDragStatus,
 }: {
   g: GrantRowData;
   stage: string;
@@ -197,6 +413,10 @@ function KanbanCard({
   onEnrich: (id: string) => void;
   onEvaluate: (id: string) => void;
   onDraft: (id: string) => void;
+  draggable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  onDragStatus?: (s: GrantStatus | null) => void;
 }) {
   const funder = Array.isArray(g.funder) ? g.funder[0] : g.funder;
   const funderName = funder?.name ?? "—";
@@ -207,13 +427,36 @@ function KanbanCard({
   const cta = primaryCta({ stage, g, isAdmin, pending, evaluating, onEnrich, onEvaluate, onDraft });
 
   return (
-    <div className={cn(
-      "bg-card p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-shadow group",
-      stage === "drafting" && "border-2 border-[#1e3a5f]",
-      stage === "submitted" && "opacity-75",
-    )}>
+    <div
+      className={cn(
+        "bg-card p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-shadow group",
+        stage === "drafting" && "border-2 border-[#1e3a5f]",
+        stage === "submitted" && "opacity-75",
+        draggable && "cursor-grab active:cursor-grabbing",
+        selected && "ring-2 ring-[#3b6fa0]",
+      )}
+      draggable={draggable}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", JSON.stringify({ id: g.id, status: g.status }));
+        e.dataTransfer.effectAllowed = "move";
+        onDragStatus?.(isGrantStatus(g.status) ? g.status : null);
+      }}
+      onDragEnd={() => onDragStatus?.(null)}
+    >
       <div className="flex justify-between items-start mb-2 gap-2">
-        <FitChip value={fit} eligible={eligible} />
+        <div className="flex items-center gap-2 min-w-0">
+          {onToggleSelect && (
+            <input
+              type="checkbox"
+              checked={!!selected}
+              onChange={() => onToggleSelect(g.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-3.5 w-3.5 rounded border-slate-300 accent-[#1e3a5f] shrink-0"
+              aria-label={`Select ${g.title}`}
+            />
+          )}
+          <FitChip value={fit} eligible={eligible} />
+        </div>
         <Deadline deadline={g.deadline} />
       </div>
       <Link
@@ -225,7 +468,8 @@ function KanbanCard({
         {g.title}
       </Link>
       <p className="text-[11px] text-slate-500 mb-3 truncate">
-        {funderName}{funder?.jurisdiction ? ` · ${funder.jurisdiction}` : ""}
+        {funderName}
+        {funder?.jurisdiction ? ` · ${funder.jurisdiction}` : ""}
       </p>
       <div className="flex items-center gap-1.5 mb-3 flex-wrap">
         {hasCitations && (
@@ -241,7 +485,13 @@ function KanbanCard({
       </div>
       <div className="flex items-center gap-1.5">
         {cta}
-        <Button asChild size="sm" variant="ghost" className="h-8 px-2 shrink-0" aria-label="Open detail">
+        <Button
+          asChild
+          size="sm"
+          variant="ghost"
+          className="h-8 px-2 shrink-0"
+          aria-label="Open detail"
+        >
           <Link to="/grants/$id" params={{ id: g.id }}>
             <ArrowUpRight className="h-4 w-4" />
           </Link>
@@ -252,10 +502,23 @@ function KanbanCard({
 }
 
 function primaryCta({
-  stage, g, isAdmin, pending, evaluating, onEnrich, onEvaluate, onDraft,
+  stage,
+  g,
+  isAdmin,
+  pending,
+  evaluating,
+  onEnrich,
+  onEvaluate,
+  onDraft,
 }: {
-  stage: string; g: GrantRowData; isAdmin: boolean; pending: string | null; evaluating: boolean;
-  onEnrich: (id: string) => void; onEvaluate: (id: string) => void; onDraft: (id: string) => void;
+  stage: string;
+  g: GrantRowData;
+  isAdmin: boolean;
+  pending: string | null;
+  evaluating: boolean;
+  onEnrich: (id: string) => void;
+  onEvaluate: (id: string) => void;
+  onDraft: (id: string) => void;
 }) {
   const baseCls = "flex-1 py-2 text-[11px] font-bold rounded-lg transition-colors h-8";
 
@@ -263,7 +526,9 @@ function primaryCta({
     if (!isAdmin) {
       return (
         <Button asChild size="sm" variant="secondary" className={baseCls}>
-          <Link to="/grants/$id" params={{ id: g.id }}>Review</Link>
+          <Link to="/grants/$id" params={{ id: g.id }}>
+            Review
+          </Link>
         </Button>
       );
     }
@@ -272,7 +537,10 @@ function primaryCta({
         size="sm"
         disabled={pending === g.id + ":enrich"}
         onClick={() => onEnrich(g.id)}
-        className={cn(baseCls, "bg-[hsl(213,30%,93%)] text-[#0f1b3d] hover:bg-[#3b6fa0] hover:text-white")}
+        className={cn(
+          baseCls,
+          "bg-[hsl(213,30%,93%)] text-[#0f1b3d] hover:bg-[#3b6fa0] hover:text-white",
+        )}
       >
         {pending === g.id + ":enrich" ? "Enriching…" : "Enrich profile"}
       </Button>
@@ -284,7 +552,10 @@ function primaryCta({
         size="sm"
         disabled={pending === g.id || evaluating}
         onClick={() => onEvaluate(g.id)}
-        className={cn(baseCls, "bg-[hsl(213,30%,93%)] text-[#0f1b3d] hover:bg-[#3b6fa0] hover:text-white")}
+        className={cn(
+          baseCls,
+          "bg-[hsl(213,30%,93%)] text-[#0f1b3d] hover:bg-[#3b6fa0] hover:text-white",
+        )}
       >
         {evaluating || pending === g.id ? "Evaluating…" : "Evaluate fit"}
       </Button>
@@ -293,7 +564,9 @@ function primaryCta({
   if (stage === "evaluated") {
     return (
       <Button asChild size="sm" variant="secondary" className={baseCls}>
-        <Link to="/grants/$id" params={{ id: g.id }}>Review &amp; shortlist</Link>
+        <Link to="/grants/$id" params={{ id: g.id }}>
+          Review &amp; shortlist
+        </Link>
       </Button>
     );
   }
@@ -311,17 +584,26 @@ function primaryCta({
   }
   if (stage === "drafting") {
     return (
-      <Button asChild size="sm" className={cn(baseCls, "bg-gradient-to-r from-[#1e3a5f] to-[#3b6fa0] text-white hover:brightness-110")}>
-        <Link to="/grants/$id" params={{ id: g.id }}>Continue draft</Link>
+      <Button
+        asChild
+        size="sm"
+        className={cn(
+          baseCls,
+          "bg-gradient-to-r from-[#1e3a5f] to-[#3b6fa0] text-white hover:brightness-110",
+        )}
+      >
+        <Link to="/grants/$id" params={{ id: g.id }}>
+          Continue draft
+        </Link>
       </Button>
     );
   }
   // submitted
   return (
-      <Button asChild size="sm" variant="outline" className={baseCls}>
-        <a href={g.url} target="_blank" rel="noopener noreferrer">
+    <Button asChild size="sm" variant="outline" className={baseCls}>
+      <a href={g.url} target="_blank" rel="noopener noreferrer">
         Open funder page <ExternalLink className="h-3 w-3 ml-1 inline" />
-        </a>
-      </Button>
+      </a>
+    </Button>
   );
 }

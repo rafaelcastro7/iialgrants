@@ -80,29 +80,68 @@ function titleFromHtml(html: string): string | undefined {
   return m?.[1]?.trim();
 }
 
+// ---------------------------------------------------------------------------
+// Shared engine runner: encapsulates AbortController + timeout + cleanup and
+// normalizes success/failure/thrown-error into the { page, attempt } contract
+// every engine returns. Engines report per-branch metadata (http_status,
+// url_used) through the mutable `ctx`.
+// ---------------------------------------------------------------------------
+
+type EngineCtx = { httpStatus?: number; urlUsed?: string };
+
+type EngineOutcome =
+  | { ok: true; markdown: string; title?: string }
+  | { ok: false; error: string; bytes?: number };
+
+async function runEngine(
+  engine: FetchVia,
+  url: string,
+  timeoutMs: number,
+  fn: (signal: AbortSignal, ctx: EngineCtx) => Promise<EngineOutcome>,
+): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  const t0 = Date.now();
+  const ctx: EngineCtx = {};
+  const finish = (r: EngineOutcome): { page: FetchedPage; attempt: FetchAttempt } => {
+    const attempt: FetchAttempt = {
+      engine,
+      ok: r.ok,
+      http_status: ctx.httpStatus,
+      latency_ms: Date.now() - t0,
+      error: r.ok ? undefined : r.error,
+      url_used: ctx.urlUsed,
+      bytes: r.ok ? r.markdown.length : r.bytes,
+      ts: new Date().toISOString(),
+    };
+    const page: FetchedPage = r.ok
+      ? { ok: true, url, markdown: r.markdown, title: r.title, via: engine, attempts: [attempt] }
+      : { ok: false, url, error: r.error, via: engine, attempts: [attempt] };
+    return { page, attempt };
+  };
+  try {
+    return finish(await fn(ctrl.signal, ctx));
+  } catch (e) {
+    return finish({ ok: false, error: e instanceof Error ? e.message : String(e) });
+  } finally { clearTimeout(t); }
+}
+
 export async function jinaReader(
   url: string,
   timeoutMs = 20_000,
   minChars = 100,
 ): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  const t0 = Date.now();
-  let httpStatus: number | undefined;
-  try {
-    let res = await fetch(`${JINA_READER_BASE}${url}`, { headers: jinaHeaders(), signal: ctrl.signal });
-    httpStatus = res.status;
+  return runEngine("jina_reader", url, timeoutMs, async (signal, ctx) => {
+    let res = await fetch(`${JINA_READER_BASE}${url}`, { headers: jinaHeaders(), signal });
+    ctx.httpStatus = res.status;
     if (res.status === 401 || res.status === 402) {
       const plainHeaders: Record<string, string> = {};
       const key = process.env.JINA_API_KEY?.trim();
       if (key) plainHeaders.Authorization = `Bearer ${key}`;
-      res = await fetch(`${JINA_READER_BASE}${url}`, { headers: plainHeaders, signal: ctrl.signal });
-      httpStatus = res.status;
+      res = await fetch(`${JINA_READER_BASE}${url}`, { headers: plainHeaders, signal });
+      ctx.httpStatus = res.status;
     }
-    if (!res.ok) {
-      const attempt: FetchAttempt = { engine: "jina_reader", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: `jina_reader_${res.status}`, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: attempt.error!, via: "jina_reader", attempts: [attempt] }, attempt };
-    }
+    if (!res.ok) return { ok: false, error: `jina_reader_${res.status}` };
     const ct = res.headers.get("content-type") ?? "";
     let markdown = "";
     let title: string | undefined;
@@ -115,17 +154,9 @@ export async function jinaReader(
       const m = markdown.match(/^Title:\s*(.+)$/m);
       if (m) title = m[1].trim();
     }
-    if (markdown.length < minChars) {
-      const attempt: FetchAttempt = { engine: "jina_reader", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: "jina_reader_empty", bytes: markdown.length, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: "jina_reader_empty", via: "jina_reader", attempts: [attempt] }, attempt };
-    }
-    const attempt: FetchAttempt = { engine: "jina_reader", ok: true, http_status: httpStatus, latency_ms: Date.now() - t0, bytes: markdown.length, ts: new Date().toISOString() };
-    return { page: { ok: true, url, markdown, title, via: "jina_reader", attempts: [attempt] }, attempt };
-  } catch (e) {
-    const err = e instanceof Error ? e.message : String(e);
-    const attempt: FetchAttempt = { engine: "jina_reader", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: err, ts: new Date().toISOString() };
-    return { page: { ok: false, url, error: err, via: "jina_reader", attempts: [attempt] }, attempt };
-  } finally { clearTimeout(t); }
+    if (markdown.length < minChars) return { ok: false, error: "jina_reader_empty", bytes: markdown.length };
+    return { ok: true, markdown, title };
+  });
 }
 
 async function rawFetch(
@@ -135,13 +166,9 @@ async function rawFetch(
   timeoutMs = 10_000,
   minChars = 200,
 ): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  const t0 = Date.now();
-  let httpStatus: number | undefined;
-  try {
+  return runEngine(engine, url, timeoutMs, async (signal, ctx) => {
     const res = await fetch(url, {
-      signal: ctrl.signal,
+      signal,
       redirect: "follow",
       headers: {
         "User-Agent": ua,
@@ -155,24 +182,13 @@ async function rawFetch(
         "Sec-Fetch-User": "?1",
       },
     });
-    httpStatus = res.status;
-    if (!res.ok) {
-      const attempt: FetchAttempt = { engine, ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: `${engine}_${res.status}`, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: attempt.error!, via: engine, attempts: [attempt] }, attempt };
-    }
+    ctx.httpStatus = res.status;
+    if (!res.ok) return { ok: false, error: `${engine}_${res.status}` };
     const html = (await res.text()).slice(0, 400_000);
     const markdown = htmlToMarkdown(html, 30_000);
-    if (markdown.length < minChars) {
-      const attempt: FetchAttempt = { engine, ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: `${engine}_too_short`, bytes: markdown.length, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: attempt.error!, via: engine, attempts: [attempt] }, attempt };
-    }
-    const attempt: FetchAttempt = { engine, ok: true, http_status: httpStatus, latency_ms: Date.now() - t0, bytes: markdown.length, ts: new Date().toISOString() };
-    return { page: { ok: true, url, markdown, title: titleFromHtml(html), via: engine, attempts: [attempt] }, attempt };
-  } catch (e) {
-    const err = e instanceof Error ? e.message : String(e);
-    const attempt: FetchAttempt = { engine, ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: err, ts: new Date().toISOString() };
-    return { page: { ok: false, url, error: err, via: engine, attempts: [attempt] }, attempt };
-  } finally { clearTimeout(t); }
+    if (markdown.length < minChars) return { ok: false, error: `${engine}_too_short`, bytes: markdown.length };
+    return { ok: true, markdown, title: titleFromHtml(html) };
+  });
 }
 
 async function waybackFetch(
@@ -180,43 +196,24 @@ async function waybackFetch(
   timeoutMs = 18_000,
   minChars = 300,
 ): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  const t0 = Date.now();
-  let httpStatus: number | undefined;
-  let snapUrl: string | undefined;
-  try {
-    const av = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+  return runEngine("wayback", url, timeoutMs, async (signal, ctx) => {
+    const av = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(url)}`, { signal });
     if (!av.ok) {
-      const attempt: FetchAttempt = { engine: "wayback", ok: false, http_status: av.status, latency_ms: Date.now() - t0, error: `wayback_avail_${av.status}`, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: attempt.error!, via: "wayback", attempts: [attempt] }, attempt };
+      ctx.httpStatus = av.status;
+      return { ok: false, error: `wayback_avail_${av.status}` };
     }
     const j = (await av.json()) as { archived_snapshots?: { closest?: { url?: string; available?: boolean; timestamp?: string } } };
     const snap = j.archived_snapshots?.closest;
-    if (!snap?.available || !snap.url) {
-      const attempt: FetchAttempt = { engine: "wayback", ok: false, latency_ms: Date.now() - t0, error: "wayback_no_snapshot", ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: "wayback_no_snapshot", via: "wayback", attempts: [attempt] }, attempt };
-    }
-    snapUrl = snap.url;
-    const res = await fetch(snapUrl, { signal: ctrl.signal });
-    httpStatus = res.status;
-    if (!res.ok) {
-      const attempt: FetchAttempt = { engine: "wayback", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: `wayback_${res.status}`, url_used: snapUrl, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: attempt.error!, via: "wayback", attempts: [attempt] }, attempt };
-    }
+    if (!snap?.available || !snap.url) return { ok: false, error: "wayback_no_snapshot" };
+    ctx.urlUsed = snap.url;
+    const res = await fetch(snap.url, { signal });
+    ctx.httpStatus = res.status;
+    if (!res.ok) return { ok: false, error: `wayback_${res.status}` };
     const html = (await res.text()).slice(0, 500_000);
     const markdown = htmlToMarkdown(html, 40_000);
-    if (markdown.length < minChars) {
-      const attempt: FetchAttempt = { engine: "wayback", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: "wayback_too_short", bytes: markdown.length, url_used: snapUrl, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: "wayback_too_short", via: "wayback", attempts: [attempt] }, attempt };
-    }
-    const attempt: FetchAttempt = { engine: "wayback", ok: true, http_status: httpStatus, latency_ms: Date.now() - t0, bytes: markdown.length, url_used: snapUrl, ts: new Date().toISOString() };
-    return { page: { ok: true, url, markdown, title: titleFromHtml(html), via: "wayback", attempts: [attempt] }, attempt };
-  } catch (e) {
-    const err = e instanceof Error ? e.message : String(e);
-    const attempt: FetchAttempt = { engine: "wayback", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: err, url_used: snapUrl, ts: new Date().toISOString() };
-    return { page: { ok: false, url, error: err, via: "wayback", attempts: [attempt] }, attempt };
-  } finally { clearTimeout(t); }
+    if (markdown.length < minChars) return { ok: false, error: "wayback_too_short", bytes: markdown.length };
+    return { ok: true, markdown, title: titleFromHtml(html) };
+  });
 }
 
 // archive.today / archive.ph — separate infra from Wayback, useful when
@@ -226,35 +223,24 @@ async function archiveTodayFetch(
   timeoutMs = 15_000,
   minChars = 300,
 ): Promise<{ page: FetchedPage; attempt: FetchAttempt }> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  const t0 = Date.now();
   const snapUrl = `https://archive.ph/newest/${url}`;
-  let httpStatus: number | undefined;
-  try {
+  return runEngine("archive_today", url, timeoutMs, async (signal, ctx) => {
     const res = await fetch(snapUrl, {
-      signal: ctrl.signal,
+      signal,
       redirect: "follow",
       headers: { "User-Agent": CHROME_UA, Accept: "text/html,*/*" },
     });
-    httpStatus = res.status;
+    ctx.httpStatus = res.status;
     if (!res.ok) {
-      const attempt: FetchAttempt = { engine: "archive_today", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: `archive_today_${res.status}`, url_used: snapUrl, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: attempt.error!, via: "archive_today", attempts: [attempt] }, attempt };
+      ctx.urlUsed = snapUrl;
+      return { ok: false, error: `archive_today_${res.status}` };
     }
     const html = (await res.text()).slice(0, 500_000);
     const markdown = htmlToMarkdown(html, 40_000);
-    if (markdown.length < minChars) {
-      const attempt: FetchAttempt = { engine: "archive_today", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: "archive_today_too_short", bytes: markdown.length, ts: new Date().toISOString() };
-      return { page: { ok: false, url, error: "archive_today_too_short", via: "archive_today", attempts: [attempt] }, attempt };
-    }
-    const attempt: FetchAttempt = { engine: "archive_today", ok: true, http_status: httpStatus, latency_ms: Date.now() - t0, bytes: markdown.length, url_used: res.url, ts: new Date().toISOString() };
-    return { page: { ok: true, url, markdown, title: titleFromHtml(html), via: "archive_today", attempts: [attempt] }, attempt };
-  } catch (e) {
-    const err = e instanceof Error ? e.message : String(e);
-    const attempt: FetchAttempt = { engine: "archive_today", ok: false, http_status: httpStatus, latency_ms: Date.now() - t0, error: err, ts: new Date().toISOString() };
-    return { page: { ok: false, url, error: err, via: "archive_today", attempts: [attempt] }, attempt };
-  } finally { clearTimeout(t); }
+    if (markdown.length < minChars) return { ok: false, error: "archive_today_too_short", bytes: markdown.length };
+    ctx.urlUsed = res.url;
+    return { ok: true, markdown, title: titleFromHtml(html) };
+  });
 }
 
 export type SearchHit = { url: string; title: string; snippet: string };
@@ -296,9 +282,10 @@ export async function scrapeWithFallback(
   const push = (a: FetchAttempt) => attempts.push(a);
   const minContentChars = Math.max(100, opts.minContentChars ?? 200);
 
-  // For structured extraction workflows, callers may prefer Firecrawl first
-  // so they don't lose JSON extraction behind an earlier markdown-only success.
-  if (opts.preferFirecrawl && !opts.skipFirecrawl && firecrawlEnabled()) {
+  // Runs Firecrawl once, records the attempt, and returns a success page if
+  // it produced enough markdown (or structured JSON). Shared by the
+  // prefer-first and last-resort call sites below.
+  const tryFirecrawl = async (): Promise<FetchedPage | undefined> => {
     const tFc = Date.now();
     const fc = await firecrawlScrape(url, { jsonSchema: opts.jsonSchema, jsonPrompt: opts.jsonPrompt });
     push({
@@ -320,6 +307,14 @@ export async function scrapeWithFallback(
         attempts,
       };
     }
+    return undefined;
+  };
+
+  // For structured extraction workflows, callers may prefer Firecrawl first
+  // so they don't lose JSON extraction behind an earlier markdown-only success.
+  if (opts.preferFirecrawl && !opts.skipFirecrawl && firecrawlEnabled()) {
+    const fcPage = await tryFirecrawl();
+    if (fcPage) return fcPage;
   }
 
   // 1. Local engine
