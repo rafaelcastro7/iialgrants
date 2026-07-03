@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "@/lib/admin-guard";
+import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-stages.shared";
 
 // List grants from the public catalog, sorted by deadline asc / fit_score desc.
 // Also returns the calling user's per-grant evaluation (if any), so the UI can
@@ -13,8 +14,16 @@ export const listGrants = createServerFn({ method: "GET" })
       .object({
         status: z
           .enum([
-            "discovered", "enriched", "scored", "shortlisted",
-            "in_proposal", "submitted", "won", "lost", "expired", "archived",
+            "discovered",
+            "enriched",
+            "scored",
+            "shortlisted",
+            "in_proposal",
+            "submitted",
+            "won",
+            "lost",
+            "expired",
+            "archived",
           ])
           .optional(),
         limit: z.number().int().min(1).max(100).default(50),
@@ -24,7 +33,9 @@ export const listGrants = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     let q = context.supabase
       .from("grants")
-      .select("id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder:funders(name, name_fr, jurisdiction)")
+      .select(
+        "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder:funders(name, name_fr, jurisdiction)",
+      )
       .order("fit_score", { ascending: false, nullsFirst: false })
       .order("deadline", { ascending: true, nullsFirst: false })
       .limit(data.limit);
@@ -34,13 +45,16 @@ export const listGrants = createServerFn({ method: "GET" })
     const grants = rows ?? [];
 
     const ids = grants.map((g) => g.id);
-    let evalsByGrant = new Map<string, {
-      fit_score: number;
-      eligibility_pass: boolean;
-      rationale_en: string;
-      rationale_fr: string;
-      created_at: string;
-    }>();
+    let evalsByGrant = new Map<
+      string,
+      {
+        fit_score: number;
+        eligibility_pass: boolean;
+        rationale_en: string;
+        rationale_fr: string;
+        created_at: string;
+      }
+    >();
     if (ids.length > 0) {
       const { data: evals } = await context.supabase
         .from("grant_evaluations")
@@ -71,9 +85,11 @@ export const listGrants = createServerFn({ method: "GET" })
 export const discoverAllFunders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({
-      funderIds: z.array(z.string().uuid()).optional(),
-    }).parse(i ?? {}),
+    z
+      .object({
+        funderIds: z.array(z.string().uuid()).optional(),
+      })
+      .parse(i ?? {}),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -121,7 +137,6 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
     };
   });
 
-
 // List active funders with a discoverable source_url. Used by the admin UI to
 // select which funders to run in the next discovery job.
 export const listActiveFunders = createServerFn({ method: "GET" })
@@ -157,7 +172,14 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
       .limit(500);
     if (error) throw new Error(error.message);
 
-    type Row = { run_id: string; status: string; error: string | null; latency_ms: number | null; metadata: Record<string, unknown> | null; created_at: string };
+    type Row = {
+      run_id: string;
+      status: string;
+      error: string | null;
+      latency_ms: number | null;
+      metadata: Record<string, unknown> | null;
+      created_at: string;
+    };
     const all = (rows ?? []) as unknown as Row[];
 
     let started_at: string | null = null;
@@ -204,8 +226,12 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
       if (!fid) continue;
       const fname = typeof m.funder_name === "string" ? m.funder_name : fid.slice(0, 8);
       const prev = byFunder.get(fid) ?? {
-        funder_id: fid, funder_name: fname, status: "running" as const,
-        attempts: 0, inserted: 0, seenAgain: 0,
+        funder_id: fid,
+        funder_name: fname,
+        status: "running" as const,
+        attempts: 0,
+        inserted: 0,
+        seenAgain: 0,
       };
       prev.attempts = Math.max(prev.attempts, Number(m.attempt ?? 1));
       if (r.status === "succeeded") {
@@ -311,7 +337,11 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     let skipped = 0;
     for (const grantId of todo) {
       try {
-        await evaluateGrantImpl({ grantId, userId: context.userId, userSupabase: context.supabase });
+        await evaluateGrantImpl({
+          grantId,
+          userId: context.userId,
+          userSupabase: context.supabase,
+        });
         evaluated++;
       } catch {
         skipped++;
@@ -325,21 +355,29 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
 export const listAgentEvents = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({
-      limit: z.number().int().min(1).max(200).default(50),
-      agent: z.string().optional(),
-      status: z.enum(["succeeded", "failed", "degraded", "running"]).optional(),
-    }).parse(i ?? {}),
+    z
+      .object({
+        limit: z.number().int().min(1).max(200).default(50),
+        agent: z.string().optional(),
+        status: z.enum(["succeeded", "failed", "degraded", "running"]).optional(),
+      })
+      .parse(i ?? {}),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin
       .from("agent_runs")
-      .select("id, run_id, agent, status, model, latency_ms, input_tokens, output_tokens, error, metadata, grant_id, created_at")
+      .select(
+        "id, run_id, agent, status, model, latency_ms, input_tokens, output_tokens, error, metadata, grant_id, created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(data.limit);
-    if (data.agent) q = q.eq("agent", data.agent as "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic");
+    if (data.agent)
+      q = q.eq(
+        "agent",
+        data.agent as "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic",
+      );
     if (data.status) q = q.eq("status", data.status);
     const { data: runs, error } = await q;
     if (error) throw new Error(error.message);
@@ -362,15 +400,17 @@ export const listAgentEvents = createServerFn({ method: "GET" })
 export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({
-      status: z.enum(["discovered", "enriched", "scored", "shortlisted"]).default("discovered"),
-      limit: z.number().int().min(1).max(50).default(25),
-      autoEnrich: z.boolean().default(false),
-      force: z.boolean().default(false),
-      // Language filter: 'auto' = use the curator's preferred_lang from profile,
-      // 'en'/'fr' = explicit, 'all' = both (legacy behaviour, can be noisy).
-      language: z.enum(["auto", "en", "fr", "all"]).default("auto"),
-    }).parse(i ?? {}),
+    z
+      .object({
+        status: z.enum(["discovered", "enriched", "scored", "shortlisted"]).default("discovered"),
+        limit: z.number().int().min(1).max(50).default(25),
+        autoEnrich: z.boolean().default(false),
+        force: z.boolean().default(false),
+        // Language filter: 'auto' = use the curator's preferred_lang from profile,
+        // 'en'/'fr' = explicit, 'all' = both (legacy behaviour, can be noisy).
+        language: z.enum(["auto", "en", "fr", "all"]).default("auto"),
+      })
+      .parse(i ?? {}),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -388,13 +428,25 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
       if (pl === "en" || pl === "fr") lang = pl;
     }
 
-
-    const selectCols = "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, language, url, status, sectors, funder:funders(id, name, jurisdiction)";
+    const selectCols =
+      "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, language, url, status, sectors, funder:funders(id, name, jurisdiction)";
     type Row = {
-      id: string; title: string; title_fr: string | null; summary: string | null; summary_fr: string | null;
-      amount_cad_min: number | null; amount_cad_max: number | null; deadline: string | null;
-      language: string; url: string; status: string; sectors: string[] | null;
-      funder: { id: string; name: string; jurisdiction: string | null } | { id: string; name: string; jurisdiction: string | null }[] | null;
+      id: string;
+      title: string;
+      title_fr: string | null;
+      summary: string | null;
+      summary_fr: string | null;
+      amount_cad_min: number | null;
+      amount_cad_max: number | null;
+      deadline: string | null;
+      language: string;
+      url: string;
+      status: string;
+      sectors: string[] | null;
+      funder:
+        | { id: string; name: string; jurisdiction: string | null }
+        | { id: string; name: string; jurisdiction: string | null }[]
+        | null;
     };
 
     async function fetchRows(): Promise<Row[]> {
@@ -413,7 +465,8 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
     const isIncomplete = (r: Row) =>
       (r.amount_cad_min == null && r.amount_cad_max == null) ||
       !r.deadline ||
-      !r.sectors || r.sectors.length === 0;
+      !r.sectors ||
+      r.sectors.length === 0;
 
     let rows = await fetchRows();
     const incompleteIds = rows.filter(isIncomplete).map((r) => r.id);
@@ -429,7 +482,8 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
       const { enrichGrantImpl } = await import("@/agents/enricher.functions");
       const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
       await assertAgentEnabled("enricher", context.supabase as never);
-      let succeeded = 0; let failed = 0;
+      let succeeded = 0;
+      let failed = 0;
       // Cap to keep the request bounded; the rest can be re-tried in a follow-up export.
       const batch = incompleteIds.slice(0, 10);
       for (const id of batch) {
@@ -439,8 +493,9 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
             userId: context.userId,
           });
           succeeded++;
+        } catch {
+          failed++;
         }
-        catch { failed++; }
       }
       enrichmentReport = { attempted: batch.length, succeeded, failed };
       rows = await fetchRows();
@@ -455,10 +510,14 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
       };
     }
 
-    const fmt = (n: number | null) => n == null ? "—" : `CAD ${n.toLocaleString("en-CA")}`;
+    const fmt = (n: number | null) => (n == null ? "—" : `CAD ${n.toLocaleString("en-CA")}`);
     const isValidHttpUrl = (u: string): boolean => {
-      try { const p = new URL(u); return p.protocol === "http:" || p.protocol === "https:"; }
-      catch { return false; }
+      try {
+        const p = new URL(u);
+        return p.protocol === "http:" || p.protocol === "https:";
+      } catch {
+        return false;
+      }
     };
 
     const parts: string[] = [
@@ -472,8 +531,11 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
     const index: Array<{ id: string; title: string; url: string }> = [];
 
     // Quality counters for the trailing summary.
-    let withAmount = 0, withDeadline = 0, withSectors = 0;
-    let invalidUrls = 0, missingFunder = 0;
+    let withAmount = 0,
+      withDeadline = 0,
+      withSectors = 0;
+    let invalidUrls = 0,
+      missingFunder = 0;
     const issues: string[] = [];
     const funderCounts = new Map<string, number>();
 
@@ -487,7 +549,10 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
         funderCounts.set(funderName, (funderCounts.get(funderName) ?? 0) + 1);
       }
       const urlOk = isValidHttpUrl(r.url);
-      if (!urlOk) { invalidUrls++; issues.push(`- \`${r.id}\` — invalid source URL: ${r.url}`); }
+      if (!urlOk) {
+        invalidUrls++;
+        issues.push(`- \`${r.id}\` — invalid source URL: ${r.url}`);
+      }
 
       const hasAmount = r.amount_cad_min != null || r.amount_cad_max != null;
       const hasDeadline = !!r.deadline;
@@ -556,8 +621,11 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
       markdown: parts.join("\n"),
       index,
       quality: {
-        withAmount, withDeadline, withSectors,
-        invalidUrls, missingFunder,
+        withAmount,
+        withDeadline,
+        withSectors,
+        invalidUrls,
+        missingFunder,
         funders: Object.fromEntries(funderCounts),
         incompleteRemaining: rows.filter(isIncomplete).map((r) => r.id),
       },
@@ -569,26 +637,104 @@ export const exportGrantsForNotebookLM = createServerFn({ method: "POST" })
 // Records who curated it and the note inside grant_events for full audit.
 // Enforces forward-only state transitions: discovered → enriched → scored →
 // shortlisted → in_proposal → submitted → won/lost/expired/archived.
-export const markGrantsCurated = createServerFn({ method: "POST" })
+// Generic status move for board interactions (drag-to-move, bulk actions).
+// Validates against the shared state machine BEFORE hitting the DB so the UI
+// gets a clean per-grant verdict; the DB trigger remains the final enforcer.
+export const moveGrants = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({
-      grantIds: z.array(z.string().uuid()).min(1).max(50),
-      note: z.string().max(2000).optional(),
-    }).parse(i),
+    z
+      .object({
+        grantIds: z.array(z.string().uuid()).min(1).max(50),
+        toStatus: z.enum(GRANT_STATUSES),
+      })
+      .parse(i),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    const STATUS_ORDER = ["discovered", "enriched", "scored", "shortlisted", "in_proposal", "submitted", "won", "lost", "expired", "archived"];
+    const ts = new Date().toISOString();
+    let updated = 0;
+    const skipped: Array<{ id: string; reason: string }> = [];
+    for (const id of data.grantIds) {
+      const { data: prev } = await context.supabase
+        .from("grants")
+        .select("status")
+        .eq("id", id)
+        .maybeSingle();
+      const fromStatus = (prev as { status?: string } | null)?.status;
+      if (!fromStatus || !isGrantStatus(fromStatus)) {
+        skipped.push({ id, reason: "not_found" });
+        continue;
+      }
+      if (fromStatus === data.toStatus) {
+        skipped.push({ id, reason: "already_there" });
+        continue;
+      }
+      if (!canTransition(fromStatus, data.toStatus)) {
+        skipped.push({ id, reason: `invalid_transition:${fromStatus}->${data.toStatus}` });
+        continue;
+      }
+      const { error: uerr } = await context.supabase
+        .from("grants")
+        .update({ status: data.toStatus, updated_at: ts } as never)
+        .eq("id", id);
+      if (uerr) {
+        skipped.push({ id, reason: uerr.message.slice(0, 200) });
+        continue;
+      }
+      updated++;
+      await context.supabase.from("grant_events").insert({
+        grant_id: id,
+        from_status: fromStatus as never,
+        to_status: data.toStatus as never,
+        actor_user_id: context.userId,
+        metadata: { source: "board_move" } as never,
+      });
+    }
+    return { ok: true, updated, skipped };
+  });
+
+export const markGrantsCurated = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        grantIds: z.array(z.string().uuid()).min(1).max(50),
+        note: z.string().max(2000).optional(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const STATUS_ORDER = [
+      "discovered",
+      "enriched",
+      "scored",
+      "shortlisted",
+      "in_proposal",
+      "submitted",
+      "won",
+      "lost",
+      "expired",
+      "archived",
+    ];
     const terminalStatuses = new Set(["submitted", "won", "lost", "expired", "archived"]);
     const ts = new Date().toISOString();
     let updated = 0;
     let skipped = 0;
     for (const id of data.grantIds) {
-      const { data: prev } = await context.supabase.from("grants").select("status").eq("id", id).maybeSingle();
+      const { data: prev } = await context.supabase
+        .from("grants")
+        .select("status")
+        .eq("id", id)
+        .maybeSingle();
       const fromStatus = (prev as { status?: string } | null)?.status ?? null;
       // Block backward transitions and transitions into terminal states.
-      if (!fromStatus || terminalStatuses.has(fromStatus) || STATUS_ORDER.indexOf(fromStatus) >= STATUS_ORDER.indexOf("shortlisted")) {
+      if (
+        !fromStatus ||
+        terminalStatuses.has(fromStatus) ||
+        STATUS_ORDER.indexOf(fromStatus) >= STATUS_ORDER.indexOf("shortlisted")
+      ) {
         skipped++;
         continue;
       }
@@ -596,7 +742,10 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
         .from("grants")
         .update({ status: "shortlisted", updated_at: ts } as never)
         .eq("id", id);
-      if (uerr) { skipped++; continue; }
+      if (uerr) {
+        skipped++;
+        continue;
+      }
       updated++;
       await context.supabase.from("grant_events").insert({
         grant_id: id,
@@ -608,4 +757,3 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
     }
     return { ok: true, updated, skipped };
   });
-

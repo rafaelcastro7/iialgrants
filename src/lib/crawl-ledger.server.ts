@@ -17,15 +17,30 @@
 import { createHash } from "crypto";
 
 export type LedgerSkip = { fetch: false; reason: string; etag?: string; lastModified?: string };
-export type LedgerGo   = { fetch: true;  reason: string; etag?: string; lastModified?: string; intervalHours: number };
+export type LedgerGo = {
+  fetch: true;
+  reason: string;
+  etag?: string;
+  lastModified?: string;
+  intervalHours: number;
+};
 export type LedgerDecision = LedgerSkip | LedgerGo;
 
 export type FetchOutcome =
-  | { kind: "ok";         markdown: string; title?: string; via: string; httpStatus?: number; etag?: string; lastModified?: string; bytes?: number }
+  | {
+      kind: "ok";
+      markdown: string;
+      title?: string;
+      via: string;
+      httpStatus?: number;
+      etag?: string;
+      lastModified?: string;
+      bytes?: number;
+    }
   | { kind: "not_modified"; httpStatus: 304; via: string; etag?: string; lastModified?: string }
-  | { kind: "gone";       httpStatus: 404 | 410 }
-  | { kind: "blocked";    reason: string }
-  | { kind: "error";      reason: string; httpStatus?: number };
+  | { kind: "gone"; httpStatus: 404 | 410 }
+  | { kind: "blocked"; reason: string }
+  | { kind: "error"; reason: string; httpStatus?: number };
 
 export function sha256(text: string): string {
   return createHash("sha256").update(text).digest("hex");
@@ -46,13 +61,26 @@ export async function shouldFetch(url: string): Promise<LedgerDecision> {
     .eq("url", url)
     .maybeSingle();
   if (!data) return { fetch: true, reason: "new", intervalHours: 24 };
-  const row = data as { next_fetch_at: string; etag: string | null; last_modified: string | null; status: string; interval_hours: number };
-  if (row.status === "gone")    return { fetch: false, reason: "gone" };
+  const row = data as {
+    next_fetch_at: string;
+    etag: string | null;
+    last_modified: string | null;
+    status: string;
+    interval_hours: number;
+  };
+  if (row.status === "gone") return { fetch: false, reason: "gone" };
   if (row.status === "blocked") return { fetch: false, reason: "blocked" };
   const due = new Date(row.next_fetch_at).getTime() <= Date.now();
-  if (!due) return { fetch: false, reason: "not_due_yet", etag: row.etag ?? undefined, lastModified: row.last_modified ?? undefined };
+  if (!due)
+    return {
+      fetch: false,
+      reason: "not_due_yet",
+      etag: row.etag ?? undefined,
+      lastModified: row.last_modified ?? undefined,
+    };
   return {
-    fetch: true, reason: "due",
+    fetch: true,
+    reason: "due",
     etag: row.etag ?? undefined,
     lastModified: row.last_modified ?? undefined,
     intervalHours: row.interval_hours,
@@ -63,11 +91,23 @@ export async function recordFetch(
   url: string,
   outcome: FetchOutcome,
   opts: { funderId?: string | null; previousIntervalHours?: number | null } = {},
-): Promise<{ next_fetch_at: string; status: string; changed: boolean; interval_hours: number; content_hash: string | null }> {
+): Promise<{
+  next_fetch_at: string;
+  status: string;
+  changed: boolean;
+  interval_hours: number;
+  content_hash: string | null;
+}> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabaseAdmin as any;
-  const host = (() => { try { return new URL(url).host; } catch { return ""; } })();
+  const host = (() => {
+    try {
+      return new URL(url).host;
+    } catch {
+      return "";
+    }
+  })();
 
   // Load current row (we need previous hash + interval to decide cadence).
   const { data: prev } = await sb
@@ -75,7 +115,13 @@ export async function recordFetch(
     .select("content_hash, interval_hours, change_count, fetch_count, error_count")
     .eq("url", url)
     .maybeSingle();
-  const prevRow = (prev ?? null) as { content_hash: string | null; interval_hours: number; change_count: number; fetch_count: number; error_count: number } | null;
+  const prevRow = (prev ?? null) as {
+    content_hash: string | null;
+    interval_hours: number;
+    change_count: number;
+    fetch_count: number;
+    error_count: number;
+  } | null;
   const prevInterval = prevRow?.interval_hours ?? opts.previousIntervalHours ?? 24;
 
   let status: string;
@@ -83,7 +129,7 @@ export async function recordFetch(
   let contentHash: string | null = prevRow?.content_hash ?? null;
   let changeCount = prevRow?.change_count ?? 0;
   const fetchCount = (prevRow?.fetch_count ?? 0) + 1;
-  let errorCount  = prevRow?.error_count ?? 0;
+  let errorCount = prevRow?.error_count ?? 0;
   let changed = false;
   let via: string | null = null;
   let httpStatus: number | null = null;
@@ -150,31 +196,120 @@ export async function recordFetch(
 
   const nextFetchAt = new Date(Date.now() + nextIntervalHours * 3600_000).toISOString();
   const row = {
-    url, host,
+    url,
+    host,
     funder_id: opts.funderId ?? null,
     last_fetched_at: new Date().toISOString(),
     next_fetch_at: nextFetchAt,
     interval_hours: nextIntervalHours,
     content_hash: contentHash,
-    etag, last_modified: lastModified,
+    etag,
+    last_modified: lastModified,
     change_count: changeCount,
-    status, http_status: httpStatus,
-    fetch_count: fetchCount, error_count: errorCount,
+    status,
+    http_status: httpStatus,
+    fetch_count: fetchCount,
+    error_count: errorCount,
     last_error: lastError,
-    via, bytes, title,
+    via,
+    bytes,
+    title,
   };
 
   // upsert
-  const { error } = await sb
-    .from("crawl_ledger")
-    .upsert(row as never, { onConflict: "url" });
+  const { error } = await sb.from("crawl_ledger").upsert(row as never, { onConflict: "url" });
   if (error) throw new Error(`ledger_upsert_failed: ${error.message}`);
 
-  return { next_fetch_at: nextFetchAt, status, changed, interval_hours: nextIntervalHours, content_hash: contentHash };
+  return {
+    next_fetch_at: nextFetchAt,
+    status,
+    changed,
+    interval_hours: nextIntervalHours,
+    content_hash: contentHash,
+  };
+}
+
+// Dead-source detection: a discovery source (funder) whose last N succeeded
+// discoverer runs all yielded 0 grants is flagged "possibly dead". Derived
+// from agent_runs metadata (funder_id / found) — no extra table/column needed.
+export const DEAD_SOURCE_THRESHOLD = 3;
+
+export type DeadSource = {
+  funder_id: string;
+  funder_name: string | null;
+  consecutive_empty_runs: number;
+  last_run_at: string;
+};
+
+export async function listDeadSources(
+  threshold: number = DEAD_SOURCE_THRESHOLD,
+): Promise<DeadSource[]> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabaseAdmin as any;
+  const { data, error } = await sb
+    .from("agent_runs")
+    .select("created_at, metadata")
+    .eq("agent", "discoverer")
+    .eq("status", "succeeded")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw new Error(error.message);
+
+  type Run = { created_at: string; metadata: Record<string, unknown> | null };
+  // Runs arrive newest-first; count leading zero-yield runs per funder until
+  // the first non-empty run breaks the streak.
+  const streaks = new Map<
+    string,
+    { name: string | null; empty: number; broken: boolean; total: number; lastRunAt: string }
+  >();
+  for (const r of (data ?? []) as Run[]) {
+    const meta = r.metadata ?? {};
+    const funderId = typeof meta.funder_id === "string" ? meta.funder_id : null;
+    if (!funderId) continue;
+    const found = typeof meta.found === "number" ? meta.found : null;
+    if (found === null) continue;
+    let s = streaks.get(funderId);
+    if (!s) {
+      s = {
+        name: typeof meta.funder_name === "string" ? meta.funder_name : null,
+        empty: 0,
+        broken: false,
+        total: 0,
+        lastRunAt: r.created_at,
+      };
+      streaks.set(funderId, s);
+    }
+    s.total += 1;
+    if (!s.broken) {
+      if (found === 0) s.empty += 1;
+      else s.broken = true;
+    }
+  }
+
+  const dead: DeadSource[] = [];
+  for (const [funderId, s] of streaks) {
+    if (s.empty >= threshold) {
+      dead.push({
+        funder_id: funderId,
+        funder_name: s.name,
+        consecutive_empty_runs: s.empty,
+        last_run_at: s.lastRunAt,
+      });
+    }
+  }
+  dead.sort((a, b) => b.consecutive_empty_runs - a.consecutive_empty_runs);
+  return dead;
 }
 
 export async function ledgerStats(funderId?: string): Promise<{
-  due_now: number; queued_24h: number; stable: number; gone: number; blocked: number; errored: number; total: number;
+  due_now: number;
+  queued_24h: number;
+  stable: number;
+  gone: number;
+  blocked: number;
+  errored: number;
+  total: number;
 }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

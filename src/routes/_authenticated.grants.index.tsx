@@ -1,17 +1,29 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
+import { useSuspenseQuery, queryOptions, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { listGrants, discoverAllFunders, enrichGrant, autoEvaluatePending } from "@/lib/grants.functions";
+import {
+  listGrants,
+  discoverAllFunders,
+  enrichGrant,
+  autoEvaluatePending,
+  moveGrants,
+} from "@/lib/grants.functions";
+import type { GrantStatus } from "@/agents/pipeline-stages.shared";
 import { DiscoveryProgress } from "@/components/grants/DiscoveryProgress";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
 import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
-import { GrantFilters, applyGrantFilters, sortGrants, type SortKey } from "@/components/grants/GrantFilters";
+import {
+  GrantFilters,
+  applyGrantFilters,
+  sortGrants,
+  type SortKey,
+} from "@/components/grants/GrantFilters";
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
@@ -27,14 +39,19 @@ const grantsQueryOptions = queryOptions({
 // SSR-safe sessionStorage access (component renders on the server too).
 const ss = {
   get: (k: string) => (typeof window !== "undefined" ? window.sessionStorage.getItem(k) : null),
-  set: (k: string, v: string) => { if (typeof window !== "undefined") window.sessionStorage.setItem(k, v); },
+  set: (k: string, v: string) => {
+    if (typeof window !== "undefined") window.sessionStorage.setItem(k, v);
+  },
 };
 
 export const Route = createFileRoute("/_authenticated/grants/")({
   head: () => ({
     meta: [
       { title: "Grants — IIAL" },
-      { name: "description", content: "Manage Canadian grant opportunities through a clear, stage-by-stage pipeline." },
+      {
+        name: "description",
+        content: "Manage Canadian grant opportunities through a clear, stage-by-stage pipeline.",
+      },
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(grantsQueryOptions),
@@ -60,10 +77,16 @@ function GrantsPage() {
   const [activeJob, setActiveJob] = useState<{ jobId: string; queued: number } | null>(null);
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
   const [search, setSearch] = useState<string>(() => ss.get("grants.search") ?? "");
-  const [jurisdiction, setJurisdiction] = useState<string>(() => ss.get("grants.jurisdiction") ?? "all");
-  const [sortKey, setSortKey] = useState<SortKey>(() => (ss.get("grants.sort") as SortKey) ?? "fit");
+  const [jurisdiction, setJurisdiction] = useState<string>(
+    () => ss.get("grants.jurisdiction") ?? "all",
+  );
+  const [sortKey, setSortKey] = useState<SortKey>(
+    () => (ss.get("grants.sort") as SortKey) ?? "fit",
+  );
   const [eligibleOnly, setEligibleOnly] = useState(() => ss.get("grants.eligibleOnly") === "1");
-  const [onlyWithDeadline, setOnlyWithDeadline] = useState(() => ss.get("grants.onlyWithDeadline") === "1");
+  const [onlyWithDeadline, setOnlyWithDeadline] = useState(
+    () => ss.get("grants.onlyWithDeadline") === "1",
+  );
   const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
 
   // Persist filter + sort state across reloads (session scope, per house rules).
@@ -80,12 +103,54 @@ function GrantsPage() {
     queryFn: () => fetchGrants({ data: { limit: 100 } }),
   });
 
+  // Optimistic board move: update the cache immediately, roll back on error,
+  // reconcile with the server on settle. The server (and the DB trigger)
+  // remain the source of truth for valid transitions.
+  const moveFn = useServerFn(moveGrants);
+  const moveMutation = useMutation({
+    mutationFn: (vars: { grantIds: string[]; toStatus: GrantStatus }) => moveFn({ data: vars }),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["grants", "all"] });
+      const prev = qc.getQueryData<typeof data>(["grants", "all"]);
+      qc.setQueryData<typeof data>(["grants", "all"], (old) =>
+        old
+          ? {
+              ...old,
+              grants: old.grants.map((g) =>
+                vars.grantIds.includes(g.id) ? { ...g, status: vars.toStatus } : g,
+              ),
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (e, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["grants", "all"], ctx.prev);
+      setEvalError(e instanceof Error ? e.message : String(e));
+    },
+    onSuccess: (r) => {
+      if (r.skipped.length > 0) {
+        setAutoMsg(
+          `${r.updated} grant(s) moved · ${r.skipped.length} skipped (invalid transition).`,
+        );
+      } else if (r.updated > 1) {
+        setAutoMsg(`${r.updated} grants moved.`);
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["grants"] }),
+  });
+  const onMove = (grantIds: string[], toStatus: GrantStatus) =>
+    moveMutation.mutate({ grantIds, toStatus });
+
   const autoRan = useRef(false);
   useEffect(() => {
     if (autoRan.current) return;
     autoRan.current = true;
     const pendingIds = data.grants
-      .filter((g) => !g.evaluation && ["discovered", "enriched", "scored", "shortlisted"].includes(g.status))
+      .filter(
+        (g) =>
+          !g.evaluation && ["discovered", "enriched", "scored", "shortlisted"].includes(g.status),
+      )
       .map((g) => g.id);
     if (pendingIds.length === 0) return;
     setEvaluatingIds(new Set(pendingIds));
@@ -100,54 +165,81 @@ function GrantsPage() {
       .finally(() => setEvaluatingIds(new Set()));
   }, [data.grants, autoEvaluate, qc]);
 
-  async function signOut() { await supabase.auth.signOut(); await navigate({ to: "/" }); }
+  async function signOut() {
+    await supabase.auth.signOut();
+    await navigate({ to: "/" });
+  }
   async function onEvaluate(grantId: string) {
-    setPending(grantId); setEvalError(null);
+    setPending(grantId);
+    setEvalError(null);
     setEvaluatingIds((s) => new Set(s).add(grantId));
     try {
       await evaluate({ data: { grantId } });
       await qc.invalidateQueries({ queryKey: ["grants"] });
-    } catch (e) { setEvalError(e instanceof Error ? e.message : String(e)); }
-    finally {
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally {
       setPending(null);
-      setEvaluatingIds((s) => { const n = new Set(s); n.delete(grantId); return n; });
+      setEvaluatingIds((s) => {
+        const n = new Set(s);
+        n.delete(grantId);
+        return n;
+      });
     }
   }
   async function onDraft(grantId: string) {
-    setPending(grantId + ":draft"); setEvalError(null);
+    setPending(grantId + ":draft");
+    setEvalError(null);
     try {
       const r = await strategize({ data: { grantId } });
       await qc.invalidateQueries({ queryKey: ["grants"] });
       await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
-    } catch (e) { setEvalError(e instanceof Error ? e.message : String(e)); }
-    finally { setPending(null); }
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPending(null);
+    }
   }
   async function onDiscoverAll() {
-    setPending("__discover__"); setDiscoveryMsg(null); setEvalError(null);
+    setPending("__discover__");
+    setDiscoveryMsg(null);
+    setEvalError(null);
     try {
       const funderIds = selectedFunders.size > 0 ? [...selectedFunders] : undefined;
       const r = await discoverAll({ data: { funderIds } });
       if (r?.jobId) {
         setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
         const scope = funderIds ? ` (${funderIds.length} selected)` : "";
-        setDiscoveryMsg(`Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s)${scope}. Live progress below.`);
+        setDiscoveryMsg(
+          `Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s)${scope}. Live progress below.`,
+        );
       } else setDiscoveryMsg("Discovery enqueued.");
       autoRan.current = false;
-    } catch (e) { setEvalError(e instanceof Error ? e.message : String(e)); }
-    finally { setPending(null); }
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPending(null);
+    }
   }
   async function onEnrich(grantId: string) {
-    setPending(grantId + ":enrich"); setEvalError(null);
-    try { await enrichOne({ data: { grantId } }); await qc.invalidateQueries({ queryKey: ["grants"] }); }
-    catch (e) { setEvalError(e instanceof Error ? e.message : String(e)); }
-    finally { setPending(null); }
+    setPending(grantId + ":enrich");
+    setEvalError(null);
+    try {
+      await enrichOne({ data: { grantId } });
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    } catch (e) {
+      setEvalError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPending(null);
+    }
   }
 
   const filtered = useMemo(
-    () => sortGrants(
-      applyGrantFilters(data.grants, { search, jurisdiction, eligibleOnly, onlyWithDeadline }),
-      sortKey,
-    ) as GrantRowData[],
+    () =>
+      sortGrants(
+        applyGrantFilters(data.grants, { search, jurisdiction, eligibleOnly, onlyWithDeadline }),
+        sortKey,
+      ) as GrantRowData[],
     [data.grants, search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline],
   );
 
@@ -156,39 +248,76 @@ function GrantsPage() {
     const needsAction = filtered.filter((g) => {
       if (g.status === "discovered") return true;
       if (g.status === "enriched" && !g.evaluation) return true;
-      const d = g.deadline ? Math.ceil((new Date(g.deadline).getTime() - Date.now()) / 86400000) : null;
-      return d != null && d >= 0 && d <= 7 && !["submitted","won","lost","expired","archived"].includes(g.status);
+      const d = g.deadline
+        ? Math.ceil((new Date(g.deadline).getTime() - Date.now()) / 86400000)
+        : null;
+      return (
+        d != null &&
+        d >= 0 &&
+        d <= 7 &&
+        !["submitted", "won", "lost", "expired", "archived"].includes(g.status)
+      );
     }).length;
-    const scored = filtered.map((g) => g.evaluation?.fit_score ?? g.fit_score).filter((v): v is number => v != null);
+    const scored = filtered
+      .map((g) => g.evaluation?.fit_score ?? g.fit_score)
+      .filter((v): v is number => v != null);
     const avgFit = scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
-    const pipelineValueCad = filtered.reduce((sum, g) => sum + (g.amount_cad_max ?? g.amount_cad_min ?? 0), 0);
+    const pipelineValueCad = filtered.reduce(
+      (sum, g) => sum + (g.amount_cad_max ?? g.amount_cad_min ?? 0),
+      0,
+    );
     return { total, needsAction, avgFit, pipelineValueCad };
   }, [filtered]);
 
   return (
-    <main className="min-h-screen bg-[#f4f7fa] text-foreground" style={{ fontFamily: "'Work Sans', system-ui, sans-serif" }}>
+    <main
+      className="min-h-screen bg-[#f4f7fa] text-foreground"
+      style={{ fontFamily: "'Work Sans', system-ui, sans-serif" }}
+    >
       <header className="border-b bg-card">
         <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
           <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold text-[#0f1b3d]" style={{ fontFamily: "'Instrument Serif', serif" }}>IIAL</Link>
-            <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">{t("nav.dashboard")}</Link>
-            <Link to="/grants" className="text-sm font-medium text-[#0f1b3d]">{t("nav.grants")}</Link>
-            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">{t("nav.proposals")}</Link>
-            <Link to="/org" className="text-sm text-muted-foreground hover:underline">{t("org.title")}</Link>
-            <Link to="/fit-rules" className="text-sm text-muted-foreground hover:underline">Screening Rules</Link>
+            <Link
+              to="/dashboard"
+              className="font-semibold text-[#0f1b3d]"
+              style={{ fontFamily: "'Instrument Serif', serif" }}
+            >
+              IIAL
+            </Link>
+            <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
+              {t("nav.dashboard")}
+            </Link>
+            <Link to="/grants" className="text-sm font-medium text-[#0f1b3d]">
+              {t("nav.grants")}
+            </Link>
+            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">
+              {t("nav.proposals")}
+            </Link>
+            <Link to="/org" className="text-sm text-muted-foreground hover:underline">
+              {t("org.title")}
+            </Link>
+            <Link to="/fit-rules" className="text-sm text-muted-foreground hover:underline">
+              Screening Rules
+            </Link>
           </nav>
-          <Button variant="outline" size="sm" onClick={signOut}>{t("nav.signOut")}</Button>
+          <Button variant="outline" size="sm" onClick={signOut}>
+            {t("nav.signOut")}
+          </Button>
         </div>
       </header>
 
       <section className="max-w-[1600px] mx-auto px-6 py-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div className="min-w-0">
-            <h1 className="text-4xl text-[#0f1b3d]" style={{ fontFamily: "'Instrument Serif', serif" }}>
+            <h1
+              className="text-4xl text-[#0f1b3d]"
+              style={{ fontFamily: "'Instrument Serif', serif" }}
+            >
               Grants Workspace
             </h1>
             <p className="text-slate-500 max-w-2xl text-sm mt-1">
-              Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step.
+              Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each
+              card guides the next step.
             </p>
           </div>
         </div>
@@ -198,19 +327,30 @@ function GrantsPage() {
             jobId={activeJob.jobId}
             queued={activeJob.queued}
             fr={false}
-            onClose={() => { setActiveJob(null); qc.invalidateQueries({ queryKey: ["grants"] }); }}
+            onClose={() => {
+              setActiveJob(null);
+              qc.invalidateQueries({ queryKey: ["grants"] });
+            }}
           />
         )}
         {discoveryMsg && !activeJob && (
           <div className="mb-4 rounded-md border bg-card px-3 py-2">
-            <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">{discoveryMsg}</pre>
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
+              {discoveryMsg}
+            </pre>
           </div>
         )}
         {autoMsg && <p className="text-sm text-muted-foreground mb-4">{autoMsg}</p>}
         {evalError && (
           <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 flex items-start justify-between gap-3">
             <p className="text-sm text-destructive break-words">{evalError}</p>
-            <button type="button" onClick={() => setEvalError(null)} className="text-xs text-muted-foreground hover:text-foreground shrink-0">✕</button>
+            <button
+              type="button"
+              onClick={() => setEvalError(null)}
+              className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -222,15 +362,21 @@ function GrantsPage() {
           onEnrich={onEnrich}
           onEvaluate={onEvaluate}
           onDraft={onDraft}
+          onMove={isAdmin ? onMove : undefined}
           kpis={kpis}
           filters={
             <GrantFilters
               grants={data.grants}
-              search={search} setSearch={setSearch}
-              jurisdiction={jurisdiction} setJurisdiction={setJurisdiction}
-              sortKey={sortKey} setSortKey={setSortKey}
-              eligibleOnly={eligibleOnly} setEligibleOnly={setEligibleOnly}
-              onlyWithDeadline={onlyWithDeadline} setOnlyWithDeadline={setOnlyWithDeadline}
+              search={search}
+              setSearch={setSearch}
+              jurisdiction={jurisdiction}
+              setJurisdiction={setJurisdiction}
+              sortKey={sortKey}
+              setSortKey={setSortKey}
+              eligibleOnly={eligibleOnly}
+              setEligibleOnly={setEligibleOnly}
+              onlyWithDeadline={onlyWithDeadline}
+              setOnlyWithDeadline={setOnlyWithDeadline}
             />
           }
           toolbarRight={
@@ -238,8 +384,17 @@ function GrantsPage() {
               <NotebookLMBridge />
               {isAdmin && (
                 <>
-                  <FunderSelector fr={false} selected={selectedFunders} onChange={setSelectedFunders} />
-                  <Button size="sm" onClick={onDiscoverAll} disabled={pending === "__discover__"} className="bg-[#0f1b3d] hover:bg-[#1e3a5f]">
+                  <FunderSelector
+                    fr={false}
+                    selected={selectedFunders}
+                    onChange={setSelectedFunders}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={onDiscoverAll}
+                    disabled={pending === "__discover__"}
+                    className="bg-[#0f1b3d] hover:bg-[#1e3a5f]"
+                  >
                     {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
                   </Button>
                 </>
@@ -250,16 +405,23 @@ function GrantsPage() {
 
         {data.grants.length === 0 && (
           <div className="mt-6 rounded-lg border bg-card p-10 text-center">
-            <h2 className="text-2xl mb-2 text-[#0f1b3d]" style={{ fontFamily: "'Instrument Serif', serif" }}>
+            <h2
+              className="text-2xl mb-2 text-[#0f1b3d]"
+              style={{ fontFamily: "'Instrument Serif', serif" }}
+            >
               No grants yet
             </h2>
             <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-4">
-              Click <b>Discover & Enrich</b> above to scan the Canadian funder catalog
-              (Mitacs, NRC IRAP, SSHRC, NSERC, CIHR, Canada Council, OTF, provincial portals…).
-              The agent fetches each source, extracts opportunities, and applies your Screening Rules automatically.
+              Click <b>Discover & Enrich</b> above to scan the Canadian funder catalog (Mitacs, NRC
+              IRAP, SSHRC, NSERC, CIHR, Canada Council, OTF, provincial portals…). The agent fetches
+              each source, extracts opportunities, and applies your Screening Rules automatically.
             </p>
             {isAdmin ? (
-              <Button onClick={onDiscoverAll} disabled={pending === "__discover__"} className="bg-[#0f1b3d] hover:bg-[#1e3a5f]">
+              <Button
+                onClick={onDiscoverAll}
+                disabled={pending === "__discover__"}
+                className="bg-[#0f1b3d] hover:bg-[#1e3a5f]"
+              >
                 {pending === "__discover__" ? "Starting…" : "Run discovery now"}
               </Button>
             ) : (
@@ -268,8 +430,11 @@ function GrantsPage() {
           </div>
         )}
 
-
-        {isAdmin && <div className="mt-8"><EventLog fr={false} /></div>}
+        {isAdmin && (
+          <div className="mt-8">
+            <EventLog fr={false} />
+          </div>
+        )}
       </section>
     </main>
   );

@@ -3,8 +3,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type CrawlLedgerStats = {
-  due_now: number; queued_24h: number; stable: number;
-  gone: number; blocked: number; errored: number; total: number;
+  due_now: number;
+  queued_24h: number;
+  stable: number;
+  gone: number;
+  blocked: number;
+  errored: number;
+  total: number;
 };
 
 export type CrawlLedgerRecent = {
@@ -19,7 +24,10 @@ export type CrawlLedgerRecent = {
   title: string | null;
 };
 
-async function ensureAdmin(ctx: { supabase: { rpc: (n: string, p: Record<string, unknown>) => Promise<{ data: unknown }> }; userId: string }) {
+async function ensureAdmin(ctx: {
+  supabase: { rpc: (n: string, p: Record<string, unknown>) => Promise<{ data: unknown }> };
+  userId: string;
+}) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
   if (!data) throw new Error("forbidden");
 }
@@ -32,6 +40,21 @@ export const getCrawlLedgerStats = createServerFn({ method: "GET" })
     return ledgerStats();
   });
 
+export type DeadSourceInfo = {
+  funder_id: string;
+  funder_name: string | null;
+  consecutive_empty_runs: number;
+  last_run_at: string;
+};
+
+export const getDeadSources = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<DeadSourceInfo[]> => {
+    await ensureAdmin(context as never);
+    const { listDeadSources } = await import("@/lib/crawl-ledger.server");
+    return listDeadSources();
+  });
+
 export const getCrawlLedgerRecent = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CrawlLedgerRecent[]> => {
@@ -41,7 +64,9 @@ export const getCrawlLedgerRecent = createServerFn({ method: "GET" })
     const sb = supabaseAdmin as any;
     const { data, error } = await sb
       .from("crawl_ledger")
-      .select("url, host, status, last_fetched_at, next_fetch_at, interval_hours, change_count, via, title")
+      .select(
+        "url, host, status, last_fetched_at, next_fetch_at, interval_hours, change_count, via, title",
+      )
       .order("last_fetched_at", { ascending: false, nullsFirst: false })
       .limit(50);
     if (error) throw new Error(error.message);
