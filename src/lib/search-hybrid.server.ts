@@ -30,8 +30,15 @@ type SearchResult = {
  * Simple keyword scoring (placeholder for BM25).
  * In production: use tantivy-rs or Python whoosh for real BM25.
  */
-function scoreBM25(text: string, query: string, boost: Record<string, number> = {}): { score: number; matches: string[] } {
-  const queryTokens = query.toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+function scoreBM25(
+  text: string,
+  query: string,
+  boost: Record<string, number> = {},
+): { score: number; matches: string[] } {
+  const queryTokens = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
   const textLower = text.toLowerCase();
 
   let score = 0;
@@ -39,7 +46,10 @@ function scoreBM25(text: string, query: string, boost: Record<string, number> = 
 
   for (const token of queryTokens) {
     const boost_factor = boost[token] ?? 1.0;
-    const count = (textLower.match(new RegExp(`\\b${token}\\b`, "g")) || []).length;
+    // Escape regex metacharacters — user queries like "c++" or "$50,000"
+    // must not crash RegExp construction or change match semantics.
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const count = (textLower.match(new RegExp(`\\b${escaped}\\b`, "g")) || []).length;
     score += count * boost_factor;
     if (count > 0) {
       matches.push(token);
@@ -52,11 +62,12 @@ function scoreBM25(text: string, query: string, boost: Record<string, number> = 
 /**
  * Semantic scoring (placeholder).
  * In production: compute embedding(query) + cosine similarity to grant embeddings.
+ * Returns 0 until embeddings are wired in — the system is contractually
+ * deterministic (same input → same output), so a random placeholder is not
+ * acceptable; hybrid search degrades to keyword-only for now.
  */
-function scoreSemanticPlaceholder(query: string): number {
-  // TODO: implement once embeddings are wired into search
-  // For now, random placeholder
-  return Math.random() * 100;
+function scoreSemanticPlaceholder(_query: string): number {
+  return 0;
 }
 
 /**
@@ -76,12 +87,12 @@ export function searchGrantsHybrid(
   // Boost keywords (amount, deadline, capability)
   const boosts: Record<string, number> = {
     CAD: 2.0,
-    "$": 1.5,
-    "deadline": 1.5,
-    "AI": 1.3,
-    "research": 1.1,
-    "nonprofit": 1.2,
-    "eligible": 1.2,
+    $: 1.5,
+    deadline: 1.5,
+    AI: 1.3,
+    research: 1.1,
+    nonprofit: 1.2,
+    eligible: 1.2,
   };
 
   const results: SearchResult[] = [];
