@@ -80,7 +80,7 @@ export async function evaluateGrantImpl(opts: {
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
-  const { DEFAULT_RULES, evaluateRules, deriveRulesFromOrg } =
+  const { DEFAULT_RULES, evaluateRules, deriveRulesFromOrg, computeAxisBreakdown } =
     await import("@/agents/fit-rules.server");
   // Explicit admin-configured fit_rules win; otherwise personalize the screening
   // rules from the org's real profile (jurisdictions + sectors) so fit reflects
@@ -102,6 +102,18 @@ export async function evaluateGrantImpl(opts: {
     `rule_score=${rulesResult.rule_score}/100 | hard_fail=${rulesResult.hard_fail} | weight_llm=${rules.weight_llm}`,
     rulesResult.hard_fail ? "warn" : "ok",
     { rule_score: rulesResult.rule_score, hard_fail: rulesResult.hard_fail },
+  );
+
+  // Transparent per-axis breakdown (deterministic, no extra LLM call) — the
+  // "why" behind the score, surfaced to the UI instead of one opaque number.
+  const axisBreakdown = computeAxisBreakdown(rulesResult.checks);
+  await trace(
+    "axes",
+    axisBreakdown
+      .map((a) => `${a.label}: ${a.score == null ? "n/a" : a.score + "/10"}`)
+      .join(" · "),
+    "info",
+    { axes: axisBreakdown },
   );
 
   await trace("llm_call", "Calling Gemini 2.5 Flash for fit verdict", "start");
@@ -194,6 +206,7 @@ export async function evaluateGrantImpl(opts: {
       eligibility_pass: parsed.eligibility_pass,
       rationale_en: parsed.rationale_en,
       rationale_fr: parsed.rationale_fr,
+      axis_breakdown: axisBreakdown,
       model: usedModel,
       prompt_version: PROMPTS.evaluator.version,
       run_id: runId,

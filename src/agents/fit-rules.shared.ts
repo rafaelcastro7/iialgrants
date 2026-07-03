@@ -87,6 +87,98 @@ export const DEFAULT_RULES: FitRules = {
   hard_fail_on_capability: false,
 };
 
+// ─── Transparent multi-axis breakdown ─────────────────────────────────────────
+// The best grant tools (Grantable) show WHY a grant scores what it does across
+// named axes instead of one opaque number; Instrumentl's weakness is exactly the
+// opposite (keyword matches with no competitiveness signal). We derive a
+// per-axis 0–10 breakdown DETERMINISTICALLY from the screening checks we already
+// compute — no extra LLM call, fully cited by each check's detail string.
+
+export type AxisKey = "eligibility" | "geography" | "sector" | "budget" | "timeline";
+
+export type AxisScore = {
+  axis: AxisKey;
+  label: string;
+  /** 0–10, or null when no check in this axis was evaluable (N/A). */
+  score: number | null;
+  status: "pass" | "partial" | "fail" | "na";
+  /** Human-readable reasons straight from the deterministic checks. */
+  reasons: string[];
+  hardFail: boolean;
+};
+
+type CheckLite = {
+  id: string;
+  status: "pass" | "fail" | "warn" | "skip";
+  hard: boolean;
+  detail: string;
+};
+
+const AXIS_OF: Record<string, AxisKey> = {
+  sop_filter_1_legal: "eligibility",
+  jurisdiction_required: "geography",
+  jurisdiction_excluded: "geography",
+  sectors_required: "sector",
+  sectors_excluded: "sector",
+  sop_filter_4_strategic: "sector",
+  keywords_required: "sector",
+  keywords_excluded: "sector",
+  amount_min: "budget",
+  amount_max: "budget",
+  sop_filter_3_costshare: "budget",
+  sop_filter_3_match_verify: "budget",
+  sop_filter_5_runway: "timeline",
+  deadline: "timeline",
+};
+
+const AXIS_LABELS: Record<AxisKey, string> = {
+  eligibility: "Eligibility",
+  geography: "Geographic fit",
+  sector: "Mission & sector fit",
+  budget: "Budget fit",
+  timeline: "Timeline & runway",
+};
+
+const AXIS_ORDER: AxisKey[] = ["eligibility", "geography", "sector", "budget", "timeline"];
+
+/**
+ * Group the deterministic checks into named axes with a 0–10 sub-score each.
+ * Pure: same checks → same breakdown. "warn"/"skip" count as not-evaluable so a
+ * soft warning never fabricates a passing score.
+ */
+export function computeAxisBreakdown(checks: CheckLite[]): AxisScore[] {
+  const byAxis = new Map<AxisKey, CheckLite[]>();
+  for (const c of checks) {
+    const axis = AXIS_OF[c.id];
+    if (!axis) continue;
+    (byAxis.get(axis) ?? byAxis.set(axis, []).get(axis)!).push(c);
+  }
+
+  return AXIS_ORDER.map((axis) => {
+    const list = byAxis.get(axis) ?? [];
+    const evaluable = list.filter((c) => c.status === "pass" || c.status === "fail");
+    const passed = evaluable.filter((c) => c.status === "pass").length;
+    const hardFail = list.some((c) => c.status === "fail" && c.hard);
+    const score = evaluable.length === 0 ? null : Math.round((passed / evaluable.length) * 10);
+    const status: AxisScore["status"] =
+      evaluable.length === 0
+        ? "na"
+        : passed === evaluable.length
+          ? "pass"
+          : passed === 0
+            ? "fail"
+            : "partial";
+    return {
+      axis,
+      label: AXIS_LABELS[axis],
+      score,
+      status,
+      reasons: list.map((c) => c.detail).filter(Boolean),
+      hardFail,
+    };
+  });
+}
+
 // Minimal shape of the org profile the screening engine cares about.
 export type OrgProfileLite = {
   sectors?: string[] | null;
