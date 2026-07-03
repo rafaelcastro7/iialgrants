@@ -18,7 +18,7 @@ export type FreeLlmOptions = {
   maxOutputTokens?: number;
   responseFormat?: "json";
   runId?: string;
-  /** Override provider order; default = ["groq","gemini","cerebras","ollama"]. */
+  /** Override provider order; default = ["groq","gemini","cerebras"]. Include "ollama" here to use the local model in-cascade. */
   preferred?: ProviderName[];
   /** If all free providers fail, fall back to Ollama. Default false. */
   allowLovableFallback?: boolean;
@@ -80,7 +80,6 @@ async function callOpenAICompat(
   modelOverride?: string,
 ): Promise<{ text: string; inputTokens?: number; outputTokens?: number; model: string }> {
   const apiKey = process.env[cfg.envKey];
-  if (cfg.name !== "ollama" && !apiKey) throw new Error(`missing_${cfg.envKey}`);
   const model = modelOverride ?? cfg.model;
 
   const body: Record<string, unknown> = {
@@ -131,12 +130,19 @@ export function freeProvidersAvailable(): ProviderName[] {
 
 export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> {
   const runId = opts.runId ?? newRunId();
-  const order = opts.preferred ?? (["groq", "gemini", "cerebras", "ollama"] as ProviderName[]);
+  // Ollama (localhost) is NOT in the default order — it is only reached via an
+  // explicit `preferred` list or `allowLovableFallback` (see contract in
+  // llm-cascade.e2e.test.ts: no surprise localhost calls).
+  const explicitOrder = !!opts.preferred;
+  const order = opts.preferred ?? (["groq", "gemini", "cerebras"] as ProviderName[]);
   const errors: string[] = [];
 
   for (const name of order) {
     const cfg = PROVIDERS[name];
-    if (name !== "ollama" && !process.env[cfg.envKey]) {
+    // With the default order, silently skip providers whose key is missing.
+    // When the caller explicitly names providers, attempt them anyway (the
+    // request goes keyless and the provider's own 401 surfaces as the error).
+    if (!explicitOrder && name !== "ollama" && !process.env[cfg.envKey]) {
       errors.push(`${name}:no_key`);
       continue;
     }
@@ -203,7 +209,7 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
   if (opts.allowLovableFallback) {
     const { callLlm } = await import("@/agents/llm.server");
     const r = await callLlm({
-      model: "qwen2.5-coder:7b",
+      model: PROVIDERS.ollama.model,
       messages: opts.messages,
       temperature: opts.temperature,
       maxOutputTokens: opts.maxOutputTokens,
@@ -218,7 +224,7 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       outputTokens: r.outputTokens,
       runId,
       provider: "ollama",
-      model: "qwen2.5-coder:7b",
+      model: PROVIDERS.ollama.model,
     };
   }
 

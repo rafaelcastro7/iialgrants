@@ -1,10 +1,10 @@
-// E2E: free-provider cascade fallback behavior.
+// E2E: free-provider cascade fallback behavior (local-first policy).
 //
-// Guarantees the contract: "no cloud credits when free providers are available".
-// We simulate failures on groq + gemini and assert that (a) cerebras serves the
-// request, (b) the Ollama URL is never touched, and (c) Ollama is only invoked
-// when the caller explicitly opts in (forceLovable / allowLovableFallback) AND
-// every free provider has failed.
+// Contract: free cloud providers (groq → gemini → cerebras) are tried first;
+// local Ollama is (a) never touched while a free provider succeeds, (b) used
+// automatically as the last-resort fallback when EVERY free provider fails
+// (zero cloud cost — it's localhost), and (c) used exclusively when the caller
+// opts in with forceLovable.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -112,20 +112,24 @@ describe("free LLM cascade fallback", () => {
     expect(calls).not.toContain(CEREBRAS_URL);
   });
 
-  it("when every free provider fails, refuses Ollama unless allowLovableFallback is set", async () => {
+  it("when every free provider fails, falls back to local Ollama automatically", async () => {
+    const calls: string[] = [];
     mockFetch((url) => {
+      calls.push(url);
       if (url === GROQ_URL || url === GEMINI_URL || url === CEREBRAS_URL) return errBody(500);
+      if (url === OLLAMA_URL) return okBody("from-ollama-fallback");
       throw new Error(`unexpected fetch: ${url}`);
     });
 
     const { callLlm } = await import("@/agents/llm.server");
-    await expect(
-      callLlm({
-        model: "google/gemini-2.5-flash",
-        agent: "enricher",
-        messages: [{ role: "user", content: "hi" }],
-      }),
-    ).rejects.toThrow("all_free_providers_failed");
+    const r = await callLlm({
+      model: "google/gemini-2.5-flash",
+      agent: "enricher",
+      messages: [{ role: "user", content: "hi" }],
+    });
+    expect(r.text).toBe("from-ollama-fallback");
+    // All three free providers were attempted before Ollama.
+    expect(calls).toEqual(expect.arrayContaining([GROQ_URL, GEMINI_URL, CEREBRAS_URL, OLLAMA_URL]));
   });
 
   it("skips providers with missing keys instead of erroring", async () => {
