@@ -149,7 +149,10 @@ async function checkCors(supabaseUrl, devUrl) {
 
 async function checkPostgrest(supabaseUrl, anonKey) {
   if (!anonKey) {
-    fail("PostgREST via Kong", "missing SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_PUBLISHABLE_KEY in .env");
+    fail(
+      "PostgREST via Kong",
+      "missing SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_PUBLISHABLE_KEY in .env",
+    );
     return;
   }
 
@@ -219,7 +222,8 @@ function printResults() {
 }
 
 const env = await loadDotEnv();
-const supabaseUrl = process.env.SUPABASE_URL || env.SUPABASE_URL || env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseUrl =
+  process.env.SUPABASE_URL || env.SUPABASE_URL || env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
 const devUrl = process.env.DEV_URL || env.DEV_URL || DEFAULT_DEV_URL;
 const anonKey =
   process.env.SUPABASE_PUBLISHABLE_KEY ||
@@ -234,4 +238,3 @@ await checkHttp(devUrl, "dev server");
 await checkCors(supabaseUrl, devUrl);
 await checkPostgrest(supabaseUrl, anonKey);
 printResults();
-
