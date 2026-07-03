@@ -743,13 +743,9 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
         continue;
       }
       updated++;
-      await context.supabase.from("grant_events").insert({
-        grant_id: id,
-        from_status: (fromStatus ?? null) as never,
-        to_status: "shortlisted" as never,
-        actor_user_id: context.userId,
-        metadata: { source: "curator_notebooklm", note: data.note ?? null } as never,
-      });
+      // The grants_log_transition trigger records this transition with
+      // actor_user_id = auth.uid() (migration 20260703080000); an app-side
+      // insert here would duplicate the immutable audit timeline.
     }
     return { ok: true, updated, skipped };
   });
