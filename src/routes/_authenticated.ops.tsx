@@ -8,6 +8,7 @@ import { getOpsMetrics } from "@/lib/ops.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PipelineAnalyticsCard } from "@/components/admin/PipelineAnalyticsCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
@@ -15,14 +16,14 @@ import "@/i18n";
 const opts = queryOptions({ queryKey: ["ops"], queryFn: () => getOpsMetrics() });
 
 export const Route = createFileRoute("/_authenticated/ops")({
-  head: () => ({ meta: [{ title: "Ops — IIAL" }] }),
+  head: () => ({ meta: [{ title: "Ops - IIAL" }] }),
   loader: ({ context }) => context.queryClient.ensureQueryData(opts),
   component: OpsPage,
   errorComponent: ({ error }) => (
     <main className="p-8 text-sm">
-      <p className="text-destructive font-medium">{String(error?.message || error)}</p>
+      <p className="font-medium text-destructive">{String(error?.message || error)}</p>
       <Link to="/dashboard" className="underline">
-        ← dashboard
+        Back to dashboard
       </Link>
     </main>
   ),
@@ -37,6 +38,7 @@ function OpsPage() {
   useEffect(() => {
     syncClientLocale();
   }, []);
+
   async function signOut() {
     await supabase.auth.signOut();
     await navigate({ to: "/" });
@@ -50,7 +52,7 @@ function OpsPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <nav className="flex items-center gap-4">
             <Link to="/dashboard" className="font-semibold">
               {t("app.name")}
@@ -68,7 +70,7 @@ function OpsPage() {
         </div>
       </header>
 
-      <section className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+      <section className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         <h1 className="text-2xl font-semibold">{t("ops.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("ops.subtitle")}</p>
 
@@ -82,6 +84,8 @@ function OpsPage() {
           />
         </div>
 
+        <PipelineAnalyticsCard />
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">{t("ops.byAgent")}</CardTitle>
@@ -90,8 +94,8 @@ function OpsPage() {
             <table className="w-full text-sm">
               <thead className="text-xs uppercase text-muted-foreground">
                 <tr>
-                  <th className="text-left p-2">Day</th>
-                  <th className="text-left p-2">Agent</th>
+                  <th className="p-2 text-left">Day</th>
+                  <th className="p-2 text-left">Agent</th>
                   <th className="p-2">Runs</th>
                   <th className="p-2">OK</th>
                   <th className="p-2">Err</th>
@@ -116,8 +120,8 @@ function OpsPage() {
                     <td className="p-2 text-right">{d.degraded_runs}</td>
                     <td className="p-2 text-right">{d.input_tokens}</td>
                     <td className="p-2 text-right">{d.output_tokens}</td>
-                    <td className="p-2 text-right">{d.p50_ms ?? "—"}</td>
-                    <td className="p-2 text-right">{d.p95_ms ?? "—"}</td>
+                    <td className="p-2 text-right">{d.p50_ms ?? "-"}</td>
+                    <td className="p-2 text-right">{d.p95_ms ?? "-"}</td>
                     <td className="p-2 text-right">{Number(d.cost_usd ?? 0).toFixed(4)}</td>
                   </tr>
                 ))}
@@ -132,7 +136,7 @@ function OpsPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {data.recent.map((r) => (
-              <div key={r.id} className="text-xs flex flex-wrap gap-2 items-center border-b py-1">
+              <div key={r.id} className="flex flex-wrap items-center gap-2 border-b py-1 text-xs">
                 <span className="font-mono">
                   {new Date(r.created_at as string).toLocaleString()}
                 </span>
@@ -143,7 +147,7 @@ function OpsPage() {
                 <span className="text-muted-foreground">{r.model}</span>
                 {r.latency_ms != null && <span>{r.latency_ms} ms</span>}
                 {r.error && (
-                  <span className="text-destructive truncate max-w-md" title={r.error}>
+                  <span className="max-w-md truncate text-destructive" title={r.error}>
                     {r.error}
                   </span>
                 )}
@@ -161,7 +165,7 @@ function Stat({ label, value }: { label: string; value: string }) {
     <Card>
       <CardContent className="p-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-2xl font-semibold mt-1">{value}</p>
+        <p className="mt-1 text-2xl font-semibold">{value}</p>
       </CardContent>
     </Card>
   );

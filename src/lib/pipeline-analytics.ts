@@ -1,7 +1,7 @@
 // Pipeline analytics (Instrumentl-style win-rate + funnel), computed purely from
 // grant status-transition events. No new table: everything derives from
-// grant_events (from_status → to_status @ created_at) plus current grant status.
-// Pure + deterministic → unit-testable and reproducible.
+// grant_events (from_status -> to_status @ created_at) plus current grant status.
+// Pure + deterministic -> unit-testable and reproducible.
 
 import type { GrantStatus } from "@/agents/pipeline-stages.shared";
 
@@ -22,7 +22,7 @@ export type PipelineAnalytics = {
   submitted: number;
   /** Median days a grant sat in a stage before leaving it; null if never observed. */
   medianDaysInStage: Partial<Record<GrantStatus, number>>;
-  /** Key funnel conversions as ratios 0–1 (null when the denominator is 0). */
+  /** Key funnel conversions as ratios 0-1 (null when the denominator is 0). */
   conversions: {
     scoredToShortlisted: number | null;
     shortlistedToProposal: number | null;
