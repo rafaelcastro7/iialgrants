@@ -153,6 +153,18 @@ transparent and non-blocking:
 The enricher persists these rows into `grants.requirements`. The grant detail UI
 renders them in the "Application requirements" card.
 
+## Grants Workspace Views (Express / Advanced)
+
+`/grants` uses progressive disclosure with a persisted toggle
+(`sessionStorage: grants.viewMode`, default `express`):
+
+- **Express** (`src/components/grants/GrantExpressView.tsx`): prioritized list
+  (eligible + best fit first), plain-language cards (match score, amount,
+  deadline urgency, "You can apply" verdict, 1-line rationale) and a single
+  primary action per card. For basic users.
+- **Advanced**: the full Kanban board + filters + bulk + drag
+  (`GrantKanban.tsx`). For power users.
+
 ## Pipeline Analytics
 
 `src/lib/pipeline-analytics.ts` computes win-rate, funnel counts, median
