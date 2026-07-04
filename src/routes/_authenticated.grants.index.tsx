@@ -28,6 +28,7 @@ import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { GrantExpressView } from "@/components/grants/GrantExpressView";
+import { NotificationBell } from "@/components/NotificationBell";
 import { GrantKanban } from "@/components/grants/GrantKanban";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import "@/i18n";
@@ -310,9 +311,12 @@ function GrantsPage() {
               Screening Rules
             </Link>
           </nav>
-          <Button variant="outline" size="sm" onClick={signOut}>
-            {t("nav.signOut")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Button variant="outline" size="sm" onClick={signOut}>
+              {t("nav.signOut")}
+            </Button>
+          </div>
         </div>
       </header>
 

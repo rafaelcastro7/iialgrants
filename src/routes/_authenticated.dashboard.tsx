@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getOrgProfile } from "@/lib/org.functions";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -53,6 +54,7 @@ function Dashboard() {
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold">{t("nav.dashboard")}</h1>
         <div className="flex items-center gap-2">
+          <NotificationBell />
           {isAdmin && (
             <Link to="/admin">
               <Button variant="outline" size="sm" className="gap-1">
