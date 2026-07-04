@@ -27,6 +27,7 @@ import {
 import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
+import { GrantExpressView } from "@/components/grants/GrantExpressView";
 import { GrantKanban } from "@/components/grants/GrantKanban";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import "@/i18n";
@@ -88,6 +89,15 @@ function GrantsPage() {
     () => ss.get("grants.onlyWithDeadline") === "1",
   );
   const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
+  // Progressive disclosure: "express" is the simple default (prioritized list,
+  // plain language, one action); "advanced" is the full Kanban + filters.
+  const [viewMode, setViewMode] = useState<"express" | "advanced">(
+    () => (ss.get("grants.viewMode") as "express" | "advanced") ?? "express",
+  );
+  const switchView = (mode: "express" | "advanced") => {
+    setViewMode(mode);
+    ss.set("grants.viewMode", mode);
+  };
 
   // Persist filter + sort state across reloads (session scope, per house rules).
   useEffect(() => {
@@ -316,9 +326,32 @@ function GrantsPage() {
               Grants Workspace
             </h1>
             <p className="text-slate-500 max-w-2xl text-sm mt-1">
-              Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each
-              card guides the next step.
+              {viewMode === "express"
+                ? "Your best opportunities first — plain and simple. Switch to Advanced for the full pipeline."
+                : "Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step."}
             </p>
+          </div>
+          <div
+            className="inline-flex rounded-lg border bg-card p-0.5 self-start md:self-end"
+            role="tablist"
+            aria-label="View mode"
+          >
+            {(["express", "advanced"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={viewMode === m}
+                onClick={() => switchView(m)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  viewMode === m
+                    ? "bg-[#0f1b3d] text-white"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {m === "express" ? "Express" : "Advanced"}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -354,54 +387,64 @@ function GrantsPage() {
           </div>
         )}
 
-        <GrantKanban
-          grants={filtered}
-          isAdmin={isAdmin}
-          pending={pending}
-          evaluatingIds={evaluatingIds}
-          onEnrich={onEnrich}
-          onEvaluate={onEvaluate}
-          onDraft={onDraft}
-          onMove={isAdmin ? onMove : undefined}
-          kpis={kpis}
-          filters={
-            <GrantFilters
-              grants={data.grants}
-              search={search}
-              setSearch={setSearch}
-              jurisdiction={jurisdiction}
-              setJurisdiction={setJurisdiction}
-              sortKey={sortKey}
-              setSortKey={setSortKey}
-              eligibleOnly={eligibleOnly}
-              setEligibleOnly={setEligibleOnly}
-              onlyWithDeadline={onlyWithDeadline}
-              setOnlyWithDeadline={setOnlyWithDeadline}
-            />
-          }
-          toolbarRight={
-            <>
-              <NotebookLMBridge />
-              {isAdmin && (
-                <>
-                  <FunderSelector
-                    fr={false}
-                    selected={selectedFunders}
-                    onChange={setSelectedFunders}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={onDiscoverAll}
-                    disabled={pending === "__discover__"}
-                    className="bg-[#0f1b3d] hover:bg-[#1e3a5f]"
-                  >
-                    {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
-                  </Button>
-                </>
-              )}
-            </>
-          }
-        />
+        {viewMode === "express" && (
+          <GrantExpressView
+            grants={filtered}
+            evaluatingIds={evaluatingIds}
+            onEvaluate={onEvaluate}
+          />
+        )}
+
+        {viewMode === "advanced" && (
+          <GrantKanban
+            grants={filtered}
+            isAdmin={isAdmin}
+            pending={pending}
+            evaluatingIds={evaluatingIds}
+            onEnrich={onEnrich}
+            onEvaluate={onEvaluate}
+            onDraft={onDraft}
+            onMove={isAdmin ? onMove : undefined}
+            kpis={kpis}
+            filters={
+              <GrantFilters
+                grants={data.grants}
+                search={search}
+                setSearch={setSearch}
+                jurisdiction={jurisdiction}
+                setJurisdiction={setJurisdiction}
+                sortKey={sortKey}
+                setSortKey={setSortKey}
+                eligibleOnly={eligibleOnly}
+                setEligibleOnly={setEligibleOnly}
+                onlyWithDeadline={onlyWithDeadline}
+                setOnlyWithDeadline={setOnlyWithDeadline}
+              />
+            }
+            toolbarRight={
+              <>
+                <NotebookLMBridge />
+                {isAdmin && (
+                  <>
+                    <FunderSelector
+                      fr={false}
+                      selected={selectedFunders}
+                      onChange={setSelectedFunders}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={onDiscoverAll}
+                      disabled={pending === "__discover__"}
+                      className="bg-[#0f1b3d] hover:bg-[#1e3a5f]"
+                    >
+                      {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
+                    </Button>
+                  </>
+                )}
+              </>
+            }
+          />
+        )}
 
         {data.grants.length === 0 && (
           <div className="mt-6 rounded-lg border bg-card p-10 text-center">
