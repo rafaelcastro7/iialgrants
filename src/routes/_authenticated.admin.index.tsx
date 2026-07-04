@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { listAdminUsers } from "@/lib/admin-users.functions";
 import { listModuleFlags } from "@/lib/admin-modules.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PipelineAnalyticsCard } from "@/components/admin/PipelineAnalyticsCard";
 
 const usersQO = queryOptions({ queryKey: ["admin", "users"], queryFn: () => listAdminUsers() });
 const modsQO = queryOptions({ queryKey: ["admin", "modules"], queryFn: () => listModuleFlags() });
@@ -91,6 +92,8 @@ function AdminOverview() {
           </ul>
         </CardContent>
       </Card>
+
+      <PipelineAnalyticsCard />
     </div>
   );
 }

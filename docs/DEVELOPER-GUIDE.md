@@ -153,6 +153,16 @@ transparent and non-blocking:
 The enricher persists these rows into `grants.requirements`. The grant detail UI
 renders them in the "Application requirements" card.
 
+## Pipeline Analytics
+
+`src/lib/pipeline-analytics.ts` computes win-rate, funnel counts, median
+time-in-stage, and funnel conversion rates purely from `grant_events`
+(status transitions) + current grant status — no new table, deterministic and
+unit-tested. Exposed via the admin-only `getPipelineAnalytics` server function
+(`src/lib/grants.functions.ts`) and rendered by
+`src/components/admin/PipelineAnalyticsCard.tsx` on the admin overview
+(`/admin`). Instrumentl-style, but every number traces to real events.
+
 ## Proposal Readiness
 
 `src/lib/proposal-readiness.ts` computes section coverage before submission:

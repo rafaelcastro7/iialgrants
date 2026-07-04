@@ -749,3 +749,27 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
     }
     return { ok: true, updated, skipped };
   });
+
+// Pipeline analytics (win-rate, funnel conversions, time-in-stage) — Instrumentl-
+// style, derived from grant_events. Admin-only; computation is a pure function.
+export const getPipelineAnalytics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { computePipelineAnalytics } = await import("@/lib/pipeline-analytics");
+    const [{ data: grants, error: ge }, { data: events, error: ee }] = await Promise.all([
+      supabaseAdmin.from("grants").select("id, status"),
+      supabaseAdmin
+        .from("grant_events")
+        .select("grant_id, from_status, to_status, created_at")
+        .order("created_at", { ascending: true })
+        .limit(5000),
+    ]);
+    if (ge) throw new Error(ge.message);
+    if (ee) throw new Error(ee.message);
+    return computePipelineAnalytics({
+      grants: (grants ?? []) as Array<{ id: string; status: string }>,
+      events: (events ?? []) as Parameters<typeof computePipelineAnalytics>[0]["events"],
+    });
+  });
