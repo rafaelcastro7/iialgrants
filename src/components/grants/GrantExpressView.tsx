@@ -87,17 +87,25 @@ export function GrantExpressView({
         const action = primaryAction(g);
         const evaluating = evaluatingIds.has(g.id);
         const eligible = g.evaluation ? g.evaluation.eligibility_pass : null;
+        const tierBorder =
+          fit == null
+            ? "border-l-slate-200"
+            : fit >= 0.7
+              ? "border-l-emerald-500"
+              : fit >= 0.45
+                ? "border-l-amber-500"
+                : "border-l-slate-300";
         return (
           <li
             key={g.id}
-            className="rounded-lg border bg-card p-4 sm:p-5 hover:shadow-sm transition-shadow"
+            className={`rounded-lg border border-l-4 ${tierBorder} bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5`}
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <Link
                   to="/grants/$id"
                   params={{ id: g.id }}
-                  className="font-semibold text-[#0f1b3d] hover:underline block truncate text-base"
+                  className="font-semibold text-primary hover:underline block truncate text-base"
                   title={g.title}
                 >
                   {g.title}
