@@ -37,9 +37,9 @@ function HistoryPage() {
           <CardTitle className="text-base">Funders ({data.funders.length})</CardTitle>
         </CardHeader>
         <CardContent className="text-sm space-y-2">
-          {data.funders.map((f) => (
+          {data.funders.map((f, index) => (
             <div
-              key={f.id}
+              key={`${f.id}-${index}`}
               className="flex items-center justify-between border-b pb-2 last:border-0"
             >
               <div>
@@ -73,9 +73,9 @@ function HistoryPage() {
           {data.sources.length === 0 && (
             <p className="text-muted-foreground">No fetches yet — run Discover & Enrich.</p>
           )}
-          {data.sources.map((s) => (
+          {data.sources.map((s, index) => (
             <div
-              key={s.funder_id + s.url}
+              key={`${s.funder_id}-${s.url}-${index}`}
               className="flex items-center justify-between border-b pb-2 last:border-0 gap-3"
             >
               <div className="min-w-0">
@@ -104,11 +104,11 @@ function HistoryPage() {
         </CardHeader>
         <CardContent className="text-sm space-y-2">
           {data.runs.length === 0 && <p className="text-muted-foreground">No runs recorded.</p>}
-          {data.runs.map((r) => {
+          {data.runs.map((r, index) => {
             const meta = (r.metadata ?? {}) as Record<string, unknown>;
             return (
               <div
-                key={r.run_id}
+                key={`${r.run_id}-${index}`}
                 className="flex items-center justify-between border-b pb-2 last:border-0"
               >
                 <div>

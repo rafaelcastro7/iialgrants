@@ -50,9 +50,9 @@ function OpsPage() {
   const errPct = totalRuns ? ((totalErr / totalRuns) * 100).toFixed(1) : "0.0";
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+    <main className="relative min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-10 border-b border-border/60 bg-background/75 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <nav className="flex items-center gap-4">
             <Link to="/dashboard" className="font-semibold">
               {t("app.name")}
@@ -70,8 +70,8 @@ function OpsPage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-        <h1 className="text-2xl font-semibold">{t("ops.title")}</h1>
+      <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+        <h1 className="font-display text-4xl leading-none">{t("ops.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("ops.subtitle")}</p>
 
         <div className="grid gap-3 sm:grid-cols-4">

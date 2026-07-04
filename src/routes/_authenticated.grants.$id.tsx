@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
@@ -84,6 +84,9 @@ function GrantDetailPage() {
   const shareLink = useServerFn(createShareLink);
   const { data } = useSuspenseQuery(detailQuery(id));
   const [busy, setBusy] = useState<string | null>(null);
+  const isAuditRoute = useRouterState({
+    select: (state) => state.location.pathname.endsWith("/audit"),
+  });
   // Shares the same toggle key as the grants list so the choice carries over.
   const [viewMode, setViewMode] = useState<"express" | "advanced">(() =>
     typeof window !== "undefined"
@@ -113,7 +116,9 @@ function GrantDetailPage() {
   const needsEnrich = !data.grant.enriched_at && data.grant.status === "discovered";
   useEffect(() => {
     if (!needsEnrich || busy) return;
-    run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }));
+    run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }), {
+      openTrace: false,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, needsEnrich]);
 
@@ -137,6 +142,15 @@ function GrantDetailPage() {
     setTraceRun(null);
     patchSearch({ run: undefined, agent: undefined, step: undefined });
   };
+
+  function setTraceFromRun(result: unknown, agent: string, openTrace: boolean) {
+    if (!openTrace) return;
+    const runId = (result as { runId?: string } | undefined)?.runId;
+    if (runId) {
+      setTraceRun({ runId, agent });
+      patchSearch({ run: runId, agent });
+    }
+  }
 
   const g = data.grant as unknown as {
     id: string;
@@ -180,16 +194,17 @@ function GrantDetailPage() {
           maximumFractionDigits: 0,
         }).format(n);
 
-  async function run(label: string, agent: string, fn: () => Promise<unknown>) {
+  async function run(
+    label: string,
+    agent: string,
+    fn: () => Promise<unknown>,
+    options?: { openTrace?: boolean },
+  ) {
     setBusy(label);
     setErr(null);
     try {
       const result = await fn();
-      const runId = (result as { runId?: string } | undefined)?.runId;
-      if (runId) {
-        setTraceRun({ runId, agent });
-        patchSearch({ run: runId, agent });
-      }
+      setTraceFromRun(result, agent, options?.openTrace ?? true);
       await qc.invalidateQueries({ queryKey: ["grant-detail", id] });
       await qc.invalidateQueries({ queryKey: ["grants"] });
     } catch (e) {
@@ -240,6 +255,10 @@ function GrantDetailPage() {
     } finally {
       setBusy(null);
     }
+  }
+
+  if (isAuditRoute) {
+    return <Outlet />;
   }
 
   return (

@@ -97,7 +97,7 @@ function daysLeft(deadline: string | null): number | null {
 function FitChip({ value, eligible }: { value: number | null; eligible: boolean | null }) {
   if (value == null) {
     return (
-      <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-dashed border-slate-200 text-slate-400">
+      <span className="rounded border border-dashed border-border/70 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
         Not scored
       </span>
     );
@@ -128,14 +128,17 @@ function FitChip({ value, eligible }: { value: number | null; eligible: boolean 
 function Deadline({ deadline }: { deadline: string | null }) {
   const d = daysLeft(deadline);
   if (d == null)
-    return <span className="text-[10px] text-slate-400 font-medium italic">No deadline</span>;
-  if (d < 0) return <span className="text-[10px] font-bold italic text-slate-400">Closed</span>;
+    return (
+      <span className="text-[10px] font-medium italic text-muted-foreground">No deadline</span>
+    );
+  if (d < 0)
+    return <span className="text-[10px] font-bold italic text-muted-foreground">Closed</span>;
   const urgent = d <= 7;
   return (
     <span
       className={cn(
         "text-[10px] font-medium italic",
-        urgent ? "text-red-500 font-bold" : "text-slate-400",
+        urgent ? "text-destructive font-bold" : "text-muted-foreground",
       )}
     >
       {d === 0 ? "Due today" : `${d}d left`}
@@ -221,7 +224,7 @@ export function GrantKanban({
   return (
     <div className="space-y-6">
       {/* KPI strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Total Opportunities" value={String(kpis.total).padStart(2, "0")} />
         <Kpi
           label="Needs Action"
@@ -230,35 +233,37 @@ export function GrantKanban({
         />
         <Kpi
           label="Avg Fit"
-          value={kpis.avgFit == null ? "—" : `${Math.round(kpis.avgFit * 100)}%`}
+          value={kpis.avgFit == null ? "-" : `${Math.round(kpis.avgFit * 100)}%`}
         />
         <Kpi label="In Pipeline" value={fmtCad(kpis.pipelineValueCad)} dark />
       </div>
 
       {/* Workflow ribbon */}
-      <div className="bg-[hsl(213,30%,93%)] border-l-4 border-[#3b6fa0] px-4 py-3 rounded-r-md flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card/90 px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="bg-[#3b6fa0] text-white text-[10px] font-bold px-2 py-0.5 rounded shrink-0">
+          <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
             WORKFLOW
           </span>
-          <p className="text-xs text-[#1e3a5f] font-medium">
-            Discover funds → Enrich profile → Evaluate fit → Shortlist → Draft → Submit. Each card
+          <p className="text-xs font-medium text-muted-foreground">
+            Discover funds - Enrich profile - Evaluate fit - Shortlist - Draft - Submit. Each card
             shows the next action you should take.
           </p>
         </div>
       </div>
 
       {/* Filters + toolbar */}
-      <div className="flex flex-wrap items-center gap-3 bg-card border rounded-lg px-3 py-2 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-card/90 px-3 py-2.5 shadow-sm">
         <div className="flex-1 min-w-0">{filters}</div>
         <div className="flex items-center gap-2 shrink-0">{toolbarRight}</div>
       </div>
 
       {/* Kanban */}
       {grants.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-card p-10 text-center">
-          <p className="text-sm font-medium text-[#0f1b3d]">No grants match your filters</p>
-          <p className="text-xs text-slate-400 mt-1">Try clearing the search or filters above.</p>
+        <div className="rounded-2xl border border-dashed border-border/70 bg-card/90 p-10 text-center shadow-sm">
+          <p className="text-sm font-medium text-foreground">No grants match your filters</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Try clearing the search or filters above.
+          </p>
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2">
@@ -273,27 +278,29 @@ export function GrantKanban({
               <div
                 key={col.key}
                 className={cn(
-                  "flex-shrink-0 w-72 rounded-xl transition-colors",
-                  droppable && "bg-blue-50/60 outline-dashed outline-2 outline-blue-300/60",
+                  "w-72 flex-shrink-0 rounded-2xl border border-border/70 bg-card/90 p-3 transition-colors shadow-sm",
+                  droppable && "bg-primary/5 outline-dashed outline-2 outline-primary/30",
                 )}
                 onDragOver={(e) => {
                   if (droppable) e.preventDefault();
                 }}
                 onDrop={(e) => handleDrop(e, col.dropStatus)}
               >
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                <div className="mb-2 flex items-center justify-between px-1">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
                     {col.label}{" "}
-                    <span className="ml-1 text-slate-300 tabular-nums">
+                    <span className="ml-1 tabular-nums text-muted-foreground/50">
                       {String(col.items.length).padStart(2, "0")}
                     </span>
                   </h3>
                   <span className={cn("w-2 h-2 rounded-full", col.dot)} />
                 </div>
-                <p className="text-[10px] text-slate-400 mb-3 px-1 leading-snug">{col.helper}</p>
+                <p className="mb-3 px-1 text-[10px] leading-snug text-muted-foreground">
+                  {col.helper}
+                </p>
                 <div className="space-y-3">
                   {col.items.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-[11px] text-slate-400">
+                    <div className="rounded-xl border border-dashed border-border/70 p-4 text-center text-[11px] text-muted-foreground">
                       No grants in this stage
                     </div>
                   ) : (
@@ -324,7 +331,7 @@ export function GrantKanban({
 
       {/* Bulk action bar */}
       {onMove && selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#0f1b3d] text-white rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
+        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-border/70 bg-background/90 px-4 py-2.5 text-foreground shadow-xl backdrop-blur">
           <span className="text-xs font-semibold tabular-nums">{selected.size} selected</span>
           <span className="w-px h-4 bg-white/20" />
           {BULK_TARGETS.map((t) => (
@@ -341,7 +348,7 @@ export function GrantKanban({
           <button
             type="button"
             onClick={clearSelection}
-            className="ml-1 text-white/60 hover:text-white"
+            className="ml-1 text-muted-foreground hover:text-foreground"
             aria-label="Clear selection"
           >
             <X className="h-4 w-4" />
@@ -366,14 +373,20 @@ function Kpi({
   return (
     <div
       className={cn(
-        "border rounded-lg p-4 shadow-sm",
-        dark ? "bg-[#0f1b3d] border-[#0f1b3d]" : "bg-card",
+        "rounded-2xl border p-4 shadow-sm",
+        dark
+          ? "border-primary/20 bg-primary text-primary-foreground"
+          : "border-border/70 bg-card/90",
       )}
     >
       <p
         className={cn(
-          "text-[10px] uppercase tracking-wider font-semibold mb-1",
-          dark ? "text-slate-300" : accent === "danger" ? "text-red-500" : "text-slate-400",
+          "mb-1 text-[10px] font-semibold uppercase tracking-[0.22em]",
+          dark
+            ? "text-primary-foreground/70"
+            : accent === "danger"
+              ? "text-red-500"
+              : "text-muted-foreground",
         )}
       >
         {label}
@@ -381,7 +394,7 @@ function Kpi({
       <p
         className={cn(
           "text-2xl font-semibold tabular-nums",
-          dark ? "text-white" : "text-[#0f1b3d]",
+          dark ? "text-primary-foreground" : "text-foreground",
         )}
         style={{ fontFamily: "'Instrument Serif', ui-serif, Georgia, serif" }}
       >
@@ -419,7 +432,7 @@ function KanbanCard({
   onDragStatus?: (s: GrantStatus | null) => void;
 }) {
   const funder = Array.isArray(g.funder) ? g.funder[0] : g.funder;
-  const funderName = funder?.name ?? "—";
+  const funderName = funder?.name ?? "-";
   const fit = g.evaluation?.fit_score ?? g.fit_score ?? null;
   const eligible = g.evaluation?.eligibility_pass ?? null;
   const hasCitations = Boolean(g.enriched_at);
@@ -429,11 +442,11 @@ function KanbanCard({
   return (
     <div
       className={cn(
-        "bg-card p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-shadow group",
-        stage === "drafting" && "border-2 border-[#1e3a5f]",
+        "group rounded-2xl border border-border/70 bg-card/90 p-3.5 shadow-sm transition-shadow hover:shadow-md",
+        stage === "drafting" && "border-2 border-primary/40",
         stage === "submitted" && "opacity-75",
         draggable && "cursor-grab active:cursor-grabbing",
-        selected && "ring-2 ring-[#3b6fa0]",
+        selected && "ring-2 ring-primary",
       )}
       draggable={draggable}
       onDragStart={(e) => {
@@ -451,7 +464,7 @@ function KanbanCard({
               checked={!!selected}
               onChange={() => onToggleSelect(g.id)}
               onClick={(e) => e.stopPropagation()}
-              className="h-3.5 w-3.5 rounded border-slate-300 accent-[#1e3a5f] shrink-0"
+              className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 accent-primary"
               aria-label={`Select ${g.title}`}
             />
           )}
@@ -462,23 +475,23 @@ function KanbanCard({
       <Link
         to="/grants/$id"
         params={{ id: g.id }}
-        className="block text-sm font-semibold text-[#0f1b3d] mb-1 leading-snug hover:underline line-clamp-2"
+        className="mb-1 block text-sm font-semibold leading-snug text-foreground line-clamp-2 hover:underline"
         title={g.title}
       >
         {g.title}
       </Link>
-      <p className="text-[11px] text-slate-500 mb-3 truncate">
+      <p className="mb-3 truncate text-[11px] text-muted-foreground">
         {funderName}
-        {funder?.jurisdiction ? ` · ${funder.jurisdiction}` : ""}
+        {funder?.jurisdiction ? ` - ${funder.jurisdiction}` : ""}
       </p>
       <div className="flex items-center gap-1.5 mb-3 flex-wrap">
         {hasCitations && (
-          <span className="bg-slate-50 text-slate-500 border border-slate-100 text-[9px] px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+          <span className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[9px] text-muted-foreground">
             <ShieldCheck className="h-3 w-3" /> Evidence cited
           </span>
         )}
         {g.amount_cad_max && (
-          <span className="bg-slate-50 text-slate-500 border border-slate-100 text-[9px] px-1.5 py-0.5 rounded tabular-nums">
+          <span className="rounded border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[9px] tabular-nums text-muted-foreground">
             up to ${Math.round(g.amount_cad_max / 1000)}K
           </span>
         )}
@@ -539,10 +552,10 @@ function primaryCta({
         onClick={() => onEnrich(g.id)}
         className={cn(
           baseCls,
-          "bg-[hsl(213,30%,93%)] text-[#0f1b3d] hover:bg-[#3b6fa0] hover:text-white",
+          "bg-muted text-foreground hover:bg-primary hover:text-primary-foreground",
         )}
       >
-        {pending === g.id + ":enrich" ? "Enriching…" : "Enrich profile"}
+        {pending === g.id + ":enrich" ? "Enriching..." : "Enrich profile"}
       </Button>
     );
   }
@@ -554,10 +567,10 @@ function primaryCta({
         onClick={() => onEvaluate(g.id)}
         className={cn(
           baseCls,
-          "bg-[hsl(213,30%,93%)] text-[#0f1b3d] hover:bg-[#3b6fa0] hover:text-white",
+          "bg-muted text-foreground hover:bg-primary hover:text-primary-foreground",
         )}
       >
-        {evaluating || pending === g.id ? "Evaluating…" : "Evaluate fit"}
+        {evaluating || pending === g.id ? "Evaluating..." : "Evaluate fit"}
       </Button>
     );
   }
@@ -576,9 +589,9 @@ function primaryCta({
         size="sm"
         disabled={pending === g.id + ":draft"}
         onClick={() => onDraft(g.id)}
-        className={cn(baseCls, "bg-[#0f1b3d] text-white hover:bg-[#1e3a5f]")}
+        className={cn(baseCls, "bg-primary text-primary-foreground hover:bg-primary/90")}
       >
-        {pending === g.id + ":draft" ? "Drafting…" : "Start draft"}
+        {pending === g.id + ":draft" ? "Drafting..." : "Start draft"}
       </Button>
     );
   }
@@ -589,7 +602,7 @@ function primaryCta({
         size="sm"
         className={cn(
           baseCls,
-          "bg-gradient-to-r from-[#1e3a5f] to-[#3b6fa0] text-white hover:brightness-110",
+          "bg-gradient-to-r from-primary to-brand text-primary-foreground hover:brightness-110",
         )}
       >
         <Link to="/grants/$id" params={{ id: g.id }}>

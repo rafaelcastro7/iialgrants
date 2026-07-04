@@ -77,13 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "IIAL — AI-native grant intelligence for Canada" },
+      { title: "IIAL - AI-native grant intelligence for Canada" },
       {
         name: "description",
         content:
           "Discover, evaluate, draft and win Canadian grants with bilingual AI agents. PIPEDA, Quebec Law 25 and AIDA aligned.",
       },
-      { property: "og:title", content: "IIAL — AI-native grant intelligence for Canada" },
+      { property: "og:title", content: "IIAL - AI-native grant intelligence for Canada" },
       {
         property: "og:description",
         content: "Discover, evaluate, draft and win Canadian grants with bilingual AI agents.",
@@ -113,7 +113,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="antialiased">
         {children}
         <Scripts />
       </body>
