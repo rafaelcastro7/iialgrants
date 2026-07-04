@@ -1,73 +1,31 @@
 {
   "model": "qwen2.5-coder:7b",
-  "startedAt": "2026-07-03T20:18:07.286Z",
+  "startedAt": "2026-07-04T15:53:10.861Z",
   "results": [
     {
-      "file": "src/components/grants/grant-filters.utils.ts",
-      "ms": 57498,
+      "file": "src/components/grants/GrantExpressView.tsx",
+      "ms": 48547,
       "findings": [
         {
-          "line": 24,
+          "line": 102,
           "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `funderOf` function.",
-          "repro": "If `g.funder` is undefined, calling `g.funder[0] ?? null` will throw an error."
+          "issue": "Potential off-by-one error in deadline calculation.",
+          "repro": "If the current date is exactly at midnight, the deadline calculation might be incorrect due to rounding."
         },
         {
-          "line": 34,
+          "line": 134,
           "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
-          "repro": "If `g.title` or `funder?.name` is undefined, calling `.toLowerCase()` will throw an error."
+          "issue": "Potential null/undefined dereference when accessing `g.evaluation.eligibility_pass`.",
+          "repro": "If `g.evaluation` is null or undefined, trying to access `g.evaluation.eligibility_pass` will throw an error."
         },
         {
-          "line": 40,
+          "line": 140,
           "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
-          "repro": "If `g.funder?.jurisdiction` is undefined, calling `.toLowerCase()` will throw an error."
-        },
-        {
-          "line": 46,
-          "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
-          "repro": "If `g.evaluation?.eligibility_pass` is undefined, calling `!g.evaluation?.eligibility_pass` will throw an error."
-        },
-        {
-          "line": 52,
-          "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
-          "repro": "If `g.deadline` is undefined, calling `deadlineMs(g.deadline)` will throw an error."
-        },
-        {
-          "line": 58,
-          "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
-          "repro": "If `g.amount_cad_max` or `g.amount_cad_min` is undefined, calling `(b.amount_cad_max ?? b.amount_cad_min ?? 0) - (a.amount_cad_max ?? a.amount_cad_min ?? 0)` will throw an error."
-        },
-        {
-          "line": 64,
-          "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `applyGrantFilters` function.",
-          "repro": "If `g.discovered_at` is undefined, calling `deadlineMs(b.discovered_at)` will throw an error."
-        },
-        {
-          "line": 70,
-          "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `sortGrants` function.",
-          "repro": "If `g.evaluation?.eligibility_pass` is undefined, calling `a.evaluation?.eligibility_pass ? 1 : 0` will throw an error."
-        },
-        {
-          "line": 72,
-          "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `sortGrants` function.",
-          "repro": "If `g.evaluation?.fit_score` is undefined, calling `fitValue(b) - fitValue(a)` will throw an error."
-        },
-        {
-          "line": 74,
-          "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `sortGrants` function.",
-          "repro": "If `g.deadline` is undefined, calling `deadlineMs(a.deadline) - deadlineMs(b.deadline)` will throw an error."
+          "issue": "Potential off-by-one error in deadline calculation.",
+          "repro": "If the current date is exactly at midnight, the deadline calculation might be incorrect due to rounding."
         }
       ]
     }
   ],
-  "finishedAt": "2026-07-03T20:19:04.790Z"
+  "finishedAt": "2026-07-04T15:53:59.423Z"
 }
