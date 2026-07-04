@@ -2,7 +2,15 @@
 // as GrantExpressView: plain language, the facts a basic user actually needs,
 // one primary action. Everything else (axis breakdown, raw eligibility JSON,
 // audit trail, agent traces) lives behind the "Advanced" toggle.
-import { CalendarDays, CheckCircle2, ExternalLink, Loader2, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
+  XCircle,
+} from "lucide-react";
+import { MAX_ENRICH_ATTEMPTS } from "@/agents/pipeline-stages.shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +30,8 @@ export function GrantDetailExpress({
   url,
   evaluation,
   requirements,
+  enrichAttempts,
+  enrichLastError,
   busy,
   onEvaluate,
   onDraft,
@@ -37,6 +47,8 @@ export function GrantDetailExpress({
   url: string;
   evaluation: { fit_score: number; eligibility_pass: boolean; rationale_en: string } | null;
   requirements: Requirement[] | null;
+  enrichAttempts?: number | null;
+  enrichLastError?: string | null;
   busy: string | null;
   onEvaluate: () => void;
   onDraft: () => void;
@@ -92,6 +104,22 @@ export function GrantDetailExpress({
         <h1 className="text-2xl font-bold leading-tight">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{funderName}</p>
       </div>
+
+      {status === "discovered" && (enrichAttempts ?? 0) >= MAX_ENRICH_ATTEMPTS && (
+        <Card className="border-rose-400/50 bg-rose-50/60 dark:bg-rose-950/20">
+          <CardContent className="flex items-start gap-3 py-4">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-rose-600" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">We could not load this grant's details</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Automatic retries stopped after {MAX_ENRICH_ATTEMPTS} failed attempts.
+                {enrichLastError ? ` Last error: ${enrichLastError}` : ""} Open the official page
+                directly, or switch to Advanced to retry manually.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="pt-5 space-y-3">

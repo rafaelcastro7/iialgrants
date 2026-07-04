@@ -136,20 +136,39 @@ function detectRole(hay: string): "lead" | "partner" | "unknown" {
   return "unknown";
 }
 
+/**
+ * Estimate the percentage the ORGANIZATION carries out of pocket. Two
+ * semantically opposite phrasings appear in grant text, and they must NOT be
+ * handled the same way:
+ *  - "funder covers/funds up to N%" or "N% funding/grant" -> N% is the
+ *    FUNDER's share, so the org carries the remainder: 100 - N.
+ *  - "requires N% cost-share/match/contribution" -> N% is already the ORG's
+ *    own share (previously this was also inverted to 100-N, silently
+ *    reporting e.g. a real 20% requirement as 80%).
+ */
 function detectCostShare(hay: string): number | null {
-  const m =
+  const funderCoverage =
     hay.match(/\b(?:cover|covers|funds|funded at|up to|reimburses)\s+(\d{1,3})\s*%/) ||
-    hay.match(/\b(\d{1,3})\s*%\s*(?:cost[- ]?share|match|contribution|funding|grant)/) ||
-    hay.match(/\b(\d{1,2})\s*\/\s*(\d{1,2})\b/);
-  if (!m) return null;
-  if (m[2]) {
-    const a = Number(m[1]),
-      b = Number(m[2]);
+    hay.match(/\b(\d{1,3})\s*%\s*(?:funding|grant)\b/);
+  if (funderCoverage) {
+    const n = Number(funderCoverage[1]);
+    if (n >= 0 && n <= 100) return 100 - n;
+  }
+
+  const orgShare = hay.match(/\b(\d{1,3})\s*%\s*(?:cost[- ]?share|match|contribution)\b/);
+  if (orgShare) {
+    const n = Number(orgShare[1]);
+    if (n >= 0 && n <= 100) return n;
+  }
+
+  const ratio = hay.match(/\b(\d{1,2})\s*\/\s*(\d{1,2})\b/);
+  if (ratio) {
+    const a = Number(ratio[1]),
+      b = Number(ratio[2]);
     if (a + b === 100) return 100 - a;
     if (a + b > 0) return Math.round((b / (a + b)) * 100);
   }
-  const n = Number(m[1]);
-  if (n >= 0 && n <= 100) return 100 - n;
+
   return null;
 }
 

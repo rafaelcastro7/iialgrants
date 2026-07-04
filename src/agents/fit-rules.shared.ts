@@ -79,7 +79,13 @@ export const DEFAULT_RULES: FitRules = {
     "digitization",
     "digital transformation",
   ],
-  max_cost_share_pct_org_carries: 0.5,
+  // Scale is 0-100 (percentage points), matching what detectCostShare()
+  // returns and the "<= N%" label in evaluateRules — NOT a 0-1 fraction. This
+  // was previously 0.5 (i.e. "0.5%"), which made the SOP F3 check compare a
+  // detected value like 20 against 0.5 and fail for virtually every grant
+  // with cost-share language, silently corrupting rule_score for any org
+  // using the default rules.
+  max_cost_share_pct_org_carries: 50,
   require_match_verification: true,
   rolling_intake_passes_runway: true,
   hard_fail_on_applicant_type: true,

@@ -73,6 +73,13 @@ export async function evaluateGrantImpl(opts: {
     await trace("gate", 'Refusing to evaluate - grant is still in "discovered" state', "error");
     throw new Error("grant_not_enriched_yet");
   }
+  // Terminal states never need a fresh fit score — evaluating them still
+  // spends a real LLM call for no business value (the grant's outcome is
+  // already decided).
+  if (["won", "lost", "archived", "expired"].includes(g.status)) {
+    await trace("gate", `Refusing to evaluate - grant is in terminal state "${g.status}"`, "error");
+    throw new Error("grant_in_terminal_state");
+  }
 
   await trace("rules_load", "Loading user fit rules", "info");
   const { data: rulesRow } = await userSupabase

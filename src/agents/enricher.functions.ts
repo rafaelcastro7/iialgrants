@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EnricherOutput, PROMPTS } from "@/agents/schemas";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { MAX_ENRICH_ATTEMPTS } from "@/agents/pipeline-stages.shared";
 
 export type EnricherResult = {
   ok: boolean;
@@ -72,8 +73,8 @@ export async function enrichGrantImpl(
     return { ok: true, skipped: true, reason: `status=${g.status}`, runId };
   }
   const currentAttempts = (g as { enrich_attempts?: number }).enrich_attempts ?? 0;
-  if (currentAttempts >= 3) {
-    await trace("skip", "Skipped - max 3 enrich attempts reached", "warn");
+  if (currentAttempts >= MAX_ENRICH_ATTEMPTS) {
+    await trace("skip", `Skipped - max ${MAX_ENRICH_ATTEMPTS} enrich attempts reached`, "warn");
     return { ok: true, skipped: true, reason: "max_attempts_reached", runId };
   }
 
@@ -295,7 +296,24 @@ export async function enrichGrantImpl(
 
     if (!hasDeadline && patch.deadline == null) {
       const deadlineMatch = extractDeadline(page.markdown, language);
-      if (deadlineMatch) {
+      // extractDeadline returns the sentinel iso:"Rolling" for continuous-
+      // intake language — NOT a real ISO date. `deadline` is a typed date
+      // column/Zod field (/^\d{4}-\d{2}-\d{2}$/), so writing "Rolling" into it
+      // used to fail EnricherOutput.partial().safeParse() for the ENTIRE
+      // patch (amount, eligibility, sectors included), not just this field —
+      // after 3 such failures the grant was permanently stuck in "discovered"
+      // with everything else it had already correctly extracted discarded.
+      // The evaluator's isRollingIntake() independently re-detects rolling
+      // intake from the grant's stored text, so leaving deadline unset here
+      // loses nothing.
+      if (deadlineMatch && deadlineMatch.iso === "Rolling") {
+        await trace(
+          "chrono_deadline",
+          `Rolling/continuous intake detected on ${stage} page (leaving deadline unset)`,
+          "info",
+          { page: page.url, snippet: deadlineMatch.snippet.slice(0, 200) },
+        );
+      } else if (deadlineMatch) {
         patch.deadline = deadlineMatch.iso;
         methodCounts.chrono++;
         await trace(

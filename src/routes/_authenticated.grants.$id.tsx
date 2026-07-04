@@ -181,6 +181,7 @@ function GrantDetailPage() {
       source_url: string | null;
     } | null;
     enrich_last_error?: string | null;
+    enrich_attempts?: number | null;
   };
   const title = g.title;
   const summary = g.summary?.trim() || null;
@@ -329,6 +330,8 @@ function GrantDetailPage() {
             url={g.url}
             evaluation={data.evaluation}
             requirements={g.requirements}
+            enrichAttempts={g.enrich_attempts}
+            enrichLastError={g.enrich_last_error}
             busy={busy}
             onEvaluate={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}
             onDraft={onDraft}
