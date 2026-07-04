@@ -178,6 +178,23 @@ renders them in the "Application requirements" card.
   eligibility, requirements, timeline, audit trail, share report, agent trace
   panel) unchanged, gated behind the toggle.
 
+## Proposal Detail Views (Express / Advanced)
+
+`/proposals/$id` has the same toggle pattern (`sessionStorage: proposals.viewMode`):
+
+- **Express** (`ProposalDetailExpress.tsx`): readiness %, per-section plain
+  status (Ready/Needs work/Empty), ONE adaptive primary action (draft the next
+  unready section → run quality review → submit).
+- **Advanced**: full per-section editor, citations, critic findings, export,
+  submit dialog — unchanged.
+
+**Routing gotcha**: list route files MUST use the `.index.tsx` suffix
+(`_authenticated.proposals.index.tsx`, `_authenticated.grants.index.tsx`).
+Without it, TanStack Router registers the list as a parent layout for
+`$id` children; since list components have no `<Outlet/>`, the detail route
+silently never renders (list content displays instead). Verify any new
+list+detail route pair renders the detail page in-browser before shipping.
+
 ## Pipeline Analytics
 
 `src/lib/pipeline-analytics.ts` computes win-rate, funnel counts, median
