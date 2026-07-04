@@ -17,7 +17,7 @@ const proposalsQueryOptions = queryOptions({
   queryFn: () => listProposals(),
 });
 
-export const Route = createFileRoute("/_authenticated/proposals")({
+export const Route = createFileRoute("/_authenticated/proposals/")({
   head: () => ({
     meta: [
       { title: "Proposals — IIAL" },

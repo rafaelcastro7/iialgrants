@@ -9,6 +9,7 @@ import { submitProposal, exportProposalMarkdown } from "@/lib/submissions.functi
 import { draftSection } from "@/agents/writer.functions";
 import { runCritic } from "@/agents/critic.functions";
 import { computeProposalReadiness, type ProposalRequirement } from "@/lib/proposal-readiness";
+import { ProposalDetailExpress } from "@/components/proposals/ProposalDetailExpress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,16 @@ function ProposalDetailPage() {
   const exportMd = useServerFn(exportProposalMarkdown);
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"express" | "advanced">(() =>
+    typeof window !== "undefined"
+      ? ((window.sessionStorage.getItem("proposals.viewMode") as "express" | "advanced") ??
+        "express")
+      : "express",
+  );
+  const switchView = (mode: "express" | "advanced") => {
+    setViewMode(mode);
+    if (typeof window !== "undefined") window.sessionStorage.setItem("proposals.viewMode", mode);
+  };
 
   const { data } = useSuspenseQuery({
     queryKey: ["proposal", id],
@@ -76,6 +87,32 @@ function ProposalDetailPage() {
     }
   }
 
+  async function onSubmit() {
+    const method = window.prompt(t("proposals.submitPrompt"), "portal");
+    if (!method) return;
+    const conf = window.prompt(t("proposals.confirmationPrompt"), "") || "";
+    setPending("submit");
+    setErr(null);
+    try {
+      await submit({
+        data: {
+          proposalId: id,
+          method: (["portal", "email", "mail", "api", "other"].includes(method)
+            ? method
+            : "other") as "portal" | "email" | "mail" | "api" | "other",
+          confirmation_number: conf || null,
+          language: fr ? "fr" : "en",
+        },
+      });
+      await qc.invalidateQueries({ queryKey: ["proposal", id] });
+      await navigate({ to: "/submissions" });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPending(null);
+    }
+  }
+
   const proposal = data.proposal;
   const grant = Array.isArray(proposal.grant) ? proposal.grant[0] : proposal.grant;
   const readiness = computeProposalReadiness({
@@ -100,6 +137,28 @@ function ProposalDetailPage() {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
+            <div
+              className="inline-flex rounded-lg border bg-card p-0.5"
+              role="tablist"
+              aria-label="View mode"
+            >
+              {(["express", "advanced"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === m}
+                  onClick={() => switchView(m)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === m
+                      ? "bg-[#0f1b3d] text-white"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {m === "express" ? "Express" : "Advanced"}
+                </button>
+              ))}
+            </div>
             <LanguageSwitcher />
             <Button variant="outline" size="sm" onClick={signOut}>
               {t("nav.signOut")}
@@ -109,250 +168,240 @@ function ProposalDetailPage() {
       </header>
 
       <section className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">{proposal.title}</h1>
-            <p className="text-xs text-muted-foreground mt-1">
-              <Badge variant="secondary">{t(`proposals.status.${proposal.status}`)}</Badge>
-              <span className="ml-2">
-                {t("proposals.version")} {proposal.version}
-              </span>
-              {proposal.critic_score != null && (
-                <span className="ml-2">
-                  {t("proposals.score")}: {(Number(proposal.critic_score) * 100).toFixed(0)}%
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 justify-end">
-            <Button onClick={onCritic} disabled={pending === "critic"}>
-              {pending === "critic" ? t("app.loading") : t("proposals.runCritic")}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={pending === "export"}
-              onClick={async () => {
-                setPending("export");
-                setErr(null);
-                try {
-                  const r = await exportMd({ data: { id, language: fr ? "fr" : "en" } });
-                  const blob = new Blob([r.markdown], { type: "text/markdown;charset=utf-8" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = r.filename;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch (e) {
-                  setErr(e instanceof Error ? e.message : String(e));
-                } finally {
-                  setPending(null);
-                }
-              }}
-            >
-              {t("proposals.exportMd")}
-            </Button>
-            {proposal.status !== "submitted" && (
-              <Button
-                variant="default"
-                disabled={pending === "submit"}
-                onClick={async () => {
-                  const method = window.prompt(t("proposals.submitPrompt"), "portal");
-                  if (!method) return;
-                  const conf = window.prompt(t("proposals.confirmationPrompt"), "") || "";
-                  setPending("submit");
-                  setErr(null);
-                  try {
-                    await submit({
-                      data: {
-                        proposalId: id,
-                        method: (["portal", "email", "mail", "api", "other"].includes(method)
-                          ? method
-                          : "other") as "portal" | "email" | "mail" | "api" | "other",
-                        confirmation_number: conf || null,
-                        language: fr ? "fr" : "en",
-                      },
-                    });
-                    await qc.invalidateQueries({ queryKey: ["proposal", id] });
-                    await navigate({ to: "/submissions" });
-                  } catch (e) {
-                    setErr(e instanceof Error ? e.message : String(e));
-                  } finally {
-                    setPending(null);
-                  }
-                }}
-              >
-                {t("proposals.submit")}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {(meta.critic_summary_en || meta.critic_summary_fr) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">{t("proposals.criticSummary")}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {fr ? meta.critic_summary_fr : meta.critic_summary_en}
-            </CardContent>
-          </Card>
-        )}
-
         {err && <p className="text-sm text-destructive">{err}</p>}
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-3">
+        {viewMode === "express" && (
+          <ProposalDetailExpress
+            title={proposal.title}
+            readiness={readiness}
+            pending={pending}
+            onDraftSection={onDraft}
+            onCritic={onCritic}
+            onSubmit={onSubmit}
+            onShowAdvanced={() => switchView("advanced")}
+          />
+        )}
+
+        {viewMode === "advanced" && (
+          <>
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <CardTitle className="text-sm">Proposal readiness</CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Section coverage before submission, based on draft length, citations, planned
-                  points, and critical grant requirements.
+                <h1 className="text-2xl font-bold">{proposal.title}</h1>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <Badge variant="secondary">{t(`proposals.status.${proposal.status}`)}</Badge>
+                  <span className="ml-2">
+                    {t("proposals.version")} {proposal.version}
+                  </span>
+                  {proposal.critic_score != null && (
+                    <span className="ml-2">
+                      {t("proposals.score")}: {(Number(proposal.critic_score) * 100).toFixed(0)}%
+                    </span>
+                  )}
                 </p>
               </div>
-              <Badge
-                variant={
-                  readiness.score >= 80
-                    ? "default"
-                    : readiness.score >= 50
-                      ? "secondary"
-                      : "destructive"
-                }
-              >
-                {readiness.score}% ready
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <ReadinessMetric
-                label="Sections ready"
-                value={`${readiness.readySections}/${readiness.totalSections}`}
-              />
-              <ReadinessMetric
-                label="Critical requirements covered"
-                value={`${readiness.coveredCriticalRequirements}/${readiness.criticalRequirements}`}
-              />
-              <ReadinessMetric
-                label="Needs attention"
-                value={`${readiness.sections.filter((s) => s.status !== "ready").length}`}
-              />
-            </div>
-
-            {readiness.openCriticalRequirements.length > 0 && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                <p className="text-xs font-medium text-destructive">Open critical requirement(s)</p>
-                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                  {readiness.openCriticalRequirements.slice(0, 4).map((r, i) => (
-                    <li key={i}>{r}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {readiness.sections.map((section) => (
-                <div
-                  key={section.sectionId}
-                  className="rounded-md border bg-muted/20 px-3 py-2 text-xs"
+              <div className="flex flex-wrap gap-2 justify-end">
+                <Button onClick={onCritic} disabled={pending === "critic"}>
+                  {pending === "critic" ? t("app.loading") : t("proposals.runCritic")}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={pending === "export"}
+                  onClick={async () => {
+                    setPending("export");
+                    setErr(null);
+                    try {
+                      const r = await exportMd({ data: { id, language: fr ? "fr" : "en" } });
+                      const blob = new Blob([r.markdown], { type: "text/markdown;charset=utf-8" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = r.filename;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (e) {
+                      setErr(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setPending(null);
+                    }
+                  }}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">{section.heading}</span>
-                    <Badge
-                      variant={
-                        section.status === "ready"
-                          ? "default"
-                          : section.status === "partial"
-                            ? "secondary"
-                            : "destructive"
-                      }
-                    >
-                      {section.score}%
-                    </Badge>
-                  </div>
-                  {section.issues.length > 0 && (
-                    <p className="mt-1 text-muted-foreground">{section.issues.join(" ")}</p>
-                  )}
-                </div>
-              ))}
+                  {t("proposals.exportMd")}
+                </Button>
+                {proposal.status !== "submitted" && (
+                  <Button variant="default" disabled={pending === "submit"} onClick={onSubmit}>
+                    {t("proposals.submit")}
+                  </Button>
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="space-y-4">
-          {data.sections.map((s) => {
-            const heading = fr && s.heading_fr ? s.heading_fr : s.heading_en;
-            const content = fr && s.content_fr ? s.content_fr : s.content_en;
-            const citations = (s.citations ?? []) as Array<{
-              marker: string;
-              chunk_id: string;
-              snippet: string;
-            }>;
-            const notes = (s.critic_notes ?? {}) as {
-              angle?: string;
-              must_cover?: string[];
-              findings?: Array<{ severity: string; message_en: string; message_fr: string }>;
-            };
-            return (
-              <Card key={s.id}>
+            {(meta.critic_summary_en || meta.critic_summary_fr) && (
+              <Card>
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <CardTitle className="text-base">{heading}</CardTitle>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={pending === s.id}
-                      onClick={() => onDraft(s.id)}
-                    >
-                      {pending === s.id ? t("app.loading") : t("proposals.draftSection")}
-                    </Button>
-                  </div>
-                  {notes.angle && (
-                    <p className="text-xs text-muted-foreground mt-1 italic">{notes.angle}</p>
-                  )}
+                  <CardTitle className="text-sm">{t("proposals.criticSummary")}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {content ? (
-                    <p className="text-sm whitespace-pre-wrap">{content}</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">-</p>
-                  )}
-                  {citations.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      <p className="font-medium mb-1">{t("proposals.citations")}</p>
-                      <ul className="space-y-1">
-                        {citations.map((c, i) => (
-                          <li key={i}>
-                            <span className="font-mono">{c.marker}</span> - {c.snippet}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {notes.findings && notes.findings.length > 0 && (
-                    <div className="text-xs">
-                      <p className="font-medium mb-1">{t("proposals.findings")}</p>
-                      <ul className="space-y-1">
-                        {notes.findings.map((f, i) => (
-                          <li key={i}>
-                            <Badge
-                              variant={f.severity === "block" ? "destructive" : "secondary"}
-                              className="mr-2"
-                            >
-                              {f.severity}
-                            </Badge>
-                            {fr ? f.message_fr : f.message_en}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {fr ? meta.critic_summary_fr : meta.critic_summary_en}
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            )}
+
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-sm">Proposal readiness</CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Section coverage before submission, based on draft length, citations, planned
+                      points, and critical grant requirements.
+                    </p>
+                  </div>
+                  <Badge
+                    variant={
+                      readiness.score >= 80
+                        ? "default"
+                        : readiness.score >= 50
+                          ? "secondary"
+                          : "destructive"
+                    }
+                  >
+                    {readiness.score}% ready
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <ReadinessMetric
+                    label="Sections ready"
+                    value={`${readiness.readySections}/${readiness.totalSections}`}
+                  />
+                  <ReadinessMetric
+                    label="Critical requirements covered"
+                    value={`${readiness.coveredCriticalRequirements}/${readiness.criticalRequirements}`}
+                  />
+                  <ReadinessMetric
+                    label="Needs attention"
+                    value={`${readiness.sections.filter((s) => s.status !== "ready").length}`}
+                  />
+                </div>
+
+                {readiness.openCriticalRequirements.length > 0 && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                    <p className="text-xs font-medium text-destructive">
+                      Open critical requirement(s)
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      {readiness.openCriticalRequirements.slice(0, 4).map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {readiness.sections.map((section) => (
+                    <div
+                      key={section.sectionId}
+                      className="rounded-md border bg-muted/20 px-3 py-2 text-xs"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium">{section.heading}</span>
+                        <Badge
+                          variant={
+                            section.status === "ready"
+                              ? "default"
+                              : section.status === "partial"
+                                ? "secondary"
+                                : "destructive"
+                          }
+                        >
+                          {section.score}%
+                        </Badge>
+                      </div>
+                      {section.issues.length > 0 && (
+                        <p className="mt-1 text-muted-foreground">{section.issues.join(" ")}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              {data.sections.map((s) => {
+                const heading = fr && s.heading_fr ? s.heading_fr : s.heading_en;
+                const content = fr && s.content_fr ? s.content_fr : s.content_en;
+                const citations = (s.citations ?? []) as Array<{
+                  marker: string;
+                  chunk_id: string;
+                  snippet: string;
+                }>;
+                const notes = (s.critic_notes ?? {}) as {
+                  angle?: string;
+                  must_cover?: string[];
+                  findings?: Array<{ severity: string; message_en: string; message_fr: string }>;
+                };
+                return (
+                  <Card key={s.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-4">
+                        <CardTitle className="text-base">{heading}</CardTitle>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={pending === s.id}
+                          onClick={() => onDraft(s.id)}
+                        >
+                          {pending === s.id ? t("app.loading") : t("proposals.draftSection")}
+                        </Button>
+                      </div>
+                      {notes.angle && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">{notes.angle}</p>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {content ? (
+                        <p className="text-sm whitespace-pre-wrap">{content}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">-</p>
+                      )}
+                      {citations.length > 0 && (
+                        <div className="text-xs text-muted-foreground">
+                          <p className="font-medium mb-1">{t("proposals.citations")}</p>
+                          <ul className="space-y-1">
+                            {citations.map((c, i) => (
+                              <li key={i}>
+                                <span className="font-mono">{c.marker}</span> - {c.snippet}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {notes.findings && notes.findings.length > 0 && (
+                        <div className="text-xs">
+                          <p className="font-medium mb-1">{t("proposals.findings")}</p>
+                          <ul className="space-y-1">
+                            {notes.findings.map((f, i) => (
+                              <li key={i}>
+                                <Badge
+                                  variant={f.severity === "block" ? "destructive" : "secondary"}
+                                  className="mr-2"
+                                >
+                                  {f.severity}
+                                </Badge>
+                                {fr ? f.message_fr : f.message_en}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </>
+        )}
       </section>
     </main>
   );

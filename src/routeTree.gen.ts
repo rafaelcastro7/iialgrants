@@ -15,13 +15,13 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportTokenRouteImport } from './routes/report.$token'
 import { Route as AuthenticatedSubmissionsRouteImport } from './routes/_authenticated.submissions'
-import { Route as AuthenticatedProposalsRouteImport } from './routes/_authenticated.proposals'
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated.privacy'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
+import { Route as AuthenticatedProposalsIndexRouteImport } from './routes/_authenticated.proposals.index'
 import { Route as AuthenticatedGrantsIndexRouteImport } from './routes/_authenticated.grants.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
@@ -71,11 +71,6 @@ const AuthenticatedSubmissionsRoute =
     path: '/submissions',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedProposalsRoute = AuthenticatedProposalsRouteImport.update({
-  id: '/proposals',
-  path: '/proposals',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedPrivacyRoute = AuthenticatedPrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -106,6 +101,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedProposalsIndexRoute =
+  AuthenticatedProposalsIndexRouteImport.update({
+    id: '/proposals/',
+    path: '/proposals/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedGrantsIndexRoute =
   AuthenticatedGrantsIndexRouteImport.update({
     id: '/grants/',
@@ -119,9 +120,9 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
 } as any)
 const AuthenticatedProposalsIdRoute =
   AuthenticatedProposalsIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedProposalsRoute,
+    id: '/proposals/$id',
+    path: '/proposals/$id',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedGrantsIdRoute = AuthenticatedGrantsIdRouteImport.update({
   id: '/grants/$id',
@@ -218,7 +219,6 @@ export interface FileRoutesByFullPath {
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
-  '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -231,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/grants/': typeof AuthenticatedGrantsIndexRoute
+  '/proposals/': typeof AuthenticatedProposalsIndexRoute
   '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
@@ -249,7 +250,6 @@ export interface FileRoutesByTo {
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
-  '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -262,6 +262,7 @@ export interface FileRoutesByTo {
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/grants': typeof AuthenticatedGrantsIndexRoute
+  '/proposals': typeof AuthenticatedProposalsIndexRoute
   '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
@@ -283,7 +284,6 @@ export interface FileRoutesById {
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
-  '/_authenticated/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/_authenticated/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -296,6 +296,7 @@ export interface FileRoutesById {
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/grants/': typeof AuthenticatedGrantsIndexRoute
+  '/_authenticated/proposals/': typeof AuthenticatedProposalsIndexRoute
   '/_authenticated/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
   '/api/public/hooks/discover': typeof ApiPublicHooksDiscoverRoute
@@ -317,7 +318,6 @@ export interface FileRouteTypes {
     | '/ops'
     | '/org'
     | '/privacy'
-    | '/proposals'
     | '/submissions'
     | '/report/$token'
     | '/admin/agents'
@@ -330,6 +330,7 @@ export interface FileRouteTypes {
     | '/proposals/$id'
     | '/admin/'
     | '/grants/'
+    | '/proposals/'
     | '/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
@@ -348,7 +349,6 @@ export interface FileRouteTypes {
     | '/ops'
     | '/org'
     | '/privacy'
-    | '/proposals'
     | '/submissions'
     | '/report/$token'
     | '/admin/agents'
@@ -361,6 +361,7 @@ export interface FileRouteTypes {
     | '/proposals/$id'
     | '/admin'
     | '/grants'
+    | '/proposals'
     | '/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
@@ -381,7 +382,6 @@ export interface FileRouteTypes {
     | '/_authenticated/ops'
     | '/_authenticated/org'
     | '/_authenticated/privacy'
-    | '/_authenticated/proposals'
     | '/_authenticated/submissions'
     | '/report/$token'
     | '/_authenticated/admin/agents'
@@ -394,6 +394,7 @@ export interface FileRouteTypes {
     | '/_authenticated/proposals/$id'
     | '/_authenticated/admin/'
     | '/_authenticated/grants/'
+    | '/_authenticated/proposals/'
     | '/_authenticated/grants/$id/audit'
     | '/api/public/hooks/deadlines'
     | '/api/public/hooks/discover'
@@ -463,13 +464,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSubmissionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/proposals': {
-      id: '/_authenticated/proposals'
-      path: '/proposals'
-      fullPath: '/proposals'
-      preLoaderRoute: typeof AuthenticatedProposalsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/privacy': {
       id: '/_authenticated/privacy'
       path: '/privacy'
@@ -512,6 +506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/proposals/': {
+      id: '/_authenticated/proposals/'
+      path: '/proposals'
+      fullPath: '/proposals/'
+      preLoaderRoute: typeof AuthenticatedProposalsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/grants/': {
       id: '/_authenticated/grants/'
       path: '/grants'
@@ -528,10 +529,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/proposals/$id': {
       id: '/_authenticated/proposals/$id'
-      path: '/$id'
+      path: '/proposals/$id'
       fullPath: '/proposals/$id'
       preLoaderRoute: typeof AuthenticatedProposalsIdRouteImport
-      parentRoute: typeof AuthenticatedProposalsRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/grants/$id': {
       id: '/_authenticated/grants/$id'
@@ -664,20 +665,6 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
-interface AuthenticatedProposalsRouteChildren {
-  AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
-}
-
-const AuthenticatedProposalsRouteChildren: AuthenticatedProposalsRouteChildren =
-  {
-    AuthenticatedProposalsIdRoute: AuthenticatedProposalsIdRoute,
-  }
-
-const AuthenticatedProposalsRouteWithChildren =
-  AuthenticatedProposalsRoute._addFileChildren(
-    AuthenticatedProposalsRouteChildren,
-  )
-
 interface AuthenticatedGrantsIdRouteChildren {
   AuthenticatedGrantsIdAuditRoute: typeof AuthenticatedGrantsIdAuditRoute
 }
@@ -698,10 +685,11 @@ interface AuthenticatedRouteChildren {
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
-  AuthenticatedProposalsRoute: typeof AuthenticatedProposalsRouteWithChildren
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
   AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
+  AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
   AuthenticatedGrantsIndexRoute: typeof AuthenticatedGrantsIndexRoute
+  AuthenticatedProposalsIndexRoute: typeof AuthenticatedProposalsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -711,10 +699,11 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
-  AuthenticatedProposalsRoute: AuthenticatedProposalsRouteWithChildren,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
   AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
+  AuthenticatedProposalsIdRoute: AuthenticatedProposalsIdRoute,
   AuthenticatedGrantsIndexRoute: AuthenticatedGrantsIndexRoute,
+  AuthenticatedProposalsIndexRoute: AuthenticatedProposalsIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
