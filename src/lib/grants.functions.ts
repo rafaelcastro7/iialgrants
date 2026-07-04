@@ -316,7 +316,10 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     const { data: candidates } = await context.supabase
       .from("grants")
       .select("id, status")
-      .in("status", ["discovered", "enriched", "scored", "shortlisted"])
+      // "discovered" is deliberately excluded: evaluateGrantImpl rejects it
+      // with grant_not_enriched_yet, so including it here only wastes a
+      // round-trip that always gets counted as skipped.
+      .in("status", ["enriched", "scored", "shortlisted"])
       .limit(data.limit * 3);
 
     const ids = (candidates ?? []).map((g) => g.id);
@@ -702,19 +705,6 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    const STATUS_ORDER = [
-      "discovered",
-      "enriched",
-      "scored",
-      "shortlisted",
-      "in_proposal",
-      "submitted",
-      "won",
-      "lost",
-      "expired",
-      "archived",
-    ];
-    const terminalStatuses = new Set(["submitted", "won", "lost", "expired", "archived"]);
     const ts = new Date().toISOString();
     let updated = 0;
     let skipped = 0;
@@ -725,12 +715,13 @@ export const markGrantsCurated = createServerFn({ method: "POST" })
         .eq("id", id)
         .maybeSingle();
       const fromStatus = (prev as { status?: string } | null)?.status ?? null;
-      // Block backward transitions and transitions into terminal states.
-      if (
-        !fromStatus ||
-        terminalStatuses.has(fromStatus) ||
-        STATUS_ORDER.indexOf(fromStatus) >= STATUS_ORDER.indexOf("shortlisted")
-      ) {
+      // Reuse the single source of truth (pipeline-stages.shared.ts, which
+      // mirrors the DB trigger) instead of a second hand-rolled status-order
+      // list. The old duplicate allowed "discovered"/"enriched" -> "shortlisted"
+      // directly, a transition the DB trigger actually rejects at the UPDATE —
+      // this function would then quietly count the resulting DB error as a
+      // generic "skipped" instead of a clean pre-check.
+      if (!fromStatus || !isGrantStatus(fromStatus) || !canTransition(fromStatus, "shortlisted")) {
         skipped++;
         continue;
       }
