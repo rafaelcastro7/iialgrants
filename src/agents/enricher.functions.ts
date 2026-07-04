@@ -842,6 +842,28 @@ export async function enrichGrantImpl(
     };
   }
 
+  // RFP-style requirements (documents to submit, process constraints) —
+  // deterministic pattern extraction over everything we scraped, persisted so
+  // the detail page can show what to prepare BEFORE drafting. Non-fatal.
+  try {
+    const { analyzeGrantRequirements } =
+      await import("@/agents/grant-requirements-analyzer.server");
+    const reqs = analyzeGrantRequirements(combinedMarkdown);
+    if (reqs.requirements.length > 0) {
+      patch.requirements = reqs.requirements;
+      await trace("requirements", reqs.summary, "ok", {
+        count: reqs.requirements.length,
+        critical: reqs.requirements.filter((r) => r.isCritical).length,
+      });
+    }
+  } catch (e) {
+    await trace(
+      "requirements",
+      `Requirements analysis failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`,
+      "warn",
+    );
+  }
+
   patch.status = "enriched";
   patch.enriched_at = new Date().toISOString();
   patch.enrich_last_error = null;

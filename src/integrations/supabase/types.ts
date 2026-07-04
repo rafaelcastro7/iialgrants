@@ -944,6 +944,7 @@ export type Database = {
           id: string;
           language: string;
           last_seen_at: string;
+          requirements: Json | null;
           scored_at: string | null;
           sectors: string[];
           source_hash: string;
@@ -975,6 +976,7 @@ export type Database = {
           id?: string;
           language?: string;
           last_seen_at?: string;
+          requirements?: Json | null;
           scored_at?: string | null;
           sectors?: string[];
           source_hash: string;
@@ -1006,6 +1008,7 @@ export type Database = {
           id?: string;
           language?: string;
           last_seen_at?: string;
+          requirements?: Json | null;
           scored_at?: string | null;
           sectors?: string[];
           source_hash?: string;

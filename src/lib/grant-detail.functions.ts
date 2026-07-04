@@ -12,7 +12,7 @@ export const getGrantDetail = createServerFn({ method: "GET" })
     const { data: grant, error } = await context.supabase
       .from("grants")
       .select(
-        "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, eligibility, language, url, status, fit_score, discovered_at, enriched_at, scored_at, last_seen_at, times_seen, funder:funders(id, name, name_fr, jurisdiction, source_url)",
+        "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, eligibility, requirements, language, url, status, fit_score, discovered_at, enriched_at, scored_at, last_seen_at, times_seen, funder:funders(id, name, name_fr, jurisdiction, source_url)",
       )
       .eq("id", data.id)
       .maybeSingle();
