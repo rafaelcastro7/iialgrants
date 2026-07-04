@@ -73,6 +73,11 @@ Recent addition: `grants.requirements` stores deterministic RFP-style
 requirements such as required documents, matching funds, portal submission, LOI,
 and reporting obligations.
 
+Recent addition: proposal readiness is computed in
+`src/lib/proposal-readiness.ts` from existing proposal sections, citations,
+planned `must_cover` points, and critical `grants.requirements`. It is rendered
+on the proposal detail page without adding a new table.
+
 ## Server Function Pattern
 
 Route files should primarily export route components. Server functions belong in
@@ -147,6 +152,19 @@ transparent and non-blocking:
 
 The enricher persists these rows into `grants.requirements`. The grant detail UI
 renders them in the "Application requirements" card.
+
+## Proposal Readiness
+
+`src/lib/proposal-readiness.ts` computes section coverage before submission:
+
+- Draft content present and long enough to review.
+- Citations attached to the section.
+- Strategist `must_cover` points reflected in draft text.
+- Critical grant requirements reflected somewhere in proposal content.
+
+The proposal detail route renders this as "Proposal readiness" with an overall
+score, section status, and open critical requirements. This is intentionally
+derived from current data at read time, so no migration is required.
 
 ## Verification Standard
 
