@@ -41,6 +41,13 @@ const detailQuery = (id: string) =>
     queryFn: () => getGrantDetail({ data: { id } }),
   });
 
+type GrantRequirementRow = {
+  category: string;
+  requirement: string;
+  value?: string;
+  isCritical: boolean;
+};
+
 type GrantSearch = {
   evidence?: string;
   run?: string;
@@ -131,6 +138,7 @@ function GrantDetailPage() {
     deadline: string | null;
     sectors: string[] | null;
     eligibility: Record<string, unknown> | null;
+    requirements: GrantRequirementRow[] | null;
     language: string;
     url: string;
     status: string;
@@ -234,7 +242,7 @@ function GrantDetailPage() {
               </Link>
             </Button>
             <Button variant="outline" size="sm" disabled={busy === "share"} onClick={onShare}>
-              {busy === "share" ? "Creating…" : shareUrl ? "Link copied ✓" : "Share report"}
+              {busy === "share" ? "Creating..." : shareUrl ? "Link copied" : "Share report"}
             </Button>
           </div>
         </div>
@@ -433,6 +441,42 @@ function GrantDetailPage() {
         </div>
 
         {g.enriched_at && <EvaluationDetail grantId={id} />}
+
+        {Array.isArray(g.requirements) && g.requirements.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Application requirements</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                What this funder asks for - prepare these before drafting.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                {(g.requirements as GrantRequirementRow[]).map((r, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <Badge
+                      variant={r.isCritical ? "destructive" : "secondary"}
+                      className="text-[10px] mt-0.5 shrink-0"
+                    >
+                      {r.isCritical ? "critical" : r.category}
+                    </Badge>
+                    <div className="min-w-0">
+                      <p className="font-medium">{r.requirement}</p>
+                      {r.value && (
+                        <p
+                          className="text-xs text-muted-foreground italic truncate"
+                          title={r.value}
+                        >
+                          "{r.value}"
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {g.eligibility && Object.keys(g.eligibility).length > 0 && (
           <Card>
