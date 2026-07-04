@@ -829,6 +829,7 @@ export type Database = {
       };
       grant_evaluations: {
         Row: {
+          axis_breakdown: Json | null;
           created_at: string;
           eligibility_pass: boolean;
           fit_score: number;
@@ -842,6 +843,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          axis_breakdown?: Json | null;
           created_at?: string;
           eligibility_pass?: boolean;
           fit_score: number;
@@ -855,6 +857,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          axis_breakdown?: Json | null;
           created_at?: string;
           eligibility_pass?: boolean;
           fit_score?: number;
