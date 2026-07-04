@@ -31,10 +31,12 @@ Ontario en IA puntúa distinto para una org de Ontario/IA que para una de BC/min
 *(`deriveRulesFromOrg` + hard-gates deterministas → filtra los "elegibles pero no
 competitivos" que los líderes dejan pasar.)*
 
-### 2. Desglose multi-eje transparente y **determinista**
-Cada grant muestra **por qué** puntúa lo que puntúa, en 6 ejes (Elegibilidad,
-Geografía, Misión/Sector, Presupuesto, Timeline, **Capacidad operativa**), cada
-uno 0-10 con las razones concretas. A diferencia de Grantable (ejes generados por LLM, no reproducibles),
+### 2. Desglose multi-eje transparente y **determinista** (visible en la UI)
+En la página de detalle del grant, cada oportunidad muestra **"Fit by dimension"**:
+6 barras (Elegibilidad, Geografía, Misión/Sector, Presupuesto, Timeline,
+**Capacidad operativa**), cada una 0-10 con color por estado, badge "blocker" en
+hard-fails, y la razón concreta citada debajo (p. ej. *"Geographic fit 10/10"*,
+*"Operational capacity — $1M es 1.3× el presupuesto anual, manejable con esfuerzo"*). A diferencia de Grantable (ejes generados por LLM, no reproducibles),
 los nuestros se derivan **determinísticamente** de reglas verificables: mismo
 grant + mismo perfil = mismo desglose, siempre. *(`computeAxisBreakdown`.)*
 
