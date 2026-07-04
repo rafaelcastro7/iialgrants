@@ -79,6 +79,39 @@ This moves the product from "draft generator" toward a proposal operating system
 teams can see what is ready, what needs evidence, and what funder requirements
 are still open.
 
+### 9. Express / Advanced views (progressive disclosure)
+
+Grants list, grant detail, and proposal detail each have an Express mode
+(prioritized list or single readiness card, plain language, one primary
+action) and an Advanced mode (the full Kanban / 6-axis breakdown / per-section
+editor). A single tablist toggle, persisted in `sessionStorage`, carries the
+choice across pages. Basic users never see pipeline jargon; power users lose
+nothing.
+
+### 10. Action-oriented onboarding
+
+The dashboard checks whether the org profile (name, sectors, jurisdictions) is
+complete and shows a single actionable banner when it is not — "Complete your
+organization profile — takes 2 minutes and powers real fit scoring." It
+disappears once complete instead of nagging. This targets the single
+highest-leverage gap: an incomplete profile silently degrades every fit score
+to generic defaults.
+
+### 11. Pipeline analytics (win-rate, funnel, time-in-stage)
+
+An admin-only panel derives win rate (`won / (won + lost)`), per-stage funnel
+counts, median days spent in each stage, and funnel conversion rates —
+entirely from the `grant_events` transition timeline. No estimates, no new
+table: same events, same numbers, every time.
+
+### 12. Deadline reminder notifications
+
+The daily cron already computed bilingual, deduplicated deadline reminders
+(14-day horizon) into a `notifications` table with zero UI reading it. A
+notification bell (dashboard + grants list) now surfaces unread count and
+reminder detail with a deep link to the grant, closing the last gap against
+Instrumentl's multi-touch reminders.
+
 ## Verified State (2026-07-04)
 
 - Local stack operational: Supabase Docker, Kong, PostgREST, Vite dev server.
@@ -97,5 +130,7 @@ are still open.
   the most relevant proposal section.
 - Add browser verification screenshots for the grant detail and proposal detail
   flows after every UI change.
-- Add win-rate and pipeline analytics inspired by Instrumentl, but grounded in
-  IIAL's actual scored grants, proposals, submissions, and outcomes.
+- Pipeline analytics and deadline reminders shipped (see features 11-12);
+  next candidate: surface win-rate trends over time, not just current snapshot.
+- Notification bell is dashboard/grants-list only; extend to proposal detail
+  and the audit/ops pages once a shared header component exists.
