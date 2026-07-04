@@ -264,6 +264,35 @@ linking to `/org` when incomplete — hidden once complete. This is the
 highest-leverage onboarding step: `deriveRulesFromOrg` (fit-rules.shared.ts)
 falls back to generic defaults without it.
 
+## Logic Reengineering Audit (2026-07-04)
+
+A deep read-the-full-code-path audit (not grep-based) found and fixed 7 real
+logic bugs across scoring, enrichment, and the state machine:
+
+- Cost-share default was in the wrong scale (0.5 vs 0-100), silently failing
+  SOP F3 for almost every grant on default rules.
+- Enricher wrote the "Rolling" deadline sentinel into a typed date field,
+  which failed Zod validation for the ENTIRE patch (not just deadline) and
+  permanently stuck grants after 3 attempts, discarding already-correct data.
+- `GRANT_TRANSITIONS` (pipeline-stages.shared.ts) had drifted from the LIVE
+  `validate_grant_transition()` trigger — always check the live function body
+  with `docker exec docker-db-1 psql -U postgres -d postgres -c "\sf
+  validate_grant_transition"` before editing this file; migrations get
+  superseded by later `CREATE OR REPLACE` statements.
+- `detectCostShare()` inverted org-share language the same way as
+  funder-coverage language (opposite semantics).
+- `markGrantsCurated` had its own duplicate, MORE permissive state machine
+  instead of reusing `canTransition()`.
+- `autoEvaluatePending` wasted round-trips on `"discovered"` grants the
+  evaluator always rejects; the evaluator itself didn't gate terminal states.
+
+See `src/agents/fit-rules.reengineering.test.ts` for regression coverage.
+`MAX_ENRICH_ATTEMPTS` now lives in `pipeline-stages.shared.ts` (client-safe)
+rather than `enricher.functions.ts` (bundles `createServerFn`) so UI
+components can import it without risking a server-code leak into the client
+bundle — the build's `tanstack-start-core:import-protection` plugin would
+catch this at build time if violated.
+
 ## Verification Standard
 
 Before calling work complete, run:
