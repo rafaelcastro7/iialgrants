@@ -94,7 +94,7 @@ export const DEFAULT_RULES: FitRules = {
 // per-axis 0–10 breakdown DETERMINISTICALLY from the screening checks we already
 // compute — no extra LLM call, fully cited by each check's detail string.
 
-export type AxisKey = "eligibility" | "geography" | "sector" | "budget" | "timeline";
+export type AxisKey = "eligibility" | "geography" | "sector" | "budget" | "timeline" | "capacity";
 
 export type AxisScore = {
   axis: AxisKey;
@@ -137,6 +137,7 @@ const AXIS_LABELS: Record<AxisKey, string> = {
   sector: "Mission & sector fit",
   budget: "Budget fit",
   timeline: "Timeline & runway",
+  capacity: "Operational capacity",
 };
 
 const AXIS_ORDER: AxisKey[] = ["eligibility", "geography", "sector", "budget", "timeline"];
@@ -177,6 +178,86 @@ export function computeAxisBreakdown(checks: CheckLite[]): AxisScore[] {
       hardFail,
     };
   });
+}
+
+/**
+ * Operational-capacity signal: can the org realistically manage & co-fund a
+ * grant of this size given its annual budget? This is the "operational capacity"
+ * / "historical funding size" dimension the best tools score (FundRobin,
+ * Grantable) and the strongest guard against the market's #1 weakness —
+ * surfacing grants an org is eligible for but can't actually deliver.
+ *
+ * Advisory only (never a hard-fail). Returns null (N/A) when either figure is
+ * unknown — we never fabricate a capacity score from missing data.
+ *
+ * Bands by grant-amount / annual-budget ratio (grant mgmt reality: orgs comfortably
+ * run projects up to ~1× budget; beyond ~5× the co-fund/admin load exceeds capacity):
+ *   ratio ≤ 1        → 10  fully within capacity
+ *   1 < ratio ≤ 3    → 7   manageable with effort
+ *   3 < ratio ≤ 5    → 4   stretch
+ *   ratio > 5        → 1   likely exceeds capacity (soft warn)
+ * A grant < 2% of annual budget is flagged as low-ROI-on-effort (still scored 8).
+ */
+export function assessBudgetCapacity(
+  orgAnnualBudgetCad: number | null | undefined,
+  grantMinCad: number | null | undefined,
+  grantMaxCad: number | null | undefined,
+): AxisScore {
+  const budget =
+    typeof orgAnnualBudgetCad === "number" && orgAnnualBudgetCad > 0 ? orgAnnualBudgetCad : null;
+  const amount =
+    typeof grantMaxCad === "number" && grantMaxCad > 0
+      ? grantMaxCad
+      : typeof grantMinCad === "number" && grantMinCad > 0
+        ? grantMinCad
+        : null;
+
+  if (budget == null || amount == null) {
+    return {
+      axis: "capacity",
+      label: AXIS_LABELS.capacity,
+      score: null,
+      status: "na",
+      reasons: [
+        budget == null
+          ? "Org annual budget unknown — capacity not assessed"
+          : "Grant amount unknown — capacity not assessed",
+      ],
+      hardFail: false,
+    };
+  }
+
+  const ratio = amount / budget;
+  const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`;
+  let score: number;
+  let reason: string;
+  if (ratio <= 1) {
+    score = 10;
+    reason = `Grant (${fmt(amount)}) is within the org's annual budget (${fmt(budget)}) — fully manageable`;
+  } else if (ratio <= 3) {
+    score = 7;
+    reason = `Grant (${fmt(amount)}) is ${ratio.toFixed(1)}× the annual budget — manageable with effort`;
+  } else if (ratio <= 5) {
+    score = 4;
+    reason = `Grant (${fmt(amount)}) is ${ratio.toFixed(1)}× the annual budget — a capacity stretch`;
+  } else {
+    score = 1;
+    reason = `Grant (${fmt(amount)}) is ${ratio.toFixed(1)}× the annual budget — likely exceeds capacity to manage/co-fund`;
+  }
+  const reasons = [reason];
+  if (amount < budget * 0.02) {
+    score = Math.min(score, 8);
+    reasons.push(`Grant is under 2% of annual budget — low return on application effort`);
+  }
+
+  return {
+    axis: "capacity",
+    label: AXIS_LABELS.capacity,
+    score,
+    status: score >= 7 ? "pass" : score >= 4 ? "partial" : "fail",
+    reasons,
+    hardFail: false,
+  };
 }
 
 // Minimal shape of the org profile the screening engine cares about.
