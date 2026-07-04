@@ -60,8 +60,12 @@ audit log inmutable (triggers rechazan UPDATE/DELETE), atribución de actor real
 - Pipeline vivo verde: enrich + evaluate contra DB real, montos correctos, fit + desglose por ejes persistidos.
 - Calidad de ingeniería: TypeScript 0 errores, ESLint 0 warnings, 109 tests, build limpio.
 
+### 6. Reporte de fit compartible (sin login)
+Un botón "Share report" genera un link público read-only (token no adivinable,
+expira a 30 días, revocable) con el fit score, el desglose por dimensión y la
+evidencia citada — para circular la evaluación al equipo o al board sin cuentas.
+Paridad con Grantable, pero con nuestro desglose determinista y citado dentro.
+
 ## En construcción (roadmap)
-- Reporte de fit compartible sin login (estilo Grantable).
-- Gate presupuesto-vs-capacidad del org (dimensión "operational capacity").
 - Extracción de requisitos de RFP + cobertura por sección (estilo Grant Assistant).
 - Dashboard win-rate + pipeline analytics (estilo Instrumentl).
