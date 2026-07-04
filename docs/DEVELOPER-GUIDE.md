@@ -165,6 +165,19 @@ renders them in the "Application requirements" card.
 - **Advanced**: the full Kanban board + filters + bulk + drag
   (`GrantKanban.tsx`). For power users.
 
+## Grant Detail Views (Express / Advanced)
+
+`/grants/$id` uses the same toggle + sessionStorage key as the list
+(`grants.viewMode`), so the choice persists across pages:
+
+- **Express** (`GrantDetailExpress.tsx`): one-column simple layout — match
+  score, amount, deadline urgency, eligibility verdict, 1-line rationale,
+  critical requirements only, ONE primary action (Check my fit / Draft a
+  proposal). "Show full details" switches to Advanced.
+- **Advanced**: the full existing page (stat cards, 6-axis breakdown, raw
+  eligibility, requirements, timeline, audit trail, share report, agent trace
+  panel) unchanged, gated behind the toggle.
+
 ## Pipeline Analytics
 
 `src/lib/pipeline-analytics.ts` computes win-rate, funnel counts, median
