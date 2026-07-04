@@ -1,31 +1,31 @@
 {
   "model": "qwen2.5-coder:7b",
-  "startedAt": "2026-07-04T15:53:10.861Z",
+  "startedAt": "2026-07-04T17:03:58.075Z",
   "results": [
     {
-      "file": "src/components/grants/GrantExpressView.tsx",
-      "ms": 48547,
+      "file": "src/components/grants/GrantDetailExpress.tsx",
+      "ms": 24442,
       "findings": [
         {
           "line": 102,
           "severity": "MEDIUM",
-          "issue": "Potential off-by-one error in deadline calculation.",
-          "repro": "If the current date is exactly at midnight, the deadline calculation might be incorrect due to rounding."
+          "issue": "Potential null/undefined dereference in `deadline` calculation.",
+          "repro": "If `deadline` is null or undefined, the code will throw an error when trying to calculate days."
         },
         {
-          "line": 134,
+          "line": 102,
           "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference when accessing `g.evaluation.eligibility_pass`.",
-          "repro": "If `g.evaluation` is null or undefined, trying to access `g.evaluation.eligibility_pass` will throw an error."
+          "issue": "Potential off-by-one error in `deadline` calculation.",
+          "repro": "The code uses `Math.ceil`, which rounds up. If the current date is exactly at midnight, it might not be counted as a day."
         },
         {
-          "line": 140,
+          "line": 102,
           "severity": "MEDIUM",
-          "issue": "Potential off-by-one error in deadline calculation.",
-          "repro": "If the current date is exactly at midnight, the deadline calculation might be incorrect due to rounding."
+          "issue": "Potential boundary error in `deadline` calculation.",
+          "repro": "If the deadline is set to a past date, the code will incorrectly calculate days passed instead of remaining days."
         }
       ]
     }
   ],
-  "finishedAt": "2026-07-04T15:53:59.423Z"
+  "finishedAt": "2026-07-04T17:04:22.537Z"
 }
