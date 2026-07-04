@@ -80,8 +80,13 @@ export async function evaluateGrantImpl(opts: {
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
-  const { DEFAULT_RULES, evaluateRules, deriveRulesFromOrg, computeAxisBreakdown } =
-    await import("@/agents/fit-rules.server");
+  const {
+    DEFAULT_RULES,
+    evaluateRules,
+    deriveRulesFromOrg,
+    computeAxisBreakdown,
+    assessBudgetCapacity,
+  } = await import("@/agents/fit-rules.server");
   // Explicit admin-configured fit_rules win; otherwise personalize the screening
   // rules from the org's real profile (jurisdictions + sectors) so fit reflects
   // who the applicant actually is instead of the generic CA-only defaults.
@@ -106,7 +111,15 @@ export async function evaluateGrantImpl(opts: {
 
   // Transparent per-axis breakdown (deterministic, no extra LLM call) — the
   // "why" behind the score, surfaced to the UI instead of one opaque number.
-  const axisBreakdown = computeAxisBreakdown(rulesResult.checks);
+  // Append the operational-capacity axis (grant amount vs org annual budget).
+  const axisBreakdown = [
+    ...computeAxisBreakdown(rulesResult.checks),
+    assessBudgetCapacity(
+      (org as { annual_budget_cad?: number | null }).annual_budget_cad,
+      (g as { amount_cad_min?: number | null }).amount_cad_min,
+      (g as { amount_cad_max?: number | null }).amount_cad_max,
+    ),
+  ];
   await trace(
     "axes",
     axisBreakdown

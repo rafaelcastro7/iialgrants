@@ -9,7 +9,12 @@
 // review in the Opportunity Brief - not auto-gated.
 
 export type { FitRules, OrgProfileLite, AxisKey, AxisScore } from "@/agents/fit-rules.shared";
-export { DEFAULT_RULES, deriveRulesFromOrg, computeAxisBreakdown } from "@/agents/fit-rules.shared";
+export {
+  DEFAULT_RULES,
+  deriveRulesFromOrg,
+  computeAxisBreakdown,
+  assessBudgetCapacity,
+} from "@/agents/fit-rules.shared";
 
 import type { FitRules } from "@/agents/fit-rules.shared";
 
