@@ -13,6 +13,7 @@ import { Route as ComplianceRouteImport } from './routes/compliance'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReportTokenRouteImport } from './routes/report.$token'
 import { Route as AuthenticatedSubmissionsRouteImport } from './routes/_authenticated.submissions'
 import { Route as AuthenticatedProposalsRouteImport } from './routes/_authenticated.proposals'
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated.privacy'
@@ -57,6 +58,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportTokenRoute = ReportTokenRouteImport.update({
+  id: '/report/$token',
+  path: '/report/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSubmissionsRoute =
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
+  '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/submissions': typeof AuthenticatedSubmissionsRoute
+  '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
   '/_authenticated/proposals': typeof AuthenticatedProposalsRouteWithChildren
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
+  '/report/$token': typeof ReportTokenRoute
   '/_authenticated/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/_authenticated/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/_authenticated/admin/history': typeof AuthenticatedAdminHistoryRoute
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/proposals'
     | '/submissions'
+    | '/report/$token'
     | '/admin/agents'
     | '/admin/candidates'
     | '/admin/history'
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/proposals'
     | '/submissions'
+    | '/report/$token'
     | '/admin/agents'
     | '/admin/candidates'
     | '/admin/history'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/_authenticated/privacy'
     | '/_authenticated/proposals'
     | '/_authenticated/submissions'
+    | '/report/$token'
     | '/_authenticated/admin/agents'
     | '/_authenticated/admin/candidates'
     | '/_authenticated/admin/history'
@@ -397,6 +409,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
   ComplianceRoute: typeof ComplianceRoute
+  ReportTokenRoute: typeof ReportTokenRoute
   ApiPublicHooksDeadlinesRoute: typeof ApiPublicHooksDeadlinesRoute
   ApiPublicHooksDiscoverRoute: typeof ApiPublicHooksDiscoverRoute
   ApiPublicHooksEnrichRoute: typeof ApiPublicHooksEnrichRoute
@@ -434,6 +447,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report/$token': {
+      id: '/report/$token'
+      path: '/report/$token'
+      fullPath: '/report/$token'
+      preLoaderRoute: typeof ReportTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/submissions': {
@@ -706,6 +726,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
   ComplianceRoute: ComplianceRoute,
+  ReportTokenRoute: ReportTokenRoute,
   ApiPublicHooksDeadlinesRoute: ApiPublicHooksDeadlinesRoute,
   ApiPublicHooksDiscoverRoute: ApiPublicHooksDiscoverRoute,
   ApiPublicHooksEnrichRoute: ApiPublicHooksEnrichRoute,

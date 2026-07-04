@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getGrantDetail } from "@/lib/grant-detail.functions";
 import { enrichGrant, markGrantsCurated } from "@/lib/grants.functions";
+import { createShareLink } from "@/lib/share-report.functions";
 import { useIsAdmin } from "@/lib/use-platform";
 import "@/i18n";
 
@@ -72,9 +73,11 @@ function GrantDetailPage() {
   const enrichOne = useServerFn(enrichGrant);
   const strategize = useServerFn(runStrategist);
   const curate = useServerFn(markGrantsCurated);
+  const shareLink = useServerFn(createShareLink);
   const { data } = useSuspenseQuery(detailQuery(id));
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [evField, setEvField] = useState<string | null>(search.evidence ?? null);
   const [traceRun, setTraceRun] = useState<{ runId: string; agent: string } | null>(
     search.run ? { runId: search.run, agent: search.agent ?? "" } : null,
@@ -191,6 +194,21 @@ function GrantDetailPage() {
     }
   }
 
+  async function onShare() {
+    setBusy("share");
+    setErr(null);
+    try {
+      const { token } = await shareLink({ data: { grantId: id } });
+      const url = `${window.location.origin}/report/${token}`;
+      await navigator.clipboard.writeText(url);
+      setShareUrl(url);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b">
@@ -214,6 +232,9 @@ function GrantDetailPage() {
               <Link to="/grants/$id/audit" params={{ id }}>
                 Audit trail
               </Link>
+            </Button>
+            <Button variant="outline" size="sm" disabled={busy === "share"} onClick={onShare}>
+              {busy === "share" ? "Creating…" : shareUrl ? "Link copied ✓" : "Share report"}
             </Button>
           </div>
         </div>
