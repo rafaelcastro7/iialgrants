@@ -20,6 +20,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { getGrantAudit } from "@/lib/grant-audit.functions";
+import type { AxisScore } from "@/agents/fit-rules.shared";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
   if (!data) return null;
 
   const { rules, evaluation, evidence, verdict } = data;
+  const axes = (evaluation as { axis_breakdown?: AxisScore[] } | null)?.axis_breakdown ?? null;
   const blockingFail = rules.checks.find((c) => c.status === "fail" && c.hard);
   const llmPct = evaluation?.fit_score != null ? Math.round(evaluation.fit_score * 100) : null;
   const passes = rules.checks.filter((c) => c.status === "pass").length;
@@ -131,6 +133,20 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
             value={`${passes}✓ ${fails}✗ ${skips}∅`}
           />
         </div>
+
+        {/* Transparent multi-axis breakdown — the "why" across named dimensions */}
+        {axes && axes.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
+              Fit by dimension
+            </p>
+            <ul className="space-y-1.5">
+              {axes.map((a) => (
+                <AxisBar key={a.axis} axis={a} />
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Why */}
         <div className="rounded-md border bg-muted/30 p-3 text-sm">
@@ -254,6 +270,40 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function AxisBar({ axis }: { axis: AxisScore }) {
+  const pct = axis.score == null ? 0 : axis.score * 10;
+  const barColor =
+    axis.status === "pass"
+      ? "bg-emerald-500"
+      : axis.status === "partial"
+        ? "bg-amber-500"
+        : axis.status === "fail"
+          ? "bg-rose-500"
+          : "bg-slate-300";
+  const reason = axis.reasons[0] ?? "";
+  return (
+    <li className="text-xs" title={axis.reasons.join(" · ")}>
+      <div className="flex items-center justify-between gap-2 mb-0.5">
+        <span className="font-medium flex items-center gap-1.5">
+          {axis.label}
+          {axis.hardFail && (
+            <Badge variant="destructive" className="text-[9px] py-0">
+              blocker
+            </Badge>
+          )}
+        </span>
+        <span className="tabular-nums text-muted-foreground">
+          {axis.score == null ? "N/A" : `${axis.score}/10`}
+        </span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+      {reason && <p className="text-muted-foreground mt-0.5 truncate">{reason}</p>}
+    </li>
   );
 }
 

@@ -21,7 +21,7 @@ export const getGrantDetail = createServerFn({ method: "GET" })
 
     const { data: evaluation } = await context.supabase
       .from("grant_evaluations")
-      .select("fit_score, eligibility_pass, rationale_en, rationale_fr, created_at")
+      .select("fit_score, eligibility_pass, rationale_en, rationale_fr, axis_breakdown, created_at")
       .eq("user_id", context.userId)
       .eq("grant_id", data.id)
       .maybeSingle();
