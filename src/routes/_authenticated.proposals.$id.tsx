@@ -8,6 +8,7 @@ import { getProposal } from "@/lib/proposals.functions";
 import { submitProposal, exportProposalMarkdown } from "@/lib/submissions.functions";
 import { draftSection } from "@/agents/writer.functions";
 import { runCritic } from "@/agents/critic.functions";
+import { computeProposalReadiness, type ProposalRequirement } from "@/lib/proposal-readiness";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/proposals/$id")({
   head: ({ params }) => ({
-    meta: [{ title: `Proposal ${params.id.slice(0, 8)} — IIAL` }],
+    meta: [{ title: `Proposal ${params.id.slice(0, 8)} - IIAL` }],
   }),
   component: ProposalDetailPage,
 });
@@ -76,6 +77,11 @@ function ProposalDetailPage() {
   }
 
   const proposal = data.proposal;
+  const grant = Array.isArray(proposal.grant) ? proposal.grant[0] : proposal.grant;
+  const readiness = computeProposalReadiness({
+    sections: data.sections,
+    requirements: (grant?.requirements ?? []) as ProposalRequirement[],
+  });
   const meta = (proposal.metadata ?? {}) as {
     critic_summary_en?: string;
     critic_summary_fr?: string;
@@ -195,6 +201,85 @@ function ProposalDetailPage() {
 
         {err && <p className="text-sm text-destructive">{err}</p>}
 
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-sm">Proposal readiness</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Section coverage before submission, based on draft length, citations, planned
+                  points, and critical grant requirements.
+                </p>
+              </div>
+              <Badge
+                variant={
+                  readiness.score >= 80
+                    ? "default"
+                    : readiness.score >= 50
+                      ? "secondary"
+                      : "destructive"
+                }
+              >
+                {readiness.score}% ready
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ReadinessMetric
+                label="Sections ready"
+                value={`${readiness.readySections}/${readiness.totalSections}`}
+              />
+              <ReadinessMetric
+                label="Critical requirements covered"
+                value={`${readiness.coveredCriticalRequirements}/${readiness.criticalRequirements}`}
+              />
+              <ReadinessMetric
+                label="Needs attention"
+                value={`${readiness.sections.filter((s) => s.status !== "ready").length}`}
+              />
+            </div>
+
+            {readiness.openCriticalRequirements.length > 0 && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                <p className="text-xs font-medium text-destructive">Open critical requirement(s)</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {readiness.openCriticalRequirements.slice(0, 4).map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {readiness.sections.map((section) => (
+                <div
+                  key={section.sectionId}
+                  className="rounded-md border bg-muted/20 px-3 py-2 text-xs"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">{section.heading}</span>
+                    <Badge
+                      variant={
+                        section.status === "ready"
+                          ? "default"
+                          : section.status === "partial"
+                            ? "secondary"
+                            : "destructive"
+                      }
+                    >
+                      {section.score}%
+                    </Badge>
+                  </div>
+                  {section.issues.length > 0 && (
+                    <p className="mt-1 text-muted-foreground">{section.issues.join(" ")}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="space-y-4">
           {data.sections.map((s) => {
             const heading = fr && s.heading_fr ? s.heading_fr : s.heading_en;
@@ -231,7 +316,7 @@ function ProposalDetailPage() {
                   {content ? (
                     <p className="text-sm whitespace-pre-wrap">{content}</p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">—</p>
+                    <p className="text-sm text-muted-foreground">-</p>
                   )}
                   {citations.length > 0 && (
                     <div className="text-xs text-muted-foreground">
@@ -239,7 +324,7 @@ function ProposalDetailPage() {
                       <ul className="space-y-1">
                         {citations.map((c, i) => (
                           <li key={i}>
-                            <span className="font-mono">{c.marker}</span> — {c.snippet}
+                            <span className="font-mono">{c.marker}</span> - {c.snippet}
                           </li>
                         ))}
                       </ul>
@@ -270,5 +355,14 @@ function ProposalDetailPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function ReadinessMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-semibold">{value}</p>
+    </div>
   );
 }

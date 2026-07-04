@@ -24,7 +24,7 @@ export const getProposal = createServerFn({ method: "GET" })
       context.supabase
         .from("proposals")
         .select(
-          "id, title, status, version, critic_score, language, metadata, grant:grants(id, title, title_fr, summary, summary_fr, deadline, amount_cad_min, amount_cad_max)",
+          "id, title, status, version, critic_score, language, metadata, grant:grants(id, title, title_fr, summary, summary_fr, deadline, amount_cad_min, amount_cad_max, requirements)",
         )
         .eq("id", data.id)
         .maybeSingle(),
