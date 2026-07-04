@@ -1,13 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrgProfile } from "@/lib/org.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
 import { useIsAdmin, useModuleFlags } from "@/lib/use-platform";
-import { Shield } from "lucide-react";
+import { Shield, Sparkles } from "lucide-react";
 import "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -27,6 +30,13 @@ function Dashboard() {
   const isAdmin = useIsAdmin();
   const { data: mods } = useModuleFlags();
   const on = (m: string) => mods?.isEnabled(m) ?? true;
+  const fetchOrg = useServerFn(getOrgProfile);
+  const { data: org } = useQuery({ queryKey: ["org", "self"], queryFn: () => fetchOrg() });
+  // The single highest-value onboarding step: an incomplete org profile means
+  // every grant score falls back to generic defaults instead of comparing
+  // against who this organization actually is (see deriveRulesFromOrg).
+  const p = org?.profile;
+  const profileComplete = !!(p?.org_name && p.sectors?.length && p.jurisdictions?.length);
 
   useEffect(() => {
     syncClientLocale();
@@ -56,6 +66,25 @@ function Dashboard() {
           </Button>
         </div>
       </header>
+
+      {org && !profileComplete && (
+        <Card className="mb-4 border-amber-400/50 bg-amber-50/60 dark:bg-amber-950/20">
+          <CardContent className="flex flex-wrap items-center gap-3 py-4">
+            <Sparkles className="h-5 w-5 text-amber-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Complete your organization profile</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Takes 2 minutes and powers real fit scoring — grants are compared against your
+                actual sectors, jurisdictions, and budget instead of generic defaults.
+              </p>
+            </div>
+            <Link to="/org">
+              <Button size="sm">Complete profile →</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>{t("app.name")}</CardTitle>
