@@ -55,16 +55,17 @@ sin costo de tokens cloud. Verificado end-to-end contra Supabase local + Ollama.
 Cada decisión es reproducible y trazable: extractores 0% varianza, reglas lógicas,
 audit log inmutable (triggers rechazan UPDATE/DELETE), atribución de actor real.
 
-## Estado verificado (2026-07-03)
-- Stack local operativo: Supabase (Docker) + Ollama, 48 migraciones limpias.
-- Pipeline vivo verde: enrich + evaluate contra DB real, montos correctos, fit + desglose por ejes persistidos.
-- Calidad de ingeniería: TypeScript 0 errores, ESLint 0 warnings, 109 tests, build limpio.
-
 ### 6. Reporte de fit compartible (sin login)
 Un botón "Share report" genera un link público read-only (token no adivinable,
 expira a 30 días, revocable) con el fit score, el desglose por dimensión y la
 evidencia citada — para circular la evaluación al equipo o al board sin cuentas.
 Paridad con Grantable, pero con nuestro desglose determinista y citado dentro.
+
+## Estado verificado (2026-07-04)
+- Stack local operativo: Supabase (Docker) + Ollama, 49 migraciones limpias.
+- Pipeline vivo verde: enrich + evaluate contra DB real, montos correctos, fit + desglose de 6 ejes persistido y visible en UI.
+- Reporte compartible probado en navegador sin sesión (storage limpio).
+- Calidad de ingeniería: TypeScript 0 errores, ESLint 0 warnings, 117 tests, build limpio.
 
 ## En construcción (roadmap)
 - Extracción de requisitos de RFP + cobertura por sección (estilo Grant Assistant).
