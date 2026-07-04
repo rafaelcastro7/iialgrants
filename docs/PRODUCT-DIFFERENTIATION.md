@@ -32,9 +32,9 @@ Ontario en IA puntúa distinto para una org de Ontario/IA que para una de BC/min
 competitivos" que los líderes dejan pasar.)*
 
 ### 2. Desglose multi-eje transparente y **determinista**
-Cada grant muestra **por qué** puntúa lo que puntúa, en 5 ejes (Elegibilidad,
-Geografía, Misión/Sector, Presupuesto, Timeline), cada uno 0-10 con las razones
-concretas. A diferencia de Grantable (ejes generados por LLM, no reproducibles),
+Cada grant muestra **por qué** puntúa lo que puntúa, en 6 ejes (Elegibilidad,
+Geografía, Misión/Sector, Presupuesto, Timeline, **Capacidad operativa**), cada
+uno 0-10 con las razones concretas. A diferencia de Grantable (ejes generados por LLM, no reproducibles),
 los nuestros se derivan **determinísticamente** de reglas verificables: mismo
 grant + mismo perfil = mismo desglose, siempre. *(`computeAxisBreakdown`.)*
 
