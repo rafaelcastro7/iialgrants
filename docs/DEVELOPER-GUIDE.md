@@ -218,6 +218,14 @@ The proposal detail route renders this as "Proposal readiness" with an overall
 score, section status, and open critical requirements. This is intentionally
 derived from current data at read time, so no migration is required.
 
+## Onboarding Nudges
+
+Dashboard (`_authenticated.dashboard.tsx`) checks org-profile completeness
+(org_name + sectors + jurisdictions) and shows an action-oriented banner
+linking to `/org` when incomplete — hidden once complete. This is the
+highest-leverage onboarding step: `deriveRulesFromOrg` (fit-rules.shared.ts)
+falls back to generic defaults without it.
+
 ## Verification Standard
 
 Before calling work complete, run:
