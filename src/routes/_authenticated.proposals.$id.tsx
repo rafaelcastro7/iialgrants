@@ -151,7 +151,7 @@ function ProposalDetailPage() {
                   onClick={() => switchView(m)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                     viewMode === m
-                      ? "bg-[#0f1b3d] text-white"
+                      ? "bg-brand text-brand-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
