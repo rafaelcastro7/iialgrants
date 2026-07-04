@@ -1,0 +1,420 @@
+- main [ref=f52e2]:
+  - generic [ref=f52e4]:
+    - navigation [ref=f52e5]:
+      - link "IIAL" [ref=f52e6] [cursor=pointer]:
+        - /url: /dashboard
+      - link "Dashboard" [ref=f52e7] [cursor=pointer]:
+        - /url: /dashboard
+      - link "Grants" [ref=f52e8] [cursor=pointer]:
+        - /url: /grants
+      - link "Proposals" [ref=f52e9] [cursor=pointer]:
+        - /url: /proposals
+      - link "Organization profile" [ref=f52e10] [cursor=pointer]:
+        - /url: /org
+      - link "Screening Rules" [ref=f52e11] [cursor=pointer]:
+        - /url: /fit-rules
+    - button "Sign out" [ref=f52e12] [cursor=pointer]
+  - generic [ref=f52e13]:
+    - generic [ref=f52e14]:
+      - generic [ref=f52e15]:
+        - heading "Grants Workspace" [level=1] [ref=f52e16]
+        - paragraph [ref=f52e17]: Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step.
+      - tablist "View mode" [ref=f52e18]:
+        - tab "Express" [ref=f52e19]
+        - tab "Advanced" [selected] [ref=f52e20]
+    - generic [ref=f52e21]:
+      - generic [ref=f52e22]:
+        - generic [ref=f52e23]:
+          - paragraph [ref=f52e24]: Total Opportunities
+          - paragraph [ref=f52e25]: "16"
+        - generic [ref=f52e26]:
+          - paragraph [ref=f52e27]: Needs Action
+          - paragraph [ref=f52e28]: "02"
+        - generic [ref=f52e29]:
+          - paragraph [ref=f52e30]: Avg Fit
+          - paragraph [ref=f52e31]: 61%
+        - generic [ref=f52e32]:
+          - paragraph [ref=f52e33]: In Pipeline
+          - paragraph [ref=f52e34]: $346.0M
+      - generic [ref=f52e36]:
+        - generic [ref=f52e37]: WORKFLOW
+        - paragraph [ref=f52e38]: Discover funds → Enrich profile → Evaluate fit → Shortlist → Draft → Submit. Each card shows the next action you should take.
+      - generic [ref=f52e39]:
+        - generic [ref=f52e41]:
+          - generic [ref=f52e42]:
+            - img
+            - searchbox "Search grants" [ref=f52e43]
+          - generic [ref=f52e44]:
+            - generic [ref=f52e45]: Sort
+            - combobox "Sort grants" [ref=f52e46]:
+              - option "Best fit" [selected]
+              - option "Deadline"
+              - option "Amount"
+              - option "Newest"
+          - combobox "Jurisdiction" [ref=f52e47]:
+            - option "All jurisdictions" [selected]
+            - option "CA"
+          - button "Eligible only" [ref=f52e48] [cursor=pointer]:
+            - generic [ref=f52e49]: Eligible only
+          - button "With deadline" [ref=f52e50] [cursor=pointer]:
+            - generic [ref=f52e51]: With deadline
+        - generic [ref=f52e52]:
+          - button "NotebookLM" [ref=f52e53] [cursor=pointer]:
+            - img
+            - text: NotebookLM
+          - button "All funders" [ref=f52e54] [cursor=pointer]:
+            - img
+            - text: All funders
+          - button "Discover & Enrich" [ref=f52e55] [cursor=pointer]
+      - generic [ref=f52e56]:
+        - generic [ref=f52e57]:
+          - heading "Discovered 02" [level=3] [ref=f52e59]
+          - paragraph [ref=f52e61]: Found by the discovery agents. Needs enrichment.
+          - generic [ref=f52e62]:
+            - generic [ref=f52e63]:
+              - generic [ref=f52e64]:
+                - generic [ref=f52e65]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e66]
+                  - generic [ref=f52e67]: Not scored
+                - generic [ref=f52e68]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e69] [cursor=pointer]:
+                - /url: /grants/8704d800-3dd2-4dc6-8e6b-7831e899b490
+              - paragraph [ref=f52e70]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e71]:
+                - button "Enrich profile" [ref=f52e72] [cursor=pointer]
+                - link "Open detail" [ref=f52e73] [cursor=pointer]:
+                  - /url: /grants/8704d800-3dd2-4dc6-8e6b-7831e899b490
+                  - img
+            - generic [ref=f52e74]:
+              - generic [ref=f52e75]:
+                - generic [ref=f52e76]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e77]
+                  - generic [ref=f52e78]: Not scored
+                - generic [ref=f52e79]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e80] [cursor=pointer]:
+                - /url: /grants/c74348c4-26a3-4776-9f87-e831294de9d4
+              - paragraph [ref=f52e81]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e82]:
+                - button "Enrich profile" [ref=f52e83] [cursor=pointer]
+                - link "Open detail" [ref=f52e84] [cursor=pointer]:
+                  - /url: /grants/c74348c4-26a3-4776-9f87-e831294de9d4
+                  - img
+        - generic [ref=f52e85]:
+          - heading "Enriched 00" [level=3] [ref=f52e87]
+          - paragraph [ref=f52e89]: Data fully extracted with citations. Ready for fit evaluation.
+          - generic [ref=f52e91]: No grants in this stage
+        - generic [ref=f52e92]:
+          - heading "Evaluated 06" [level=3] [ref=f52e94]
+          - paragraph [ref=f52e96]: Scored against your screening rules. Review and shortlist.
+          - generic [ref=f52e97]:
+            - generic [ref=f52e98]:
+              - generic [ref=f52e99]:
+                - generic [ref=f52e100]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e101]
+                  - generic "Fit score 64/100" [ref=f52e102]: 64% Fit
+                - generic [ref=f52e103]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e104] [cursor=pointer]:
+                - /url: /grants/e49413db-d096-4864-ad4e-b044148c8b6a
+              - paragraph [ref=f52e105]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e106]:
+                - generic [ref=f52e107]:
+                  - img [ref=f52e108]
+                  - text: Evidence cited
+                - generic [ref=f52e111]: up to $1000K
+              - generic [ref=f52e112]:
+                - link "Review & shortlist" [ref=f52e113] [cursor=pointer]:
+                  - /url: /grants/e49413db-d096-4864-ad4e-b044148c8b6a
+                - link "Open detail" [ref=f52e114] [cursor=pointer]:
+                  - /url: /grants/e49413db-d096-4864-ad4e-b044148c8b6a
+                  - img
+            - generic [ref=f52e115]:
+              - generic [ref=f52e116]:
+                - generic [ref=f52e117]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e118]
+                  - generic "Fit score 64/100" [ref=f52e119]: 64% Fit
+                - generic [ref=f52e120]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e121] [cursor=pointer]:
+                - /url: /grants/a8b84ccd-7f98-46e0-9774-f177e8415f26
+              - paragraph [ref=f52e122]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e123]:
+                - generic [ref=f52e124]:
+                  - img [ref=f52e125]
+                  - text: Evidence cited
+                - generic [ref=f52e128]: up to $1000K
+              - generic [ref=f52e129]:
+                - link "Review & shortlist" [ref=f52e130] [cursor=pointer]:
+                  - /url: /grants/a8b84ccd-7f98-46e0-9774-f177e8415f26
+                - link "Open detail" [ref=f52e131] [cursor=pointer]:
+                  - /url: /grants/a8b84ccd-7f98-46e0-9774-f177e8415f26
+                  - img
+            - generic [ref=f52e132]:
+              - generic [ref=f52e133]:
+                - generic [ref=f52e134]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e135]
+                  - generic "Fit score 62/100" [ref=f52e136]: 62% Fit
+                - generic [ref=f52e137]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e138] [cursor=pointer]:
+                - /url: /grants/dfa24be8-e2f5-42d7-92c9-9ee9cbf1bd53
+              - paragraph [ref=f52e139]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e140]:
+                - generic [ref=f52e141]:
+                  - img [ref=f52e142]
+                  - text: Evidence cited
+                - generic [ref=f52e145]: up to $1000K
+              - generic [ref=f52e146]:
+                - link "Review & shortlist" [ref=f52e147] [cursor=pointer]:
+                  - /url: /grants/dfa24be8-e2f5-42d7-92c9-9ee9cbf1bd53
+                - link "Open detail" [ref=f52e148] [cursor=pointer]:
+                  - /url: /grants/dfa24be8-e2f5-42d7-92c9-9ee9cbf1bd53
+                  - img
+            - generic [ref=f52e149]:
+              - generic [ref=f52e150]:
+                - generic [ref=f52e151]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e152]
+                  - generic "Fit score 62/100" [ref=f52e153]: 62% Fit
+                - generic [ref=f52e154]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e155] [cursor=pointer]:
+                - /url: /grants/aced5532-f6dc-4b7c-a658-b02704957415
+              - paragraph [ref=f52e156]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e157]:
+                - generic [ref=f52e158]:
+                  - img [ref=f52e159]
+                  - text: Evidence cited
+                - generic [ref=f52e162]: up to $1000K
+              - generic [ref=f52e163]:
+                - link "Review & shortlist" [ref=f52e164] [cursor=pointer]:
+                  - /url: /grants/aced5532-f6dc-4b7c-a658-b02704957415
+                - link "Open detail" [ref=f52e165] [cursor=pointer]:
+                  - /url: /grants/aced5532-f6dc-4b7c-a658-b02704957415
+                  - img
+            - generic [ref=f52e166]:
+              - generic [ref=f52e167]:
+                - generic [ref=f52e168]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e169]
+                  - generic "Fit score 62/100" [ref=f52e170]: 62% Fit
+                - generic [ref=f52e171]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e172] [cursor=pointer]:
+                - /url: /grants/6a4eaa9e-3729-48b3-993e-79582175679f
+              - paragraph [ref=f52e173]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e174]:
+                - generic [ref=f52e175]:
+                  - img [ref=f52e176]
+                  - text: Evidence cited
+                - generic [ref=f52e179]: up to $1K
+              - generic [ref=f52e180]:
+                - link "Review & shortlist" [ref=f52e181] [cursor=pointer]:
+                  - /url: /grants/6a4eaa9e-3729-48b3-993e-79582175679f
+                - link "Open detail" [ref=f52e182] [cursor=pointer]:
+                  - /url: /grants/6a4eaa9e-3729-48b3-993e-79582175679f
+                  - img
+            - generic [ref=f52e183]:
+              - generic [ref=f52e184]:
+                - generic [ref=f52e185]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e186]
+                  - generic "Fit score 62/100" [ref=f52e187]: 62% Fit
+                - generic [ref=f52e188]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e189] [cursor=pointer]:
+                - /url: /grants/192c219c-9de1-4254-a7df-9eadde313dd4
+              - paragraph [ref=f52e190]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e191]:
+                - generic [ref=f52e192]:
+                  - img [ref=f52e193]
+                  - text: Evidence cited
+                - generic [ref=f52e196]: up to $0K
+              - generic [ref=f52e197]:
+                - link "Review & shortlist" [ref=f52e198] [cursor=pointer]:
+                  - /url: /grants/192c219c-9de1-4254-a7df-9eadde313dd4
+                - link "Open detail" [ref=f52e199] [cursor=pointer]:
+                  - /url: /grants/192c219c-9de1-4254-a7df-9eadde313dd4
+                  - img
+        - generic [ref=f52e200]:
+          - heading "Shortlisted 01" [level=3] [ref=f52e202]
+          - paragraph [ref=f52e204]: Curated as a real opportunity. Start drafting.
+          - generic [ref=f52e206]:
+            - generic [ref=f52e207]:
+              - generic [ref=f52e208]:
+                - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e209]
+                - generic "Fit score 96/100" [ref=f52e210]: 96% Fit
+              - generic [ref=f52e211]: No deadline
+            - link "Industrial Research Assistance Program (IRAP)" [ref=f52e212] [cursor=pointer]:
+              - /url: /grants/341e8c5a-f334-46d0-b4b2-e10b9258b912
+            - paragraph [ref=f52e213]: National Research Council Canada (IRAP) · CA
+            - generic [ref=f52e215]:
+              - img [ref=f52e216]
+              - text: Evidence cited
+            - generic [ref=f52e219]:
+              - button "Start draft" [ref=f52e220] [cursor=pointer]
+              - link "Open detail" [ref=f52e221] [cursor=pointer]:
+                - /url: /grants/341e8c5a-f334-46d0-b4b2-e10b9258b912
+                - img
+        - generic [ref=f52e222]:
+          - heading "Drafting 00" [level=3] [ref=f52e224]
+          - paragraph [ref=f52e226]: A proposal exists. Continue writing or send to NotebookLM.
+          - generic [ref=f52e228]: No grants in this stage
+        - generic [ref=f52e229]:
+          - heading "Submitted 00" [level=3] [ref=f52e231]
+          - paragraph [ref=f52e233]: Filed with the funder. Outcome tracking only.
+          - generic [ref=f52e235]: No grants in this stage
+        - generic [ref=f52e236]:
+          - heading "Archived 07" [level=3] [ref=f52e238]
+          - paragraph [ref=f52e240]: Filtered out by screening rules or manually archived.
+          - generic [ref=f52e241]:
+            - generic [ref=f52e242]:
+              - generic [ref=f52e243]:
+                - generic [ref=f52e244]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e245]
+                  - generic "Eligibility failed" [ref=f52e246]: 58% Fit
+                - generic [ref=f52e247]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e248] [cursor=pointer]:
+                - /url: /grants/5f74eef1-c35e-45d2-b6d4-269f34904e2f
+              - paragraph [ref=f52e249]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e250]:
+                - generic [ref=f52e251]:
+                  - img [ref=f52e252]
+                  - text: Evidence cited
+                - generic [ref=f52e255]: up to $336000K
+              - generic [ref=f52e256]:
+                - link "Open funder page" [ref=f52e257] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: Open funder page
+                  - img
+                - link "Open detail" [ref=f52e258] [cursor=pointer]:
+                  - /url: /grants/5f74eef1-c35e-45d2-b6d4-269f34904e2f
+                  - img
+            - generic [ref=f52e259]:
+              - generic [ref=f52e260]:
+                - generic [ref=f52e261]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e262]
+                  - generic "Eligibility failed" [ref=f52e263]: 56% Fit
+                - generic [ref=f52e264]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e265] [cursor=pointer]:
+                - /url: /grants/af73b339-8c17-4ea7-91fb-927d78a02301
+              - paragraph [ref=f52e266]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e267]:
+                - generic [ref=f52e268]:
+                  - img [ref=f52e269]
+                  - text: Evidence cited
+                - generic [ref=f52e272]: up to $1000K
+              - generic [ref=f52e273]:
+                - link "Open funder page" [ref=f52e274] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: Open funder page
+                  - img
+                - link "Open detail" [ref=f52e275] [cursor=pointer]:
+                  - /url: /grants/af73b339-8c17-4ea7-91fb-927d78a02301
+                  - img
+            - generic [ref=f52e276]:
+              - generic [ref=f52e277]:
+                - generic [ref=f52e278]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e279]
+                  - generic "Eligibility failed" [ref=f52e280]: 54% Fit
+                - generic [ref=f52e281]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e282] [cursor=pointer]:
+                - /url: /grants/c6e0d906-25f5-4837-b346-d8d0f05d6ead
+              - paragraph [ref=f52e283]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e284]:
+                - generic [ref=f52e285]:
+                  - img [ref=f52e286]
+                  - text: Evidence cited
+                - generic [ref=f52e289]: up to $1000K
+              - generic [ref=f52e290]:
+                - link "Open funder page" [ref=f52e291] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: Open funder page
+                  - img
+                - link "Open detail" [ref=f52e292] [cursor=pointer]:
+                  - /url: /grants/c6e0d906-25f5-4837-b346-d8d0f05d6ead
+                  - img
+            - generic [ref=f52e293]:
+              - generic [ref=f52e294]:
+                - generic [ref=f52e295]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e296]
+                  - generic "Eligibility failed" [ref=f52e297]: 54% Fit
+                - generic [ref=f52e298]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e299] [cursor=pointer]:
+                - /url: /grants/5bd98178-ebaa-4f49-b42e-e369120b9c3e
+              - paragraph [ref=f52e300]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e301]:
+                - generic [ref=f52e302]:
+                  - img [ref=f52e303]
+                  - text: Evidence cited
+                - generic [ref=f52e306]: up to $1000K
+              - generic [ref=f52e307]:
+                - link "Open funder page" [ref=f52e308] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: Open funder page
+                  - img
+                - link "Open detail" [ref=f52e309] [cursor=pointer]:
+                  - /url: /grants/5bd98178-ebaa-4f49-b42e-e369120b9c3e
+                  - img
+            - generic [ref=f52e310]:
+              - generic [ref=f52e311]:
+                - generic [ref=f52e312]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e313]
+                  - generic "Eligibility failed" [ref=f52e314]: 52% Fit
+                - generic [ref=f52e315]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e316] [cursor=pointer]:
+                - /url: /grants/6c2f0420-002d-4575-95fc-49d6391d3607
+              - paragraph [ref=f52e317]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e318]:
+                - generic [ref=f52e319]:
+                  - img [ref=f52e320]
+                  - text: Evidence cited
+                - generic [ref=f52e323]: up to $1000K
+              - generic [ref=f52e324]:
+                - link "Open funder page" [ref=f52e325] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: Open funder page
+                  - img
+                - link "Open detail" [ref=f52e326] [cursor=pointer]:
+                  - /url: /grants/6c2f0420-002d-4575-95fc-49d6391d3607
+                  - img
+            - generic [ref=f52e327]:
+              - generic [ref=f52e328]:
+                - generic [ref=f52e329]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e330]
+                  - generic "Eligibility failed" [ref=f52e331]: 52% Fit
+                - generic [ref=f52e332]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e333] [cursor=pointer]:
+                - /url: /grants/e53deb15-6703-4334-9850-e93fd0b8af85
+              - paragraph [ref=f52e334]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e335]:
+                - generic [ref=f52e336]:
+                  - img [ref=f52e337]
+                  - text: Evidence cited
+                - generic [ref=f52e340]: up to $1000K
+              - generic [ref=f52e341]:
+                - link "Open funder page" [ref=f52e342] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: Open funder page
+                  - img
+                - link "Open detail" [ref=f52e343] [cursor=pointer]:
+                  - /url: /grants/e53deb15-6703-4334-9850-e93fd0b8af85
+                  - img
+            - generic [ref=f52e344]:
+              - generic [ref=f52e345]:
+                - generic [ref=f52e346]:
+                  - checkbox "Select Industrial Research Assistance Program (IRAP)" [ref=f52e347]
+                  - generic "Eligibility failed" [ref=f52e348]: 52% Fit
+                - generic [ref=f52e349]: No deadline
+              - link "Industrial Research Assistance Program (IRAP)" [ref=f52e350] [cursor=pointer]:
+                - /url: /grants/a225f6dc-b816-4913-b2f3-8c24d84ed937
+              - paragraph [ref=f52e351]: National Research Council Canada (IRAP) · CA
+              - generic [ref=f52e352]:
+                - generic [ref=f52e353]:
+                  - img [ref=f52e354]
+                  - text: Evidence cited
+                - generic [ref=f52e357]: up to $1000K
+              - generic [ref=f52e358]:
+                - link "Open funder page" [ref=f52e359] [cursor=pointer]:
+                  - /url: https://nrc.canada.ca/en/support-technology-innovation/financial-support-technology-innovation
+                  - text: Open funder page
+                  - img
+                - link "Open detail" [ref=f52e360] [cursor=pointer]:
+                  - /url: /grants/a225f6dc-b816-4913-b2f3-8c24d84ed937
+                  - img
+    - button "Event log Show" [ref=f52e363]:
+      - generic [ref=f52e364]:
+        - img [ref=f52e365]
+        - text: Event log
+      - generic [ref=f52e367]: Show
