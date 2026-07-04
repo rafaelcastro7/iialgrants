@@ -43,24 +43,22 @@ export function GrantFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+      <div className="relative w-full sm:w-auto">
+        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search title or funder…"
+          placeholder="Search title or funder..."
           aria-label="Search grants"
-          className="w-52 border rounded-md pl-7 pr-2 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-[#3b6fa0]/40"
+          className="h-9 w-full rounded-md border bg-background pl-7 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b6fa0]/40 sm:w-56"
         />
       </div>
 
-      {/* Sort */}
       <label className="flex items-center gap-1 text-muted-foreground">
         <span className="hidden sm:inline">Sort</span>
         <select
-          className="border rounded-md px-2 py-1.5 bg-background"
+          className="h-9 rounded-md border bg-background px-2 text-sm"
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
           aria-label="Sort grants"
@@ -73,9 +71,8 @@ export function GrantFilters({
         </select>
       </label>
 
-      {/* Jurisdiction */}
       <select
-        className="border rounded-md px-2 py-1.5 bg-background"
+        className="h-9 rounded-md border bg-background px-2 text-sm"
         value={jurisdiction}
         onChange={(e) => setJurisdiction(e.target.value)}
         aria-label="Jurisdiction"
@@ -91,14 +88,16 @@ export function GrantFilters({
       <button
         type="button"
         onClick={() => setEligibleOnly(!eligibleOnly)}
-        className="cursor-pointer"
+        className="inline-flex min-h-9 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        aria-pressed={eligibleOnly}
       >
         <Badge variant={eligibleOnly ? "default" : "outline"}>Eligible only</Badge>
       </button>
       <button
         type="button"
         onClick={() => setOnlyWithDeadline(!onlyWithDeadline)}
-        className="cursor-pointer"
+        className="inline-flex min-h-9 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        aria-pressed={onlyWithDeadline}
       >
         <Badge variant={onlyWithDeadline ? "default" : "outline"}>With deadline</Badge>
       </button>
@@ -107,7 +106,7 @@ export function GrantFilters({
         <button
           type="button"
           onClick={clearAll}
-          className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800"
+          className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           aria-label="Clear filters"
         >
           <X className="h-3.5 w-3.5" /> Clear

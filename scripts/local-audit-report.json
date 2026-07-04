@@ -1,31 +1,12 @@
 {
-  "model": "qwen2.5-coder:7b",
-  "startedAt": "2026-07-04T17:03:58.075Z",
+  "model": "qwen2.5-coder:3b",
+  "startedAt": "2026-07-04T20:02:48.309Z",
   "results": [
     {
-      "file": "src/components/grants/GrantDetailExpress.tsx",
-      "ms": 24442,
-      "findings": [
-        {
-          "line": 102,
-          "severity": "MEDIUM",
-          "issue": "Potential null/undefined dereference in `deadline` calculation.",
-          "repro": "If `deadline` is null or undefined, the code will throw an error when trying to calculate days."
-        },
-        {
-          "line": 102,
-          "severity": "MEDIUM",
-          "issue": "Potential off-by-one error in `deadline` calculation.",
-          "repro": "The code uses `Math.ceil`, which rounds up. If the current date is exactly at midnight, it might not be counted as a day."
-        },
-        {
-          "line": 102,
-          "severity": "MEDIUM",
-          "issue": "Potential boundary error in `deadline` calculation.",
-          "repro": "If the deadline is set to a past date, the code will incorrectly calculate days passed instead of remaining days."
-        }
-      ]
+      "file": "src/routes/_authenticated.grants.$id.audit.tsx",
+      "ms": 9967,
+      "findings": []
     }
   ],
-  "finishedAt": "2026-07-04T17:04:22.537Z"
+  "finishedAt": "2026-07-04T20:02:58.280Z"
 }

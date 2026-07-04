@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import "@/i18n";
 
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — IIAL" },
+      { title: "Sign in - IIAL" },
       { name: "description", content: "Sign in to IIAL grant intelligence platform." },
     ],
   }),
@@ -28,6 +28,16 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  async function waitForSession(timeoutMs = 3000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) return data.session;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return null;
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +54,9 @@ function AuthPage() {
             });
       const { error } = await fn;
       if (error) throw error;
-      await navigate({ to: "/" });
+      const session = await waitForSession();
+      if (!session) throw new Error("Unable to establish a session after sign in.");
+      await navigate({ to: "/dashboard" });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -68,6 +80,8 @@ function AuthPage() {
         password: DEMO_PASSWORD,
       });
       if (error) throw error;
+      const session = await waitForSession();
+      if (!session) throw new Error("Unable to establish a session after demo sign in.");
       await navigate({ to: "/dashboard" });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -77,10 +91,17 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>{mode === "signin" ? t("auth.signIn") : t("auth.signUp")}</CardTitle>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,111,160,0.12),_transparent_42%),linear-gradient(180deg,_rgba(15,23,42,0.02),_transparent)] px-4 py-8 text-foreground sm:px-6">
+      <Card className="mx-auto w-full max-w-md border-border/70 bg-card/95 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.32)] backdrop-blur">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold leading-none tracking-tight">
+              {mode === "signin" ? t("auth.signIn") : t("auth.signUp")}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Sign in to your workspace or try the seeded demo accounts below.
+            </p>
+          </div>
           <LanguageSwitcher />
         </CardHeader>
         <CardContent>
@@ -118,7 +139,7 @@ function AuthPage() {
             </Button>
             <button
               type="button"
-              className="text-sm underline w-full text-center"
+              className="w-full text-center text-sm underline underline-offset-4"
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             >
               {mode === "signin" ? t("auth.signUp") : t("auth.signIn")}
@@ -126,17 +147,18 @@ function AuthPage() {
           </form>
 
           {import.meta.env.DEV && (
-            <div className="mt-6 pt-6 border-t">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2 text-center">
+            <div className="mt-6 border-t pt-6">
+              <p className="mb-2 text-center text-xs uppercase tracking-wide text-muted-foreground">
                 Demo autologin
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {DEMO_USERS.map((u) => (
                   <Button
                     key={u.email}
                     type="button"
                     variant="secondary"
                     size="sm"
+                    className="w-full"
                     disabled={loading}
                     onClick={() => demoLogin(u.email)}
                   >
@@ -144,8 +166,8 @@ function AuthPage() {
                   </Button>
                 ))}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2 text-center">
-                Seeded accounts · password <code className="font-mono">{DEMO_PASSWORD}</code>
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Seeded accounts - password <code className="font-mono">{DEMO_PASSWORD}</code>
               </p>
             </div>
           )}

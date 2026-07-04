@@ -92,9 +92,9 @@ function ScoreGauge({ value }: { value: number }) {
   const dash = c * pct;
   const t = tier(value);
   return (
-    <div className="relative w-24 h-24 shrink-0">
-      <svg viewBox="0 0 88 88" className="w-full h-full -rotate-90">
-        <circle cx="44" cy="44" r={r} className="stroke-muted fill-none" strokeWidth="8" />
+    <div className="relative h-24 w-24 shrink-0">
+      <svg viewBox="0 0 88 88" className="h-full w-full -rotate-90">
+        <circle cx="44" cy="44" r={r} className="fill-none stroke-muted" strokeWidth="8" />
         <circle
           cx="44"
           cy="44"
@@ -109,7 +109,7 @@ function ScoreGauge({ value }: { value: number }) {
         <span className={cn("text-xl font-bold tabular-nums", t.color)}>
           {Math.round(pct * 100)}
         </span>
-        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">fit</span>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">fit score</span>
       </div>
     </div>
   );
@@ -133,30 +133,30 @@ const LABELS = {
   eligibleFail: "Not eligible",
   rationale: "Rationale",
   waitingProfile: "Set up your organization profile to enable AI fit evaluation.",
-  waitingEnrich: "Waiting for enrichment…",
-  evaluating: "AI is evaluating fit…",
+  waitingEnrich: "Waiting for enrichment...",
+  evaluating: "AI is evaluating fit...",
   showDetails: "See what happened in each step",
   hideDetails: "Hide step details",
   at: "at",
   detail: {
     discovered: {
-      done: "We found this funding opportunity on the funder's website and saved it to your catalog. No AI interpretation yet — just the raw notice.",
-      active: "Scanning the funder's website for new programs…",
+      done: "We found this funding opportunity on the funder's website and saved it to your catalog. No AI interpretation yet - just the raw notice.",
+      active: "Scanning the funder's website for new programs...",
       pending: "Not started yet.",
     },
     enriched: {
-      done: "The AI cleaned up the listing: parsed the deadline into a real date and normalized amounts to Canadian dollars so it's comparable with other grants.",
-      active: "The AI is standardizing the grant details right now…",
+      done: "The AI cleaned up the listing: parsed the deadline into a real date and normalized amounts to Canadian dollars so it is comparable with other grants.",
+      active: "The AI is standardizing the grant details right now...",
       pending: "Will run automatically once the grant is discovered.",
     },
     evaluated: {
       done: "The AI compared this grant's eligibility, sectors, jurisdiction and stage against your organization profile, then produced a fit score from 0 to 100 and a written rationale.",
-      active: "Comparing the grant requirements with your organization profile…",
+      active: "Comparing the grant requirements with your organization profile...",
       pending: "Will run as soon as enrichment finishes (and you have an organization profile).",
     },
     verdict: {
       done: "Final recommendation based on the fit score and the eligibility check. Read the rationale above to see the reasoning the AI gave.",
-      active: "Composing the final verdict…",
+      active: "Composing the final verdict...",
       pending: "Waiting for evaluation to finish.",
     },
   },
@@ -189,8 +189,7 @@ export function FitEvaluation(props: Props) {
   };
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
-      {/* Stepper */}
+    <div className="overflow-hidden rounded-2xl border bg-card">
       <div className="px-4 pt-4">
         <ol className="grid grid-cols-4 gap-2">
           {STAGE_ORDER.map((s, i) => {
@@ -211,9 +210,6 @@ export function FitEvaluation(props: Props) {
                     <div
                       className={cn(
                         "h-0.5 flex-1 rounded transition-colors",
-                        // Line only goes green if THIS stage is done — prevents
-                        // showing a complete pipeline when evaluation ran on raw
-                        // (un-enriched) data and the user thinks enrich succeeded.
                         state === "done" ? "bg-emerald-500/60" : "bg-border",
                       )}
                     />
@@ -228,7 +224,7 @@ export function FitEvaluation(props: Props) {
                   >
                     {L.stages[s]}
                   </p>
-                  <p className="text-[10px] text-muted-foreground leading-tight">
+                  <p className="text-[10px] leading-tight text-muted-foreground">
                     {L.stageDesc[s]}
                   </p>
                 </div>
@@ -238,23 +234,22 @@ export function FitEvaluation(props: Props) {
         </ol>
       </div>
 
-      {/* Verdict body */}
-      <div className={cn("mt-3 px-4 py-4 border-t", t?.bg ?? "")}>
+      <div className={cn("mt-3 border-t px-4 py-4", t?.bg ?? "")}>
         {e && t && VerdictIcon ? (
-          <div className="flex gap-4 items-start">
+          <div className="flex items-start gap-4">
             <ScoreGauge value={e.fit_score} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <VerdictIcon className={cn("h-5 w-5", t.color)} />
                 <span className={cn("text-sm font-semibold", t.color)}>
                   {L.verdict[t.key as "strong" | "partial" | "poor"]}
                 </span>
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border",
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
                     e.eligibility_pass
-                      ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10"
-                      : "border-rose-500/30 text-rose-700 dark:text-rose-400 bg-rose-500/10",
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                      : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400",
                   )}
                 >
                   {e.eligibility_pass ? (
@@ -265,10 +260,10 @@ export function FitEvaluation(props: Props) {
                   {e.eligibility_pass ? L.eligiblePass : L.eligibleFail}
                 </span>
               </div>
-              <p className="mt-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {L.rationale}
               </p>
-              <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">
+              <p className="mt-0.5 text-sm leading-relaxed text-foreground/90">
                 {e.rationale_en || e.rationale_fr || ""}
               </p>
             </div>
@@ -295,13 +290,12 @@ export function FitEvaluation(props: Props) {
         )}
       </div>
 
-      {/* Collapsible "what happened" — plain-language per step */}
       <div className="border-t">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          className="flex w-full items-center justify-between px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
         >
           <span className="flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5" />
@@ -310,7 +304,7 @@ export function FitEvaluation(props: Props) {
           <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
         </button>
         {open && (
-          <ol className="px-4 pb-4 space-y-3">
+          <ol className="space-y-3 px-4 pb-4">
             {STAGE_ORDER.map((s) => {
               const state = stageReached(s, props);
               const Icon = STAGE_ICON[s];
@@ -320,17 +314,17 @@ export function FitEvaluation(props: Props) {
                 <li key={s} className="flex gap-3">
                   <div
                     className={cn(
-                      "mt-0.5 h-7 w-7 rounded-full flex items-center justify-center shrink-0 border",
+                      "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
                       state === "done" &&
-                        "bg-emerald-500/10 border-emerald-500/30 text-emerald-600",
-                      state === "active" && "bg-primary/10 border-primary/30 text-primary",
-                      state === "pending" && "bg-muted border-border text-muted-foreground/60",
+                        "border-emerald-500/30 bg-emerald-500/10 text-emerald-600",
+                      state === "active" && "border-primary/30 bg-primary/10 text-primary",
+                      state === "pending" && "border-border bg-muted text-muted-foreground/60",
                     )}
                   >
                     <Icon className={cn("h-3.5 w-3.5", state === "active" && "animate-pulse")} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-2">
                       <p className="text-sm font-medium">{L.stages[s]}</p>
                       {ts && state === "done" && (
                         <span className="text-[11px] text-muted-foreground">
@@ -338,7 +332,7 @@ export function FitEvaluation(props: Props) {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{text}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{text}</p>
                   </div>
                 </li>
               );

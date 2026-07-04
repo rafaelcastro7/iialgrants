@@ -19,6 +19,7 @@ import { useIsAdmin } from "@/lib/use-platform";
 
 import { Button } from "@/components/ui/button";
 import { GrantFilters } from "@/components/grants/GrantFilters";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   applyGrantFilters,
   sortGrants,
@@ -49,7 +50,7 @@ const ss = {
 export const Route = createFileRoute("/_authenticated/grants/")({
   head: () => ({
     meta: [
-      { title: "Grants — IIAL" },
+      { title: "Grants - IIAL" },
       {
         name: "description",
         content: "Manage Canadian grant opportunities through a clear, stage-by-stage pipeline.",
@@ -142,7 +143,7 @@ function GrantsPage() {
     onSuccess: (r) => {
       if (r.skipped.length > 0) {
         setAutoMsg(
-          `${r.updated} grant(s) moved · ${r.skipped.length} skipped (invalid transition).`,
+          `${r.updated} grant(s) moved - ${r.skipped.length} skipped (invalid transition).`,
         );
       } else if (r.updated > 1) {
         setAutoMsg(`${r.updated} grants moved.`);
@@ -222,7 +223,7 @@ function GrantsPage() {
         setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
         const scope = funderIds ? ` (${funderIds.length} selected)` : "";
         setDiscoveryMsg(
-          `Job ${r.jobId.slice(0, 8)} queued — ${r.queued} funder(s)${scope}. Live progress below.`,
+          `Job ${r.jobId.slice(0, 8)} queued - ${r.queued} funder(s)${scope}. Live progress below.`,
         );
       } else setDiscoveryMsg("Discovery enqueued.");
       autoRan.current = false;
@@ -281,24 +282,22 @@ function GrantsPage() {
   }, [filtered]);
 
   return (
-    <main
-      className="min-h-screen bg-[#f4f7fa] text-foreground"
-      style={{ fontFamily: "'Work Sans', system-ui, sans-serif" }}
-    >
-      <header className="border-b bg-card">
-        <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
-          <nav className="flex items-center gap-4">
-            <Link
-              to="/dashboard"
-              className="font-semibold text-[#0f1b3d]"
-              style={{ fontFamily: "'Instrument Serif', serif" }}
-            >
+    <main className="relative min-h-screen overflow-hidden text-foreground">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-[-8rem] top-[-6rem] h-72 w-72 rounded-full bg-brand/10 blur-3xl" />
+        <div className="absolute right-[-10rem] top-24 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
+      </div>
+
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link to="/dashboard" className="font-display text-lg text-foreground">
               IIAL
             </Link>
             <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
               {t("nav.dashboard")}
             </Link>
-            <Link to="/grants" className="text-sm font-medium text-[#0f1b3d]">
+            <Link to="/grants" className="text-sm font-medium text-foreground">
               {t("nav.grants")}
             </Link>
             <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">
@@ -311,7 +310,7 @@ function GrantsPage() {
               Screening Rules
             </Link>
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 md:justify-end">
             <NotificationBell />
             <Button variant="outline" size="sm" onClick={signOut}>
               {t("nav.signOut")}
@@ -320,43 +319,38 @@ function GrantsPage() {
         </div>
       </header>
 
-      <section className="max-w-[1600px] mx-auto px-6 py-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      <section className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 md:py-10">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div className="min-w-0">
-            <h1
-              className="text-4xl text-[#0f1b3d]"
-              style={{ fontFamily: "'Instrument Serif', serif" }}
-            >
+            <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+              Grants workspace
+            </p>
+            <h1 className="font-display text-4xl leading-none text-foreground md:text-5xl">
               Grants Workspace
             </h1>
-            <p className="text-slate-500 max-w-2xl text-sm mt-1">
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
               {viewMode === "express"
-                ? "Your best opportunities first — plain and simple. Switch to Advanced for the full pipeline."
+                ? "Your best opportunities first. Plain and simple. Switch to Advanced for the full pipeline."
                 : "Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step."}
             </p>
           </div>
-          <div
-            className="inline-flex rounded-lg border bg-card p-0.5 self-start md:self-end"
-            role="tablist"
-            aria-label="View mode"
+          <Tabs
+            value={viewMode}
+            onValueChange={(v) => switchView(v as "express" | "advanced")}
+            className="self-start md:self-end"
           >
-            {(["express", "advanced"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={viewMode === m}
-                onClick={() => switchView(m)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  viewMode === m
-                    ? "bg-brand text-brand-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {m === "express" ? "Express" : "Advanced"}
-              </button>
-            ))}
-          </div>
+            <TabsList
+              className="h-11 rounded-full border border-border/70 bg-card/90 p-1 shadow-sm"
+              aria-label="View mode"
+            >
+              <TabsTrigger value="express" className="min-h-9 rounded-full px-4 text-xs">
+                Express
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="min-h-9 rounded-full px-4 text-xs">
+                Advanced
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {activeJob && (
@@ -439,7 +433,7 @@ function GrantsPage() {
                       size="sm"
                       onClick={onDiscoverAll}
                       disabled={pending === "__discover__"}
-                      className="bg-[#0f1b3d] hover:bg-[#1e3a5f]"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                       {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
                     </Button>
@@ -451,25 +445,21 @@ function GrantsPage() {
         )}
 
         {data.grants.length === 0 && (
-          <div className="mt-6 rounded-lg border bg-card p-10 text-center">
-            <h2
-              className="text-2xl mb-2 text-[#0f1b3d]"
-              style={{ fontFamily: "'Instrument Serif', serif" }}
-            >
-              No grants yet
-            </h2>
-            <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-4">
+          <div className="mt-6 rounded-2xl border border-border/70 bg-card/90 p-10 text-center shadow-sm">
+            <h2 className="mb-2 font-display text-3xl text-foreground">No grants yet</h2>
+            <p className="mx-auto mb-4 max-w-xl text-sm text-muted-foreground">
               Click <b>Discover & Enrich</b> above to scan the Canadian funder catalog (Mitacs, NRC
-              IRAP, SSHRC, NSERC, CIHR, Canada Council, OTF, provincial portals…). The agent fetches
-              each source, extracts opportunities, and applies your Screening Rules automatically.
+              IRAP, SSHRC, NSERC, CIHR, Canada Council, OTF, provincial portals...). The agent
+              fetches each source, extracts opportunities, and applies your Screening Rules
+              automatically.
             </p>
             {isAdmin ? (
               <Button
                 onClick={onDiscoverAll}
                 disabled={pending === "__discover__"}
-                className="bg-[#0f1b3d] hover:bg-[#1e3a5f]"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                {pending === "__discover__" ? "Starting…" : "Run discovery now"}
+                {pending === "__discover__" ? "Starting..." : "Run discovery now"}
               </Button>
             ) : (
               <p className="text-xs text-muted-foreground">Ask an admin to run discovery.</p>

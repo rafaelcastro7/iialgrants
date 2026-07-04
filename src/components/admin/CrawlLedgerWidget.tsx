@@ -99,8 +99,11 @@ export function CrawlLedgerWidget() {
               <Badge variant="destructive">{dead.data!.length}</Badge>
             </div>
             <div className="border border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20 rounded-md divide-y max-h-40 overflow-auto">
-              {dead.data!.map((d) => (
-                <div key={d.funder_id} className="px-3 py-2 text-xs flex items-center gap-2">
+              {dead.data!.map((d, index) => (
+                <div
+                  key={`${d.funder_id}-${index}`}
+                  className="px-3 py-2 text-xs flex items-center gap-2"
+                >
                   <Badge variant="outline" className="text-amber-700 border-amber-400">
                     {d.consecutive_empty_runs}× empty
                   </Badge>
@@ -122,8 +125,8 @@ export function CrawlLedgerWidget() {
         <div>
           <div className="text-sm font-medium mb-2">Last 50 fetches</div>
           <div className="border rounded-md divide-y max-h-80 overflow-auto">
-            {(recent.data ?? []).map((r) => (
-              <div key={r.url} className="px-3 py-2 text-xs flex items-center gap-2">
+            {(recent.data ?? []).map((r, index) => (
+              <div key={`${r.url}-${index}`} className="px-3 py-2 text-xs flex items-center gap-2">
                 <Badge variant={(STATUS_COLOR[r.status] as never) ?? "outline"}>{r.status}</Badge>
                 <span className="text-muted-foreground w-16 shrink-0">
                   {timeAgo(r.last_fetched_at)}

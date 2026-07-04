@@ -39,6 +39,9 @@ export function NotificationBell() {
 
   const notifications = data?.notifications ?? [];
   const unread = data?.unreadCount ?? 0;
+  const uniqueNotifications = notifications.filter(
+    (n, index, list) => list.findIndex((item) => item.id === n.id) === index,
+  );
 
   async function onOpenChange(next: boolean) {
     setOpen(next);
@@ -80,7 +83,7 @@ export function NotificationBell() {
         <>
           {/* click-outside overlay */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-2 w-80 rounded-md border bg-card shadow-lg">
+          <div className="absolute right-0 z-50 mt-2 w-[calc(100vw-1rem)] max-w-80 rounded-md border bg-card shadow-lg sm:w-80">
             <div className="flex items-center justify-between border-b px-3 py-2">
               <span className="text-sm font-medium">Notifications</span>
               {unread > 0 && (
@@ -94,13 +97,13 @@ export function NotificationBell() {
               )}
             </div>
             <ul className="max-h-80 overflow-y-auto divide-y">
-              {notifications.length === 0 && (
+              {uniqueNotifications.length === 0 && (
                 <li className="px-3 py-6 text-center text-xs text-muted-foreground">
                   No notifications yet.
                 </li>
               )}
-              {notifications.map((n) => (
-                <li key={n.id}>
+              {uniqueNotifications.map((n, index) => (
+                <li key={`${n.id}-${index}`}>
                   <Link
                     to={n.grant_id ? "/grants/$id" : "/dashboard"}
                     params={n.grant_id ? { id: n.grant_id } : undefined}

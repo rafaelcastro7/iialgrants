@@ -329,9 +329,9 @@ function SourcesPage() {
                       {f.last_evidence_at ? new Date(f.last_evidence_at).toLocaleString() : "—"}
                     </TableCell>
                     <TableCell className="text-xs space-y-0.5 max-w-xs">
-                      {f.recent_grants.map((g) => (
+                      {f.recent_grants.map((g, index) => (
                         <Link
-                          key={g.id}
+                          key={`${g.id}-${index}`}
                           to="/grants/$id/audit"
                           params={{ id: g.id }}
                           className="block truncate hover:underline"

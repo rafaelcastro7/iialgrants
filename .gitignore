@@ -33,5 +33,7 @@ dist-ssr
 
 # playwright / local scratch
 .playwright-mcp/
+playwright-report/
+test-results/
 grants-*.jpeg
 grants-dom.md

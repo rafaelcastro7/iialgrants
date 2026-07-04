@@ -99,7 +99,18 @@ bun run dev          # Vite dev server on :8080
 bun run check:local  # local Docker/Supabase/dev-server health check
 bun run lint         # ESLint + Prettier rule
 bunx vitest run      # unit/e2e test suite
+bun run test:e2e     # browser smoke: demo member login -> dashboard -> grants
 bun run build        # production client + SSR build
+```
+
+For browser automation, Playwright runs against the seeded demo user flow in
+`tests/e2e/basic-user.spec.ts`. A deeper route-by-route navigation audit lives
+in `tests/e2e/navigation-audit.spec.ts`; it logs in as demo member and demo
+admin, clicks the main dashboard/grants/admin links, verifies route readiness,
+and fails on browser console/page errors. Install Chromium once with:
+
+```bash
+bunx playwright install chromium
 ```
 
 Live pipeline smoke:
@@ -194,6 +205,33 @@ Without it, TanStack Router registers the list as a parent layout for
 `$id` children; since list components have no `<Outlet/>`, the detail route
 silently never renders (list content displays instead). Verify any new
 list+detail route pair renders the detail page in-browser before shipping.
+
+Nested child routes need the same discipline: if a parent route has a child
+route, the parent must render an `<Outlet/>` or intentionally return the child
+view when that child URL is active. This was fixed for
+`/_authenticated/grants/$id/audit`; before the fix the URL changed to
+`/grants/$id/audit` but the grant detail page stayed on screen.
+
+## Navigation Audit Fixes - 2026-07-04
+
+The browser navigation audit found and fixed these real issues:
+
+- `/grants/$id/audit` changed URL without rendering audit content because
+  `src/routes/_authenticated.grants.$id.tsx` did not yield to its child route.
+- The grant detail page auto-opened the agent trace sheet during background
+  enrichment, which could cover top-level navigation controls.
+- Admin overview crashed from a missing `ChartTooltip` import in
+  `PipelineAnalyticsCard`.
+- Admin history emitted React duplicate-key warnings from repeated IDs in
+  rendered data.
+
+Current verified command set:
+
+```bash
+bun run lint
+bun run build
+bunx playwright test tests/e2e/navigation-audit.spec.ts
+```
 
 ## Pipeline Analytics
 
