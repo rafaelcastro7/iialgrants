@@ -7,15 +7,24 @@ runs out. Read this + `docs/DEVELOPER-GUIDE.md` first. **Last updated: 2026-07-0
 
 Latest commits (newest first):
 
+- `1ecdbf3` fix: submitProposal grant-status desync (found via browser test)
 - `30d0c7c` feat: S3a reviewer-simulation submit gate
 - `b3aa3f3` fix: S3b FR export no longer passes English off as French + remove dead code
 - `18d5715` docs: Codex handoff
 - `0c69b55` docs: C5 dedup hardening + local-audit triage guidance
-- `8c0d989` fix: C5 dedup hardening — collapse funder-name title variants, block admin pages
 
 Working tree is clean. Quality bar right now: **tsc 0, eslint 0, 215 unit/e2e
 tests + 1 skipped, build clean.** Live pipeline smoke green (fit_score ~0.76
 against local Supabase + Ollama).
+
+S3a submit gate is now browser-verified end-to-end (block dialog → "submit
+anyway" force path → grant+proposal both submitted). The browser test also
+found and fixed a real grant/proposal status desync (`1ecdbf3`).
+
+C5-pt2 verified needs NO code change: tri_council and all 11 CA sources are
+already wired in `orchestrator.server.ts` (Tier B) and enabled in
+`discovery_sources_registry`. Empty `last_run_at` just means discovery hasn't
+been triggered locally (crons are staged inactive), not a code gap.
 
 ## Roadmap status (from `.claude/plans/precious-exploring-pelican.md`)
 
