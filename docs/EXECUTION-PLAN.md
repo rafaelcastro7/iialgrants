@@ -26,7 +26,7 @@
 |------|--------|----------|--------|-------------|
 | 0 | Reingeniería Frontend | 15 | 🔄 EN PROGRESO | 45% |
 | 1 | Inteligencia de Fundadores | 5 | 🔄 EN PROGRESO | 80% |
-| 2 | Inteligencia Competitiva | 5 | ⏳ PENDIENTE | 0% |
+| 2 | Inteligencia Competitiva | 5 | 🔄 EN PROGRESO | 40% |
 | 3 | Proposal Quality Premium | 7 | ⏳ PENDIENTE | 0% |
 | 4 | Post-Award Intelligence | 5 | ⏳ PENDIENTE | 0% |
 | 5 | Plataforma y Escala | 7 | ⏳ PENDIENTE | 0% |
@@ -176,35 +176,36 @@ Se actualizan al final de cada fase.
 
 ---
 
-## FASE 1: INTELIGENCIA DE FUNDADORES
+## FASE 2: INTELIGENCIA COMPETITIVA
 
-### 1.1 — CRA T3010 Import Pipeline
-- [x] Crear script de importación (scripts/import-cra-t3010.ts)
-- [x] Crear migración SQL para enriquecer tabla funders
-- [ ] Ejecutar importación (86K+ charities canadienses)
+### 2.1 — Government Grants Import Pipeline
+- [x] Crear script de importación (scripts/import-competitive-intel.ts)
+- [x] Crear migración SQL para tabla competitive_grants
+- [ ] Ejecutar importación (1.3M+ records from TBS Proactive Disclosure)
 - [ ] Verificar datos en Supabase
-- [ ] **Validación:** 86K+ funders con datos completos en DB
+- [ ] **Validación:** 1.3M+ competitive grants en DB
 
-### 1.2 — Funder Enrichment Service
-- [x] Crear server function para enriquecer funder individual
-- [x] Scraping de website del funder para misión/foco geográfico
-- [x] Detección automática de tipo (foundation, charity, government)
-- [ ] **Validación:** Funder profile se enriquece con datos reales
+### 2.2 — Competitive Analysis API
+- [x] Búsqueda full-text de grants competitivos
+- [x] Top recipients por financiamiento
+- [x] Landscape summary (total grants, value, programs)
+- [x] Competitor detection (similar recipients)
+- [ ] **Validación:** Análisis competitivo funcional
 
-### 1.3 — Funder Search & Discovery
-- [x] Búsqueda full-text por nombre, ubicación, categoría
-- [x] Filtros: provincia, tipo, estado, ingresos
-- [ ] Ranking por relevancia + fit con organización
-- [ ] **Validación:** Búsqueda retorna resultados relevantes en <500ms
+### 2.3 — Recipient Profiling
+- [ ] Profile completo de recipient (historial de grants)
+- [ ] Análisis de tendencias por programa
+- [ ] Comparación con organización
+- [ ] **Validación:** Perfil de competitor muestra datos relevantes
 
-### 1.4 — Giving History Tracker
-- [x] Tabla de grants históricos por funder
-- [x] Análisis de patrones: montos, frecuencia, sectores
-- [x] Predicción de probabilidad de financiamiento
-- [ ] **Validación:** Historial completo visible en funder profile
+### 2.4 — Program Analysis
+- [ ] Análisis de programas por monto, frecuencia, beneficiarios
+- [ ] Detección de tendencias de financiamiento
+- [ ] Predicción de próximas convocatorias
+- [ ] **Validación:** Análisis de programas preciso
 
-### 1.5 — Funder Intelligence Dashboard
-- [x] Métricas: total funders, por provincia, por tipo
-- [x] Gráficos: distribución de ingresos, tendencias de giving
-- [ ] Alertas: nuevos funders, cambios de estatus
+### 2.5 — Competitive Dashboard
+- [ ] Métricas: total grants, total value, top recipients
+- [ ] Gráficos: distribución por provincia, tendencias temporales
+- [ ] Alertas: nuevos recipients, cambios en programas
 - [ ] **Validación:** Dashboard muestra métricas reales
