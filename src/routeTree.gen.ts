@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportTokenRouteImport } from './routes/report.$token'
+import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated.tasks'
 import { Route as AuthenticatedSubmissionsRouteImport } from './routes/_authenticated.submissions'
 import { Route as AuthenticatedRenewalRouteImport } from './routes/_authenticated.renewal'
 import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated.quality'
@@ -25,6 +26,7 @@ import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
 import { Route as AuthenticatedFinancialRouteImport } from './routes/_authenticated.financial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedComplianceCalendarRouteImport } from './routes/_authenticated.compliance-calendar'
 import { Route as AuthenticatedCompetitiveRouteImport } from './routes/_authenticated.competitive'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedProposalsIndexRouteImport } from './routes/_authenticated.proposals.index'
@@ -35,12 +37,14 @@ import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedFundersFunderIdRouteImport } from './routes/_authenticated.funders.$funderId'
 import { Route as AuthenticatedCompetitiveRecipientsRouteImport } from './routes/_authenticated.competitive.recipients'
 import { Route as AuthenticatedCompetitiveProgramsRouteImport } from './routes/_authenticated.competitive.programs'
+import { Route as AuthenticatedAdminWorkflowsRouteImport } from './routes/_authenticated.admin.workflows'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
 import { Route as AuthenticatedAdminSourcesRouteImport } from './routes/_authenticated.admin.sources'
 import { Route as AuthenticatedAdminMonitoringRouteImport } from './routes/_authenticated.admin.monitoring'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
 import { Route as AuthenticatedAdminHistoryRouteImport } from './routes/_authenticated.admin.history'
 import { Route as AuthenticatedAdminCandidatesRouteImport } from './routes/_authenticated.admin.candidates'
+import { Route as AuthenticatedAdminAuditTrailRouteImport } from './routes/_authenticated.admin.audit-trail'
 import { Route as AuthenticatedAdminAgentsRouteImport } from './routes/_authenticated.admin.agents'
 import { Route as ApiPublicHooksSourceTierBRouteImport } from './routes/api/public/hooks/source-tier-b'
 import { Route as ApiPublicHooksSourceTierARouteImport } from './routes/api/public/hooks/source-tier-a'
@@ -75,6 +79,11 @@ const ReportTokenRoute = ReportTokenRouteImport.update({
   id: '/report/$token',
   path: '/report/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedSubmissionsRoute =
   AuthenticatedSubmissionsRouteImport.update({
@@ -132,6 +141,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedComplianceCalendarRoute =
+  AuthenticatedComplianceCalendarRouteImport.update({
+    id: '/compliance-calendar',
+    path: '/compliance-calendar',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCompetitiveRoute =
   AuthenticatedCompetitiveRouteImport.update({
     id: '/competitive',
@@ -189,6 +204,12 @@ const AuthenticatedCompetitiveProgramsRoute =
     path: '/programs',
     getParentRoute: () => AuthenticatedCompetitiveRoute,
   } as any)
+const AuthenticatedAdminWorkflowsRoute =
+  AuthenticatedAdminWorkflowsRouteImport.update({
+    id: '/workflows',
+    path: '/workflows',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -222,6 +243,12 @@ const AuthenticatedAdminCandidatesRoute =
   AuthenticatedAdminCandidatesRouteImport.update({
     id: '/candidates',
     path: '/candidates',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminAuditTrailRoute =
+  AuthenticatedAdminAuditTrailRouteImport.update({
+    id: '/audit-trail',
+    path: '/audit-trail',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminAgentsRoute =
@@ -287,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/compliance': typeof ComplianceRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/competitive': typeof AuthenticatedCompetitiveRouteWithChildren
+  '/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
@@ -298,14 +326,17 @@ export interface FileRoutesByFullPath {
   '/quality': typeof AuthenticatedQualityRoute
   '/renewal': typeof AuthenticatedRenewalRoute
   '/submissions': typeof AuthenticatedSubmissionsRoute
+  '/tasks': typeof AuthenticatedTasksRoute
   '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
+  '/admin/audit-trail': typeof AuthenticatedAdminAuditTrailRoute
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/monitoring': typeof AuthenticatedAdminMonitoringRoute
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
   '/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -329,6 +360,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/competitive': typeof AuthenticatedCompetitiveRouteWithChildren
+  '/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
@@ -340,14 +372,17 @@ export interface FileRoutesByTo {
   '/quality': typeof AuthenticatedQualityRoute
   '/renewal': typeof AuthenticatedRenewalRoute
   '/submissions': typeof AuthenticatedSubmissionsRoute
+  '/tasks': typeof AuthenticatedTasksRoute
   '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
+  '/admin/audit-trail': typeof AuthenticatedAdminAuditTrailRoute
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/monitoring': typeof AuthenticatedAdminMonitoringRoute
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
   '/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -374,6 +409,7 @@ export interface FileRoutesById {
   '/compliance': typeof ComplianceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/competitive': typeof AuthenticatedCompetitiveRouteWithChildren
+  '/_authenticated/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/financial': typeof AuthenticatedFinancialRoute
   '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
@@ -385,14 +421,17 @@ export interface FileRoutesById {
   '/_authenticated/quality': typeof AuthenticatedQualityRoute
   '/_authenticated/renewal': typeof AuthenticatedRenewalRoute
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
+  '/_authenticated/tasks': typeof AuthenticatedTasksRoute
   '/report/$token': typeof ReportTokenRoute
   '/_authenticated/admin/agents': typeof AuthenticatedAdminAgentsRoute
+  '/_authenticated/admin/audit-trail': typeof AuthenticatedAdminAuditTrailRoute
   '/_authenticated/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
   '/_authenticated/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/admin/monitoring': typeof AuthenticatedAdminMonitoringRoute
   '/_authenticated/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
   '/_authenticated/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/_authenticated/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/_authenticated/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -419,6 +458,7 @@ export interface FileRouteTypes {
     | '/compliance'
     | '/admin'
     | '/competitive'
+    | '/compliance-calendar'
     | '/dashboard'
     | '/financial'
     | '/fit-rules'
@@ -430,14 +470,17 @@ export interface FileRouteTypes {
     | '/quality'
     | '/renewal'
     | '/submissions'
+    | '/tasks'
     | '/report/$token'
     | '/admin/agents'
+    | '/admin/audit-trail'
     | '/admin/candidates'
     | '/admin/history'
     | '/admin/modules'
     | '/admin/monitoring'
     | '/admin/sources'
     | '/admin/users'
+    | '/admin/workflows'
     | '/competitive/programs'
     | '/competitive/recipients'
     | '/funders/$funderId'
@@ -461,6 +504,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compliance'
     | '/competitive'
+    | '/compliance-calendar'
     | '/dashboard'
     | '/financial'
     | '/fit-rules'
@@ -472,14 +516,17 @@ export interface FileRouteTypes {
     | '/quality'
     | '/renewal'
     | '/submissions'
+    | '/tasks'
     | '/report/$token'
     | '/admin/agents'
+    | '/admin/audit-trail'
     | '/admin/candidates'
     | '/admin/history'
     | '/admin/modules'
     | '/admin/monitoring'
     | '/admin/sources'
     | '/admin/users'
+    | '/admin/workflows'
     | '/competitive/programs'
     | '/competitive/recipients'
     | '/funders/$funderId'
@@ -505,6 +552,7 @@ export interface FileRouteTypes {
     | '/compliance'
     | '/_authenticated/admin'
     | '/_authenticated/competitive'
+    | '/_authenticated/compliance-calendar'
     | '/_authenticated/dashboard'
     | '/_authenticated/financial'
     | '/_authenticated/fit-rules'
@@ -516,14 +564,17 @@ export interface FileRouteTypes {
     | '/_authenticated/quality'
     | '/_authenticated/renewal'
     | '/_authenticated/submissions'
+    | '/_authenticated/tasks'
     | '/report/$token'
     | '/_authenticated/admin/agents'
+    | '/_authenticated/admin/audit-trail'
     | '/_authenticated/admin/candidates'
     | '/_authenticated/admin/history'
     | '/_authenticated/admin/modules'
     | '/_authenticated/admin/monitoring'
     | '/_authenticated/admin/sources'
     | '/_authenticated/admin/users'
+    | '/_authenticated/admin/workflows'
     | '/_authenticated/competitive/programs'
     | '/_authenticated/competitive/recipients'
     | '/_authenticated/funders/$funderId'
@@ -594,6 +645,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/report/$token'
       preLoaderRoute: typeof ReportTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/tasks': {
+      id: '/_authenticated/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AuthenticatedTasksRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/submissions': {
       id: '/_authenticated/submissions'
@@ -672,6 +730,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/compliance-calendar': {
+      id: '/_authenticated/compliance-calendar'
+      path: '/compliance-calendar'
+      fullPath: '/compliance-calendar'
+      preLoaderRoute: typeof AuthenticatedComplianceCalendarRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/competitive': {
       id: '/_authenticated/competitive'
       path: '/competitive'
@@ -742,6 +807,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCompetitiveProgramsRouteImport
       parentRoute: typeof AuthenticatedCompetitiveRoute
     }
+    '/_authenticated/admin/workflows': {
+      id: '/_authenticated/admin/workflows'
+      path: '/workflows'
+      fullPath: '/admin/workflows'
+      preLoaderRoute: typeof AuthenticatedAdminWorkflowsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -782,6 +854,13 @@ declare module '@tanstack/react-router' {
       path: '/candidates'
       fullPath: '/admin/candidates'
       preLoaderRoute: typeof AuthenticatedAdminCandidatesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/audit-trail': {
+      id: '/_authenticated/admin/audit-trail'
+      path: '/audit-trail'
+      fullPath: '/admin/audit-trail'
+      preLoaderRoute: typeof AuthenticatedAdminAuditTrailRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/agents': {
@@ -859,23 +938,27 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAgentsRoute: typeof AuthenticatedAdminAgentsRoute
+  AuthenticatedAdminAuditTrailRoute: typeof AuthenticatedAdminAuditTrailRoute
   AuthenticatedAdminCandidatesRoute: typeof AuthenticatedAdminCandidatesRoute
   AuthenticatedAdminHistoryRoute: typeof AuthenticatedAdminHistoryRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
   AuthenticatedAdminMonitoringRoute: typeof AuthenticatedAdminMonitoringRoute
   AuthenticatedAdminSourcesRoute: typeof AuthenticatedAdminSourcesRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminWorkflowsRoute: typeof AuthenticatedAdminWorkflowsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAgentsRoute: AuthenticatedAdminAgentsRoute,
+  AuthenticatedAdminAuditTrailRoute: AuthenticatedAdminAuditTrailRoute,
   AuthenticatedAdminCandidatesRoute: AuthenticatedAdminCandidatesRoute,
   AuthenticatedAdminHistoryRoute: AuthenticatedAdminHistoryRoute,
   AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
   AuthenticatedAdminMonitoringRoute: AuthenticatedAdminMonitoringRoute,
   AuthenticatedAdminSourcesRoute: AuthenticatedAdminSourcesRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminWorkflowsRoute: AuthenticatedAdminWorkflowsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
@@ -916,6 +999,7 @@ const AuthenticatedGrantsIdRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedCompetitiveRoute: typeof AuthenticatedCompetitiveRouteWithChildren
+  AuthenticatedComplianceCalendarRoute: typeof AuthenticatedComplianceCalendarRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFinancialRoute: typeof AuthenticatedFinancialRoute
   AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
@@ -927,6 +1011,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedQualityRoute: typeof AuthenticatedQualityRoute
   AuthenticatedRenewalRoute: typeof AuthenticatedRenewalRoute
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
+  AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
   AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
   AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
   AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
@@ -938,6 +1023,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedCompetitiveRoute: AuthenticatedCompetitiveRouteWithChildren,
+  AuthenticatedComplianceCalendarRoute: AuthenticatedComplianceCalendarRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFinancialRoute: AuthenticatedFinancialRoute,
   AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
@@ -949,6 +1035,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedQualityRoute: AuthenticatedQualityRoute,
   AuthenticatedRenewalRoute: AuthenticatedRenewalRoute,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
+  AuthenticatedTasksRoute: AuthenticatedTasksRoute,
   AuthenticatedFundersFunderIdRoute: AuthenticatedFundersFunderIdRoute,
   AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
   AuthenticatedProposalsIdRoute: AuthenticatedProposalsIdRoute,

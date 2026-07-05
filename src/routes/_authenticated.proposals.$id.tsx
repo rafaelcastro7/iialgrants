@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { DocumentManager } from "@/components/DocumentManager";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -459,6 +460,10 @@ function ProposalDetailPage() {
             </div>
           </>
         )}
+      </section>
+
+      <section className="mx-auto max-w-5xl px-4 pb-8">
+        <DocumentManager entityType="proposal" entityId={id} />
       </section>
 
       <SubmitDialog

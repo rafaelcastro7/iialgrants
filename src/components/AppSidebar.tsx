@@ -16,6 +16,14 @@ import {
   LogOut,
   User,
   BarChart3,
+  Trophy,
+  DollarSign,
+  Target,
+  RefreshCw,
+  Calendar,
+  ListTodo,
+  GitBranch,
+  History,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +68,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/proposals", labelKey: "nav.proposals", icon: FileText },
   { to: "/quality", labelKey: "nav.quality", icon: BarChart3 },
   { to: "/submissions", labelKey: "nav.submissions", icon: Send },
+  { to: "/tasks", labelKey: "nav.tasks", icon: ListTodo },
+  { to: "/compliance-calendar", labelKey: "nav.complianceCalendar", icon: Calendar },
   { to: "/post-award", labelKey: "nav.postAward", icon: Trophy },
   { to: "/financial", labelKey: "nav.financial", icon: DollarSign },
   { to: "/impact", labelKey: "nav.impact", icon: Target },
@@ -68,6 +78,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/org", labelKey: "org.title", icon: Building2 },
   { to: "/fit-rules", labelKey: "nav.fitRules", icon: Sliders },
   { to: "/ops", labelKey: "ops.title", icon: Activity, adminOnly: true },
+  { to: "/admin/audit-trail", labelKey: "nav.auditTrail", icon: History, adminOnly: true },
+  { to: "/admin/workflows", labelKey: "nav.workflows", icon: GitBranch, adminOnly: true },
   { to: "/privacy", labelKey: "privacy.link", icon: ShieldCheck },
   { to: "/compliance", labelKey: "compliance.link", icon: Shield },
 ];
