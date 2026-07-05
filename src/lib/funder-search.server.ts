@@ -1,0 +1,161 @@
+/**
+ * Funder Search API
+ *
+ * Full-text search and filtering for Canadian funders.
+ * Uses PostgreSQL full-text search + trigram similarity.
+ */
+
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+const FunderSearchSchema = z.object({
+  query: z.string().min(1).max(200),
+  province: z.string().optional(),
+  type: z.string().optional(),
+  status: z.string().optional(),
+  minRevenue: z.number().optional(),
+  maxRevenue: z.number().optional(),
+  limit: z.number().min(1).max(100).default(20),
+  offset: z.number().min(0).default(0),
+});
+
+type FunderSearchInput = z.infer<typeof FunderSearchSchema>;
+
+interface FunderSearchResult {
+  id: string;
+  name: string;
+  type: string | null;
+  designation: string | null;
+  category: string | null;
+  province: string | null;
+  city: string | null;
+  charity_status: string | null;
+  total_revenue: number | null;
+  website: string | null;
+  relevance: number;
+}
+
+/**
+ * Search funders using full-text search + trigram similarity
+ */
+export const searchFunders = createServerFn({
+  method: "GET",
+  validator: FunderSearchSchema,
+}).handler(async ({ data }) => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL || "http://localhost:15435",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
+  );
+
+  // Build query with full-text search
+  let query = supabase
+    .from("funders")
+    .select(
+      `
+        id, name, type, designation, category, province, city,
+        charity_status, total_revenue, website
+      `,
+    )
+    .or(`name.ilike.%${data.query}%,legal_name.ilike.%${data.query}%,city.ilike.%${data.query}%`);
+
+  // Apply filters
+  if (data.province) query = query.eq("province", data.province);
+  if (data.type) query = query.eq("type", data.type);
+  if (data.status) query = query.eq("charity_status", data.status);
+  if (data.minRevenue) query = query.gte("total_revenue", data.minRevenue);
+  if (data.maxRevenue) query = query.lte("total_revenue", data.maxRevenue);
+
+  // Apply pagination
+  query = query.order("name", { ascending: true }).range(data.offset, data.offset + data.limit - 1);
+
+  const { data: results, error } = await query;
+
+  if (error) {
+    throw new Error(`Search failed: ${error.message}`);
+  }
+
+  // Calculate relevance score (simple keyword match)
+  const queryLower = data.query.toLowerCase();
+  const scoredResults: FunderSearchResult[] = (results || []).map((r) => {
+    let relevance = 0;
+    if (r.name?.toLowerCase().includes(queryLower)) relevance += 10;
+    if (r.city?.toLowerCase().includes(queryLower)) relevance += 5;
+    if (r.category?.toLowerCase().includes(queryLower)) relevance += 3;
+    return { ...r, relevance };
+  });
+
+  // Sort by relevance
+  scoredResults.sort((a, b) => b.relevance - a.relevance);
+
+  return scoredResults;
+});
+
+/**
+ * Get funder suggestions for autocomplete
+ */
+export const suggestFunders = createServerFn({
+  method: "GET",
+  validator: z.object({
+    query: z.string().min(2).max(100),
+    limit: z.number().min(1).max(20).default(10),
+  }),
+}).handler(async ({ data }) => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL || "http://localhost:15435",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
+  );
+
+  const { data: results } = await supabase
+    .from("funders")
+    .select("id, name, type, province, city")
+    .ilike("name", `%${data.query}%`)
+    .limit(data.limit);
+
+  return results || [];
+});
+
+/**
+ * Get funder statistics
+ */
+export const getFunderStats = createServerFn({
+  method: "GET",
+  validator: z.object({}),
+}).handler(async () => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL || "http://localhost:15435",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
+  );
+
+  // Get counts by province
+  const { data: byProvince } = await supabase
+    .from("funders")
+    .select("province")
+    .not("province", "is", null);
+
+  const provinceCounts: Record<string, number> = {};
+  for (const r of byProvince || []) {
+    provinceCounts[r.province] = (provinceCounts[r.province] || 0) + 1;
+  }
+
+  // Get counts by type
+  const { data: byType } = await supabase.from("funders").select("type").not("type", "is", null);
+
+  const typeCounts: Record<string, number> = {};
+  for (const r of byType || []) {
+    typeCounts[r.type] = (typeCounts[r.type] || 0) + 1;
+  }
+
+  // Get total count
+  const { count: total } = await supabase
+    .from("funders")
+    .select("*", { count: "exact", head: true });
+
+  return {
+    total: total || 0,
+    byProvince: provinceCounts,
+    byType: typeCounts,
+  };
+});
