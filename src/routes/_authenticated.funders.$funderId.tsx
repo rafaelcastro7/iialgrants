@@ -6,9 +6,13 @@ import {
   MapPin,
   Globe,
   Calendar,
-  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Minus,
   ExternalLink,
   ArrowLeft,
+  Award,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +36,19 @@ function FunderProfileSkeleton() {
       </div>
     </div>
   );
+}
+
+function getGivingTrend(grants: { amount_max?: number | null }[]) {
+  if (grants.length < 2) return "stable";
+  const recent = grants.slice(0, Math.ceil(grants.length / 2));
+  const older = grants.slice(Math.ceil(grants.length / 2));
+  const recentAvg = recent.reduce((s, g) => s + (g.amount_max || 0), 0) / (recent.length || 1);
+  const olderAvg = older.reduce((s, g) => s + (g.amount_max || 0), 0) / (older.length || 1);
+  if (olderAvg === 0) return "stable";
+  const change = (recentAvg - olderAvg) / olderAvg;
+  if (change > 0.15) return "increasing";
+  if (change < -0.15) return "decreasing";
+  return "stable";
 }
 
 function FunderProfilePage() {
@@ -58,6 +75,19 @@ function FunderProfilePage() {
     enabled: !!funderId,
   });
 
+  const { data: givingHistory } = useQuery({
+    queryKey: ["funder-giving", funderId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("funders")
+        .select("total_giving, multi_year_count, avg_grant_size")
+        .eq("id", funderId)
+        .single();
+      return data;
+    },
+    enabled: !!funderId,
+  });
+
   if (isLoading) return <FunderProfileSkeleton />;
 
   if (!funder) {
@@ -67,6 +97,13 @@ function FunderProfilePage() {
       </div>
     );
   }
+
+  const activeGrants = grants?.filter((g) => g.status === "open") || [];
+  const closedGrants = grants?.filter((g) => g.status === "closed") || [];
+  const trend = getGivingTrend(grants || []);
+  const totalGiving = givingHistory?.total_giving || 0;
+  const avgGrant = givingHistory?.avg_grant_size || 0;
+  const multiYear = givingHistory?.multi_year_count || 0;
 
   return (
     <PageTransition>
@@ -119,7 +156,49 @@ function FunderProfilePage() {
 
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Grant History</CardTitle>
+              <CardTitle>Financial Health</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Total Giving</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    ${totalGiving > 0 ? `${(totalGiving / 1_000_000).toFixed(1)}M` : "N/A"}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Avg Grant</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    ${avgGrant > 0 ? `${(avgGrant / 1000).toFixed(0)}K` : "N/A"}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground">Trend</p>
+                    {trend === "increasing" && <TrendingUp className="h-3 w-3 text-emerald-500" />}
+                    {trend === "decreasing" && <TrendingDown className="h-3 w-3 text-red-500" />}
+                    {trend === "stable" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                  </div>
+                  <p className="mt-1 text-lg font-semibold capitalize">{trend}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Multi-Year</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {multiYear > 0 ? `${multiYear} grants` : "N/A"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-muted-foreground" />
+                Grant History
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {!grants?.length ? (
@@ -160,6 +239,29 @@ function FunderProfilePage() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                Statistics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Active Grants</span>
+                <span className="text-sm font-medium">{activeGrants.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Closed Grants</span>
+                <span className="text-sm font-medium">{closedGrants.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Total Programs</span>
+                <span className="text-sm font-medium">{grants?.length || 0}</span>
+              </div>
             </CardContent>
           </Card>
         </div>
