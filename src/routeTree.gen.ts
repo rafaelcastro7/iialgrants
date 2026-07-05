@@ -17,6 +17,7 @@ import { Route as ReportTokenRouteImport } from './routes/report.$token'
 import { Route as AuthenticatedSubmissionsRouteImport } from './routes/_authenticated.submissions'
 import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated.quality'
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated.privacy'
+import { Route as AuthenticatedPostAwardRouteImport } from './routes/_authenticated.post-award'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
@@ -82,6 +83,11 @@ const AuthenticatedQualityRoute = AuthenticatedQualityRouteImport.update({
 const AuthenticatedPrivacyRoute = AuthenticatedPrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPostAwardRoute = AuthenticatedPostAwardRouteImport.update({
+  id: '/post-award',
+  path: '/post-award',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedOrgRoute = AuthenticatedOrgRouteImport.update({
@@ -239,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
+  '/post-award': typeof AuthenticatedPostAwardRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/quality': typeof AuthenticatedQualityRoute
   '/submissions': typeof AuthenticatedSubmissionsRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
+  '/post-award': typeof AuthenticatedPostAwardRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/quality': typeof AuthenticatedQualityRoute
   '/submissions': typeof AuthenticatedSubmissionsRoute
@@ -310,6 +318,7 @@ export interface FileRoutesById {
   '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
+  '/_authenticated/post-award': typeof AuthenticatedPostAwardRoute
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
   '/_authenticated/quality': typeof AuthenticatedQualityRoute
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/fit-rules'
     | '/ops'
     | '/org'
+    | '/post-award'
     | '/privacy'
     | '/quality'
     | '/submissions'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/fit-rules'
     | '/ops'
     | '/org'
+    | '/post-award'
     | '/privacy'
     | '/quality'
     | '/submissions'
@@ -417,6 +428,7 @@ export interface FileRouteTypes {
     | '/_authenticated/fit-rules'
     | '/_authenticated/ops'
     | '/_authenticated/org'
+    | '/_authenticated/post-award'
     | '/_authenticated/privacy'
     | '/_authenticated/quality'
     | '/_authenticated/submissions'
@@ -514,6 +526,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof AuthenticatedPrivacyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/post-award': {
+      id: '/_authenticated/post-award'
+      path: '/post-award'
+      fullPath: '/post-award'
+      preLoaderRoute: typeof AuthenticatedPostAwardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/org': {
@@ -744,6 +763,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
+  AuthenticatedPostAwardRoute: typeof AuthenticatedPostAwardRoute
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
   AuthenticatedQualityRoute: typeof AuthenticatedQualityRoute
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
@@ -761,6 +781,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
+  AuthenticatedPostAwardRoute: AuthenticatedPostAwardRoute,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
   AuthenticatedQualityRoute: AuthenticatedQualityRoute,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
