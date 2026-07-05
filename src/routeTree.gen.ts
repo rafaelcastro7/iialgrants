@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportTokenRouteImport } from './routes/report.$token'
 import { Route as AuthenticatedSubmissionsRouteImport } from './routes/_authenticated.submissions'
+import { Route as AuthenticatedRenewalRouteImport } from './routes/_authenticated.renewal'
 import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated.quality'
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated.privacy'
 import { Route as AuthenticatedPostAwardRouteImport } from './routes/_authenticated.post-award'
@@ -80,6 +81,11 @@ const AuthenticatedSubmissionsRoute =
     path: '/submissions',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedRenewalRoute = AuthenticatedRenewalRouteImport.update({
+  id: '/renewal',
+  path: '/renewal',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedQualityRoute = AuthenticatedQualityRouteImport.update({
   id: '/quality',
   path: '/quality',
@@ -283,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/post-award': typeof AuthenticatedPostAwardRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/quality': typeof AuthenticatedQualityRoute
+  '/renewal': typeof AuthenticatedRenewalRoute
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -323,6 +330,7 @@ export interface FileRoutesByTo {
   '/post-award': typeof AuthenticatedPostAwardRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
   '/quality': typeof AuthenticatedQualityRoute
+  '/renewal': typeof AuthenticatedRenewalRoute
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -366,6 +374,7 @@ export interface FileRoutesById {
   '/_authenticated/post-award': typeof AuthenticatedPostAwardRoute
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
   '/_authenticated/quality': typeof AuthenticatedQualityRoute
+  '/_authenticated/renewal': typeof AuthenticatedRenewalRoute
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/_authenticated/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -409,6 +418,7 @@ export interface FileRouteTypes {
     | '/post-award'
     | '/privacy'
     | '/quality'
+    | '/renewal'
     | '/submissions'
     | '/report/$token'
     | '/admin/agents'
@@ -449,6 +459,7 @@ export interface FileRouteTypes {
     | '/post-award'
     | '/privacy'
     | '/quality'
+    | '/renewal'
     | '/submissions'
     | '/report/$token'
     | '/admin/agents'
@@ -491,6 +502,7 @@ export interface FileRouteTypes {
     | '/_authenticated/post-award'
     | '/_authenticated/privacy'
     | '/_authenticated/quality'
+    | '/_authenticated/renewal'
     | '/_authenticated/submissions'
     | '/report/$token'
     | '/_authenticated/admin/agents'
@@ -575,6 +587,13 @@ declare module '@tanstack/react-router' {
       path: '/submissions'
       fullPath: '/submissions'
       preLoaderRoute: typeof AuthenticatedSubmissionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/renewal': {
+      id: '/_authenticated/renewal'
+      path: '/renewal'
+      fullPath: '/renewal'
+      preLoaderRoute: typeof AuthenticatedRenewalRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/quality': {
@@ -884,6 +903,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedPostAwardRoute: typeof AuthenticatedPostAwardRoute
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
   AuthenticatedQualityRoute: typeof AuthenticatedQualityRoute
+  AuthenticatedRenewalRoute: typeof AuthenticatedRenewalRoute
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
   AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
   AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
@@ -905,6 +925,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedPostAwardRoute: AuthenticatedPostAwardRoute,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
   AuthenticatedQualityRoute: AuthenticatedQualityRoute,
+  AuthenticatedRenewalRoute: AuthenticatedRenewalRoute,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
   AuthenticatedFundersFunderIdRoute: AuthenticatedFundersFunderIdRoute,
   AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
