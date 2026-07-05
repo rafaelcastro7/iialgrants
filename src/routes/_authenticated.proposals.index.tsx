@@ -1,18 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { listProposals, ingestOrgProfileAsKnowledge } from "@/lib/proposals.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { syncClientLocale } from "@/i18n/sync";
 import { AppTopBar } from "@/components/AppSidebar";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageTransition } from "@/components/PageTransition";
 import { ProposalsListSkeleton } from "@/components/Skeletons";
+import { DataTable } from "@/components/DataTable";
 import "@/i18n";
+
+type ProposalRow = {
+  id: string;
+  title: string;
+  status: string;
+  version: number;
+  critic_score: number | null;
+  grantTitle: string;
+  grantDeadline: string | null;
+};
 
 const proposalsQueryOptions = queryOptions({
   queryKey: ["proposals", "all"],
@@ -67,6 +79,79 @@ function ProposalsPage() {
     }
   }
 
+  const rows: ProposalRow[] = (data.proposals || []).map((p) => {
+    const grant = Array.isArray(p.grant) ? p.grant[0] : p.grant;
+    return {
+      id: p.id,
+      title: p.title,
+      status: p.status,
+      version: p.version,
+      critic_score: p.critic_score,
+      grantTitle: grant ? (fr && grant.title_fr ? grant.title_fr : grant.title) : "—",
+      grantDeadline: grant?.deadline ?? null,
+    };
+  });
+
+  const columns: ColumnDef<ProposalRow, unknown>[] = [
+    {
+      accessorKey: "title",
+      header: "Proposal",
+      cell: ({ row }) => (
+        <div>
+          <span className="font-medium">{row.original.title}</span>
+          <p className="text-xs text-muted-foreground">From: {row.original.grantTitle}</p>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge variant={row.original.status === "draft" ? "secondary" : "default"}>
+          {t(`proposals.status.${row.original.status}`)}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "version",
+      header: "Version",
+      cell: ({ row }) => <span className="text-sm">v{row.original.version}</span>,
+    },
+    {
+      accessorKey: "critic_score",
+      header: "Score",
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.original.critic_score != null
+            ? `${(Number(row.original.critic_score) * 100).toFixed(0)}%`
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "grantDeadline",
+      header: "Deadline",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.grantDeadline
+            ? new Date(row.original.grantDeadline).toLocaleDateString("en-CA")
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => (
+        <Link to="/proposals/$id" params={{ id: row.original.id }}>
+          <Button size="sm" variant="ghost">
+            Open →
+          </Button>
+        </Link>
+      ),
+    },
+  ];
+
   return (
     <PageTransition>
       <div className="min-h-screen bg-background text-foreground">
@@ -81,52 +166,19 @@ function ProposalsPage() {
           </div>
           {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
 
-          {data.proposals.length === 0 ? (
+          {rows.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center text-muted-foreground">
                 {t("proposals.empty")}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {data.proposals.map((p) => {
-                const grant = Array.isArray(p.grant) ? p.grant[0] : p.grant;
-                const grantTitle = grant
-                  ? fr && grant.title_fr
-                    ? grant.title_fr
-                    : grant.title
-                  : "—";
-                return (
-                  <Card key={p.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-4">
-                        <CardTitle className="text-base">{p.title}</CardTitle>
-                        <Badge>{t(`proposals.status.${p.status}`)}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("proposals.createdFrom")}: {grantTitle}
-                        {grant?.deadline ? ` · ${grant.deadline}` : ""}
-                      </p>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-between">
-                      <div className="text-xs text-muted-foreground flex gap-4">
-                        <span>
-                          {t("proposals.version")} {p.version}
-                        </span>
-                        {p.critic_score != null && (
-                          <span>
-                            {t("proposals.score")}: {(Number(p.critic_score) * 100).toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
-                      <Link to="/proposals/$id" params={{ id: p.id }}>
-                        <Button size="sm">{t("proposals.open")} →</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            <DataTable
+              columns={columns}
+              data={rows}
+              searchColumn="title"
+              searchPlaceholder="Search proposals..."
+            />
           )}
         </section>
       </div>
