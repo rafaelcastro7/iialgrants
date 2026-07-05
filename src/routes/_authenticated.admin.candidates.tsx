@@ -14,6 +14,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/admin/candidates")({
   component: CandidatesPage,
@@ -28,6 +36,9 @@ function CandidatesPage() {
   const runs = useServerFn(listSourceIngestRuns);
   const [tab, setTab] = useState<"pending_review" | "approved" | "rejected">("pending_review");
   const [busy, setBusy] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const qCands = useQuery({
     queryKey: ["funder-candidates", tab],
@@ -48,11 +59,18 @@ function CandidatesPage() {
     }
   }
   async function handleReject(id: string) {
-    const reason = window.prompt("Reject reason (optional)") ?? undefined;
+    setRejectId(id);
+    setRejectReason("");
+    setRejectDialogOpen(true);
+  }
+
+  async function confirmReject() {
+    if (!rejectId) return;
     setBusy(true);
     try {
-      await reject({ data: { id, reason } });
+      await reject({ data: { id: rejectId, reason: rejectReason || undefined } });
       toast.success("Rejected");
+      setRejectDialogOpen(false);
       router.invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -196,6 +214,27 @@ function CandidatesPage() {
           </ul>
         </CardContent>
       </Card>
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Candidate</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Reason (optional)"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" disabled={busy} onClick={confirmReject}>
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
