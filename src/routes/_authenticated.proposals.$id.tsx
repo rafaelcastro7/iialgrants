@@ -87,7 +87,15 @@ function ProposalDetailPage() {
     }
   }
 
-  async function onSubmit() {
+  // Human-readable explanation for each S3a gate reason code.
+  const GATE_REASONS: Record<string, string> = {
+    no_sections_drafted: "no sections have been drafted yet",
+    not_reviewed: "the proposal has not been run through the quality review",
+    low_critic_score: "the quality review score is below the submit threshold",
+    open_critical_requirements: "a critical funder requirement is not yet covered",
+  };
+
+  async function onSubmit(force = false) {
     const method = window.prompt(t("proposals.submitPrompt"), "portal");
     if (!method) return;
     const conf = window.prompt(t("proposals.confirmationPrompt"), "") || "";
@@ -102,12 +110,28 @@ function ProposalDetailPage() {
             : "other") as "portal" | "email" | "mail" | "api" | "other",
           confirmation_number: conf || null,
           language: fr ? "fr" : "en",
+          force,
         },
       });
       await qc.invalidateQueries({ queryKey: ["proposal", id] });
       await navigate({ to: "/submissions" });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      // Reviewer-simulation gate blocked the submit — explain why and offer
+      // an explicit override instead of a raw error string.
+      if (msg.startsWith("submit_blocked:") && !force) {
+        const reasons = msg
+          .slice("submit_blocked:".length)
+          .split(",")
+          .map((r) => GATE_REASONS[r] ?? r)
+          .join("; ");
+        setPending(null);
+        if (window.confirm(`This proposal isn't ready to submit: ${reasons}.\n\nSubmit anyway?`)) {
+          await onSubmit(true);
+        }
+        return;
+      }
+      setErr(msg);
     } finally {
       setPending(null);
     }
@@ -177,7 +201,7 @@ function ProposalDetailPage() {
             pending={pending}
             onDraftSection={onDraft}
             onCritic={onCritic}
-            onSubmit={onSubmit}
+            onSubmit={() => onSubmit()}
             onShowAdvanced={() => switchView("advanced")}
           />
         )}
@@ -228,7 +252,11 @@ function ProposalDetailPage() {
                   {t("proposals.exportMd")}
                 </Button>
                 {proposal.status !== "submitted" && (
-                  <Button variant="default" disabled={pending === "submit"} onClick={onSubmit}>
+                  <Button
+                    variant="default"
+                    disabled={pending === "submit"}
+                    onClick={() => onSubmit()}
+                  >
                     {t("proposals.submit")}
                   </Button>
                 )}

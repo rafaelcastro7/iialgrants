@@ -1,6 +1,34 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  computeProposalReadiness,
+  type ProposalRequirement,
+  type ProposalSectionForReadiness,
+} from "@/lib/proposal-readiness";
+
+// Minimum critic score (0-1 scale, see CriticOutput in schemas.ts) below which
+// a proposal is considered not ready to submit unless the user forces it.
+export const MIN_CRITIC_SCORE_TO_SUBMIT = 0.6;
+
+export type SubmitGateInput = {
+  criticScore: number | null; // 0-1
+  readinessScore: number; // 0-100
+  openCriticalRequirements: number;
+  draftedSections: number;
+};
+
+// Pure, unit-testable reviewer-simulation gate (S3a). Returns machine-readable
+// reasons so the UI can explain exactly why a submit is blocked. Never a hard
+// wall — submitProposal accepts `force: true` to override.
+export function canSubmit(g: SubmitGateInput): { ok: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  if (g.draftedSections === 0) reasons.push("no_sections_drafted");
+  if (g.criticScore == null) reasons.push("not_reviewed");
+  else if (g.criticScore < MIN_CRITIC_SCORE_TO_SUBMIT) reasons.push("low_critic_score");
+  if (g.openCriticalRequirements > 0) reasons.push("open_critical_requirements");
+  return { ok: reasons.length === 0, reasons };
+}
 
 const SubmitInput = z.object({
   proposalId: z.string().uuid(),
@@ -12,6 +40,9 @@ const SubmitInput = z.object({
     .max(20)
     .default([]),
   notes: z.string().max(4000).optional().nullable(),
+  // Override the quality gate. UI sends this only after the user confirms an
+  // explicit "submit anyway" on a blocked proposal.
+  force: z.boolean().default(false),
 });
 
 // Record a submission, advance grant state in_proposal → submitted,
@@ -23,11 +54,38 @@ export const submitProposal = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: proposal, error: pe } = await supabase
       .from("proposals")
-      .select("id, grant_id, status")
+      .select("id, grant_id, status, critic_score, grant:grants(requirements)")
       .eq("id", data.proposalId)
       .maybeSingle();
     if (pe) throw new Error(pe.message);
     if (!proposal) throw new Error("proposal_not_found");
+
+    // S3a reviewer-simulation gate: never submit a proposal that has not been
+    // reviewed, scores poorly, has no drafted content, or leaves a critical
+    // funder requirement uncovered — unless the caller explicitly forces it.
+    if (!data.force) {
+      const { data: gateSections } = await supabase
+        .from("proposal_sections")
+        .select("id, kind, heading_en, content_en, citations, critic_notes")
+        .eq("proposal_id", proposal.id);
+      const grant = proposal.grant as { requirements?: unknown } | null;
+      const readiness = computeProposalReadiness({
+        sections: (gateSections ?? []) as unknown as ProposalSectionForReadiness[],
+        requirements: (grant?.requirements ?? []) as ProposalRequirement[],
+      });
+      const draftedSections = (gateSections ?? []).filter(
+        (s) => ((s as { content_en?: string | null }).content_en ?? "").trim().length > 0,
+      ).length;
+      const gate = canSubmit({
+        criticScore: (proposal as { critic_score?: number | null }).critic_score ?? null,
+        readinessScore: readiness.score,
+        openCriticalRequirements: readiness.openCriticalRequirements.length,
+        draftedSections,
+      });
+      if (!gate.ok) {
+        throw new Error(`submit_blocked:${gate.reasons.join(",")}`);
+      }
+    }
 
     const { data: sub, error: se } = await supabase
       .from("submissions")
