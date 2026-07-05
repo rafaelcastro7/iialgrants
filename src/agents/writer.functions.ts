@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PROMPTS, WriterOutput } from "@/agents/schemas";
+import { bumpProposalVersion } from "@/lib/proposal-versioning";
 
 // Validates that every [dN] marker in content references a provided chunk id.
 export function validateCitations(
@@ -177,7 +178,7 @@ export const draftSection = createServerFn({ method: "POST" })
 
     // Append immutable citation rows.
     if (parsed.citations.length) {
-      await context.supabase.from("proposal_citations").insert(
+      const { error: ce } = await context.supabase.from("proposal_citations").insert(
         parsed.citations.map((c) => ({
           section_id: section.id,
           chunk_id: c.chunk_id,
@@ -186,7 +187,10 @@ export const draftSection = createServerFn({ method: "POST" })
           snippet: c.snippet,
         })),
       );
+      if (ce) throw new Error(ce.message);
     }
+
+    await bumpProposalVersion(context.supabase, proposal.id);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("agent_runs").insert({

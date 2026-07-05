@@ -1703,6 +1703,7 @@ export type Database = {
           promoted_id: string;
         }[];
       };
+      bump_proposal_version: { Args: { target_proposal_id: string }; Returns: number };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
