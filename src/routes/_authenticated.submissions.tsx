@@ -1,17 +1,16 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
 import { listSubmissions, recordOutcome } from "@/lib/submissions.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
+import { AppTopBar } from "@/components/AppSidebar";
 import "@/i18n";
 
 const opts = queryOptions({ queryKey: ["submissions"], queryFn: () => listSubmissions() });
@@ -23,9 +22,8 @@ export const Route = createFileRoute("/_authenticated/submissions")({
 });
 
 function SubmissionsPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const fr = false; /* EN-only */
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchSubs = useServerFn(listSubmissions);
   const outcome = useServerFn(recordOutcome);
@@ -47,10 +45,6 @@ function SubmissionsPage() {
   useEffect(() => {
     syncClientLocale();
   }, []);
-  async function signOut() {
-    await supabase.auth.signOut();
-    await navigate({ to: "/" });
-  }
 
   async function onSave(subId: string) {
     setErr(null);
@@ -72,31 +66,8 @@ function SubmissionsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold">
-              {t("app.name")}
-            </Link>
-            <Link to="/grants" className="text-sm text-muted-foreground hover:underline">
-              {t("nav.grants")}
-            </Link>
-            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">
-              {t("nav.proposals")}
-            </Link>
-            <Link to="/submissions" className="text-sm font-medium hover:underline">
-              {t("nav.submissions")}
-            </Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={signOut}>
-              {t("nav.signOut")}
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background text-foreground">
+      <AppTopBar title={t("submissions.title")} />
 
       <section className="max-w-5xl mx-auto px-4 py-8 space-y-4">
         <h1 className="text-2xl font-semibold">{t("submissions.title")}</h1>
@@ -192,6 +163,6 @@ function SubmissionsPage() {
           );
         })}
       </section>
-    </main>
+    </div>
   );
 }

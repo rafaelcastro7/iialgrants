@@ -26,6 +26,7 @@ import { Route as AuthenticatedGrantsIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticated.grants.$id'
+import { Route as AuthenticatedFundersFunderIdRouteImport } from './routes/_authenticated.funders.$funderId'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
 import { Route as AuthenticatedAdminSourcesRouteImport } from './routes/_authenticated.admin.sources'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
@@ -129,6 +130,12 @@ const AuthenticatedGrantsIdRoute = AuthenticatedGrantsIdRouteImport.update({
   path: '/grants/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedFundersFunderIdRoute =
+  AuthenticatedFundersFunderIdRouteImport.update({
+    id: '/funders/$funderId',
+    path: '/funders/$funderId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -227,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
   '/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -258,6 +266,7 @@ export interface FileRoutesByTo {
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
   '/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -292,6 +301,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
   '/_authenticated/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -326,6 +336,7 @@ export interface FileRouteTypes {
     | '/admin/modules'
     | '/admin/sources'
     | '/admin/users'
+    | '/funders/$funderId'
     | '/grants/$id'
     | '/proposals/$id'
     | '/admin/'
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/admin/modules'
     | '/admin/sources'
     | '/admin/users'
+    | '/funders/$funderId'
     | '/grants/$id'
     | '/proposals/$id'
     | '/admin'
@@ -390,6 +402,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/modules'
     | '/_authenticated/admin/sources'
     | '/_authenticated/admin/users'
+    | '/_authenticated/funders/$funderId'
     | '/_authenticated/grants/$id'
     | '/_authenticated/proposals/$id'
     | '/_authenticated/admin/'
@@ -541,6 +554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGrantsIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/funders/$funderId': {
+      id: '/_authenticated/funders/$funderId'
+      path: '/funders/$funderId'
+      fullPath: '/funders/$funderId'
+      preLoaderRoute: typeof AuthenticatedFundersFunderIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -686,6 +706,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
+  AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
   AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
   AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
   AuthenticatedGrantsIndexRoute: typeof AuthenticatedGrantsIndexRoute
@@ -700,6 +721,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
+  AuthenticatedFundersFunderIdRoute: AuthenticatedFundersFunderIdRoute,
   AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
   AuthenticatedProposalsIdRoute: AuthenticatedProposalsIdRoute,
   AuthenticatedGrantsIndexRoute: AuthenticatedGrantsIndexRoute,

@@ -1,15 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
 import { listProposals, ingestOrgProfileAsKnowledge } from "@/lib/proposals.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
+import { AppTopBar } from "@/components/AppSidebar";
 import "@/i18n";
 
 const proposalsQueryOptions = queryOptions({
@@ -33,9 +32,8 @@ export const Route = createFileRoute("/_authenticated/proposals/")({
 });
 
 function ProposalsPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const fr = false; /* EN-only */
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchProposals = useServerFn(listProposals);
   const ingest = useServerFn(ingestOrgProfileAsKnowledge);
@@ -50,10 +48,6 @@ function ProposalsPage() {
     syncClientLocale();
   }, []);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    await navigate({ to: "/" });
-  }
   async function onIngest() {
     setIngesting(true);
     setMsg(null);
@@ -69,34 +63,8 @@ function ProposalsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold">
-              {t("app.name")}
-            </Link>
-            <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
-              {t("nav.dashboard")}
-            </Link>
-            <Link to="/grants" className="text-sm text-muted-foreground hover:underline">
-              {t("nav.grants")}
-            </Link>
-            <Link to="/proposals" className="text-sm font-medium">
-              {t("nav.proposals")}
-            </Link>
-            <Link to="/org" className="text-sm text-muted-foreground hover:underline">
-              {t("org.title")}
-            </Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={signOut}>
-              {t("nav.signOut")}
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background text-foreground">
+      <AppTopBar title={t("proposals.title")} />
 
       <section className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
@@ -155,6 +123,6 @@ function ProposalsPage() {
           </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }

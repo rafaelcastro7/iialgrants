@@ -65,8 +65,20 @@ src/
 │   └── *.functions.ts / *.server.ts
 ├── components/
 │   ├── admin/        # Admin sidebar, CrawlLedgerWidget
-│   ├── grants/       # GrantKanban, FitEvaluation, AgentTracePanel, etc.
-│   └── ui/           # shadcn/ui components
+│   ├── grants/       # GrantKanban, FitEvaluation, AgentTracePanel, GrantCalendar
+│   ├── ui/           # shadcn/ui components (46 installed)
+│   ├── AppSidebar.tsx    # Shared authenticated layout sidebar + top bar
+│   ├── CommandPalette.tsx # Cmd+K global search & navigation
+│   ├── DataTable.tsx     # Reusable data table with sort/filter/pagination
+│   ├── Skeletons.tsx     # Loading skeletons for all major pages
+│   ├── RouteErrorBoundary.tsx # Per-route error boundary
+│   ├── NotificationBell.tsx   # Notification bell with unread count
+│   ├── LanguageSwitcher.tsx   # EN/FR toggle (currently EN-only)
+│   ├── MobileNav.tsx     # Sheet-based mobile navigation
+│   ├── PageTransition.tsx # Framer-motion page transition wrappers
+│   ├── FormField.tsx     # Reusable form field with react-hook-form
+│   ├── ActivityFeed.tsx  # Dashboard activity timeline
+│   └── ComplianceDashboard.tsx # Compliance matrix with progress
 ├── hooks/            # use-mobile.tsx
 ├── i18n/             # Bilingual config
 ├── integrations/

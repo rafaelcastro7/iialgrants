@@ -5,13 +5,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getOrgProfile } from "@/lib/org.functions";
-import { NotificationBell } from "@/components/NotificationBell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
 import { useIsAdmin, useModuleFlags } from "@/lib/use-platform";
+import { AppTopBar } from "@/components/AppSidebar";
 import {
   Activity,
   AlertCircle,
@@ -90,11 +89,6 @@ function Dashboard() {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
   }, []);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    await navigate({ to: "/" });
-  }
-
   const tiles: NavTile[] = [
     {
       to: "/grants",
@@ -155,38 +149,13 @@ function Dashboard() {
   ].filter((tile) => (tile.moduleKey ? on(tile.moduleKey) : true) && (!tile.adminOnly || isAdmin));
 
   return (
-    <main className="relative min-h-screen overflow-hidden text-foreground">
+    <div className="relative min-h-screen overflow-hidden text-foreground">
+      <AppTopBar title={t("nav.dashboard")} />
+
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute left-[-10rem] top-[-8rem] h-72 w-72 rounded-full bg-brand/10 blur-3xl" />
         <div className="absolute right-[-12rem] top-24 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
       </div>
-
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-              Workspace
-            </p>
-            <h1 className="font-display text-2xl leading-none text-foreground md:text-3xl">
-              {t("nav.dashboard")}
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 md:justify-end">
-            <NotificationBell />
-            {isAdmin && (
-              <Link to="/admin">
-                <Button variant="outline" size="sm" className="gap-1">
-                  <Shield className="h-4 w-4" /> Console
-                </Button>
-              </Link>
-            )}
-            <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={signOut}>
-              {t("nav.signOut")}
-            </Button>
-          </div>
-        </div>
-      </header>
 
       <section className="mx-auto max-w-7xl space-y-6 px-6 py-8 md:py-10">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)]">
@@ -388,7 +357,7 @@ function Dashboard() {
           })}
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 
