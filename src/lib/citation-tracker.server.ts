@@ -1,0 +1,189 @@
+/**
+ * Citation Tracker
+ *
+ * Tracks and validates citations in proposals.
+ * Ensures all references are verified and properly formatted.
+ */
+
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+interface Citation {
+  id: string;
+  proposalSectionId: string;
+  source: "ai_generated" | "user_added" | "rag_retrieved";
+  doi?: string;
+  verified: boolean;
+  retracted: boolean;
+  inlineRef: string;
+  fullRef: string;
+  supportsClaim: string;
+  citationsInSection: number;
+  selfCitation: boolean;
+}
+
+interface CitationSummary {
+  totalCitations: number;
+  verified: number;
+  unverified: number;
+  retracted: number;
+  selfCitationCount: number;
+  selfCitationRatio: number;
+  bySection: Record<string, number>;
+  bySource: Record<string, number>;
+}
+
+/**
+ * Extract citations from proposal text
+ */
+export const extractCitations = createServerFn({
+  method: "POST",
+  validator: z.object({
+    proposalId: z.string().uuid(),
+    sections: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        content: z.string(),
+      }),
+    ),
+  }),
+}).handler(async ({ data }) => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL || "http://localhost:15435",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
+  );
+
+  const allCitations: Citation[] = [];
+
+  for (const section of data.sections) {
+    // Find inline citations (Author, Year) patterns
+    const inlinePattern = /\(([A-Z][a-z]+(?:\s*(?:&|and)\s*[A-Z][a-z]+)*,?\s*\d{4}(?:[a-z])?)\)/g;
+    let match;
+    const sectionCitations: string[] = [];
+
+    while ((match = inlinePattern.exec(section.content)) !== null) {
+      sectionCitations.push(match[1]);
+    }
+
+    // Find DOI patterns
+    const doiPattern = /10\.\d{4,}\/[^\s]+/g;
+    const dois = section.content.match(doiPattern) || [];
+
+    // Create citation objects
+    sectionCitations.forEach((ref, i) => {
+      allCitations.push({
+        id: `${section.id}-cit-${i}`,
+        proposalSectionId: section.id,
+        source: "user_added",
+        verified: false,
+        retracted: false,
+        inlineRef: ref,
+        fullRef: "", // Would be populated from bibliography
+        supportsClaim: "",
+        citationsInSection: sectionCitations.length,
+        selfCitation: ref.toLowerCase().includes("iial") || ref.toLowerCase().includes("institute"),
+      });
+    });
+  }
+
+  // Calculate summary
+  const summary: CitationSummary = {
+    totalCitations: allCitations.length,
+    verified: allCitations.filter((c) => c.verified).length,
+    unverified: allCitations.filter((c) => !c.verified).length,
+    retracted: allCitations.filter((c) => c.retracted).length,
+    selfCitationCount: allCitations.filter((c) => c.selfCitation).length,
+    selfCitationRatio: allCitations.length
+      ? allCitations.filter((c) => c.selfCitation).length / allCitations.length
+      : 0,
+    bySection: {},
+    bySource: {},
+  };
+
+  for (const cit of allCitations) {
+    const section = data.sections.find((s) => s.id === cit.proposalSectionId);
+    if (section) {
+      summary.bySection[section.title] = (summary.bySection[section.title] || 0) + 1;
+    }
+    summary.bySource[cit.source] = (summary.bySource[cit.source] || 0) + 1;
+  }
+
+  // Store citations
+  const { error } = await supabase.from("proposal_citations").upsert(
+    {
+      proposal_id: data.proposalId,
+      citations: allCitations,
+      summary,
+      created_at: new Date().toISOString(),
+    },
+    { onConflict: "proposal_id" },
+  );
+
+  if (error) console.error("Failed to store citations:", error.message);
+
+  return { citations: allCitations, summary };
+});
+
+/**
+ * Validate a single citation via DOI
+ */
+export const validateCitation = createServerFn({
+  method: "POST",
+  validator: z.object({
+    doi: z.string(),
+  }),
+}).handler(async ({ data }) => {
+  try {
+    const res = await fetch(`https://api.crossref.org/works/${data.doi}`, {
+      headers: { "User-Agent": "IIAL-GrantIntelligence/1.0" },
+    });
+
+    if (!res.ok) return { valid: false, error: "DOI not found" };
+
+    const work = await res.json();
+    const item = work.message;
+
+    return {
+      valid: true,
+      title: item.title?.[0] || "",
+      authors:
+        item.author?.map((a: { given?: string; family?: string }) =>
+          `${a.given || ""} ${a.family || ""}`.trim(),
+        ) || [],
+      year: item.published?.["date-parts"]?.[0]?.[0] || item.created?.["date-parts"]?.[0]?.[0],
+      journal: item["container-title"]?.[0] || "",
+      retracted: item.type === "retraction",
+    };
+  } catch {
+    return { valid: false, error: "Validation failed" };
+  }
+});
+
+/**
+ * Get citation summary for a proposal
+ */
+export const getCitationSummary = createServerFn({
+  method: "GET",
+  validator: z.object({
+    proposalId: z.string().uuid(),
+  }),
+}).handler(async ({ data }) => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL || "http://localhost:15435",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
+  );
+
+  const { data: record, error } = await supabase
+    .from("proposal_citations")
+    .select("citations, summary")
+    .eq("proposal_id", data.proposalId)
+    .single();
+
+  if (error) return { citations: [], summary: null };
+  return record;
+});
+
+export { extractCitations as extract, validateCitation as validate, getCitationSummary as summary };
