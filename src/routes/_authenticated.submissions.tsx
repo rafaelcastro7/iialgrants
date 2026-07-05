@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/DataTable";
 import { syncClientLocale } from "@/i18n/sync";
 import { AppTopBar } from "@/components/AppSidebar";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import "@/i18n";
 
 const opts = queryOptions({ queryKey: ["submissions"], queryFn: () => listSubmissions() });
@@ -20,6 +21,7 @@ const opts = queryOptions({ queryKey: ["submissions"], queryFn: () => listSubmis
 export const Route = createFileRoute("/_authenticated/submissions")({
   head: () => ({ meta: [{ title: "Submissions — IIAL" }] }),
   loader: ({ context }) => context.queryClient.ensureQueryData(opts),
+  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
   component: SubmissionsPage,
 });
 
