@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { syncClientLocale } from "@/i18n/sync";
 import { AppTopBar } from "@/components/AppSidebar";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
+import { PageTransition } from "@/components/PageTransition";
 import "@/i18n";
 
 const proposalsQueryOptions = queryOptions({
@@ -65,66 +66,68 @@ function ProposalsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <AppTopBar title={t("proposals.title")} />
+    <PageTransition>
+      <div className="min-h-screen bg-background text-foreground">
+        <AppTopBar title={t("proposals.title")} />
 
-      <section className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{t("proposals.title")}</h1>
-          <Button size="sm" variant="secondary" onClick={onIngest} disabled={ingesting}>
-            {ingesting ? t("app.loading") : t("proposals.ingestKnowledge")}
-          </Button>
-        </div>
-        {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
-
-        {data.proposals.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
-              {t("proposals.empty")}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {data.proposals.map((p) => {
-              const grant = Array.isArray(p.grant) ? p.grant[0] : p.grant;
-              const grantTitle = grant
-                ? fr && grant.title_fr
-                  ? grant.title_fr
-                  : grant.title
-                : "—";
-              return (
-                <Card key={p.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <CardTitle className="text-base">{p.title}</CardTitle>
-                      <Badge>{t(`proposals.status.${p.status}`)}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {t("proposals.createdFrom")}: {grantTitle}
-                      {grant?.deadline ? ` · ${grant.deadline}` : ""}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="flex items-center justify-between">
-                    <div className="text-xs text-muted-foreground flex gap-4">
-                      <span>
-                        {t("proposals.version")} {p.version}
-                      </span>
-                      {p.critic_score != null && (
-                        <span>
-                          {t("proposals.score")}: {(Number(p.critic_score) * 100).toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
-                    <Link to="/proposals/$id" params={{ id: p.id }}>
-                      <Button size="sm">{t("proposals.open")} →</Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        <section className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">{t("proposals.title")}</h1>
+            <Button size="sm" variant="secondary" onClick={onIngest} disabled={ingesting}>
+              {ingesting ? t("app.loading") : t("proposals.ingestKnowledge")}
+            </Button>
           </div>
-        )}
-      </section>
-    </div>
+          {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
+
+          {data.proposals.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-muted-foreground">
+                {t("proposals.empty")}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {data.proposals.map((p) => {
+                const grant = Array.isArray(p.grant) ? p.grant[0] : p.grant;
+                const grantTitle = grant
+                  ? fr && grant.title_fr
+                    ? grant.title_fr
+                    : grant.title
+                  : "—";
+                return (
+                  <Card key={p.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-4">
+                        <CardTitle className="text-base">{p.title}</CardTitle>
+                        <Badge>{t(`proposals.status.${p.status}`)}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("proposals.createdFrom")}: {grantTitle}
+                        {grant?.deadline ? ` · ${grant.deadline}` : ""}
+                      </p>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between">
+                      <div className="text-xs text-muted-foreground flex gap-4">
+                        <span>
+                          {t("proposals.version")} {p.version}
+                        </span>
+                        {p.critic_score != null && (
+                          <span>
+                            {t("proposals.score")}: {(Number(p.critic_score) * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                      <Link to="/proposals/$id" params={{ id: p.id }}>
+                        <Button size="sm">{t("proposals.open")} →</Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+    </PageTransition>
   );
 }
