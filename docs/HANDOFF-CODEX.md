@@ -1,119 +1,152 @@
-# Handoff for Codex — IIAL Grants
+# Handoff for Codex - IIAL Grants
 
-Living handoff so another agent (Codex) can continue when Claude's token budget
-runs out. Read this + `docs/DEVELOPER-GUIDE.md` first. **Last updated: 2026-07-05.**
+Living handoff so another agent can continue safely. Read this plus
+`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-05.
 
-## Current state (all pushed to `main`)
+## Current State
 
 Latest commits (newest first):
 
+- `4131924` feat: S3c proposal DOCX/PDF export and versioning
+- `18fca5c` docs: handoff update - S3a browser-verified, desync fix, C5-pt2 verified done
 - `1ecdbf3` fix: submitProposal grant-status desync (found via browser test)
 - `30d0c7c` feat: S3a reviewer-simulation submit gate
 - `b3aa3f3` fix: S3b FR export no longer passes English off as French + remove dead code
-- `18d5715` docs: Codex handoff
-- `0c69b55` docs: C5 dedup hardening + local-audit triage guidance
 
-Working tree is clean. Quality bar right now: **tsc 0, eslint 0, 215 unit/e2e
-tests + 1 skipped, build clean.** Live pipeline smoke green (fit_score ~0.76
-against local Supabase + Ollama).
+Quality bar after `4131924`: tsc 0, eslint 0, 222 unit/e2e tests + 1 skipped,
+production build clean, Playwright E2E 5/5. Live pipeline smoke was green
+earlier on 2026-07-05 (fit_score ~0.76 against local Supabase + Ollama).
 
-S3a submit gate is now browser-verified end-to-end (block dialog → "submit
-anyway" force path → grant+proposal both submitted). The browser test also
-found and fixed a real grant/proposal status desync (`1ecdbf3`).
+Local migration applied during verification:
+`supabase/migrations/20260705160000_proposal_version_bump.sql`
+(`bump_proposal_version`) was applied to local `docker-db-1` and verified under
+role `authenticated` with `auth.uid()`.
 
-C5-pt2 verified needs NO code change: tri_council and all 11 CA sources are
-already wired in `orchestrator.server.ts` (Tier B) and enabled in
-`discovery_sources_registry`. Empty `last_run_at` just means discovery hasn't
-been triggered locally (crons are staged inactive), not a code gap.
-
-## Roadmap status (from `.claude/plans/precious-exploring-pelican.md`)
+## Roadmap Status
 
 DONE: QW1 (rule_score/deadline), QW3 (secrets guard test), QW4 (React Query
 optimistic), C1 (org-vs-grant rules), C2 (interactive board), C3 (deadline
 reminders + NotificationBell), C4 (pipeline analytics), C6 (audit-log
 immutability), S1 (multi-axis fit + shareable report), S2 (RFP requirements +
-readiness), plus the whole Express/Advanced UX and a 7-bug logic reengineering
-pass and C5 part 1 (dedup hardening).
+readiness), Express/Advanced UX, 7-bug logic reengineering pass, C5 part 1
+(dedup hardening), C5 part 2 (CA source wiring verified), S3a, S3b, and S3c.
 
-REMAINING (pick up here, highest value first):
+## Completed S3 Work
 
-### S3a — Submit quality gate — DONE (`30d0c7c`)
+### S3a - Submit quality gate - DONE (`30d0c7c`, verified/fixed by `1ecdbf3`)
 
-Implemented: pure `canSubmit()` + `MIN_CRITIC_SCORE_TO_SUBMIT` (0.6) in
-`src/lib/submissions.functions.ts`; `submitProposal` computes readiness and
-blocks with a typed `submit_blocked:<reasons>` error unless `force: true`. The
-proposal-detail route explains the reasons and offers "submit anyway".
-Covered by `src/lib/submit-gate.test.ts` (7 tests). FOLLOW-UP (not blocking):
-browser-verify the full block→force flow against a seeded `in_proposal`
-proposal — the gate logic is unit-tested but the end-to-end UI dialog wasn't
-exercised in-browser this session (no seeded proposal was available).
+Implemented pure `canSubmit()` + `MIN_CRITIC_SCORE_TO_SUBMIT` (0.6) in
+`src/lib/submissions.functions.ts`. `submitProposal` computes readiness and
+blocks with typed `submit_blocked:<reasons>` unless `force: true`. The proposal
+detail route explains the reasons and offers "submit anyway".
 
-### S3b — FR export silently falls back to EN — DONE (`b3aa3f3`)
+Covered by `src/lib/submit-gate.test.ts` (7 tests). Browser-verified
+end-to-end: block dialog -> "submit anyway" force path -> grant and proposal
+both submitted. That browser run found and fixed a real grant/proposal status
+desync in `1ecdbf3`.
 
-Fixed: extracted pure `buildProposalMarkdown()` in
-`src/lib/submissions.functions.ts`; untranslated sections are flagged inline
-and returned in a new `missingTranslations` field. Covered by
-`src/lib/proposal-export.test.ts` (5 tests). OPTIONAL follow-up: surface
-`missingTranslations` in the proposal-detail UI export button (the route reads
-`{markdown, filename}` and ignores the new field today). Note the route
-hardcodes `const fr = false` (EN-only UI) so the FR path isn't user-reachable
-yet — wiring a real FR toggle is separate work.
+### S3b - FR export honesty - DONE (`b3aa3f3`)
 
-### S3c — DOCX/PDF export + real versioning
+Extracted pure `buildProposalMarkdown()` in `src/lib/submissions.functions.ts`.
+Untranslated sections are flagged inline and returned in `missingTranslations`
+instead of silently passing English off as French.
 
-Currently markdown-only, `proposals.version` is an integer that nothing
-increments meaningfully. Lower priority than S3a/S3b.
+S3c now routes exports through `exportProposalFile`, which preserves
+`missingTranslations`; the UI will surface missing FR translations once the
+proposal detail route is wired to a real FR toggle. Today the route still
+hardcodes `const fr = false` (EN-only UI), so FR toggle wiring remains a
+separate UX/i18n task.
 
-### C5 part 2 — Wire dormant CA sources
+### S3c - DOCX/PDF export + real versioning - DONE (`4131924`)
 
-`tri_council` ingester exists (`src/lib/source-curator/tri-council.server.ts`)
-but verify it's actually wired into the orchestrator and enabled. No QC/BC
-foundation ingesters yet.
+Implemented:
 
-### Dead code — DONE (`b3aa3f3`)
+- `exportProposalFile` with `md`, `docx`, and `pdf` formats.
+- Server-side DOCX generation through `docx` and PDF generation through
+  `pdf-lib`; files return base64 + MIME type + filename for browser download.
+- Advanced proposal UI now offers Export Markdown, Export DOCX, and Export PDF.
+- Atomic PostgreSQL RPC `bump_proposal_version(target_proposal_id)` with RLS.
+- Writer re-drafts, critic reviews, and submit transitions now bump
+  `proposals.version` through that RPC.
+- Fixed a real DOM hydration warning found by the new export E2E: `Badge`
+  (`div`) had been nested inside a `p` on the proposal detail metadata row.
+- Playwright E2E now runs with `workers: 1`; local Supabase/Auth produced
+  transient fetch failures when E2E files ran concurrently. This matches the
+  one-by-one navigation audit requirement and stabilized the suite.
 
-Removed the duplicate `listNotifications`/`markNotificationRead` from
-`submissions.functions.ts` (the live, user_id-scoped versions stay in
-`notifications.functions.ts`).
+Coverage:
 
-## Verification protocol (run before every commit)
+- `src/lib/proposal-export.test.ts` validates Markdown/DOCX/PDF output and file
+  signatures (`PK` for DOCX, `%PDF-` for PDF).
+- `src/lib/proposal-versioning.test.ts` validates the RPC wrapper, DB error
+  handling, and empty-result guard.
+- `tests/e2e/proposal-export.spec.ts` logs in through the UI, opens the
+  proposal Advanced view, downloads all three formats, verifies filenames and
+  binary signatures, and asserts no browser console/page errors.
+
+## C5 Part 2
+
+C5-pt2 needs no code change. `tri_council` is wired in
+`src/lib/source-curator/orchestrator.server.ts` (Tier B), and local
+`discovery_sources_registry` has tri_council plus the 11 CA sources enabled.
+Empty `last_run_at` means discovery has not been triggered locally (crons are
+staged inactive), not a code gap.
+
+## Remaining Audit Targets
+
+Highest-value next work:
+
+- Admin/security audit: `src/routes/_authenticated.admin.*.tsx`,
+  `src/lib/admin-*.functions.ts`, server functions missing
+  `requireSupabaseAuth`/`assertAdmin`, share-token surfaces, and broad RLS
+  policies.
+- Source ingester audit: `funder-scout`, `gc-proactive`, `t3010`, `otf`,
+  `alberta-ckan`, and high-volume dedup/quality edge cases.
+- UX/i18n follow-up: wire a real proposal detail FR mode/toggle so FR export
+  paths are user-reachable.
+
+## Verification Protocol
+
+Run before every commit:
 
 ```bash
 bun x tsc --noEmit
 bun x eslint .
 bun x vitest run --exclude "**/live-*"
 bun run build
+bun run test:e2e
 ```
 
-For UI changes, verify in-browser at http://localhost:8080 (login via demo
-Admin button on /auth; use `browser_tabs action:new` for an isolated tab — a
-shared Playwright/Codex session may be navigating the same browser). For
-pipeline changes, run the live smoke (`scripts/seed-live-grant.mjs` then
-`src/agents/live-pipeline.test.ts` with LIVE_GRANT_ID/LIVE_USER_ID).
+For UI changes, verify in browser at http://localhost:8080 through the demo
+buttons on `/auth`. For pipeline changes, run the live smoke
+(`scripts/seed-live-grant.mjs` then `src/agents/live-pipeline.test.ts` with
+`LIVE_GRANT_ID`/`LIVE_USER_ID`).
 
-## Local-first auditing (save cloud tokens)
+## Local-First Auditing
 
-`node scripts/local-audit.mjs qwen2.5-coder:7b [relative/file.ts]` runs a
-zero-cloud-token audit via Ollama (localhost:11434), writing
-`scripts/local-audit-report.json` (git-revert this scratch file after). **The
-7B model over-reports "race condition" — every finding needs triage against
-the real code before acting.** In the 2026-07-05 sweep, all 38 raw findings
-triaged to zero real bugs.
+Use local Ollama before spending cloud tokens:
 
-## Hard rules (do not violate)
+```bash
+node scripts/local-audit.mjs qwen2.5-coder:7b [relative/file.ts]
+```
 
-- Do NOT rewrite published git history (branch connected to Lovable).
-- Do NOT bypass the immutable audit-log trigger (`reject_audit_mutation`) — it
-  correctly blocks deletes/updates on `agent_runs`/`grant_events` even for
-  service_role. Deleting a grant referenced by `agent_runs` will fail; that's
-  intended.
+It writes `scripts/local-audit-report.json`; revert this scratch churn after
+reading. The 7B model over-reports race/null issues. Triage every finding
+against real code before acting. During S3c, it found one real-ish edge
+(`bumpProposalVersion` empty RPC result), now fixed and tested; subsequent
+null-result finding was a false positive because the typed error is intentional.
+
+## Hard Rules
+
+- Do NOT rewrite published git history. This branch is connected to Lovable.
+- Do NOT bypass the immutable audit-log trigger (`reject_audit_mutation`) on
+  `agent_runs`/`grant_events`.
 - Before editing the pipeline state machine (`pipeline-stages.shared.ts`),
-  check the LIVE DB trigger: `docker exec docker-db-1 psql -U postgres -d
-  postgres -c "\sf validate_grant_transition"` — later migrations supersede
-  earlier ones.
-- List route files MUST use `.index.tsx` (or the detail `$id` route silently
-  never renders).
+  inspect the live DB trigger:
+  `docker exec docker-db-1 psql -U postgres -d postgres -c "\sf validate_grant_transition"`.
+- List route files MUST use `.index.tsx`; otherwise detail `$id` routes can
+  silently fail to render.
 - `MAX_ENRICH_ATTEMPTS` lives in `pipeline-stages.shared.ts` (client-safe), not
-  `enricher.functions.ts` (which bundles `createServerFn`).
+  `enricher.functions.ts`.
 - Keep scratch artifacts out of git (`.playwright-mcp/`, screenshots,
-  `scripts/local-audit-report.json` churn).
+  `test-results/`, `scripts/local-audit-report.json` churn).
