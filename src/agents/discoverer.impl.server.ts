@@ -62,7 +62,7 @@ const GENERIC_STOPWORDS = new Set([
   "des",
 ]);
 
-function normalizeTitle(s: string): string {
+export function normalizeTitle(s: string): string {
   return s
     .replace(/\([^)]*\)/g, " ") // strip parentheticals
     .toLowerCase()
@@ -74,24 +74,89 @@ function normalizeTitle(s: string): string {
     .filter((w) => w.length > 1 && !GENERIC_STOPWORDS.has(w))
     .join(" ");
 }
-function canonicalKey(
-  funderId: string,
-  title: string,
-  minAmt: number | null,
-  maxAmt: number | null,
-): string {
-  void minAmt;
-  void maxAmt;
+
+// Tokens derived from the funder's own name (plus its initials acronym).
+// The funder is already part of the canonical key via funderId, so its name
+// inside a grant title is pure noise: "NRC Industrial Research Assistance
+// Program (IRAP)", "National Research Council Canada Industrial Research
+// Assistance Program (IRAP)" and "Industrial Research Assistance Program
+// (IRAP)" are the same program and must collapse to one key. Live discovery
+// on 2026-07-04 produced exactly those three as separate rows.
+function funderNameTokens(funderName: string | null | undefined): Set<string> {
+  if (!funderName) return new Set();
+  const tokens = new Set<string>();
+  // The funder's parenthetical is usually its acronym/alias — e.g.
+  // "National Research Council Canada (IRAP)" → "irap".
+  for (const m of funderName.matchAll(/\(([^)]+)\)/g)) {
+    const inner = m[1].toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (inner.length >= 2 && inner.length <= 12) tokens.add(inner);
+  }
+  const words = normalizeTitle(funderName).split(/\s+/).filter(Boolean);
+  for (const w of words) tokens.add(w);
+  // Titles abbreviate the funder inconsistently ("NRC" for "National Research
+  // Council Canada"), so add the initials of every word-prefix of the name:
+  // n·r → "nr", n·r·c → "nrc", n·r·c·c → "nrcc".
+  for (let i = 2; i <= words.length; i++) {
+    tokens.add(
+      words
+        .slice(0, i)
+        .map((w) => w[0])
+        .join(""),
+    );
+  }
+  return tokens;
+}
+
+export function canonicalKey(funderId: string, title: string, funderName?: string | null): string {
+  const drop = funderNameTokens(funderName);
+  const all = normalizeTitle(title).split(/\s+/).filter(Boolean);
+  // Sort so simple reorderings ("X Assistance Program" vs "Assistance
+  // Program X") of the same funder's same words share one key. When the
+  // title is nothing BUT the funder's name (drops to empty), fall back to
+  // the undropped tokens so the key stays non-degenerate.
+  const kept = all.filter((w) => !drop.has(w)).sort();
+  const tokens = kept.length > 0 ? kept : [...all].sort();
   return createHash("sha256")
-    .update(`${funderId}|${normalizeTitle(title)}`)
+    .update(`${funderId}|${tokens.join(" ")}`)
     .digest("hex");
 }
 
+// Administrative / corporate pages that are NOT grant programs but routinely
+// carry funder acronyms ("NRC", "IRAP", "COI"), which used to trip the
+// acronym escape hatch below and sail straight into the catalog. Live
+// discovery on 2026-07-04 inserted "COVID-19 Vaccination Policy", "National
+// Asbestos Inventory", "Conflict of Interest guidance" and "Public Servants
+// Disclosure Protection Act Compliance" as grants. Checked BEFORE any escape
+// hatch. Phrases only — single ambiguous words would kill real programs.
+const ADMIN_PAGE_PATTERNS: RegExp[] = [
+  /\bpolicy$/i, // "...Vaccination Policy" (but not "Policy Innovation Fund")
+  /\bpolic(y|ies)\b.*\b(covid|vaccination|privacy|travel)\b/i,
+  /\b(covid|vaccination)\b/i,
+  /\basbestos\b/i,
+  /\bconflict of interest\b/i,
+  /\bconflit d'int[eé]r[eê]ts?\b/i,
+  /\bcode of conduct\b/i,
+  /\bcode de conduite\b/i,
+  /\bguidance on\b/i,
+  /\bdisclosure protection\b/i,
+  /\bact compliance\b/i,
+  /\bprivacy (notice|statement)\b/i,
+  /\baccessibility (statement|plan)\b/i,
+  /\bterms of (use|service)\b/i,
+  /\bconditions d'utilisation\b/i,
+  /\bannual report\b/i,
+  /\brapport annuel\b/i,
+  /\binventory\b/i,
+];
+
 // Reject titles that are too generic to be real programs.
 // E.g. "Funding", "Loans", "Programs and Initiatives", landing-page bait.
-function isGenericTitle(title: string): boolean {
+export function isGenericTitle(title: string): boolean {
   const raw = (title || "").trim();
   if (!raw) return true;
+  // Administrative pages are rejected unconditionally — the acronym escape
+  // hatch below must never rescue them.
+  if (ADMIN_PAGE_PATTERNS.some((re) => re.test(raw))) return true;
   // Escape hatch: titles containing an acronym (3+ uppercase letters) or a roman/arabic
   // numeral suffix (e.g. "PSCe Volet 2", "IRAP", "SR&ED") are valid even when short.
   if (/[A-Z]{3,}/.test(raw)) return false;
@@ -395,7 +460,7 @@ export async function discoverFunderImpl(
         if (isGenericTitle(g.title) || isRootIndex(g.url || url)) {
           continue; // structural filter: skip landing-page / index-only entries
         }
-        const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
+        const ck = canonicalKey(F.id, g.title, F.name);
         const { data: existing } = await supabaseAdmin
           .from("grants")
           .select("id, times_seen")
@@ -798,7 +863,7 @@ export async function discoverFunderImpl(
           skippedSamples.push({ title: g.title, url: effectiveUrl, reason: "root_index" });
         continue;
       }
-      const ck = canonicalKey(F.id, g.title, g.amount_cad_min ?? null, g.amount_cad_max ?? null);
+      const ck = canonicalKey(F.id, g.title, F.name);
       const sourceHash = createHash("sha256")
         .update(`${g.url && g.url !== F.source_url ? g.url : doc.url}|${g.title}`)
         .digest("hex");
