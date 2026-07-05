@@ -83,7 +83,18 @@ src/
 ├── i18n/             # Bilingual config
 ├── integrations/
 │   └── supabase/     # Client, types, auth middleware
-├── lib/              # 45 server functions (admin, grants, proposals, etc.)
+├── lib/              # 45+ server functions (admin, grants, proposals, etc.)
+│   ├── funder-enrichment.server.ts # CRA T3010 funder enrichment
+│   ├── funder-search.server.ts     # Full-text funder search + filters
+│   ├── giving-history.server.ts    # Giving patterns + likelihood prediction
+│   ├── funder-dashboard.server.ts  # Funder intelligence metrics
+│   ├── competitive-intel.server.ts # Government grants competitive analysis
+│   ├── multi-expert-review.server.ts # 6-expert proposal review panel
+│   ├── compliance-matrix.server.ts # Funder requirement compliance
+│   ├── citation-tracker.server.ts  # Citation extraction + validation
+│   ├── post-award.server.ts        # Outcome tracking + award metrics
+│   ├── platform.server.ts          # Activity tracking + notifications
+│   └── *.functions.ts              # Thin wrappers (server function convention)
 ├── routes/           # TanStack file-based routing
 ├── router.tsx        # Route config
 ├── server.ts         # SSR entry

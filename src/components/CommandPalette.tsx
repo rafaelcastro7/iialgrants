@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import {
   Search,
   FileText,
@@ -10,6 +11,9 @@ import {
   Activity,
   Shield,
   Settings,
+  Plus,
+  RefreshCw,
+  ArrowRight,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -18,7 +22,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
+import { supabase } from "@/integrations/supabase/client";
 import "@/i18n";
 
 type CommandAction = {
@@ -33,6 +39,7 @@ export function CommandPalette() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -45,6 +52,38 @@ export function CommandPalette() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
+  useEffect(() => {
+    if (!open) setSearch("");
+  }, [open]);
+
+  const { data: grants } = useQuery({
+    queryKey: ["cmd-grants", search],
+    queryFn: async () => {
+      if (!search || search.length < 2) return [];
+      const { data } = await supabase
+        .from("grants")
+        .select("id, title, status, deadline")
+        .ilike("title", `%${search}%`)
+        .limit(5);
+      return data || [];
+    },
+    enabled: open && search.length >= 2,
+  });
+
+  const { data: proposals } = useQuery({
+    queryKey: ["cmd-proposals", search],
+    queryFn: async () => {
+      if (!search || search.length < 2) return [];
+      const { data } = await supabase
+        .from("proposals")
+        .select("id, title, status")
+        .ilike("title", `%${search}%`)
+        .limit(5);
+      return data || [];
+    },
+    enabled: open && search.length >= 2,
+  });
+
   const navigationActions: CommandAction[] = [
     { id: "dashboard", label: t("nav.dashboard"), icon: Shield, to: "/dashboard" },
     { id: "grants", label: t("nav.grants"), icon: Search, to: "/grants" },
@@ -56,6 +95,11 @@ export function CommandPalette() {
     { id: "admin", label: "Admin Console", icon: Settings, to: "/admin" },
   ];
 
+  const quickActions: CommandAction[] = [
+    { id: "new-proposal", label: "New Proposal", icon: Plus, to: "/proposals" },
+    { id: "run-discovery", label: "Run Grant Discovery", icon: RefreshCw, to: "/grants" },
+  ];
+
   function handleSelect(action: CommandAction) {
     setOpen(false);
     if (action.to) {
@@ -65,11 +109,84 @@ export function CommandPalette() {
     }
   }
 
+  const showResults = search.length >= 2;
+  const hasResults = (grants?.length || 0) + (proposals?.length || 0) > 0;
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Type a command or search..." />
+      <CommandInput
+        placeholder="Search grants, proposals, or type a command..."
+        value={search}
+        onValueChange={setSearch}
+      />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>
+          {showResults ? "No results found." : "Type to search or navigate..."}
+        </CommandEmpty>
+
+        {showResults && hasResults && (
+          <>
+            {grants && grants.length > 0 && (
+              <CommandGroup heading="Grants">
+                {grants.map((grant) => (
+                  <CommandItem
+                    key={grant.id}
+                    onSelect={() => {
+                      setOpen(false);
+                      navigate({ to: "/grants/$grantId", params: { grantId: grant.id } });
+                    }}
+                  >
+                    <Search className="mr-2 h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span>{grant.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {grant.status} {grant.deadline ? `· Due ${grant.deadline}` : ""}
+                      </span>
+                    </div>
+                    <ArrowRight className="ml-auto h-4 w-4" />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {proposals && proposals.length > 0 && (
+              <CommandGroup heading="Proposals">
+                {proposals.map((proposal) => (
+                  <CommandItem
+                    key={proposal.id}
+                    onSelect={() => {
+                      setOpen(false);
+                      navigate({ to: "/proposals/$id", params: { id: proposal.id } });
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span>{proposal.title}</span>
+                      <span className="text-xs text-muted-foreground">{proposal.status}</span>
+                    </div>
+                    <ArrowRight className="ml-auto h-4 w-4" />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            <CommandSeparator />
+          </>
+        )}
+
+        <CommandGroup heading="Quick Actions">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <CommandItem key={action.id} onSelect={() => handleSelect(action)}>
+                <Icon className="mr-2 h-4 w-4" />
+                <span>{action.label}</span>
+              </CommandItem>
+            );
+          })}
+        </CommandGroup>
+
+        <CommandSeparator />
+
         <CommandGroup heading="Navigation">
           {navigationActions.map((action) => {
             const Icon = action.icon;

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getProposal } from "@/lib/proposals.functions";
 import { submitProposal, exportProposalFile } from "@/lib/submissions.functions";
@@ -10,6 +11,7 @@ import { draftSection } from "@/agents/writer.functions";
 import { runCritic } from "@/agents/critic.functions";
 import { computeProposalReadiness, type ProposalRequirement } from "@/lib/proposal-readiness";
 import { ProposalDetailExpress } from "@/components/proposals/ProposalDetailExpress";
+import { SubmitDialog } from "@/components/SubmitDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +39,9 @@ function ProposalDetailPage() {
   const exportFile = useServerFn(exportProposalFile);
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [submitWarning, setSubmitWarning] = useState<string | null>(null);
+  const [pendingForce, setPendingForce] = useState(false);
   const [viewMode, setViewMode] = useState<"express" | "advanced">(() =>
     typeof window !== "undefined"
       ? ((window.sessionStorage.getItem("proposals.viewMode") as "express" | "advanced") ??
@@ -68,8 +73,11 @@ function ProposalDetailPage() {
     try {
       await draft({ data: { sectionId, topK: 6 } });
       await qc.invalidateQueries({ queryKey: ["proposal", id] });
+      toast.success("Section drafted successfully");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setPending(null);
     }
@@ -80,8 +88,11 @@ function ProposalDetailPage() {
     try {
       await critic({ data: { proposalId: id } });
       await qc.invalidateQueries({ queryKey: ["proposal", id] });
+      toast.success("Quality review completed");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setPending(null);
     }
@@ -95,12 +106,10 @@ function ProposalDetailPage() {
     open_critical_requirements: "a critical funder requirement is not yet covered",
   };
 
-  async function onSubmit(force = false) {
-    const method = window.prompt(t("proposals.submitPrompt"), "portal");
-    if (!method) return;
-    const conf = window.prompt(t("proposals.confirmationPrompt"), "") || "";
+  async function doSubmit(method: string, confirmationNumber: string, force = false) {
     setPending("submit");
     setErr(null);
+    setSubmitDialogOpen(false);
     try {
       await submit({
         data: {
@@ -108,30 +117,29 @@ function ProposalDetailPage() {
           method: (["portal", "email", "mail", "api", "other"].includes(method)
             ? method
             : "other") as "portal" | "email" | "mail" | "api" | "other",
-          confirmation_number: conf || null,
+          confirmation_number: confirmationNumber || null,
           language: fr ? "fr" : "en",
           force,
         },
       });
       await qc.invalidateQueries({ queryKey: ["proposal", id] });
+      toast.success("Proposal submitted successfully!");
       await navigate({ to: "/submissions" });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // Reviewer-simulation gate blocked the submit — explain why and offer
-      // an explicit override instead of a raw error string.
       if (msg.startsWith("submit_blocked:") && !force) {
         const reasons = msg
           .slice("submit_blocked:".length)
           .split(",")
           .map((r) => GATE_REASONS[r] ?? r)
           .join("; ");
+        setSubmitWarning(`This proposal isn't ready to submit: ${reasons}`);
+        setSubmitDialogOpen(true);
         setPending(null);
-        if (window.confirm(`This proposal isn't ready to submit: ${reasons}.\n\nSubmit anyway?`)) {
-          await onSubmit(true);
-        }
         return;
       }
       setErr(msg);
+      toast.error(msg);
     } finally {
       setPending(null);
     }
@@ -226,7 +234,10 @@ function ProposalDetailPage() {
             pending={pending}
             onDraftSection={onDraft}
             onCritic={onCritic}
-            onSubmit={() => onSubmit()}
+            onSubmit={() => {
+              setSubmitWarning(null);
+              setSubmitDialogOpen(true);
+            }}
             onShowAdvanced={() => switchView("advanced")}
           />
         )}
@@ -270,7 +281,10 @@ function ProposalDetailPage() {
                   <Button
                     variant="default"
                     disabled={pending === "submit"}
-                    onClick={() => onSubmit()}
+                    onClick={() => {
+                      setSubmitWarning(null);
+                      setSubmitDialogOpen(true);
+                    }}
                   >
                     {t("proposals.submit")}
                   </Button>
@@ -446,6 +460,22 @@ function ProposalDetailPage() {
           </>
         )}
       </section>
+
+      <SubmitDialog
+        open={submitDialogOpen}
+        onOpenChange={setSubmitDialogOpen}
+        onSubmit={(method, conf) => doSubmit(method, conf)}
+        loading={pending === "submit"}
+        warningMessage={submitWarning}
+        onForceSubmit={
+          submitWarning
+            ? () => {
+                setSubmitWarning(null);
+                doSubmit("portal", "", true);
+              }
+            : undefined
+        }
+      />
     </main>
   );
 }
