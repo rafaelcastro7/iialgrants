@@ -11,6 +11,7 @@ import { syncClientLocale } from "@/i18n/sync";
 import { AppTopBar } from "@/components/AppSidebar";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageTransition } from "@/components/PageTransition";
+import { ProposalsListSkeleton } from "@/components/Skeletons";
 import "@/i18n";
 
 const proposalsQueryOptions = queryOptions({
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/proposals/")({
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(proposalsQueryOptions),
   errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
+  pendingComponent: ProposalsListSkeleton,
   component: ProposalsPage,
 });
 
