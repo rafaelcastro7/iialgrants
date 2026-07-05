@@ -21,6 +21,7 @@ import { Route as AuthenticatedPostAwardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
+import { Route as AuthenticatedFinancialRouteImport } from './routes/_authenticated.financial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedCompetitiveRouteImport } from './routes/_authenticated.competitive'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
@@ -106,6 +107,11 @@ const AuthenticatedOpsRoute = AuthenticatedOpsRouteImport.update({
 const AuthenticatedFitRulesRoute = AuthenticatedFitRulesRouteImport.update({
   id: '/fit-rules',
   path: '/fit-rules',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedFinancialRoute = AuthenticatedFinancialRouteImport.update({
+  id: '/financial',
+  path: '/financial',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/competitive': typeof AuthenticatedCompetitiveRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/compliance': typeof ComplianceRoute
   '/competitive': typeof AuthenticatedCompetitiveRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/competitive': typeof AuthenticatedCompetitiveRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/financial': typeof AuthenticatedFinancialRoute
   '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/competitive'
     | '/dashboard'
+    | '/financial'
     | '/fit-rules'
     | '/ops'
     | '/org'
@@ -421,6 +431,7 @@ export interface FileRouteTypes {
     | '/compliance'
     | '/competitive'
     | '/dashboard'
+    | '/financial'
     | '/fit-rules'
     | '/ops'
     | '/org'
@@ -461,6 +472,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/competitive'
     | '/_authenticated/dashboard'
+    | '/_authenticated/financial'
     | '/_authenticated/fit-rules'
     | '/_authenticated/ops'
     | '/_authenticated/org'
@@ -593,6 +605,13 @@ declare module '@tanstack/react-router' {
       path: '/fit-rules'
       fullPath: '/fit-rules'
       preLoaderRoute: typeof AuthenticatedFitRulesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/financial': {
+      id: '/_authenticated/financial'
+      path: '/financial'
+      fullPath: '/financial'
+      preLoaderRoute: typeof AuthenticatedFinancialRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
@@ -838,6 +857,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedCompetitiveRoute: typeof AuthenticatedCompetitiveRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFinancialRoute: typeof AuthenticatedFinancialRoute
   AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
@@ -857,6 +877,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedCompetitiveRoute: AuthenticatedCompetitiveRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFinancialRoute: AuthenticatedFinancialRoute,
   AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,

@@ -61,6 +61,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/quality", labelKey: "nav.quality", icon: BarChart3 },
   { to: "/submissions", labelKey: "nav.submissions", icon: Send },
   { to: "/post-award", labelKey: "nav.postAward", icon: Trophy },
+  { to: "/financial", labelKey: "nav.financial", icon: DollarSign },
   { to: "/competitive", labelKey: "nav.competitive", icon: BarChart3 },
   { to: "/org", labelKey: "org.title", icon: Building2 },
   { to: "/fit-rules", labelKey: "nav.fitRules", icon: Sliders },
