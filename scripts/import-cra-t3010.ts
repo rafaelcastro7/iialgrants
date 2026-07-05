@@ -4,7 +4,7 @@
  * Downloads and imports Canadian charity data from Open Government Portal.
  * Source: https://open.canada.ca/data/en/dataset/05b3abd0-e70f-4b3b-a9c5-acc436bd15b6
  *
- * Usage: bun run scripts/import-cra-t3010.ts [--dry-run] [--limit=N]
+ * Usage: bun run scripts/import-cra-t3010.ts [--dry-run] [--limit=N] [--force]
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -69,11 +69,18 @@ function normalizeBN(bn: string): string {
   return bn?.trim() || "";
 }
 
+function getField(row: Record<string, string>, ...candidates: string[]): string | null {
+  for (const c of candidates) {
+    const v = row[c];
+    if (v && v.trim()) return v.trim();
+  }
+  return null;
+}
+
 interface FunderRecord {
   external_id: string;
   name: string;
   legal_name: string | null;
-  type: string;
   designation: string | null;
   category: string | null;
   charity_status: string | null;
@@ -93,7 +100,7 @@ interface FunderRecord {
 
 async function importIdentities(
   records: Record<string, string>[],
-  dryRun: boolean,
+  _dryRun: boolean,
 ): Promise<Map<string, FunderRecord>> {
   const funders = new Map<string, FunderRecord>();
   let count = 0;
@@ -101,27 +108,30 @@ async function importIdentities(
 
   for (const row of records) {
     if (count >= limit) break;
-    const bn = normalizeBN(row["BN/Registration number"] || row["BN/Registration Number"] || "");
+    // Actual CSV header: "BN"
+    const bn = normalizeBN(
+      getField(row, "BN", "BN/Registration number", "BN/Registration Number") || "",
+    );
     if (!bn) continue;
 
     funders.set(bn, {
       external_id: bn,
-      name: row["Charity name"] || row["Legal Name"] || "",
-      legal_name: row["Legal Name"] || null,
-      type: "charity",
-      designation: row["Designation"] || null,
-      category: row["Category"] || null,
-      charity_status: row["Charity status"] || null,
-      effective_date: row["Effective date of status"] || null,
-      address: null,
-      city: null,
-      province: null,
-      postal_code: null,
-      telephone: null,
-      email: null,
+      // Actual CSV headers: "Account Name", "Legal Name"
+      name: getField(row, "Account Name", "Charity name", "Legal Name") || "",
+      legal_name: getField(row, "Legal Name"),
+      designation: getField(row, "Designation"),
+      category: getField(row, "Category"),
+      charity_status: getField(row, "Charity status", "Status"),
+      effective_date: getField(row, "Effective date of status"),
+      address: getField(row, "Address Line 1", "Address"),
+      city: getField(row, "City"),
+      province: getField(row, "Province"),
+      postal_code: getField(row, "Postal Code", "Postal code"),
+      telephone: getField(row, "Telephone"),
+      email: getField(row, "Email address", "Email"),
       website: null,
-      language: row["Language of correspondence"] || null,
-      accounting_period_end: row["Accounting period end date"] || null,
+      language: getField(row, "Language of correspondence", "Language"),
+      accounting_period_end: getField(row, "Accounting period end date", "FPE"),
       data_source: "cra_t3010_2023",
       data_year: 2023,
     });
@@ -132,38 +142,19 @@ async function importIdentities(
   return funders;
 }
 
-async function enrichWithGeneralInfo(
-  funders: Map<string, FunderRecord>,
-  records: Record<string, string>[],
-) {
-  let enriched = 0;
-  for (const row of records) {
-    const bn = normalizeBN(row["BN/Registration number"] || row["BN/Registration Number"] || "");
-    const funder = funders.get(bn);
-    if (!funder) continue;
-
-    funder.address = row["Address"] || null;
-    funder.city = row["City"] || null;
-    funder.province = row["Province/Territory"] || null;
-    funder.postal_code = row["Postal code"] || null;
-    funder.telephone = row["Telephone"] || null;
-    funder.email = row["Email address"] || null;
-    enriched++;
-  }
-  console.log(`  [general] ${enriched} funders enriched with contact info`);
-}
-
 async function enrichWithWebsites(
   funders: Map<string, FunderRecord>,
   records: Record<string, string>[],
 ) {
   let enriched = 0;
   for (const row of records) {
-    const bn = normalizeBN(row["BN/Registration number"] || row["BN/Registration Number"] || "");
+    // weburl CSV header: "BN/NE"
+    const bn = normalizeBN(getField(row, "BN/NE", "BN/Registration number", "BN") || "");
     const funder = funders.get(bn);
     if (!funder) continue;
 
-    const url = row["Web URL"] || row["URL"] || null;
+    // weburl CSV header: "Contact URL"
+    const url = getField(row, "Contact URL", "Web URL", "URL");
     if (url) {
       funder.website = url.startsWith("http") ? url : `https://${url}`;
       enriched++;
@@ -210,7 +201,6 @@ async function main() {
   // 1. Download CSVs
   console.log("1. Downloading CSVs...");
   const identPath = await downloadCSV("ident");
-  const generalPath = await downloadCSV("general");
   const weburlPath = await downloadCSV("weburl");
 
   // 2. Parse identification data
@@ -218,18 +208,13 @@ async function main() {
   const identRecords = parseCSV(identPath);
   const funders = await importIdentities(identRecords, dryRun);
 
-  // 3. Enrich with general info
-  console.log("\n3. Enriching with general info...");
-  const generalRecords = parseCSV(generalPath);
-  await enrichWithGeneralInfo(funders, generalRecords);
-
-  // 4. Enrich with websites
-  console.log("\n4. Enriching with websites...");
+  // 3. Enrich with websites
+  console.log("\n3. Enriching with websites...");
   const weburlRecords = parseCSV(weburlPath);
   await enrichWithWebsites(funders, weburlRecords);
 
-  // 5. Upsert to Supabase
-  console.log("\n5. Upserting to Supabase...");
+  // 4. Upsert to Supabase
+  console.log("\n4. Upserting to Supabase...");
   await upsertFunders(Array.from(funders.values()), dryRun);
 
   console.log("\n=== Import complete ===");
