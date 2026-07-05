@@ -27,7 +27,7 @@
 | 0 | Reingeniería Frontend | 15 | 🔄 EN PROGRESO | 45% |
 | 1 | Inteligencia de Fundadores | 5 | 🔄 EN PROGRESO | 80% |
 | 2 | Inteligencia Competitiva | 5 | 🔄 EN PROGRESO | 40% |
-| 3 | Proposal Quality Premium | 7 | ⏳ PENDIENTE | 0% |
+| 3 | Proposal Quality Premium | 7 | 🔄 EN PROGRESO | 43% |
 | 4 | Post-Award Intelligence | 5 | ⏳ PENDIENTE | 0% |
 | 5 | Plataforma y Escala | 7 | ⏳ PENDIENTE | 0% |
 
@@ -176,36 +176,47 @@ Se actualizan al final de cada fase.
 
 ---
 
-## FASE 2: INTELIGENCIA COMPETITIVA
+## FASE 3: PROPOSAL QUALITY PREMIUM
 
-### 2.1 — Government Grants Import Pipeline
-- [x] Crear script de importación (scripts/import-competitive-intel.ts)
-- [x] Crear migración SQL para tabla competitive_grants
-- [ ] Ejecutar importación (1.3M+ records from TBS Proactive Disclosure)
-- [ ] Verificar datos en Supabase
-- [ ] **Validación:** 1.3M+ competitive grants en DB
+### 3.1 — Multi-Expert Review Panel
+- [x] Crear sistema de review con 6 arquetipos (domain, program, budget, feasibility, EDI, skeptic)
+- [x] Scoring independiente por reviewer
+- [x] Consensus synthesis con top weaknesses
+- [ ] Integración con LLM para reviews reales
+- [ ] **Validación:** Review panel genera feedback accionable
 
-### 2.2 — Competitive Analysis API
-- [x] Búsqueda full-text de grants competitivos
-- [x] Top recipients por financiamiento
-- [x] Landscape summary (total grants, value, programs)
-- [x] Competitor detection (similar recipients)
-- [ ] **Validación:** Análisis competitivo funcional
+### 3.2 — Compliance Matrix
+- [x] Crear sistema de compliance checks
+- [x] Templates para NRC IRAP, SSHRC, general
+- [x] Policy alignment checks (EDI, open access, data management)
+- [ ] **Validación:** Matrix detecta secciones faltantes
 
-### 2.3 — Recipient Profiling
-- [ ] Profile completo de recipient (historial de grants)
-- [ ] Análisis de tendencias por programa
-- [ ] Comparación con organización
-- [ ] **Validación:** Perfil de competitor muestra datos relevantes
+### 3.3 — Citation Tracker
+- [x] Extracción de citations inline
+- [x] Validación via CrossRef API
+- [x] Detección de self-citations y retracted papers
+- [ ] **Validación:** Citations verificadas correctamente
 
-### 2.4 — Program Analysis
-- [ ] Análisis de programas por monto, frecuencia, beneficiarios
-- [ ] Detección de tendencias de financiamiento
-- [ ] Predicción de próximas convocatorias
-- [ ] **Validación:** Análisis de programas preciso
+### 3.4 — Proposal Scoring Rubric
+- [ ] Crear rubric configurable por funder
+- [ ] Auto-grading por sección
+- [ ] Benchmarking contra proposals exitosas
+- [ ] **Validación:** Scoring consistente y preciso
 
-### 2.5 — Competitive Dashboard
-- [ ] Métricas: total grants, total value, top recipients
-- [ ] Gráficos: distribución por provincia, tendencias temporales
-- [ ] Alertas: nuevos recipients, cambios en programas
+### 3.5 — Quality Dashboard
+- [ ] Vista de quality scores por proposal
+- [ ] Trend analysis de mejora
+- [ ] Comparison con benchmarks
 - [ ] **Validación:** Dashboard muestra métricas reales
+
+### 3.6 — Revision Agent
+- [ ] Auto-sugerencias basadas en reviews
+- [ ] Re-escritura de secciones débiles
+- [ ] Iteración hasta umbral de calidad
+- [ ] **Validación:** Revisiones mejoran score significativamente
+
+### 3.7 — Quality Gates
+- [ ] Bloqueo de submission si score < umbral
+- [ ] Mandatory compliance check antes de enviar
+- [ ] Approval workflow con reviewer assignments
+- [ ] **Validación:** Gates previenen submissions de baja calidad
