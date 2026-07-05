@@ -23,6 +23,7 @@ import { Route as AuthenticatedPostAwardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
 import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated.impact'
+import { Route as AuthenticatedFundersRouteImport } from './routes/_authenticated.funders'
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
 import { Route as AuthenticatedFinancialRouteImport } from './routes/_authenticated.financial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
@@ -126,6 +127,11 @@ const AuthenticatedImpactRoute = AuthenticatedImpactRouteImport.update({
   path: '/impact',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedFundersRoute = AuthenticatedFundersRouteImport.update({
+  id: '/funders',
+  path: '/funders',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedFitRulesRoute = AuthenticatedFitRulesRouteImport.update({
   id: '/fit-rules',
   path: '/fit-rules',
@@ -188,9 +194,9 @@ const AuthenticatedGrantsIdRoute = AuthenticatedGrantsIdRouteImport.update({
 } as any)
 const AuthenticatedFundersFunderIdRoute =
   AuthenticatedFundersFunderIdRouteImport.update({
-    id: '/funders/$funderId',
-    path: '/funders/$funderId',
-    getParentRoute: () => AuthenticatedRoute,
+    id: '/$funderId',
+    path: '/$funderId',
+    getParentRoute: () => AuthenticatedFundersRoute,
   } as any)
 const AuthenticatedCompetitiveRecipientsRoute =
   AuthenticatedCompetitiveRecipientsRouteImport.update({
@@ -318,6 +324,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
+  '/funders': typeof AuthenticatedFundersRouteWithChildren
   '/impact': typeof AuthenticatedImpactRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
@@ -364,6 +371,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
+  '/funders': typeof AuthenticatedFundersRouteWithChildren
   '/impact': typeof AuthenticatedImpactRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
@@ -413,6 +421,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/financial': typeof AuthenticatedFinancialRoute
   '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
+  '/_authenticated/funders': typeof AuthenticatedFundersRouteWithChildren
   '/_authenticated/impact': typeof AuthenticatedImpactRoute
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
@@ -462,6 +471,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/financial'
     | '/fit-rules'
+    | '/funders'
     | '/impact'
     | '/ops'
     | '/org'
@@ -508,6 +518,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/financial'
     | '/fit-rules'
+    | '/funders'
     | '/impact'
     | '/ops'
     | '/org'
@@ -556,6 +567,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/financial'
     | '/_authenticated/fit-rules'
+    | '/_authenticated/funders'
     | '/_authenticated/impact'
     | '/_authenticated/ops'
     | '/_authenticated/org'
@@ -709,6 +721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImpactRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/funders': {
+      id: '/_authenticated/funders'
+      path: '/funders'
+      fullPath: '/funders'
+      preLoaderRoute: typeof AuthenticatedFundersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/fit-rules': {
       id: '/_authenticated/fit-rules'
       path: '/fit-rules'
@@ -788,10 +807,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/funders/$funderId': {
       id: '/_authenticated/funders/$funderId'
-      path: '/funders/$funderId'
+      path: '/$funderId'
       fullPath: '/funders/$funderId'
       preLoaderRoute: typeof AuthenticatedFundersFunderIdRouteImport
-      parentRoute: typeof AuthenticatedRoute
+      parentRoute: typeof AuthenticatedFundersRoute
     }
     '/_authenticated/competitive/recipients': {
       id: '/_authenticated/competitive/recipients'
@@ -983,6 +1002,17 @@ const AuthenticatedCompetitiveRouteWithChildren =
     AuthenticatedCompetitiveRouteChildren,
   )
 
+interface AuthenticatedFundersRouteChildren {
+  AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
+}
+
+const AuthenticatedFundersRouteChildren: AuthenticatedFundersRouteChildren = {
+  AuthenticatedFundersFunderIdRoute: AuthenticatedFundersFunderIdRoute,
+}
+
+const AuthenticatedFundersRouteWithChildren =
+  AuthenticatedFundersRoute._addFileChildren(AuthenticatedFundersRouteChildren)
+
 interface AuthenticatedGrantsIdRouteChildren {
   AuthenticatedGrantsIdAuditRoute: typeof AuthenticatedGrantsIdAuditRoute
 }
@@ -1003,6 +1033,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFinancialRoute: typeof AuthenticatedFinancialRoute
   AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
+  AuthenticatedFundersRoute: typeof AuthenticatedFundersRouteWithChildren
   AuthenticatedImpactRoute: typeof AuthenticatedImpactRoute
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
@@ -1012,7 +1043,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRenewalRoute: typeof AuthenticatedRenewalRoute
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
-  AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
   AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
   AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
   AuthenticatedGrantsIndexRoute: typeof AuthenticatedGrantsIndexRoute
@@ -1027,6 +1057,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFinancialRoute: AuthenticatedFinancialRoute,
   AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
+  AuthenticatedFundersRoute: AuthenticatedFundersRouteWithChildren,
   AuthenticatedImpactRoute: AuthenticatedImpactRoute,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
@@ -1036,7 +1067,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedRenewalRoute: AuthenticatedRenewalRoute,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
-  AuthenticatedFundersFunderIdRoute: AuthenticatedFundersFunderIdRoute,
   AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
   AuthenticatedProposalsIdRoute: AuthenticatedProposalsIdRoute,
   AuthenticatedGrantsIndexRoute: AuthenticatedGrantsIndexRoute,

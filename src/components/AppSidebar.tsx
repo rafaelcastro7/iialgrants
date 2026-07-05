@@ -65,6 +65,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { to: "/grants", labelKey: "nav.grants", icon: Search },
+  { to: "/funders", labelKey: "nav.funders", icon: Building2 },
   { to: "/proposals", labelKey: "nav.proposals", icon: FileText },
   { to: "/quality", labelKey: "nav.quality", icon: BarChart3 },
   { to: "/submissions", labelKey: "nav.submissions", icon: Send },
