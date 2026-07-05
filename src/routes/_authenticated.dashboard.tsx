@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type ComponentType } from "react";
+import { Suspense, useEffect, useState, type ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
@@ -8,9 +8,11 @@ import { getOrgProfile } from "@/lib/org.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { syncClientLocale } from "@/i18n/sync";
 import { useIsAdmin, useModuleFlags } from "@/lib/use-platform";
 import { AppTopBar } from "@/components/AppSidebar";
+import { ActivityFeed } from "@/components/ActivityFeed";
 import {
   Activity,
   AlertCircle,
@@ -39,6 +41,28 @@ type NavTile = {
   primary?: boolean;
 };
 
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <AppTopBar />
+      <section className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)]">
+          <Skeleton className="h-[400px] rounded-xl" />
+          <div className="space-y-6">
+            <Skeleton className="h-[300px] rounded-xl" />
+            <Skeleton className="h-[200px] rounded-xl" />
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[120px] rounded-xl" />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
@@ -47,6 +71,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
     ],
   }),
   component: Dashboard,
+  pendingComponent: DashboardSkeleton,
 });
 
 function Dashboard() {
@@ -233,69 +258,73 @@ function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/70 bg-card/90 shadow-sm backdrop-blur">
-            <CardHeader className="space-y-2">
-              <CardTitle className="font-display text-2xl">Next best step</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                We turn the interface into a decision surface, not a pile of links.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                  Recommended now
+          <div className="space-y-6">
+            <Card className="border-border/70 bg-card/90 shadow-sm backdrop-blur">
+              <CardHeader className="space-y-2">
+                <CardTitle className="font-display text-2xl">Next best step</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  We turn the interface into a decision surface, not a pile of links.
                 </p>
-                <p className="mt-2 text-lg font-semibold">{nextStep.title}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{nextStep.body}</p>
-                <div className="mt-4">
-                  <Button asChild className="w-full gap-2" size="lg">
-                    <Link to={nextStep.to}>
-                      {nextStep.ctaLabel}
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                    Recommended now
+                  </p>
+                  <p className="mt-2 text-lg font-semibold">{nextStep.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{nextStep.body}</p>
+                  <div className="mt-4">
+                    <Button asChild className="w-full gap-2" size="lg">
+                      <Link to={nextStep.to}>
+                        {nextStep.ctaLabel}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              {profileComplete ? (
-                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                    Organization context is complete.
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Fit scores, proposal angles, and validation rules can now work from your actual
-                    profile instead of placeholders.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4">
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                    One setup gap is still blocking better scoring.
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Add sectors and jurisdictions first. That is the smallest change with the
-                    biggest UX payoff.
-                  </p>
-                </div>
-              )}
+                {profileComplete ? (
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                      Organization context is complete.
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Fit scores, proposal angles, and validation rules can now work from your
+                      actual profile instead of placeholders.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4">
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                      One setup gap is still blocking better scoring.
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Add sectors and jurisdictions first. That is the smallest change with the
+                      biggest UX payoff.
+                    </p>
+                  </div>
+                )}
 
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                  Enabled surfaces
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {enabledModules.slice(0, 6).map((m) => (
-                    <Badge key={m.module} variant="outline" className="rounded-full px-3 py-1">
-                      {m.module}
-                    </Badge>
-                  ))}
-                  {enabledModules.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No module flags found yet.</p>
-                  )}
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                    Enabled surfaces
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {enabledModules.slice(0, 6).map((m) => (
+                      <Badge key={m.module} variant="outline" className="rounded-full px-3 py-1">
+                        {m.module}
+                      </Badge>
+                    ))}
+                    {enabledModules.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No module flags found yet.</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <ActivityFeed />
+          </div>
         </div>
 
         {org && !profileComplete && (

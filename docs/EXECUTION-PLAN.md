@@ -24,8 +24,8 @@
 
 | Fase | Nombre | Features | Estado | % Completado |
 |------|--------|----------|--------|-------------|
-| 0 | Reingeniería Frontend | 15 | 🔄 EN PROGRESO | 41% |
-| 1 | Inteligencia de Fundadores | 5 | ⏳ PENDIENTE | 0% |
+| 0 | Reingeniería Frontend | 15 | 🔄 EN PROGRESO | 45% |
+| 1 | Inteligencia de Fundadores | 5 | 🔄 EN PROGRESO | 80% |
 | 2 | Inteligencia Competitiva | 5 | ⏳ PENDIENTE | 0% |
 | 3 | Proposal Quality Premium | 7 | ⏳ PENDIENTE | 0% |
 | 4 | Post-Award Intelligence | 5 | ⏳ PENDIENTE | 0% |
@@ -90,7 +90,7 @@ Se actualizan al final de cada fase.
 - [x] Instalar `@tanstack/react-table` si no está
 - [x] Crear DataTable reutilizable con sort, filter, pagination
 - [ ] Integrar en `/proposals` (sortable por deadline, status)
-- [ ] Integrar en `/submissions` (sortable, filterable)
+- [ ] Integrar en `/submissions` (sortable, filterable) — *deferred: inline editing complexity*
 - [ ] Integrar en `/admin/history` (expandable rows)
 - [ ] Reemplazar `<table>` HTML crudo en `/ops`
 - [ ] **Validación:** Tablas son sortables, filterables, con CSV export
@@ -153,7 +153,7 @@ Se actualizan al final de cada fase.
 - [x] Crear ActivityFeed component
 - [x] Últimos 10 eventos (grants, proposals, deadlines)
 - [x] Timeline visual con icons
-- [ ] Click → navega a entidad
+- [x] Click → navega a entidad
 - [x] Auto-refresh 30s
 - [ ] **Validación:** Feed muestra eventos recientes, click navega
 
@@ -173,3 +173,38 @@ Se actualizan al final de cada fase.
 - [x] Overall compliance % bar
 - [ ] Export PDF
 - [ ] **Validación:** Matrix renderiza, compliance % calcula correctamente
+
+---
+
+## FASE 1: INTELIGENCIA DE FUNDADORES
+
+### 1.1 — CRA T3010 Import Pipeline
+- [x] Crear script de importación (scripts/import-cra-t3010.ts)
+- [x] Crear migración SQL para enriquecer tabla funders
+- [ ] Ejecutar importación (86K+ charities canadienses)
+- [ ] Verificar datos en Supabase
+- [ ] **Validación:** 86K+ funders con datos completos en DB
+
+### 1.2 — Funder Enrichment Service
+- [x] Crear server function para enriquecer funder individual
+- [x] Scraping de website del funder para misión/foco geográfico
+- [x] Detección automática de tipo (foundation, charity, government)
+- [ ] **Validación:** Funder profile se enriquece con datos reales
+
+### 1.3 — Funder Search & Discovery
+- [x] Búsqueda full-text por nombre, ubicación, categoría
+- [x] Filtros: provincia, tipo, estado, ingresos
+- [ ] Ranking por relevancia + fit con organización
+- [ ] **Validación:** Búsqueda retorna resultados relevantes en <500ms
+
+### 1.4 — Giving History Tracker
+- [x] Tabla de grants históricos por funder
+- [x] Análisis de patrones: montos, frecuencia, sectores
+- [x] Predicción de probabilidad de financiamiento
+- [ ] **Validación:** Historial completo visible en funder profile
+
+### 1.5 — Funder Intelligence Dashboard
+- [x] Métricas: total funders, por provincia, por tipo
+- [x] Gráficos: distribución de ingresos, tendencias de giving
+- [ ] Alertas: nuevos funders, cambios de estatus
+- [ ] **Validación:** Dashboard muestra métricas reales
