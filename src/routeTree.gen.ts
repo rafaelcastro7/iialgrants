@@ -20,6 +20,7 @@ import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPostAwardRouteImport } from './routes/_authenticated.post-award'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
+import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated.impact'
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
 import { Route as AuthenticatedFinancialRouteImport } from './routes/_authenticated.financial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
@@ -102,6 +103,11 @@ const AuthenticatedOrgRoute = AuthenticatedOrgRouteImport.update({
 const AuthenticatedOpsRoute = AuthenticatedOpsRouteImport.update({
   id: '/ops',
   path: '/ops',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedImpactRoute = AuthenticatedImpactRouteImport.update({
+  id: '/impact',
+  path: '/impact',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedFitRulesRoute = AuthenticatedFitRulesRouteImport.update({
@@ -271,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
+  '/impact': typeof AuthenticatedImpactRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/post-award': typeof AuthenticatedPostAwardRoute
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
+  '/impact': typeof AuthenticatedImpactRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/post-award': typeof AuthenticatedPostAwardRoute
@@ -352,6 +360,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/financial': typeof AuthenticatedFinancialRoute
   '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
+  '/_authenticated/impact': typeof AuthenticatedImpactRoute
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/_authenticated/post-award': typeof AuthenticatedPostAwardRoute
@@ -394,6 +403,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/financial'
     | '/fit-rules'
+    | '/impact'
     | '/ops'
     | '/org'
     | '/post-award'
@@ -433,6 +443,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/financial'
     | '/fit-rules'
+    | '/impact'
     | '/ops'
     | '/org'
     | '/post-award'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/financial'
     | '/_authenticated/fit-rules'
+    | '/_authenticated/impact'
     | '/_authenticated/ops'
     | '/_authenticated/org'
     | '/_authenticated/post-award'
@@ -598,6 +610,13 @@ declare module '@tanstack/react-router' {
       path: '/ops'
       fullPath: '/ops'
       preLoaderRoute: typeof AuthenticatedOpsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/impact': {
+      id: '/_authenticated/impact'
+      path: '/impact'
+      fullPath: '/impact'
+      preLoaderRoute: typeof AuthenticatedImpactRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/fit-rules': {
@@ -859,6 +878,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFinancialRoute: typeof AuthenticatedFinancialRoute
   AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
+  AuthenticatedImpactRoute: typeof AuthenticatedImpactRoute
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedPostAwardRoute: typeof AuthenticatedPostAwardRoute
@@ -879,6 +899,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFinancialRoute: AuthenticatedFinancialRoute,
   AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
+  AuthenticatedImpactRoute: AuthenticatedImpactRoute,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedPostAwardRoute: AuthenticatedPostAwardRoute,
