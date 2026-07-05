@@ -31,6 +31,7 @@ import { GrantExpressView } from "@/components/grants/GrantExpressView";
 import { GrantKanban } from "@/components/grants/GrantKanban";
 import { AppTopBar } from "@/components/AppSidebar";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
+import { PageTransition } from "@/components/PageTransition";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import "@/i18n";
 
@@ -279,168 +280,170 @@ function GrantsPage() {
   }, [filtered]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden text-foreground">
-      <AppTopBar title={t("nav.grants")} />
+    <PageTransition>
+      <div className="relative min-h-screen overflow-hidden text-foreground">
+        <AppTopBar title={t("nav.grants")} />
 
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-[-8rem] top-[-6rem] h-72 w-72 rounded-full bg-brand/10 blur-3xl" />
-        <div className="absolute right-[-10rem] top-24 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
-      </div>
-
-      <section className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 md:py-10">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-              Grants workspace
-            </p>
-            <h1 className="font-display text-4xl leading-none text-foreground md:text-5xl">
-              Grants Workspace
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
-              {viewMode === "express"
-                ? "Your best opportunities first. Plain and simple. Switch to Advanced for the full pipeline."
-                : "Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step."}
-            </p>
-          </div>
-          <Tabs
-            value={viewMode}
-            onValueChange={(v) => switchView(v as "express" | "advanced")}
-            className="self-start md:self-end"
-          >
-            <TabsList
-              className="h-11 rounded-full border border-border/70 bg-card/90 p-1 shadow-sm"
-              aria-label="View mode"
-            >
-              <TabsTrigger value="express" className="min-h-9 rounded-full px-4 text-xs">
-                Express
-              </TabsTrigger>
-              <TabsTrigger value="advanced" className="min-h-9 rounded-full px-4 text-xs">
-                Advanced
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute left-[-8rem] top-[-6rem] h-72 w-72 rounded-full bg-brand/10 blur-3xl" />
+          <div className="absolute right-[-10rem] top-24 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
         </div>
 
-        {activeJob && (
-          <DiscoveryProgress
-            jobId={activeJob.jobId}
-            queued={activeJob.queued}
-            fr={false}
-            onClose={() => {
-              setActiveJob(null);
-              qc.invalidateQueries({ queryKey: ["grants"] });
-            }}
-          />
-        )}
-        {discoveryMsg && !activeJob && (
-          <div className="mb-4 rounded-md border bg-card px-3 py-2">
-            <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
-              {discoveryMsg}
-            </pre>
-          </div>
-        )}
-        {autoMsg && <p className="text-sm text-muted-foreground mb-4">{autoMsg}</p>}
-        {evalError && (
-          <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 flex items-start justify-between gap-3">
-            <p className="text-sm text-destructive break-words">{evalError}</p>
-            <button
-              type="button"
-              onClick={() => setEvalError(null)}
-              className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 md:py-10">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                Grants workspace
+              </p>
+              <h1 className="font-display text-4xl leading-none text-foreground md:text-5xl">
+                Grants Workspace
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
+                {viewMode === "express"
+                  ? "Your best opportunities first. Plain and simple. Switch to Advanced for the full pipeline."
+                  : "Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step."}
+              </p>
+            </div>
+            <Tabs
+              value={viewMode}
+              onValueChange={(v) => switchView(v as "express" | "advanced")}
+              className="self-start md:self-end"
             >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {viewMode === "express" && (
-          <GrantExpressView
-            grants={filtered}
-            evaluatingIds={evaluatingIds}
-            onEvaluate={onEvaluate}
-          />
-        )}
-
-        {viewMode === "advanced" && (
-          <GrantKanban
-            grants={filtered}
-            isAdmin={isAdmin}
-            pending={pending}
-            evaluatingIds={evaluatingIds}
-            onEnrich={onEnrich}
-            onEvaluate={onEvaluate}
-            onDraft={onDraft}
-            onMove={isAdmin ? onMove : undefined}
-            kpis={kpis}
-            filters={
-              <GrantFilters
-                grants={data.grants}
-                search={search}
-                setSearch={setSearch}
-                jurisdiction={jurisdiction}
-                setJurisdiction={setJurisdiction}
-                sortKey={sortKey}
-                setSortKey={setSortKey}
-                eligibleOnly={eligibleOnly}
-                setEligibleOnly={setEligibleOnly}
-                onlyWithDeadline={onlyWithDeadline}
-                setOnlyWithDeadline={setOnlyWithDeadline}
-              />
-            }
-            toolbarRight={
-              <>
-                <NotebookLMBridge />
-                {isAdmin && (
-                  <>
-                    <FunderSelector
-                      fr={false}
-                      selected={selectedFunders}
-                      onChange={setSelectedFunders}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={onDiscoverAll}
-                      disabled={pending === "__discover__"}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
-                    </Button>
-                  </>
-                )}
-              </>
-            }
-          />
-        )}
-
-        {data.grants.length === 0 && (
-          <div className="mt-6 rounded-2xl border border-border/70 bg-card/90 p-10 text-center shadow-sm">
-            <h2 className="mb-2 font-display text-3xl text-foreground">No grants yet</h2>
-            <p className="mx-auto mb-4 max-w-xl text-sm text-muted-foreground">
-              Click <b>Discover & Enrich</b> above to scan the Canadian funder catalog (Mitacs, NRC
-              IRAP, SSHRC, NSERC, CIHR, Canada Council, OTF, provincial portals...). The agent
-              fetches each source, extracts opportunities, and applies your Screening Rules
-              automatically.
-            </p>
-            {isAdmin ? (
-              <Button
-                onClick={onDiscoverAll}
-                disabled={pending === "__discover__"}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              <TabsList
+                className="h-11 rounded-full border border-border/70 bg-card/90 p-1 shadow-sm"
+                aria-label="View mode"
               >
-                {pending === "__discover__" ? "Starting..." : "Run discovery now"}
-              </Button>
-            ) : (
-              <p className="text-xs text-muted-foreground">Ask an admin to run discovery.</p>
-            )}
+                <TabsTrigger value="express" className="min-h-9 rounded-full px-4 text-xs">
+                  Express
+                </TabsTrigger>
+                <TabsTrigger value="advanced" className="min-h-9 rounded-full px-4 text-xs">
+                  Advanced
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-        )}
 
-        {isAdmin && (
-          <div className="mt-8">
-            <EventLog fr={false} />
-          </div>
-        )}
-      </section>
-    </div>
+          {activeJob && (
+            <DiscoveryProgress
+              jobId={activeJob.jobId}
+              queued={activeJob.queued}
+              fr={false}
+              onClose={() => {
+                setActiveJob(null);
+                qc.invalidateQueries({ queryKey: ["grants"] });
+              }}
+            />
+          )}
+          {discoveryMsg && !activeJob && (
+            <div className="mb-4 rounded-md border bg-card px-3 py-2">
+              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
+                {discoveryMsg}
+              </pre>
+            </div>
+          )}
+          {autoMsg && <p className="text-sm text-muted-foreground mb-4">{autoMsg}</p>}
+          {evalError && (
+            <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 flex items-start justify-between gap-3">
+              <p className="text-sm text-destructive break-words">{evalError}</p>
+              <button
+                type="button"
+                onClick={() => setEvalError(null)}
+                className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {viewMode === "express" && (
+            <GrantExpressView
+              grants={filtered}
+              evaluatingIds={evaluatingIds}
+              onEvaluate={onEvaluate}
+            />
+          )}
+
+          {viewMode === "advanced" && (
+            <GrantKanban
+              grants={filtered}
+              isAdmin={isAdmin}
+              pending={pending}
+              evaluatingIds={evaluatingIds}
+              onEnrich={onEnrich}
+              onEvaluate={onEvaluate}
+              onDraft={onDraft}
+              onMove={isAdmin ? onMove : undefined}
+              kpis={kpis}
+              filters={
+                <GrantFilters
+                  grants={data.grants}
+                  search={search}
+                  setSearch={setSearch}
+                  jurisdiction={jurisdiction}
+                  setJurisdiction={setJurisdiction}
+                  sortKey={sortKey}
+                  setSortKey={setSortKey}
+                  eligibleOnly={eligibleOnly}
+                  setEligibleOnly={setEligibleOnly}
+                  onlyWithDeadline={onlyWithDeadline}
+                  setOnlyWithDeadline={setOnlyWithDeadline}
+                />
+              }
+              toolbarRight={
+                <>
+                  <NotebookLMBridge />
+                  {isAdmin && (
+                    <>
+                      <FunderSelector
+                        fr={false}
+                        selected={selectedFunders}
+                        onChange={setSelectedFunders}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={onDiscoverAll}
+                        disabled={pending === "__discover__"}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        {pending === "__discover__" ? t("app.loading") : "Discover & Enrich"}
+                      </Button>
+                    </>
+                  )}
+                </>
+              }
+            />
+          )}
+
+          {data.grants.length === 0 && (
+            <div className="mt-6 rounded-2xl border border-border/70 bg-card/90 p-10 text-center shadow-sm">
+              <h2 className="mb-2 font-display text-3xl text-foreground">No grants yet</h2>
+              <p className="mx-auto mb-4 max-w-xl text-sm text-muted-foreground">
+                Click <b>Discover & Enrich</b> above to scan the Canadian funder catalog (Mitacs,
+                NRC IRAP, SSHRC, NSERC, CIHR, Canada Council, OTF, provincial portals...). The agent
+                fetches each source, extracts opportunities, and applies your Screening Rules
+                automatically.
+              </p>
+              {isAdmin ? (
+                <Button
+                  onClick={onDiscoverAll}
+                  disabled={pending === "__discover__"}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {pending === "__discover__" ? "Starting..." : "Run discovery now"}
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">Ask an admin to run discovery.</p>
+              )}
+            </div>
+          )}
+
+          {isAdmin && (
+            <div className="mt-8">
+              <EventLog fr={false} />
+            </div>
+          )}
+        </section>
+      </div>
+    </PageTransition>
   );
 }
