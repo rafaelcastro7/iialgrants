@@ -20,6 +20,7 @@ import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.or
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedCompetitiveRouteImport } from './routes/_authenticated.competitive'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedProposalsIndexRouteImport } from './routes/_authenticated.proposals.index'
 import { Route as AuthenticatedGrantsIndexRouteImport } from './routes/_authenticated.grants.index'
@@ -97,6 +98,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedCompetitiveRoute =
+  AuthenticatedCompetitiveRouteImport.update({
+    id: '/competitive',
+    path: '/competitive',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -221,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/competitive': typeof AuthenticatedCompetitiveRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/ops': typeof AuthenticatedOpsRoute
@@ -253,6 +261,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
+  '/competitive': typeof AuthenticatedCompetitiveRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/ops': typeof AuthenticatedOpsRoute
@@ -288,6 +297,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/competitive': typeof AuthenticatedCompetitiveRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compliance'
     | '/admin'
+    | '/competitive'
     | '/dashboard'
     | '/fit-rules'
     | '/ops'
@@ -355,6 +366,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/compliance'
+    | '/competitive'
     | '/dashboard'
     | '/fit-rules'
     | '/ops'
@@ -389,6 +401,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compliance'
     | '/_authenticated/admin'
+    | '/_authenticated/competitive'
     | '/_authenticated/dashboard'
     | '/_authenticated/fit-rules'
     | '/_authenticated/ops'
@@ -510,6 +523,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/competitive': {
+      id: '/_authenticated/competitive'
+      path: '/competitive'
+      fullPath: '/competitive'
+      preLoaderRoute: typeof AuthenticatedCompetitiveRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin': {
@@ -700,6 +720,7 @@ const AuthenticatedGrantsIdRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedCompetitiveRoute: typeof AuthenticatedCompetitiveRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
@@ -715,6 +736,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedCompetitiveRoute: AuthenticatedCompetitiveRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,

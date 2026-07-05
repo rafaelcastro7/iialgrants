@@ -15,8 +15,7 @@ import {
   PanelLeft,
   LogOut,
   User,
-  Moon,
-  Sun,
+  BarChart3,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +59,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/grants", labelKey: "nav.grants", icon: Search },
   { to: "/proposals", labelKey: "nav.proposals", icon: FileText },
   { to: "/submissions", labelKey: "nav.submissions", icon: Send },
+  { to: "/competitive", labelKey: "nav.competitive", icon: BarChart3 },
   { to: "/org", labelKey: "org.title", icon: Building2 },
   { to: "/fit-rules", labelKey: "nav.fitRules", icon: Sliders },
   { to: "/ops", labelKey: "ops.title", icon: Activity, adminOnly: true },
