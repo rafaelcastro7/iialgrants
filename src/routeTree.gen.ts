@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportTokenRouteImport } from './routes/report.$token'
 import { Route as AuthenticatedSubmissionsRouteImport } from './routes/_authenticated.submissions'
+import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated.quality'
 import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticated.privacy'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
@@ -73,6 +74,11 @@ const AuthenticatedSubmissionsRoute =
     path: '/submissions',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedQualityRoute = AuthenticatedQualityRouteImport.update({
+  id: '/quality',
+  path: '/quality',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedPrivacyRoute = AuthenticatedPrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
+  '/quality': typeof AuthenticatedQualityRoute
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/privacy': typeof AuthenticatedPrivacyRoute
+  '/quality': typeof AuthenticatedQualityRoute
   '/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/_authenticated/privacy': typeof AuthenticatedPrivacyRoute
+  '/_authenticated/quality': typeof AuthenticatedQualityRoute
   '/_authenticated/submissions': typeof AuthenticatedSubmissionsRoute
   '/report/$token': typeof ReportTokenRoute
   '/_authenticated/admin/agents': typeof AuthenticatedAdminAgentsRoute
@@ -339,6 +348,7 @@ export interface FileRouteTypes {
     | '/ops'
     | '/org'
     | '/privacy'
+    | '/quality'
     | '/submissions'
     | '/report/$token'
     | '/admin/agents'
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/ops'
     | '/org'
     | '/privacy'
+    | '/quality'
     | '/submissions'
     | '/report/$token'
     | '/admin/agents'
@@ -407,6 +418,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ops'
     | '/_authenticated/org'
     | '/_authenticated/privacy'
+    | '/_authenticated/quality'
     | '/_authenticated/submissions'
     | '/report/$token'
     | '/_authenticated/admin/agents'
@@ -488,6 +500,13 @@ declare module '@tanstack/react-router' {
       path: '/submissions'
       fullPath: '/submissions'
       preLoaderRoute: typeof AuthenticatedSubmissionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/quality': {
+      id: '/_authenticated/quality'
+      path: '/quality'
+      fullPath: '/quality'
+      preLoaderRoute: typeof AuthenticatedQualityRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/privacy': {
@@ -726,6 +745,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedPrivacyRoute: typeof AuthenticatedPrivacyRoute
+  AuthenticatedQualityRoute: typeof AuthenticatedQualityRoute
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
   AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
   AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
@@ -742,6 +762,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedPrivacyRoute: AuthenticatedPrivacyRoute,
+  AuthenticatedQualityRoute: AuthenticatedQualityRoute,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
   AuthenticatedFundersFunderIdRoute: AuthenticatedFundersFunderIdRoute,
   AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
