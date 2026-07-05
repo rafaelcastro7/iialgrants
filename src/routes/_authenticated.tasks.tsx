@@ -1,12 +1,24 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getTasks } from "@/lib/team-collaboration.functions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { getTasks, createTask, updateTaskStatus } from "@/lib/team-collaboration.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
-import { ListTodo, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ListTodo, Clock, CheckCircle2, Plus, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 
 const tasksQO = queryOptions({
   queryKey: ["tasks"],
@@ -22,10 +34,50 @@ export const Route = createFileRoute("/_authenticated/tasks")({
 });
 
 function TasksPage() {
+  const queryClient = useQueryClient();
   const fetchTasks = useServerFn(getTasks);
   const { data: tasks } = useSuspenseQuery({
     queryKey: ["tasks"],
     queryFn: () => fetchTasks({ data: {} }),
+  });
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    entityType: "grant",
+    entityId: "",
+    priority: "medium" as "low" | "medium" | "high",
+    dueDate: "",
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: typeof form) =>
+      createTask({
+        data: {
+          title: data.title,
+          entityType: data.entityType,
+          entityId: data.entityId || crypto.randomUUID(),
+          priority: data.priority,
+          dueDate: data.dueDate || undefined,
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("Task created");
+      setDialogOpen(false);
+      setForm({ title: "", entityType: "grant", entityId: "", priority: "medium", dueDate: "" });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (args: { taskId: string; status: "in_progress" | "completed" }) =>
+      updateTaskStatus({ data: args }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("Task updated");
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const pending = tasks.filter((t) => t.status === "pending");
@@ -49,11 +101,101 @@ function TasksPage() {
       <div className="min-h-screen bg-background text-foreground">
         <AppTopBar title="Tasks" />
         <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-          <div>
-            <h1 className="font-display text-3xl leading-none">Tasks</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Task assignments across grants and proposals.
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="font-display text-3xl leading-none">Tasks</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Task assignments across grants and proposals.
+              </p>
+            </div>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Create Task
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Task</DialogTitle>
+                </DialogHeader>
+                <form
+                  className="space-y-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!form.title.trim()) return toast.error("Title is required");
+                    createMutation.mutate(form);
+                  }}
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="task-title">Title</Label>
+                    <Input
+                      id="task-title"
+                      value={form.title}
+                      onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                      placeholder="Task title"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="task-entity">Entity Type</Label>
+                      <select
+                        id="task-entity"
+                        value={form.entityType}
+                        onChange={(e) => setForm((f) => ({ ...f, entityType: e.target.value }))}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="grant">Grant</option>
+                        <option value="proposal">Proposal</option>
+                        <option value="submission">Submission</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="task-priority">Priority</Label>
+                      <select
+                        id="task-priority"
+                        value={form.priority}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            priority: e.target.value as "low" | "medium" | "high",
+                          }))
+                        }
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="task-entity-id">Entity ID</Label>
+                      <Input
+                        id="task-entity-id"
+                        value={form.entityId}
+                        onChange={(e) => setForm((f) => ({ ...f, entityId: e.target.value }))}
+                        placeholder="UUID"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="task-due">Due Date</Label>
+                      <Input
+                        id="task-due"
+                        type="date"
+                        value={form.dueDate}
+                        onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                    {createMutation.isPending ? "Creating..." : "Create Task"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
@@ -119,6 +261,34 @@ function TasksPage() {
                         </Badge>
                         {task.due_date && (
                           <span className="text-xs text-muted-foreground">{task.due_date}</span>
+                        )}
+                        {task.status === "pending" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Start task"
+                            onClick={() =>
+                              statusMutation.mutate({ taskId: task.id, status: "in_progress" })
+                            }
+                            disabled={statusMutation.isPending}
+                          >
+                            <ArrowRight className="h-3.5 w-3.5 text-blue-500" />
+                          </Button>
+                        )}
+                        {task.status === "in_progress" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Complete task"
+                            onClick={() =>
+                              statusMutation.mutate({ taskId: task.id, status: "completed" })
+                            }
+                            disabled={statusMutation.isPending}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                          </Button>
                         )}
                       </div>
                     </div>
