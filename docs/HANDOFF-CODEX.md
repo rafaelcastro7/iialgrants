@@ -7,13 +7,13 @@ runs out. Read this + `docs/DEVELOPER-GUIDE.md` first. **Last updated: 2026-07-0
 
 Latest commits (newest first):
 
+- `b3aa3f3` fix: S3b FR export no longer passes English off as French + remove dead code
+- `18d5715` docs: Codex handoff
 - `0c69b55` docs: C5 dedup hardening + local-audit triage guidance
 - `8c0d989` fix: C5 dedup hardening — collapse funder-name title variants, block admin pages
 - `d624bc0` test: guard against new secrets in migrations (QW3)
-- `427ed7b` docs: logic reengineering audit findings
-- `31e0359` fix: reengineering pass — 7 verified logic bugs
 
-Working tree is clean. Quality bar right now: **tsc 0, eslint 0, 203 unit/e2e
+Working tree is clean. Quality bar right now: **tsc 0, eslint 0, 208 unit/e2e
 tests + 1 skipped, build clean.** Live pipeline smoke green (fit_score ~0.76
 against local Supabase + Ollama).
 
@@ -50,20 +50,16 @@ Concrete, verified facts to build the gate:
   ready one passes. Consider exporting a pure `canSubmit(proposal, readiness)`
   helper so it's unit-testable without the DB.
 
-### S3b — FR export silently falls back to EN
+### S3b — FR export silently falls back to EN — DONE (`b3aa3f3`)
 
-`exportProposalMarkdown` in `src/lib/submissions.functions.ts:205-206`:
-
-```ts
-const heading = (fr ? s.heading_fr : s.heading_en) || s.heading_en;
-const content = (fr ? s.content_fr : s.content_en) || s.content_en || "";
-```
-
-When `fr` is requested but `content_fr`/`heading_fr` is empty, it silently
-emits English. Plan says "export FR sin caer a EN". Fix options: (a) mark
-missing FR sections explicitly (e.g. `> _[Traduction française manquante]_`),
-or (b) surface a warning list in the return value so the UI can tell the user
-which sections aren't translated. Do NOT just emit EN as if it were FR.
+Fixed: extracted pure `buildProposalMarkdown()` in
+`src/lib/submissions.functions.ts`; untranslated sections are flagged inline
+and returned in a new `missingTranslations` field. Covered by
+`src/lib/proposal-export.test.ts` (5 tests). OPTIONAL follow-up: surface
+`missingTranslations` in the proposal-detail UI export button (the route reads
+`{markdown, filename}` and ignores the new field today). Note the route
+hardcodes `const fr = false` (EN-only UI) so the FR path isn't user-reachable
+yet — wiring a real FR toggle is separate work.
 
 ### S3c — DOCX/PDF export + real versioning
 
@@ -76,14 +72,11 @@ increments meaningfully. Lower priority than S3a/S3b.
 but verify it's actually wired into the orchestrator and enabled. No QC/BC
 foundation ingesters yet.
 
-### Dead code found (safe cleanup)
+### Dead code — DONE (`b3aa3f3`)
 
-`src/lib/submissions.functions.ts` has duplicate `listNotifications` (lines
-130-140) and `markNotificationRead` (142-152) that **nobody imports** — the
-live ones are in `src/lib/notifications.functions.ts` (used by
-`NotificationBell`). The dead `markNotificationRead` here also lacks
-`.eq("user_id", ...)` scoping (latent IDOR if ever wired). Safe to delete both
-dead exports.
+Removed the duplicate `listNotifications`/`markNotificationRead` from
+`submissions.functions.ts` (the live, user_id-scoped versions stay in
+`notifications.functions.ts`).
 
 ## Verification protocol (run before every commit)
 
