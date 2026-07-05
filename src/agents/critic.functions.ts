@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CriticOutput, PROMPTS } from "@/agents/schemas";
+import { bumpProposalVersion } from "@/lib/proposal-versioning";
 
 export const runCritic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -72,7 +73,7 @@ export const runCritic = createServerFn({ method: "POST" })
     const validIds = new Set((sections ?? []).map((s) => s.id));
     const findings = parsed.findings.filter((f) => validIds.has(f.section_id));
 
-    await context.supabase
+    const { error: ue } = await context.supabase
       .from("proposals")
       .update({
         critic_score: parsed.overall_score,
@@ -83,16 +84,20 @@ export const runCritic = createServerFn({ method: "POST" })
         } as never,
       })
       .eq("id", proposal.id);
+    if (ue) throw new Error(ue.message);
 
     // Attach findings into each section's critic_notes.
     for (const s of sections ?? []) {
       const sFindings = findings.filter((f) => f.section_id === s.id);
       const prevNotes = (s.critic_notes ?? {}) as Record<string, unknown>;
-      await context.supabase
+      const { error: ne } = await context.supabase
         .from("proposal_sections")
         .update({ critic_notes: { ...prevNotes, findings: sFindings } })
         .eq("id", s.id);
+      if (ne) throw new Error(ne.message);
     }
+
+    await bumpProposalVersion(context.supabase, proposal.id);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("agent_runs").insert({

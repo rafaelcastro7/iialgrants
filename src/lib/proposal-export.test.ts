@@ -3,6 +3,7 @@
 // and reported in `missingTranslations`.
 import { describe, expect, it } from "vitest";
 import {
+  buildProposalFileExport,
   buildProposalMarkdown,
   type ProposalExportProposal,
   type ProposalExportSection,
@@ -70,5 +71,42 @@ describe("buildProposalMarkdown — FR honesty (S3b)", () => {
   it("filename derives from the proposal id", () => {
     const { filename } = buildProposalMarkdown(proposal, sections, false);
     expect(filename).toBe("proposal-abcdef12.md");
+  });
+});
+
+describe("buildProposalFileExport — DOCX/PDF (S3c)", () => {
+  it("exports markdown as base64 with a stable MIME type", async () => {
+    const { Buffer } = await import("node:buffer");
+    const result = await buildProposalFileExport(proposal, sections, { fr: false, format: "md" });
+
+    expect(result.filename).toBe("proposal-abcdef12.md");
+    expect(result.mimeType).toBe("text/markdown;charset=utf-8");
+    expect(Buffer.from(result.base64, "base64").toString("utf8")).toContain("# Test Proposal");
+  });
+
+  it("exports a valid DOCX package", async () => {
+    const { Buffer } = await import("node:buffer");
+    const result = await buildProposalFileExport(proposal, sections, {
+      fr: true,
+      format: "docx",
+    });
+    const bytes = Buffer.from(result.base64, "base64");
+
+    expect(result.filename).toBe("proposal-abcdef12.docx");
+    expect(result.mimeType).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    );
+    expect(bytes.subarray(0, 2).toString("utf8")).toBe("PK");
+    expect(result.missingTranslations).toEqual(["Budget"]);
+  });
+
+  it("exports a valid PDF", async () => {
+    const { Buffer } = await import("node:buffer");
+    const result = await buildProposalFileExport(proposal, sections, { fr: false, format: "pdf" });
+    const bytes = Buffer.from(result.base64, "base64");
+
+    expect(result.filename).toBe("proposal-abcdef12.pdf");
+    expect(result.mimeType).toBe("application/pdf");
+    expect(bytes.subarray(0, 5).toString("utf8")).toBe("%PDF-");
   });
 });

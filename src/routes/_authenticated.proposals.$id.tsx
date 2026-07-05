@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getProposal } from "@/lib/proposals.functions";
-import { submitProposal, exportProposalMarkdown } from "@/lib/submissions.functions";
+import { submitProposal, exportProposalFile } from "@/lib/submissions.functions";
 import { draftSection } from "@/agents/writer.functions";
 import { runCritic } from "@/agents/critic.functions";
 import { computeProposalReadiness, type ProposalRequirement } from "@/lib/proposal-readiness";
@@ -34,7 +34,7 @@ function ProposalDetailPage() {
   const draft = useServerFn(draftSection);
   const critic = useServerFn(runCritic);
   const submit = useServerFn(submitProposal);
-  const exportMd = useServerFn(exportProposalMarkdown);
+  const exportFile = useServerFn(exportProposalFile);
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"express" | "advanced">(() =>
@@ -137,6 +137,31 @@ function ProposalDetailPage() {
     }
   }
 
+  async function onExport(format: "md" | "docx" | "pdf") {
+    setPending(`export:${format}`);
+    setErr(null);
+    try {
+      const r = await exportFile({ data: { id, language: fr ? "fr" : "en", format } });
+      const bytes = Uint8Array.from(window.atob(r.base64), (char) => char.charCodeAt(0));
+      const blob = new Blob([bytes], { type: r.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = r.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      if (fr && r.missingTranslations.length > 0) {
+        setErr(
+          `Export completed, but missing French translations: ${r.missingTranslations.join(", ")}`,
+        );
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPending(null);
+    }
+  }
+
   const proposal = data.proposal;
   const grant = Array.isArray(proposal.grant) ? proposal.grant[0] : proposal.grant;
   const readiness = computeProposalReadiness({
@@ -211,46 +236,36 @@ function ProposalDetailPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold">{proposal.title}</h1>
-                <p className="text-xs text-muted-foreground mt-1">
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   <Badge variant="secondary">{t(`proposals.status.${proposal.status}`)}</Badge>
-                  <span className="ml-2">
+                  <span>
                     {t("proposals.version")} {proposal.version}
                   </span>
                   {proposal.critic_score != null && (
-                    <span className="ml-2">
+                    <span>
                       {t("proposals.score")}: {(Number(proposal.critic_score) * 100).toFixed(0)}%
                     </span>
                   )}
-                </p>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2 justify-end">
                 <Button onClick={onCritic} disabled={pending === "critic"}>
                   {pending === "critic" ? t("app.loading") : t("proposals.runCritic")}
                 </Button>
-                <Button
-                  variant="secondary"
-                  disabled={pending === "export"}
-                  onClick={async () => {
-                    setPending("export");
-                    setErr(null);
-                    try {
-                      const r = await exportMd({ data: { id, language: fr ? "fr" : "en" } });
-                      const blob = new Blob([r.markdown], { type: "text/markdown;charset=utf-8" });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = r.filename;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    } catch (e) {
-                      setErr(e instanceof Error ? e.message : String(e));
-                    } finally {
-                      setPending(null);
-                    }
-                  }}
-                >
-                  {t("proposals.exportMd")}
-                </Button>
+                {(["md", "docx", "pdf"] as const).map((format) => (
+                  <Button
+                    key={format}
+                    variant="secondary"
+                    disabled={pending === `export:${format}`}
+                    onClick={() => onExport(format)}
+                  >
+                    {pending === `export:${format}`
+                      ? t("app.loading")
+                      : format === "md"
+                        ? t("proposals.exportMd")
+                        : `Export ${format.toUpperCase()}`}
+                  </Button>
+                ))}
                 {proposal.status !== "submitted" && (
                   <Button
                     variant="default"
