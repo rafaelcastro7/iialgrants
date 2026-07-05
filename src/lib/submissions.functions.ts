@@ -54,11 +54,21 @@ export const submitProposal = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: proposal, error: pe } = await supabase
       .from("proposals")
-      .select("id, grant_id, status, critic_score, grant:grants(requirements)")
+      .select("id, grant_id, status, critic_score, grant:grants(requirements, status)")
       .eq("id", data.proposalId)
       .maybeSingle();
     if (pe) throw new Error(pe.message);
     if (!proposal) throw new Error("proposal_not_found");
+
+    // Grant-status precondition, checked BEFORE any write so a mismatch can't
+    // leave a submission row + submitted proposal behind a lagging grant (a
+    // real desync found via browser testing: the grant-status update used to
+    // silently no-op when the grant wasn't in_proposal). "submitted" is
+    // accepted for idempotency (safe re-submit).
+    const grantStatus = (proposal.grant as { status?: string } | null)?.status;
+    if (grantStatus !== "in_proposal" && grantStatus !== "submitted") {
+      throw new Error(`grant_not_in_proposal:${grantStatus ?? "unknown"}`);
+    }
 
     // S3a reviewer-simulation gate: never submit a proposal that has not been
     // reviewed, scores poorly, has no drafted content, or leaves a critical
@@ -103,6 +113,9 @@ export const submitProposal = createServerFn({ method: "POST" })
       .single();
     if (se) throw new Error(se.message);
 
+    // Advance the grant to submitted. The grant-status precondition was already
+    // checked before any write (see above), so 0 affected rows here just means
+    // the grant was already submitted (idempotent) — not an error.
     const { error: ge } = await supabase
       .from("grants")
       .update({ status: "submitted" })
