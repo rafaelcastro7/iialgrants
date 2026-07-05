@@ -127,29 +127,83 @@ export const listSubmissions = createServerFn({ method: "GET" })
     return { submissions: data ?? [] };
   });
 
-export const listNotifications = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("notifications")
-      .select("id, kind, title_en, title_fr, body_en, body_fr, read_at, created_at, grant_id")
-      .order("created_at", { ascending: false })
-      .limit(50);
-    if (error) throw new Error(error.message);
-    return { notifications: data ?? [] };
-  });
+// Notification listing/marking lives in src/lib/notifications.functions.ts
+// (the versions wired to NotificationBell, correctly scoped by user_id). The
+// duplicate copies that used to live here were dead code and are removed.
 
-export const markNotificationRead = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
-  .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("notifications")
-      .update({ read_at: new Date().toISOString() })
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
+// Pure markdown builder — extracted so it is unit-testable without a DB.
+// Key property (S3b): an FR export must NOT silently emit English as if it were
+// French. Sections lacking an FR translation are flagged inline AND reported in
+// `missingTranslations` so the caller can warn the user.
+export type ProposalExportProposal = {
+  id: string;
+  title: string;
+  version: number | null;
+  critic_score: number | null;
+  grant: {
+    title: string;
+    title_fr: string | null;
+    deadline: string | null;
+    amount_cad_min: number | null;
+    amount_cad_max: number | null;
+  } | null;
+};
+export type ProposalExportSection = {
+  heading_en: string;
+  heading_fr: string | null;
+  content_en: string | null;
+  content_fr: string | null;
+};
+
+export function buildProposalMarkdown(
+  proposal: ProposalExportProposal,
+  sections: ProposalExportSection[],
+  fr: boolean,
+): { markdown: string; filename: string; missingTranslations: string[] } {
+  const grant = proposal.grant;
+  const lines: string[] = [];
+  lines.push(`# ${proposal.title}`);
+  lines.push("");
+  if (grant) {
+    lines.push(`> ${fr ? "Subvention" : "Grant"}: ${(fr && grant.title_fr) || grant.title}`);
+    if (grant.deadline) lines.push(`> ${fr ? "Échéance" : "Deadline"}: ${grant.deadline}`);
+    if (grant.amount_cad_min || grant.amount_cad_max)
+      lines.push(
+        `> ${fr ? "Montant (CAD)" : "Amount (CAD)"}: ${grant.amount_cad_min ?? "?"} – ${grant.amount_cad_max ?? "?"}`,
+      );
+  }
+  lines.push("");
+  lines.push(
+    `*${fr ? "Version" : "Version"}: ${proposal.version ?? 1} · ${fr ? "Score critique" : "Critic score"}: ${proposal.critic_score ?? "—"}*`,
+  );
+  lines.push("");
+  const missingTranslations: string[] = [];
+  for (const s of sections) {
+    const enHeading = s.heading_en;
+    if (fr) {
+      lines.push(`## ${s.heading_fr || enHeading}`);
+      lines.push("");
+      if (s.content_fr) {
+        lines.push(s.content_fr);
+      } else {
+        missingTranslations.push(enHeading);
+        lines.push("> _[Traduction française manquante — texte anglais ci-dessous]_");
+        lines.push("");
+        lines.push(s.content_en || "");
+      }
+    } else {
+      lines.push(`## ${enHeading}`);
+      lines.push("");
+      lines.push(s.content_en || "");
+    }
+    lines.push("");
+  }
+  return {
+    markdown: lines.join("\n"),
+    filename: `proposal-${proposal.id.slice(0, 8)}.md`,
+    missingTranslations,
+  };
+}
 
 // Markdown export — safe in the Workers runtime (no native deps).
 // Clients turn the string into a downloadable .md file.
@@ -178,36 +232,9 @@ export const exportProposalMarkdown = createServerFn({ method: "GET" })
     if (se) throw new Error(se.message);
     if (!proposal) throw new Error("proposal_not_found");
 
-    const grant = proposal.grant as {
-      title: string;
-      title_fr: string | null;
-      deadline: string | null;
-      amount_cad_min: number | null;
-      amount_cad_max: number | null;
-    } | null;
-    const lines: string[] = [];
-    lines.push(`# ${proposal.title}`);
-    lines.push("");
-    if (grant) {
-      lines.push(`> ${fr ? "Subvention" : "Grant"}: ${(fr && grant.title_fr) || grant.title}`);
-      if (grant.deadline) lines.push(`> ${fr ? "Échéance" : "Deadline"}: ${grant.deadline}`);
-      if (grant.amount_cad_min || grant.amount_cad_max)
-        lines.push(
-          `> ${fr ? "Montant (CAD)" : "Amount (CAD)"}: ${grant.amount_cad_min ?? "?"} – ${grant.amount_cad_max ?? "?"}`,
-        );
-    }
-    lines.push("");
-    lines.push(
-      `*${fr ? "Version" : "Version"}: ${proposal.version} · ${fr ? "Score critique" : "Critic score"}: ${proposal.critic_score ?? "—"}*`,
+    return buildProposalMarkdown(
+      proposal as unknown as ProposalExportProposal,
+      (sections ?? []) as unknown as ProposalExportSection[],
+      fr,
     );
-    lines.push("");
-    for (const s of sections ?? []) {
-      const heading = (fr ? s.heading_fr : s.heading_en) || s.heading_en;
-      const content = (fr ? s.content_fr : s.content_en) || s.content_en || "";
-      lines.push(`## ${heading}`);
-      lines.push("");
-      lines.push(content);
-      lines.push("");
-    }
-    return { markdown: lines.join("\n"), filename: `proposal-${proposal.id.slice(0, 8)}.md` };
   });
