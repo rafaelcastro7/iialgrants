@@ -293,6 +293,23 @@ components can import it without risking a server-code leak into the client
 bundle — the build's `tanstack-start-core:import-protection` plugin would
 catch this at build time if violated.
 
+## Discovery Dedup (C5, 2026-07-05)
+
+`canonicalKey(funderId, title, funderName)` in `discoverer.impl.server.ts`
+strips the funder's own name tokens (words, parenthetical acronym, initials
+of every word-prefix) from titles before hashing, and sorts tokens — so
+"NRC IRAP...", "National Research Council Canada IRAP..." and plain "IRAP..."
+collapse to one key per funder. `isGenericTitle` rejects administrative pages
+(vaccination policy, asbestos inventory, conflict-of-interest guidance, etc.)
+BEFORE the acronym escape hatch that used to rescue them. Regression coverage:
+`discoverer.dedup.test.ts` (real-world titles from the 2026-07-04 discovery).
+Keys change forward-only; pre-existing duplicate rows are not merged.
+
+Local-first auditing: `node scripts/local-audit.mjs qwen2.5-coder:7b [file]`
+runs a zero-cloud-token sweep via Ollama. Expect heavy false-positive "race
+condition" labels from the 7B model — triage each finding against the actual
+code before acting.
+
 ## Verification Standard
 
 Before calling work complete, run:
