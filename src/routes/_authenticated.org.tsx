@@ -1,16 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { queryOptions, useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { getOrgProfile, saveOrgProfile } from "@/lib/org.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
+import { toast } from "sonner";
+import { FormField } from "@/components/FormField";
 import "@/i18n";
 
 const orgQueryOptions = queryOptions({
@@ -26,14 +29,16 @@ export const Route = createFileRoute("/_authenticated/org")({
 
 const STAGES = ["startup", "sme", "nonprofit", "research", "public_sector"] as const;
 
-type OrgInput = {
-  org_name: string;
-  sectors: string[];
-  jurisdictions: string[];
-  stage: (typeof STAGES)[number];
-  annual_budget_cad: number | null;
-  focus_areas: string | null;
-};
+const orgSchema = z.object({
+  org_name: z.string().min(1, "Organization name is required"),
+  sectors: z.string().optional().default(""),
+  jurisdictions: z.string().optional().default("CA"),
+  stage: z.enum(STAGES).default("sme"),
+  annual_budget_cad: z.string().optional().default(""),
+  focus_areas: z.string().optional().default(""),
+});
+
+type OrgFormValues = z.infer<typeof orgSchema>;
 
 function OrgPage() {
   const { t } = useTranslation();
@@ -41,22 +46,57 @@ function OrgPage() {
   const { data } = useSuspenseQuery(orgQueryOptions);
   const save = useServerFn(saveOrgProfile);
   const mut = useMutation({
-    mutationFn: (input: OrgInput) => save({ data: input }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["org"] }),
+    mutationFn: (input: {
+      org_name: string;
+      sectors: string[];
+      jurisdictions: string[];
+      stage: (typeof STAGES)[number];
+      annual_budget_cad: number | null;
+      focus_areas: string | null;
+    }) => save({ data: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org"] });
+      toast.success(t("org.saved"));
+    },
+    onError: (error) => {
+      toast.error((error as Error).message);
+    },
   });
+
   useEffect(() => {
     syncClientLocale();
   }, []);
 
   const p = data.profile;
-  const [orgName, setOrgName] = useState(p?.org_name ?? "");
-  const [sectors, setSectors] = useState((p?.sectors ?? []).join(", "));
-  const [jurisdictions, setJurisdictions] = useState((p?.jurisdictions ?? ["CA"]).join(", "));
-  const [stage, setStage] = useState<(typeof STAGES)[number]>(
-    (p?.stage as (typeof STAGES)[number]) ?? "sme",
-  );
-  const [budget, setBudget] = useState<string>(p?.annual_budget_cad?.toString() ?? "");
-  const [focus, setFocus] = useState(p?.focus_areas ?? "");
+
+  const form = useForm<OrgFormValues>({
+    resolver: zodResolver(orgSchema),
+    defaultValues: {
+      org_name: p?.org_name ?? "",
+      sectors: (p?.sectors ?? []).join(", "),
+      jurisdictions: (p?.jurisdictions ?? ["CA"]).join(", "),
+      stage: ((p?.stage as (typeof STAGES)[number]) ?? "sme") as OrgFormValues["stage"],
+      annual_budget_cad: p?.annual_budget_cad?.toString() ?? "",
+      focus_areas: p?.focus_areas ?? "",
+    },
+  });
+
+  const onSubmit = (values: OrgFormValues) => {
+    mut.mutate({
+      org_name: values.org_name,
+      sectors: values.sectors
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      jurisdictions: values.jurisdictions
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+      stage: values.stage,
+      annual_budget_cad: values.annual_budget_cad ? Number(values.annual_budget_cad) : null,
+      focus_areas: values.focus_areas || null,
+    });
+  };
 
   return (
     <main className="min-h-screen bg-background text-foreground p-6">
@@ -66,59 +106,26 @@ function OrgPage() {
           <Link to="/grants">{t("nav.grants")}</Link>
           <span className="font-semibold">{t("org.title")}</span>
         </nav>
-        <LanguageSwitcher />
       </header>
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>{t("org.title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              mut.mutate({
-                org_name: orgName,
-                sectors: sectors
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-                jurisdictions: jurisdictions
-                  .split(",")
-                  .map((s) => s.trim().toUpperCase())
-                  .filter(Boolean),
-                stage,
-                annual_budget_cad: budget ? Number(budget) : null,
-                focus_areas: focus || null,
-              });
-            }}
-          >
-            <div className="space-y-2">
-              <Label>{t("org.name")}</Label>
-              <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("org.sectors")}</Label>
-              <Input
-                value={sectors}
-                onChange={(e) => setSectors(e.target.value)}
-                placeholder="tech, retail"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("org.jurisdictions")}</Label>
-              <Input
-                value={jurisdictions}
-                onChange={(e) => setJurisdictions(e.target.value)}
-                placeholder="CA, ON"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("org.stage")}</Label>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField label={t("org.name")} error={form.formState.errors.org_name?.message}>
+              <Input {...form.register("org_name")} required />
+            </FormField>
+            <FormField label={t("org.sectors")} description="Comma-separated: tech, retail">
+              <Input {...form.register("sectors")} placeholder="tech, retail" />
+            </FormField>
+            <FormField label={t("org.jurisdictions")} description="Comma-separated: CA, ON">
+              <Input {...form.register("jurisdictions")} placeholder="CA, ON" />
+            </FormField>
+            <FormField label={t("org.stage")}>
               <select
                 className="w-full border rounded h-10 px-3 bg-background"
-                value={stage}
-                onChange={(e) => setStage(e.target.value as (typeof STAGES)[number])}
+                {...form.register("stage")}
               >
                 {STAGES.map((s) => (
                   <option key={s} value={s}>
@@ -126,27 +133,16 @@ function OrgPage() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("org.budget")}</Label>
-              <Input
-                type="number"
-                min="0"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("org.focus")}</Label>
-              <Textarea rows={3} value={focus} onChange={(e) => setFocus(e.target.value)} />
-            </div>
+            </FormField>
+            <FormField label={t("org.budget")}>
+              <Input type="number" min="0" {...form.register("annual_budget_cad")} />
+            </FormField>
+            <FormField label={t("org.focus")}>
+              <Textarea rows={3} {...form.register("focus_areas")} />
+            </FormField>
             <Button type="submit" disabled={mut.isPending}>
               {mut.isPending ? t("app.loading") : t("org.save")}
             </Button>
-            {mut.isSuccess && <p className="text-sm text-green-600">{t("org.saved")}</p>}
-            {mut.isError && (
-              <p className="text-sm text-destructive">{(mut.error as Error).message}</p>
-            )}
           </form>
         </CardContent>
       </Card>
