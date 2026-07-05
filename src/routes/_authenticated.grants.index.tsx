@@ -30,6 +30,7 @@ import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { GrantExpressView } from "@/components/grants/GrantExpressView";
 import { GrantKanban } from "@/components/grants/GrantKanban";
 import { AppTopBar } from "@/components/AppSidebar";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import "@/i18n";
 
@@ -57,6 +58,7 @@ export const Route = createFileRoute("/_authenticated/grants/")({
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(grantsQueryOptions),
+  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
   component: GrantsPage,
 });
 

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { syncClientLocale } from "@/i18n/sync";
 import { AppTopBar } from "@/components/AppSidebar";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import "@/i18n";
 
 const proposalsQueryOptions = queryOptions({
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/_authenticated/proposals/")({
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(proposalsQueryOptions),
+  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
   component: ProposalsPage,
 });
 

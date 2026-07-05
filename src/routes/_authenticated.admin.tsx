@@ -4,11 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { Button } from "@/components/ui/button";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 
 // Admin layout. The parent `_authenticated` already gates by session.
 // Admin role is checked client-side here AND server-side in every admin server fn
 // (defense in depth). SSR-friendly: no blocking await in beforeLoad.
 export const Route = createFileRoute("/_authenticated/admin")({
+  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
   component: AdminLayout,
 });
 
