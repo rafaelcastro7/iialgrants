@@ -28,7 +28,7 @@
 | 1 | Inteligencia de Fundadores | 5 | 🔄 EN PROGRESO | 80% |
 | 2 | Inteligencia Competitiva | 5 | 🔄 EN PROGRESO | 40% |
 | 3 | Proposal Quality Premium | 7 | 🔄 EN PROGRESO | 43% |
-| 4 | Post-Award Intelligence | 5 | ⏳ PENDIENTE | 0% |
+| 4 | Post-Award Intelligence | 5 | 🔄 EN PROGRESO | 40% |
 | 5 | Plataforma y Escala | 7 | ⏳ PENDIENTE | 0% |
 
 ## Criterios de Validación Global
@@ -176,47 +176,34 @@ Se actualizan al final de cada fase.
 
 ---
 
-## FASE 3: PROPOSAL QUALITY PREMIUM
+## FASE 4: POST-AWARD INTELLIGENCE
 
-### 3.1 — Multi-Expert Review Panel
-- [x] Crear sistema de review con 6 arquetipos (domain, program, budget, feasibility, EDI, skeptic)
-- [x] Scoring independiente por reviewer
-- [x] Consensus synthesis con top weaknesses
-- [ ] Integración con LLM para reviews reales
-- [ ] **Validación:** Review panel genera feedback accionable
+### 4.1 — Outcome Tracking
+- [x] Submission outcomes (won/lost/pending/withdrawn)
+- [x] Win rate and ROI calculations
+- [x] Award metrics by period
+- [ ] **Validación:** Outcomes tracked correctamente
 
-### 3.2 — Compliance Matrix
-- [x] Crear sistema de compliance checks
-- [x] Templates para NRC IRAP, SSHRC, general
-- [x] Policy alignment checks (EDI, open access, data management)
-- [ ] **Validación:** Matrix detecta secciones faltantes
+### 4.2 — Reporting Manager
+- [x] Reporting deadlines tracker
+- [ ] Automated report generation
+- [ ] Reminder system
+- [ ] **Validación:** Deadlines no se pierden
 
-### 3.3 — Citation Tracker
-- [x] Extracción de citations inline
-- [x] Validación via CrossRef API
-- [x] Detección de self-citations y retracted papers
-- [ ] **Validación:** Citations verificadas correctamente
+### 4.3 — Financial Tracking
+- [ ] Budget vs actual spending
+- [ ] Cash flow forecasting
+- [ ] Compliance with grant terms
+- [ ] **Validación:** Financial data precisa
 
-### 3.4 — Proposal Scoring Rubric
-- [ ] Crear rubric configurable por funder
-- [ ] Auto-grading por sección
-- [ ] Benchmarking contra proposals exitosas
-- [ ] **Validación:** Scoring consistente y preciso
+### 4.4 — Impact Measurement
+- [ ] Outcomes vs objectives tracking
+- [ ] Community impact metrics
+- [ ] Success stories collection
+- [ ] **Validación:** Impact demostrado
 
-### 3.5 — Quality Dashboard
-- [ ] Vista de quality scores por proposal
-- [ ] Trend analysis de mejora
-- [ ] Comparison con benchmarks
-- [ ] **Validación:** Dashboard muestra métricas reales
-
-### 3.6 — Revision Agent
-- [ ] Auto-sugerencias basadas en reviews
-- [ ] Re-escritura de secciones débiles
-- [ ] Iteración hasta umbral de calidad
-- [ ] **Validación:** Revisiones mejoran score significativamente
-
-### 3.7 — Quality Gates
-- [ ] Bloqueo de submission si score < umbral
-- [ ] Mandatory compliance check antes de enviar
-- [ ] Approval workflow con reviewer assignments
-- [ ] **Validación:** Gates previenen submissions de baja calidad
+### 4.5 — Renewal Intelligence
+- [ ] Renewal eligibility detection
+- [ ] Renewal deadline tracking
+- [ ] Renewal proposal templates
+- [ ] **Validación:** Renewals no se pierden
