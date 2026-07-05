@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -55,6 +56,14 @@ function CompetitivePage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Canadian government grant landscape — TBS Proactive Disclosure data.
             </p>
+            <div className="mt-3 flex gap-2">
+              <Link to="/competitive/recipients" className="text-sm text-primary hover:underline">
+                Recipient Profiling →
+              </Link>
+              <Link to="/competitive/programs" className="text-sm text-primary hover:underline">
+                Program Analysis →
+              </Link>
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-4">
