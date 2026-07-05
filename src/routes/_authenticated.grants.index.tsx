@@ -32,6 +32,7 @@ import { GrantKanban } from "@/components/grants/GrantKanban";
 import { AppTopBar } from "@/components/AppSidebar";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageTransition } from "@/components/PageTransition";
+import { GrantsListSkeleton } from "@/components/Skeletons";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import "@/i18n";
 
@@ -60,6 +61,7 @@ export const Route = createFileRoute("/_authenticated/grants/")({
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(grantsQueryOptions),
   errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
+  pendingComponent: GrantsListSkeleton,
   component: GrantsPage,
 });
 
