@@ -29,7 +29,7 @@
 | 2 | Inteligencia Competitiva | 5 | 🔄 EN PROGRESO | 40% |
 | 3 | Proposal Quality Premium | 7 | 🔄 EN PROGRESO | 43% |
 | 4 | Post-Award Intelligence | 5 | 🔄 EN PROGRESO | 40% |
-| 5 | Plataforma y Escala | 7 | ⏳ PENDIENTE | 0% |
+| 5 | Plataforma y Escala | 7 | 🔄 EN PROGRESO | 43% |
 
 ## Criterios de Validación Global
 
@@ -176,34 +176,45 @@ Se actualizan al final de cada fase.
 
 ---
 
-## FASE 4: POST-AWARD INTELLIGENCE
+## FASE 5: PLATAFORMA Y ESCALA
 
-### 4.1 — Outcome Tracking
-- [x] Submission outcomes (won/lost/pending/withdrawn)
-- [x] Win rate and ROI calculations
-- [x] Award metrics by period
-- [ ] **Validación:** Outcomes tracked correctamente
+### 5.1 — Activity Tracking
+- [x] Track user activity (grants viewed, proposals edited, etc.)
+- [x] Activity feed with entity linking
+- [ ] **Validación:** Activity logged correctamente
 
-### 4.2 — Reporting Manager
-- [x] Reporting deadlines tracker
-- [ ] Automated report generation
-- [ ] Reminder system
-- [ ] **Validación:** Deadlines no se pierden
+### 5.2 — Notification System
+- [x] Send notifications (info/success/warning/error)
+- [x] Get user notifications (with unread filter)
+- [x] Mark as read
+- [ ] **Validación:** Notifications delivered
 
-### 4.3 — Financial Tracking
-- [ ] Budget vs actual spending
-- [ ] Cash flow forecasting
-- [ ] Compliance with grant terms
-- [ ] **Validación:** Financial data precisa
+### 5.3 — Platform Analytics
+- [x] Basic metrics (grants, proposals, submissions, funders, users)
+- [ ] Detailed usage analytics
+- [ ] Export analytics
+- [ ] **Validación:** Analytics accurate
 
-### 4.4 — Impact Measurement
-- [ ] Outcomes vs objectives tracking
-- [ ] Community impact metrics
-- [ ] Success stories collection
-- [ ] **Validación:** Impact demostrado
+### 5.4 — API Rate Limiting
+- [ ] Implement rate limiting per user
+- [ ] Usage quotas
+- [ ] Throttling for LLM calls
+- [ ] **Validación:** Rate limits enforced
 
-### 4.5 — Renewal Intelligence
-- [ ] Renewal eligibility detection
-- [ ] Renewal deadline tracking
-- [ ] Renewal proposal templates
-- [ ] **Validación:** Renewals no se pierden
+### 5.5 — Caching Layer
+- [ ] Redis caching for hot data
+- [ ] Cache invalidation strategy
+- [ ] CDN for static assets
+- [ ] **Validación:** Cache hit rate >80%
+
+### 5.6 — Background Jobs
+- [ ] Job queue for imports
+- [ ] Scheduled tasks (grant discovery, enrichment)
+- [ ] Retry logic with backoff
+- [ ] **Validación:** Jobs complete reliably
+
+### 5.7 — Multi-tenant Support
+- [ ] Organization isolation
+- [ ] Role-based access control
+- [ ] Audit logging
+- [ ] **Validación:** Data isolation verified
