@@ -1,12 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { FormField } from "@/components/FormField";
 import "@/i18n";
 
 export const Route = createFileRoute("/auth")({
@@ -20,14 +22,24 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+const authSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+type AuthFormValues = z.infer<typeof authSchema>;
+
 function AuthPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const form = useForm<AuthFormValues>({
+    resolver: zodResolver(authSchema),
+    defaultValues: { email: "", password: "" },
+  });
 
   async function waitForSession(timeoutMs = 3000) {
     const start = Date.now();
@@ -39,17 +51,15 @@ function AuthPage() {
     return null;
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(values: AuthFormValues) {
     setError(null);
     setLoading(true);
     try {
       const fn =
         mode === "signin"
-          ? supabase.auth.signInWithPassword({ email, password })
+          ? supabase.auth.signInWithPassword(values)
           : supabase.auth.signUp({
-              email,
-              password,
+              ...values,
               options: { emailRedirectTo: `${window.location.origin}/dashboard` },
             });
       const { error } = await fn;
@@ -102,33 +112,19 @@ function AuthPage() {
               Sign in to your workspace or try the seeded demo accounts below.
             </p>
           </div>
-          <LanguageSwitcher />
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">{t("auth.email")}</Label>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField label={t("auth.email")} error={form.formState.errors.email?.message}>
+              <Input type="email" autoComplete="email" {...form.register("email")} />
+            </FormField>
+            <FormField label={t("auth.password")} error={form.formState.errors.password?.message}>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">{t("auth.password")}</Label>
-              <Input
-                id="password"
                 type="password"
                 autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...form.register("password")}
               />
-            </div>
+            </FormField>
             {error && (
               <p className="text-sm text-destructive" role="alert">
                 {error}
