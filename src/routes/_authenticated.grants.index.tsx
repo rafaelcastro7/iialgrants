@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSuspenseQuery, queryOptions, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
 import {
   listGrants,
   discoverAllFunders,
@@ -29,8 +28,8 @@ import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { GrantExpressView } from "@/components/grants/GrantExpressView";
-import { NotificationBell } from "@/components/NotificationBell";
 import { GrantKanban } from "@/components/grants/GrantKanban";
+import { AppTopBar } from "@/components/AppSidebar";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import "@/i18n";
 
@@ -177,10 +176,6 @@ function GrantsPage() {
       .finally(() => setEvaluatingIds(new Set()));
   }, [data.grants, autoEvaluate, qc]);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    await navigate({ to: "/" });
-  }
   async function onEvaluate(grantId: string) {
     setPending(grantId);
     setEvalError(null);
@@ -282,42 +277,13 @@ function GrantsPage() {
   }, [filtered]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden text-foreground">
+    <div className="relative min-h-screen overflow-hidden text-foreground">
+      <AppTopBar title={t("nav.grants")} />
+
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute left-[-8rem] top-[-6rem] h-72 w-72 rounded-full bg-brand/10 blur-3xl" />
         <div className="absolute right-[-10rem] top-24 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
       </div>
-
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between">
-          <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link to="/dashboard" className="font-display text-lg text-foreground">
-              IIAL
-            </Link>
-            <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
-              {t("nav.dashboard")}
-            </Link>
-            <Link to="/grants" className="text-sm font-medium text-foreground">
-              {t("nav.grants")}
-            </Link>
-            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">
-              {t("nav.proposals")}
-            </Link>
-            <Link to="/org" className="text-sm text-muted-foreground hover:underline">
-              {t("org.title")}
-            </Link>
-            <Link to="/fit-rules" className="text-sm text-muted-foreground hover:underline">
-              Screening Rules
-            </Link>
-          </nav>
-          <div className="flex flex-wrap items-center gap-2 md:justify-end">
-            <NotificationBell />
-            <Button variant="outline" size="sm" onClick={signOut}>
-              {t("nav.signOut")}
-            </Button>
-          </div>
-        </div>
-      </header>
 
       <section className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 md:py-10">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -473,6 +439,6 @@ function GrantsPage() {
           </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }

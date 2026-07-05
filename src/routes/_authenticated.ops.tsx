@@ -1,16 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
 import { getOpsMetrics } from "@/lib/ops.functions";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PipelineAnalyticsCard } from "@/components/admin/PipelineAnalyticsCard";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { syncClientLocale } from "@/i18n/sync";
+import { AppTopBar } from "@/components/AppSidebar";
 import "@/i18n";
 
 const opts = queryOptions({ queryKey: ["ops"], queryFn: () => getOpsMetrics() });
@@ -31,7 +29,6 @@ export const Route = createFileRoute("/_authenticated/ops")({
 
 function OpsPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const fetchOps = useServerFn(getOpsMetrics);
   const { data } = useSuspenseQuery({ queryKey: ["ops"], queryFn: () => fetchOps() });
 
@@ -39,36 +36,14 @@ function OpsPage() {
     syncClientLocale();
   }, []);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    await navigate({ to: "/" });
-  }
-
   const totalRuns = data.daily.reduce((s, d) => s + Number(d.runs), 0);
   const totalErr = data.daily.reduce((s, d) => s + Number(d.error_runs), 0);
   const totalCost = data.daily.reduce((s, d) => s + Number(d.cost_usd ?? 0), 0);
   const errPct = totalRuns ? ((totalErr / totalRuns) * 100).toFixed(1) : "0.0";
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 border-b border-border/60 bg-background/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold">
-              {t("app.name")}
-            </Link>
-            <Link to="/ops" className="text-sm font-medium hover:underline">
-              {t("ops.title")}
-            </Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={signOut}>
-              {t("nav.signOut")}
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="relative min-h-screen bg-background text-foreground">
+      <AppTopBar title={t("ops.title")} />
 
       <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
         <h1 className="font-display text-4xl leading-none">{t("ops.title")}</h1>
@@ -156,7 +131,7 @@ function OpsPage() {
           </CardContent>
         </Card>
       </section>
-    </main>
+    </div>
   );
 }
 
