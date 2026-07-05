@@ -7,13 +7,13 @@ runs out. Read this + `docs/DEVELOPER-GUIDE.md` first. **Last updated: 2026-07-0
 
 Latest commits (newest first):
 
+- `30d0c7c` feat: S3a reviewer-simulation submit gate
 - `b3aa3f3` fix: S3b FR export no longer passes English off as French + remove dead code
 - `18d5715` docs: Codex handoff
 - `0c69b55` docs: C5 dedup hardening + local-audit triage guidance
 - `8c0d989` fix: C5 dedup hardening — collapse funder-name title variants, block admin pages
-- `d624bc0` test: guard against new secrets in migrations (QW3)
 
-Working tree is clean. Quality bar right now: **tsc 0, eslint 0, 208 unit/e2e
+Working tree is clean. Quality bar right now: **tsc 0, eslint 0, 215 unit/e2e
 tests + 1 skipped, build clean.** Live pipeline smoke green (fit_score ~0.76
 against local Supabase + Ollama).
 
@@ -28,27 +28,16 @@ pass and C5 part 1 (dedup hardening).
 
 REMAINING (pick up here, highest value first):
 
-### S3a — Submit quality gate (NOT yet implemented)
+### S3a — Submit quality gate — DONE (`30d0c7c`)
 
-`submitProposal` in `src/lib/submissions.functions.ts` (lines 19-61) moves a
-grant `in_proposal → submitted` and the proposal to `submitted` with **no
-quality gate at all**. The plan calls for a reviewer-simulation gate.
-
-Concrete, verified facts to build the gate:
-
-- `proposals.critic_score` is `numeric`, scale **0-1** (schema:
-  `CriticOutput.overall_score = z.number().min(0).max(1)` in
-  `src/agents/schemas.ts:157`; persisted at `src/agents/critic.functions.ts:78`).
-- Readiness is a pure 0-100 function: `computeProposalReadiness` in
-  `src/lib/proposal-readiness.ts` (returns `{ score, openCriticalRequirements }`).
-- Suggested gate (confirm threshold with Rafael): block submit when
-  `critic_score == null` (never reviewed) OR `critic_score < 0.6` OR
-  `readiness.openCriticalRequirements.length > 0`. Return a typed error the UI
-  can show (e.g. `throw new Error("submit_blocked:low_quality")`), and surface
-  it in `src/routes/_authenticated.proposals.$id.tsx` (the `onSubmit` handler).
-- Add a regression test (pure): a low-critic-score proposal is rejected, a
-  ready one passes. Consider exporting a pure `canSubmit(proposal, readiness)`
-  helper so it's unit-testable without the DB.
+Implemented: pure `canSubmit()` + `MIN_CRITIC_SCORE_TO_SUBMIT` (0.6) in
+`src/lib/submissions.functions.ts`; `submitProposal` computes readiness and
+blocks with a typed `submit_blocked:<reasons>` error unless `force: true`. The
+proposal-detail route explains the reasons and offers "submit anyway".
+Covered by `src/lib/submit-gate.test.ts` (7 tests). FOLLOW-UP (not blocking):
+browser-verify the full block→force flow against a seeded `in_proposal`
+proposal — the gate logic is unit-tested but the end-to-end UI dialog wasn't
+exercised in-browser this session (no seeded proposal was available).
 
 ### S3b — FR export silently falls back to EN — DONE (`b3aa3f3`)
 
