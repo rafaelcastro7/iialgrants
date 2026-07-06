@@ -6,6 +6,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { createSupabaseAdmin } from "./supabase-admin";
 
 export const getTasks = createServerFn({
   method: "GET",
@@ -16,22 +17,22 @@ export const getTasks = createServerFn({
     status: z.enum(["pending", "in_progress", "completed"]).optional(),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  let query = supabase.from("tasks").select("*").order("due_date", { ascending: true });
+    let query = supabase.from("tasks").select("*").order("due_date", { ascending: true });
 
-  if (data.entityType) query = query.eq("entity_type", data.entityType);
-  if (data.entityId) query = query.eq("entity_id", data.entityId);
-  if (data.assignedTo) query = query.eq("assigned_to", data.assignedTo);
-  if (data.status) query = query.eq("status", data.status);
+    if (data.entityType) query = query.eq("entity_type", data.entityType);
+    if (data.entityId) query = query.eq("entity_id", data.entityId);
+    if (data.assignedTo) query = query.eq("assigned_to", data.assignedTo);
+    if (data.status) query = query.eq("status", data.status);
 
-  const { data: tasks, error } = await query;
-  if (error) throw new Error(`Failed to fetch tasks: ${error.message}`);
-  return tasks || [];
+    const { data: tasks, error } = await query;
+    if (error) throw new Error(`Failed to fetch tasks: ${error.message}`);
+    return tasks || [];
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 export const createTask = createServerFn({
@@ -46,34 +47,34 @@ export const createTask = createServerFn({
     priority: z.enum(["low", "medium", "high"]).default("medium"),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { data: task, error } = await supabase
-    .from("tasks")
-    .insert({
-      entity_type: data.entityType,
-      entity_id: data.entityId,
-      title: data.title,
-      description: data.description,
-      assigned_to: data.assignedTo,
-      due_date: data.dueDate,
-      priority: data.priority,
-      created_by: user?.id,
-      status: "pending",
-    })
-    .select()
-    .single();
+    const { data: task, error } = await supabase
+      .from("tasks")
+      .insert({
+        entity_type: data.entityType,
+        entity_id: data.entityId,
+        title: data.title,
+        description: data.description,
+        assigned_to: data.assignedTo,
+        due_date: data.dueDate,
+        priority: data.priority,
+        created_by: user?.id,
+        status: "pending",
+      })
+      .select()
+      .single();
 
-  if (error) throw new Error(`Failed to create task: ${error.message}`);
-  return task;
+    if (error) throw new Error(`Failed to create task: ${error.message}`);
+    return task;
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 export const updateTaskStatus = createServerFn({
@@ -83,19 +84,19 @@ export const updateTaskStatus = createServerFn({
     status: z.enum(["pending", "in_progress", "completed"]),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const { error } = await supabase
-    .from("tasks")
-    .update({ status: data.status })
-    .eq("id", data.taskId);
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status: data.status })
+      .eq("id", data.taskId);
 
-  if (error) throw new Error(`Failed to update task: ${error.message}`);
-  return { ok: true };
+    if (error) throw new Error(`Failed to update task: ${error.message}`);
+    return { ok: true };
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 export const getComments = createServerFn({
@@ -105,21 +106,21 @@ export const getComments = createServerFn({
     entityId: z.string().uuid(),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const { data: comments, error } = await supabase
-    .from("comments")
-    .select("*")
-    .eq("entity_type", data.entityType)
-    .eq("entity_id", data.entityId)
-    .order("created_at", { ascending: false });
+    const { data: comments, error } = await supabase
+      .from("comments")
+      .select("*")
+      .eq("entity_type", data.entityType)
+      .eq("entity_id", data.entityId)
+      .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`Failed to fetch comments: ${error.message}`);
-  return comments || [];
+    if (error) throw new Error(`Failed to fetch comments: ${error.message}`);
+    return comments || [];
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 export const addComment = createServerFn({
@@ -130,27 +131,27 @@ export const addComment = createServerFn({
     content: z.string().min(1),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { data: comment, error } = await supabase
-    .from("comments")
-    .insert({
-      entity_type: data.entityType,
-      entity_id: data.entityId,
-      content: data.content,
-      author_id: user?.id,
-    })
-    .select()
-    .single();
+    const { data: comment, error } = await supabase
+      .from("comments")
+      .insert({
+        entity_type: data.entityType,
+        entity_id: data.entityId,
+        content: data.content,
+        author_id: user?.id,
+      })
+      .select()
+      .single();
 
-  if (error) throw new Error(`Failed to add comment: ${error.message}`);
-  return comment;
+    if (error) throw new Error(`Failed to add comment: ${error.message}`);
+    return comment;
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });

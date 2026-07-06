@@ -11,6 +11,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { createSupabaseAdmin } from "./supabase-admin";
 
 /**
  * Extract mission statement and focus areas from funder website
@@ -52,9 +53,22 @@ async function scrapeFunderWebsite(url: string) {
     }
 
     const focusKeywords = [
-      "education", "health", "environment", "social", "community", "youth",
-      "elderly", "arts", "culture", "science", "research", "indigenous",
-      "immigration", "housing", "poverty", "hunger",
+      "education",
+      "health",
+      "environment",
+      "social",
+      "community",
+      "youth",
+      "elderly",
+      "arts",
+      "culture",
+      "science",
+      "research",
+      "indigenous",
+      "immigration",
+      "housing",
+      "poverty",
+      "hunger",
     ];
 
     const htmlLower = html.toLowerCase();
@@ -83,53 +97,53 @@ export const enrichFunder = createServerFn({
     website: z.string().url().optional(),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const { data: funder, error: fetchError } = await supabase
-    .from("funders")
-    .select("*")
-    .eq("id", data.funderId)
-    .single();
+    const { data: funder, error: fetchError } = await supabase
+      .from("funders")
+      .select("*")
+      .eq("id", data.funderId)
+      .single();
 
-  if (fetchError || !funder) {
-    return { success: false, error: "Funder not found" };
-  }
-
-  let websiteData = null;
-  if (funder.website || data.website) {
-    websiteData = await scrapeFunderWebsite(funder.website || data.website!);
-  }
-
-  const updates: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-
-  if (websiteData) {
-    if (websiteData.mission_statement && !funder.description) {
-      updates.description = websiteData.mission_statement;
+    if (fetchError || !funder) {
+      return { success: false, error: "Funder not found" };
     }
-    if (websiteData.focus_areas.length > 0 && !funder.geographic_focus) {
-      updates.geographic_focus = websiteData.focus_areas.join(", ");
+
+    let websiteData = null;
+    if (funder.website || data.website) {
+      websiteData = await scrapeFunderWebsite(funder.website || data.website!);
     }
-    if (Object.keys(websiteData.social_media).length > 0) {
-      updates.social_media = websiteData.social_media;
+
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (websiteData) {
+      if (websiteData.mission_statement && !funder.description) {
+        updates.description = websiteData.mission_statement;
+      }
+      if (websiteData.focus_areas.length > 0 && !funder.geographic_focus) {
+        updates.geographic_focus = websiteData.focus_areas.join(", ");
+      }
+      if (Object.keys(websiteData.social_media).length > 0) {
+        updates.social_media = websiteData.social_media;
+      }
     }
+
+    const { error: updateError } = await supabase
+      .from("funders")
+      .update(updates)
+      .eq("id", data.funderId);
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true, data: websiteData };
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
   }
-
-  const { error: updateError } = await supabase
-    .from("funders")
-    .update(updates)
-    .eq("id", data.funderId);
-
-  if (updateError) {
-    return { success: false, error: updateError.message };
-  }
-
-  return { success: true, data: websiteData };
 });
 
 /**
@@ -142,10 +156,14 @@ export const batchEnrichFunders = createServerFn({
     force: z.boolean().optional(),
   }),
 }).handler(async ({ data }) => {
-  const results = [];
-  for (const funderId of data.funderIds) {
-    const result = await enrichFunder({ data: { funderId } });
-    results.push({ funderId, ...result });
+  try {
+    const results = [];
+    for (const funderId of data.funderIds) {
+      const result = await enrichFunder({ data: { funderId } });
+      results.push({ funderId, ...result });
+    }
+    return results;
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
   }
-  return results;
 });
