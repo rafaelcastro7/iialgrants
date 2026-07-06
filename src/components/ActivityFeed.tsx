@@ -115,8 +115,8 @@ export function ActivityFeed() {
             {events.map((event) => (
               <Link
                 key={event.id}
-                to={event.entity_type === "grant" ? "/grants/$grantId" : "/proposals/$proposalId"}
-                params={{ grantId: event.entity_id, proposalId: event.entity_id }}
+                to={event.entity_type === "grant" ? "/grants/$id" : "/proposals/$id"}
+                params={{ id: event.entity_id }}
                 className="flex items-start gap-3 rounded-md px-2 py-2 transition-colors hover:bg-accent/50"
               >
                 <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">

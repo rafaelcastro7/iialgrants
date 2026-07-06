@@ -210,8 +210,8 @@ function FunderProfilePage() {
                   {grants.map((grant) => (
                     <Link
                       key={grant.id}
-                      to="/grants/$grantId"
-                      params={{ grantId: grant.id }}
+                      to="/grants/$id"
+                      params={{ id: grant.id }}
                       className="flex items-center justify-between rounded-md border p-3 transition-colors hover:bg-accent/50"
                     >
                       <div>

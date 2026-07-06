@@ -56,7 +56,7 @@ function RevisionPlanPage() {
                 Actionable revision suggestions prioritized by severity.
               </p>
             </div>
-            <Link to="/proposals/$proposalId" params={{ proposalId }}>
+            <Link to="/proposals/$id" params={{ id: proposalId }}>
               <Button variant="outline" size="sm" className="gap-1">
                 Back to Proposal <ArrowRight className="h-3 w-3" />
               </Button>
@@ -124,7 +124,7 @@ function RevisionPlanPage() {
                 <p className="mt-2 text-sm text-muted-foreground">
                   No findings to address. Run a review first.
                 </p>
-                <Link to="/proposals/$proposalId" params={{ proposalId }}>
+                <Link to="/proposals/$id" params={{ id: proposalId }}>
                   <Button size="sm" className="mt-4">
                     Go to Proposal
                   </Button>
