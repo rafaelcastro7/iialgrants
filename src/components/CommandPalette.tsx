@@ -133,7 +133,7 @@ export function CommandPalette() {
                     key={grant.id}
                     onSelect={() => {
                       setOpen(false);
-                      navigate({ to: "/grants/$grantId", params: { grantId: grant.id } });
+                      navigate({ to: "/grants/$id", params: { id: grant.id } });
                     }}
                   >
                     <Search className="mr-2 h-4 w-4" />
