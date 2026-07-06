@@ -8,6 +8,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { createSupabaseAdmin } from "./supabase-admin";
 
 export const logAuditEvent = createServerFn({
   method: "POST",
@@ -27,31 +28,31 @@ export const logAuditEvent = createServerFn({
     metadata: z.record(z.unknown()).optional(),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { data: event, error } = await supabase
-    .from("audit_trail")
-    .insert({
-      entity_type: data.entityType,
-      entity_id: data.entityId,
-      action: data.action,
-      changes: data.changes || [],
-      metadata: data.metadata || {},
-      performed_by: user?.id || "system",
-    })
-    .select()
-    .single();
+    const { data: event, error } = await supabase
+      .from("audit_trail")
+      .insert({
+        entity_type: data.entityType,
+        entity_id: data.entityId,
+        action: data.action,
+        changes: data.changes || [],
+        metadata: data.metadata || {},
+        performed_by: user?.id || "system",
+      })
+      .select()
+      .single();
 
-  if (error) throw new Error(`Failed to log audit: ${error.message}`);
-  return event;
+    if (error) throw new Error(`Failed to log audit: ${error.message}`);
+    return event;
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 export const getAuditHistory = createServerFn({
@@ -62,20 +63,20 @@ export const getAuditHistory = createServerFn({
     limit: z.number().min(1).max(500).default(50),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  let query = supabase.from("audit_trail").select("*").order("created_at", { ascending: false });
+    let query = supabase.from("audit_trail").select("*").order("created_at", { ascending: false });
 
-  if (data.entityType) query = query.eq("entity_type", data.entityType);
-  if (data.entityId) query = query.eq("entity_id", data.entityId);
+    if (data.entityType) query = query.eq("entity_type", data.entityType);
+    if (data.entityId) query = query.eq("entity_id", data.entityId);
 
-  const { data: events, error } = await query.limit(data.limit);
-  if (error) throw new Error(`Failed to fetch audit: ${error.message}`);
-  return events || [];
+    const { data: events, error } = await query.limit(data.limit);
+    if (error) throw new Error(`Failed to fetch audit: ${error.message}`);
+    return events || [];
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 export const getEntityAuditSummary = createServerFn({
@@ -85,30 +86,30 @@ export const getEntityAuditSummary = createServerFn({
     entityId: z.string().uuid(),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const { data: events, error } = await supabase
-    .from("audit_trail")
-    .select("action, created_at, performed_by")
-    .eq("entity_type", data.entityType)
-    .eq("entity_id", data.entityId)
-    .order("created_at", { ascending: false });
+    const { data: events, error } = await supabase
+      .from("audit_trail")
+      .select("action, created_at, performed_by")
+      .eq("entity_type", data.entityType)
+      .eq("entity_id", data.entityId)
+      .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`Failed to fetch summary: ${error.message}`);
+    if (error) throw new Error(`Failed to fetch summary: ${error.message}`);
 
-  const byAction = new Map<string, number>();
-  for (const e of events || []) {
-    byAction.set(e.action, (byAction.get(e.action) || 0) + 1);
+    const byAction = new Map<string, number>();
+    for (const e of events || []) {
+      byAction.set(e.action, (byAction.get(e.action) || 0) + 1);
+    }
+
+    return {
+      totalEvents: events?.length || 0,
+      byAction: Object.fromEntries(byAction),
+      lastActivity: events?.[0]?.created_at || null,
+      lastActor: events?.[0]?.performed_by || null,
+    };
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
   }
-
-  return {
-    totalEvents: events?.length || 0,
-    byAction: Object.fromEntries(byAction),
-    lastActivity: events?.[0]?.created_at || null,
-    lastActor: events?.[0]?.performed_by || null,
-  };
 });

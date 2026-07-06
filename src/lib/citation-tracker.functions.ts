@@ -1,5 +1,7 @@
 "use server";
 
+import { createSupabaseAdmin } from "./supabase-admin";
+
 /**
  * Citation Tracker
  *
@@ -22,78 +24,79 @@ export const extractCitations = createServerFn({
     ),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const allCitations: Array<{
-    id: string;
-    proposalSectionId: string;
-    source: string;
-    verified: boolean;
-    retracted: boolean;
-    inlineRef: string;
-    selfCitation: boolean;
-  }> = [];
+    const allCitations: Array<{
+      id: string;
+      proposalSectionId: string;
+      source: string;
+      verified: boolean;
+      retracted: boolean;
+      inlineRef: string;
+      selfCitation: boolean;
+    }> = [];
 
-  for (const section of data.sections) {
-    const inlinePattern = /\(([A-Z][a-z]+(?:\s*(?:&|and)\s*[A-Z][a-z]+)*,?\s*\d{4}(?:[a-z])?)\)/g;
-    let match;
-    const sectionCitations: string[] = [];
+    for (const section of data.sections) {
+      const inlinePattern = /\(([A-Z][a-z]+(?:\s*(?:&|and)\s*[A-Z][a-z]+)*,?\s*\d{4}(?:[a-z])?)\)/g;
+      let match;
+      const sectionCitations: string[] = [];
 
-    while ((match = inlinePattern.exec(section.content)) !== null) {
-      sectionCitations.push(match[1]);
-    }
+      while ((match = inlinePattern.exec(section.content)) !== null) {
+        sectionCitations.push(match[1]);
+      }
 
-    sectionCitations.forEach((ref, i) => {
-      allCitations.push({
-        id: `${section.id}-cit-${i}`,
-        proposalSectionId: section.id,
-        source: "user_added",
-        verified: false,
-        retracted: false,
-        inlineRef: ref,
-        selfCitation: ref.toLowerCase().includes("iial") || ref.toLowerCase().includes("institute"),
+      sectionCitations.forEach((ref, i) => {
+        allCitations.push({
+          id: `${section.id}-cit-${i}`,
+          proposalSectionId: section.id,
+          source: "user_added",
+          verified: false,
+          retracted: false,
+          inlineRef: ref,
+          selfCitation:
+            ref.toLowerCase().includes("iial") || ref.toLowerCase().includes("institute"),
+        });
       });
-    });
-  }
-
-  const summary = {
-    totalCitations: allCitations.length,
-    verified: allCitations.filter((c) => c.verified).length,
-    unverified: allCitations.filter((c) => !c.verified).length,
-    retracted: allCitations.filter((c) => c.retracted).length,
-    selfCitationCount: allCitations.filter((c) => c.selfCitation).length,
-    selfCitationRatio: allCitations.length
-      ? allCitations.filter((c) => c.selfCitation).length / allCitations.length
-      : 0,
-    bySection: {} as Record<string, number>,
-    bySource: {} as Record<string, number>,
-  };
-
-  for (const cit of allCitations) {
-    const section = data.sections.find((s) => s.id === cit.proposalSectionId);
-    if (section) {
-      summary.bySection[section.title] = (summary.bySection[section.title] || 0) + 1;
     }
-    summary.bySource[cit.source] = (summary.bySource[cit.source] || 0) + 1;
+
+    const summary = {
+      totalCitations: allCitations.length,
+      verified: allCitations.filter((c) => c.verified).length,
+      unverified: allCitations.filter((c) => !c.verified).length,
+      retracted: allCitations.filter((c) => c.retracted).length,
+      selfCitationCount: allCitations.filter((c) => c.selfCitation).length,
+      selfCitationRatio: allCitations.length
+        ? allCitations.filter((c) => c.selfCitation).length / allCitations.length
+        : 0,
+      bySection: {} as Record<string, number>,
+      bySource: {} as Record<string, number>,
+    };
+
+    for (const cit of allCitations) {
+      const section = data.sections.find((s) => s.id === cit.proposalSectionId);
+      if (section) {
+        summary.bySection[section.title] = (summary.bySection[section.title] || 0) + 1;
+      }
+      summary.bySource[cit.source] = (summary.bySource[cit.source] || 0) + 1;
+    }
+
+    const { error } = await supabase.from("proposal_citations").upsert(
+      {
+        proposal_id: data.proposalId,
+        citations: allCitations,
+        summary,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "proposal_id" },
+    );
+
+    if (error) throw new Error("Failed to store citations: " + error.message);
+
+    return { citations: allCitations, summary };
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
   }
-
-  const { error } = await supabase.from("proposal_citations").upsert(
-    {
-      proposal_id: data.proposalId,
-      citations: allCitations,
-      summary,
-      created_at: new Date().toISOString(),
-    },
-    { onConflict: "proposal_id" },
-  );
-
-  if (error) console.error("Failed to store citations:", error.message);
-
-  return { citations: allCitations, summary };
 });
 
 export const validateCitation = createServerFn({
@@ -134,18 +137,18 @@ export const getCitationSummary = createServerFn({
     proposalId: z.string().uuid(),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const { data: record, error } = await supabase
-    .from("proposal_citations")
-    .select("citations, summary")
-    .eq("proposal_id", data.proposalId)
-    .single();
+    const { data: record, error } = await supabase
+      .from("proposal_citations")
+      .select("citations, summary")
+      .eq("proposal_id", data.proposalId)
+      .single();
 
-  if (error) return { citations: [], summary: null };
-  return record;
+    if (error) return { citations: [], summary: null };
+    return record;
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });

@@ -1,5 +1,7 @@
 "use server";
 
+import { createSupabaseAdmin } from "./supabase-admin";
+
 /**
  * Multi-Expert Review System
  *
@@ -85,58 +87,62 @@ export const scoreProposal = createServerFn({
       .optional(),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const scores = REVIEWER_ARCHETYPES.map((archetype) => ({
-    reviewer: archetype.name,
-    score: 5,
-    strengths: [] as string[],
-    weaknesses: [] as string[],
-    findings: [] as Array<{
-      reviewer: string;
-      severity: string;
-      section: string;
-      issue: string;
-      suggestion: string;
-    }>,
-  }));
+    const scores = REVIEWER_ARCHETYPES.map((archetype) => ({
+      reviewer: archetype.name,
+      score: 5,
+      strengths: [] as string[],
+      weaknesses: [] as string[],
+      findings: [] as Array<{
+        reviewer: string;
+        severity: string;
+        section: string;
+        issue: string;
+        suggestion: string;
+      }>,
+    }));
 
-  const overallScore = scores.reduce((sum, s, i) => {
-    return sum + s.score * REVIEWER_ARCHETYPES[i].weight;
-  }, 0);
+    const overallScore = scores.reduce((sum, s, i) => {
+      return sum + s.score * REVIEWER_ARCHETYPES[i].weight;
+    }, 0);
 
-  const { error } = await supabase.from("proposal_reviews").upsert(
-    {
-      proposal_id: data.proposalId,
-      overall_score: overallScore,
-      reviewer_scores: scores,
-      created_at: new Date().toISOString(),
-    },
-    { onConflict: "proposal_id" },
-  );
+    const { error } = await supabase.from("proposal_reviews").upsert(
+      {
+        proposal_id: data.proposalId,
+        overall_score: overallScore,
+        reviewer_scores: scores,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "proposal_id" },
+    );
 
-  if (error) console.error("Failed to store review:", error.message);
+    if (error) throw new Error("Failed to store review: " + error.message);
 
-  return {
-    overallScore: Math.round(overallScore * 10) / 10,
-    consensusScore: overallScore,
-    scores,
-    allFindings: [],
-    topWeaknesses: [],
-    consensusStrengths: [],
-    recommendations: [],
-  };
+    return {
+      overallScore: Math.round(overallScore * 10) / 10,
+      consensusScore: overallScore,
+      scores,
+      allFindings: [],
+      topWeaknesses: [],
+      consensusStrengths: [],
+      recommendations: [],
+    };
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 export const getReviewerArchetypes = createServerFn({
   method: "GET",
   validator: z.object({}),
-}).handler(() => {
-  return REVIEWER_ARCHETYPES;
+}).handler(async () => {
+  try {
+    return REVIEWER_ARCHETYPES;
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 export const getProposalReviews = createServerFn({
@@ -145,18 +151,18 @@ export const getProposalReviews = createServerFn({
     proposalId: z.string().uuid(),
   }),
 }).handler(async ({ data }) => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const { data: reviews, error } = await supabase
-    .from("proposal_reviews")
-    .select("*")
-    .eq("proposal_id", data.proposalId)
-    .order("created_at", { ascending: false });
+    const { data: reviews, error } = await supabase
+      .from("proposal_reviews")
+      .select("*")
+      .eq("proposal_id", data.proposalId)
+      .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`Failed to fetch reviews: ${error.message}`);
-  return reviews || [];
+    if (error) throw new Error(`Failed to fetch reviews: ${error.message}`);
+    return reviews || [];
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });

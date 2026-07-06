@@ -9,6 +9,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { createSupabaseAdmin } from "./supabase-admin";
 
 /**
  * Get current user's org_id from profile
@@ -17,24 +18,24 @@ export const getCurrentOrgId = createServerFn({
   method: "GET",
   validator: z.object({}),
 }).handler(async () => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("org_id")
-    .eq("id", user.id)
-    .single();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("org_id")
+      .eq("id", user.id)
+      .single();
 
-  return profile?.org_id || null;
+    return profile?.org_id || null;
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 /**
@@ -44,30 +45,30 @@ export const getCurrentOrg = createServerFn({
   method: "GET",
   validator: z.object({}),
 }).handler(async () => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("org_id, organizations(id, name, slug)")
-    .eq("id", user.id)
-    .single();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("org_id, organizations(id, name, slug)")
+      .eq("id", user.id)
+      .single();
 
-  if (!profile?.org_id) return null;
+    if (!profile?.org_id) return null;
 
-  const org = Array.isArray(profile.organizations)
-    ? profile.organizations[0]
-    : profile.organizations;
+    const org = Array.isArray(profile.organizations)
+      ? profile.organizations[0]
+      : profile.organizations;
 
-  return org || null;
+    return org || null;
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
 
 /**
@@ -77,22 +78,22 @@ export const isOrgAdmin = createServerFn({
   method: "GET",
   validator: z.object({}),
 }).handler(async () => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL || "http://localhost:15435",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
-  );
+  try {
+    const supabase = await createSupabaseAdmin();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return false;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
 
-  const { data: role } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
+    const { data: role } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
 
-  return role?.role === "admin";
+    return role?.role === "admin";
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : String(e));
+  }
 });
