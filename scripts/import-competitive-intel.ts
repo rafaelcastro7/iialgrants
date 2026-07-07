@@ -183,8 +183,23 @@ async function main() {
 
   // 2. Transform records
   console.log("\n2. Transforming records...");
-  const competitiveRecords = allRecords.map(transformRecord);
-  console.log(`  [transform] ${competitiveRecords.length} records transformed`);
+  const transformed = allRecords.map(transformRecord);
+  // Drop records without a ref_number and dedupe by external_id: a single
+  // upsert statement cannot touch the same conflict key twice, and CKAN data
+  // contains repeated/empty ref_numbers.
+  const byId = new Map<string, CompetitiveRecord>();
+  let dropped = 0;
+  for (const r of transformed) {
+    if (!r.external_id) {
+      dropped++;
+      continue;
+    }
+    byId.set(r.external_id, r);
+  }
+  const competitiveRecords = [...byId.values()];
+  console.log(
+    `  [transform] ${competitiveRecords.length} unique records (${dropped} without ref_number, ${transformed.length - dropped - competitiveRecords.length} duplicate ids collapsed)`,
+  );
 
   // 3. Analyze competition
   console.log("\n3. Analyzing competitive landscape...");
