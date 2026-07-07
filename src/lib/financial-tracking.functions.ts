@@ -7,10 +7,12 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
 export const getFinancialSummary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {
@@ -49,6 +51,7 @@ export const getFinancialSummary = createServerFn({ method: "GET" })
   });
 
 export const getBudgetTracking = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       outcomeId: z.string().uuid().optional(),

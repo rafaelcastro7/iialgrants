@@ -9,6 +9,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const REQUIREMENT_TEMPLATES: Record<string, Array<{ category: string; requirement: string }>> = {
@@ -48,6 +49,7 @@ const REQUIREMENT_TEMPLATES: Record<string, Array<{ category: string; requiremen
 };
 
 export const generateComplianceMatrix = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       proposalId: z.string().uuid(),
@@ -151,6 +153,7 @@ export const generateComplianceMatrix = createServerFn({ method: "POST" })
   });
 
 export const getRequirementTemplates = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {

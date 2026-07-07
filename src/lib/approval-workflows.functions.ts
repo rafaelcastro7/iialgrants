@@ -7,10 +7,12 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
 export const getApprovalWorkflows = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.enum(["grant", "proposal"]).optional(),
@@ -36,6 +38,7 @@ export const getApprovalWorkflows = createServerFn({ method: "GET" })
   });
 
 export const getApprovalSteps = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ workflowId: z.string().uuid() }))
   .handler(async ({ data }) => {
     try {
@@ -55,6 +58,7 @@ export const getApprovalSteps = createServerFn({ method: "GET" })
   });
 
 export const createApprovalWorkflow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       name: z.string().min(1),
@@ -98,6 +102,7 @@ export const createApprovalWorkflow = createServerFn({ method: "POST" })
   });
 
 export const submitForApproval = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.enum(["grant", "proposal"]),
@@ -129,6 +134,7 @@ export const submitForApproval = createServerFn({ method: "POST" })
   });
 
 export const approveStep = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       instanceId: z.string().uuid(),

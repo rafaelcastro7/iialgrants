@@ -6,6 +6,7 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
@@ -62,6 +63,7 @@ const BUILTIN_TEMPLATES = [
 ] as const;
 
 export const getReportingTemplates = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {
@@ -72,6 +74,7 @@ export const getReportingTemplates = createServerFn({ method: "GET" })
   });
 
 export const getReportingTemplate = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ templateId: z.string() }))
   .handler(async ({ data }) => {
     try {
@@ -84,6 +87,7 @@ export const getReportingTemplate = createServerFn({ method: "GET" })
 // ─── Logic Model ──────────────────────────────────────────────
 
 export const getLogicModel = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ proposalId: z.string().uuid() }))
   .handler(async ({ data }) => {
     try {
@@ -104,6 +108,7 @@ export const getLogicModel = createServerFn({ method: "GET" })
   });
 
 export const upsertLogicModel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       proposalId: z.string().uuid(),

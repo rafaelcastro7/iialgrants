@@ -9,9 +9,11 @@ import { createSupabaseAdmin } from "./supabase-admin";
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 export const extractCitations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       proposalId: z.string().uuid(),
@@ -102,6 +104,7 @@ export const extractCitations = createServerFn({ method: "POST" })
   });
 
 export const validateCitation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       doi: z.string(),
@@ -135,6 +138,7 @@ export const validateCitation = createServerFn({ method: "POST" })
   });
 
 export const getCitationSummary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       proposalId: z.string().uuid(),
