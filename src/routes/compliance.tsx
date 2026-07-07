@@ -52,12 +52,12 @@ function ComplianceRoute() {
         <CardContent className="text-sm space-y-2">
           <p>
             {fr
-               ? "Toutes les données client sont stockées localement sur l'infrastructure du client (PostgreSQL locale). Aucun transfert transfrontalier."
+              ? "Toutes les données client sont stockées localement sur l'infrastructure du client (PostgreSQL locale). Aucun transfert transfrontalier."
               : "All customer data is stored locally on self-hosted infrastructure (local PostgreSQL). No cross-border transfer occurs."}
           </p>
           <p>
             {fr
-               ? "Tous les appels aux modèles IA sont traités localement via Ollama (localhost). Aucune donnée n'est envoyée à des API externes."
+              ? "Tous les appels aux modèles IA sont traités localement via Ollama (localhost). Aucune donnée n'est envoyée à des API externes."
               : "All AI model calls are processed locally via Ollama (localhost). No data is sent to external APIs."}
           </p>
         </CardContent>

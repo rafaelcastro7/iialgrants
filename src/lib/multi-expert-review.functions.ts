@@ -52,114 +52,118 @@ const REVIEWER_ARCHETYPES = [
 ] as const;
 
 export const scoreProposal = createServerFn({ method: "POST" })
-  .inputValidator(z.object({
-    proposalId: z.string().uuid(),
-    sections: z.array(
-      z.object({
-        id: z.string(),
-        title: z.string(),
-        content: z.string(),
-        wordCount: z.number(),
-      }),
-    ),
-    grantRequirements: z
-      .object({
-        mandatorySections: z.array(z.string()),
-        pageLimits: z.record(z.number()).optional(),
-        evaluationCriteria: z
-          .array(
-            z.object({
-              name: z.string(),
-              weight: z.number(),
-              description: z.string(),
-            }),
-          )
-          .optional(),
-      })
-      .optional(),
-    orgProfile: z
-      .object({
-        sectors: z.array(z.string()),
-        jurisdictions: z.array(z.string()),
-        capabilities: z.array(z.string()),
-      })
-      .optional(),
-  }))
+  .inputValidator(
+    z.object({
+      proposalId: z.string().uuid(),
+      sections: z.array(
+        z.object({
+          id: z.string(),
+          title: z.string(),
+          content: z.string(),
+          wordCount: z.number(),
+        }),
+      ),
+      grantRequirements: z
+        .object({
+          mandatorySections: z.array(z.string()),
+          pageLimits: z.record(z.number()).optional(),
+          evaluationCriteria: z
+            .array(
+              z.object({
+                name: z.string(),
+                weight: z.number(),
+                description: z.string(),
+              }),
+            )
+            .optional(),
+        })
+        .optional(),
+      orgProfile: z
+        .object({
+          sectors: z.array(z.string()),
+          jurisdictions: z.array(z.string()),
+          capabilities: z.array(z.string()),
+        })
+        .optional(),
+    }),
+  )
   .handler(async ({ data }) => {
-  try {
-    const supabase = await createSupabaseAdmin();
+    try {
+      const supabase = await createSupabaseAdmin();
 
-    const scores = REVIEWER_ARCHETYPES.map((archetype) => ({
-      reviewer: archetype.name,
-      score: 5,
-      strengths: [] as string[],
-      weaknesses: [] as string[],
-      findings: [] as Array<{
-        reviewer: string;
-        severity: string;
-        section: string;
-        issue: string;
-        suggestion: string;
-      }>,
-    }));
+      const scores = REVIEWER_ARCHETYPES.map((archetype) => ({
+        reviewer: archetype.name,
+        score: 5,
+        strengths: [] as string[],
+        weaknesses: [] as string[],
+        findings: [] as Array<{
+          reviewer: string;
+          severity: string;
+          section: string;
+          issue: string;
+          suggestion: string;
+        }>,
+      }));
 
-    const overallScore = scores.reduce((sum, s, i) => {
-      return sum + s.score * REVIEWER_ARCHETYPES[i].weight;
-    }, 0);
+      const overallScore = scores.reduce((sum, s, i) => {
+        return sum + s.score * REVIEWER_ARCHETYPES[i].weight;
+      }, 0);
 
-    const { error } = await supabase.from("proposal_reviews").upsert(
-      {
-        proposal_id: data.proposalId,
-        overall_score: overallScore,
-        reviewer_scores: scores,
-        created_at: new Date().toISOString(),
-      },
-      { onConflict: "proposal_id" },
-    );
+      const { error } = await supabase.from("proposal_reviews").upsert(
+        {
+          proposal_id: data.proposalId,
+          overall_score: overallScore,
+          reviewer_scores: scores,
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: "proposal_id" },
+      );
 
-    if (error) throw new Error("Failed to store review: " + error.message);
+      if (error) throw new Error("Failed to store review: " + error.message);
 
-    return {
-      overallScore: Math.round(overallScore * 10) / 10,
-      consensusScore: overallScore,
-      scores,
-      allFindings: [],
-      topWeaknesses: [],
-      consensusStrengths: [],
-      recommendations: [],
-    };
-  } catch (e) {
-    throw new Error(e instanceof Error ? e.message : String(e));
-  }
-});
+      return {
+        overallScore: Math.round(overallScore * 10) / 10,
+        consensusScore: overallScore,
+        scores,
+        allFindings: [],
+        topWeaknesses: [],
+        consensusStrengths: [],
+        recommendations: [],
+      };
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : String(e));
+    }
+  });
 
 export const getReviewerArchetypes = createServerFn({ method: "GET" })
   .inputValidator(z.object({}))
   .handler(async () => {
-  try {
-    return REVIEWER_ARCHETYPES;
-  } catch (e) {
-    throw new Error(e instanceof Error ? e.message : String(e));
-  }
-});
+    try {
+      return REVIEWER_ARCHETYPES;
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : String(e));
+    }
+  });
 
 export const getProposalReviews = createServerFn({ method: "GET" })
-  .inputValidator(z.object({
-    proposalId: z.string().uuid(),
-  }))
+  .inputValidator(
+    z.object({
+      proposalId: z.string().uuid(),
+    }),
+  )
   .handler(async ({ data }) => {
-  try {
-    const supabase = await createSupabaseAdmin();
+    try {
+      const supabase = await createSupabaseAdmin();
 
-    const { data: reviews, error } = await supabase
-      .from("proposal_reviews")
-      .select("*")
-      .eq("proposal_id", data.proposalId)
-      .order("created_at", { ascending: false });
+      const { data: reviews, error } = await supabase
+        .from("proposal_reviews")
+        .select("*")
+        .eq("proposal_id", data.proposalId)
+        .order("created_at", { ascending: false });
 
-    if (error) throw new Error(`Failed to fetch reviews: ${error.message}`);
-    return reviews || [];
-  } catch (e) {
-    throw new Error(e instanceof Error ? e.message : String(e));
-  }
-});
+      if (error) throw new Error(`Failed to fetch reviews: ${error.message}`);
+      return reviews || [];
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : String(e));
+    }
+  });

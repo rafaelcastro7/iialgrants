@@ -48,116 +48,118 @@ const REQUIREMENT_TEMPLATES: Record<string, Array<{ category: string; requiremen
 };
 
 export const generateComplianceMatrix = createServerFn({ method: "POST" })
-  .inputValidator(z.object({
-    proposalId: z.string().uuid(),
-    funderType: z.string().default("general"),
-    sections: z.array(
-      z.object({
-        title: z.string(),
-        content: z.string(),
-        wordCount: z.number(),
-      }),
-    ),
-    attachments: z.array(z.string()).optional(),
-  }))
+  .inputValidator(
+    z.object({
+      proposalId: z.string().uuid(),
+      funderType: z.string().default("general"),
+      sections: z.array(
+        z.object({
+          title: z.string(),
+          content: z.string(),
+          wordCount: z.number(),
+        }),
+      ),
+      attachments: z.array(z.string()).optional(),
+    }),
+  )
   .handler(async ({ data }) => {
-  try {
-    const supabase = await createSupabaseAdmin();
+    try {
+      const supabase = await createSupabaseAdmin();
 
-    const template = REQUIREMENT_TEMPLATES[data.funderType] || REQUIREMENT_TEMPLATES.general;
-    const fullContent = data.sections
-      .map((s) => s.content)
-      .join(" ")
-      .toLowerCase();
+      const template = REQUIREMENT_TEMPLATES[data.funderType] || REQUIREMENT_TEMPLATES.general;
+      const fullContent = data.sections
+        .map((s) => s.content)
+        .join(" ")
+        .toLowerCase();
 
-    const checks = template.map((req, i) => {
-      let status: "met" | "partial" | "not_met" | "not_applicable" = "not_met";
-      let details = "";
+      const checks = template.map((req, i) => {
+        let status: "met" | "partial" | "not_met" | "not_applicable" = "not_met";
+        let details = "";
 
-      const relevantSection = data.sections.find(
-        (s) =>
-          s.title.toLowerCase().includes(req.requirement.toLowerCase().split(" ")[0] || "") ||
-          s.content.toLowerCase().includes(req.requirement.toLowerCase().split(" ")[0] || ""),
+        const relevantSection = data.sections.find(
+          (s) =>
+            s.title.toLowerCase().includes(req.requirement.toLowerCase().split(" ")[0] || "") ||
+            s.content.toLowerCase().includes(req.requirement.toLowerCase().split(" ")[0] || ""),
+        );
+
+        if (relevantSection) {
+          status = "met";
+          details = `Found in section: ${relevantSection.title}`;
+        } else if (fullContent.includes(req.requirement.toLowerCase().split(" ")[0] || "")) {
+          status = "partial";
+          details = "Referenced but not in a dedicated section";
+        } else {
+          details = "Not found in proposal content";
+        }
+
+        return {
+          id: `check-${i}`,
+          category: req.category,
+          requirement: req.requirement,
+          status,
+          details,
+          sectionRef: relevantSection?.title,
+        };
+      });
+
+      const mandatoryChecks = checks.filter((c) => c.category === "mandatory_sections");
+      const mandatoryMet = mandatoryChecks.filter((c) => c.status === "met").length;
+
+      const overallScore = Math.round(
+        (checks.filter((c) => c.status === "met").length / checks.length) * 100,
       );
 
-      if (relevantSection) {
-        status = "met";
-        details = `Found in section: ${relevantSection.title}`;
-      } else if (fullContent.includes(req.requirement.toLowerCase().split(" ")[0] || "")) {
-        status = "partial";
-        details = "Referenced but not in a dedicated section";
-      } else {
-        details = "Not found in proposal content";
-      }
-
-      return {
-        id: `check-${i}`,
-        category: req.category,
-        requirement: req.requirement,
-        status,
-        details,
-        sectionRef: relevantSection?.title,
-      };
-    });
-
-    const mandatoryChecks = checks.filter((c) => c.category === "mandatory_sections");
-    const mandatoryMet = mandatoryChecks.filter((c) => c.status === "met").length;
-
-    const overallScore = Math.round(
-      (checks.filter((c) => c.status === "met").length / checks.length) * 100,
-    );
-
-    const matrix = {
-      proposalId: data.proposalId,
-      overallScore,
-      checks,
-      mandatoryMet,
-      mandatoryTotal: mandatoryChecks.length,
-      policyAlignment: {
-        edi:
-          fullContent.includes("equity") ||
-          fullContent.includes("diversity") ||
-          fullContent.includes("inclusion"),
-        openAccess:
-          fullContent.includes("open access") || fullContent.includes("publicly available"),
-        dataManagement:
-          fullContent.includes("data management") || fullContent.includes("data plan"),
-        conflictOfInterest:
-          fullContent.includes("conflict of interest") || fullContent.includes("disclosure"),
-      },
-    };
-
-    const { error } = await supabase.from("compliance_matrices").upsert(
-      {
-        proposal_id: data.proposalId,
-        overall_score: overallScore,
-        mandatory_met: mandatoryMet,
-        mandatory_total: mandatoryChecks.length,
+      const matrix = {
+        proposalId: data.proposalId,
+        overallScore,
         checks,
-        policy_alignment: matrix.policyAlignment,
-        created_at: new Date().toISOString(),
-      },
-      { onConflict: "proposal_id" },
-    );
+        mandatoryMet,
+        mandatoryTotal: mandatoryChecks.length,
+        policyAlignment: {
+          edi:
+            fullContent.includes("equity") ||
+            fullContent.includes("diversity") ||
+            fullContent.includes("inclusion"),
+          openAccess:
+            fullContent.includes("open access") || fullContent.includes("publicly available"),
+          dataManagement:
+            fullContent.includes("data management") || fullContent.includes("data plan"),
+          conflictOfInterest:
+            fullContent.includes("conflict of interest") || fullContent.includes("disclosure"),
+        },
+      };
 
-    if (error) throw new Error("Failed to store matrix: " + error.message);
+      const { error } = await supabase.from("compliance_matrices").upsert(
+        {
+          proposal_id: data.proposalId,
+          overall_score: overallScore,
+          mandatory_met: mandatoryMet,
+          mandatory_total: mandatoryChecks.length,
+          checks,
+          policy_alignment: matrix.policyAlignment,
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: "proposal_id" },
+      );
 
-    return matrix;
-  } catch (e) {
-    throw new Error(e instanceof Error ? e.message : String(e));
-  }
-});
+      if (error) throw new Error("Failed to store matrix: " + error.message);
+
+      return matrix;
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : String(e));
+    }
+  });
 
 export const getRequirementTemplates = createServerFn({ method: "GET" })
   .inputValidator(z.object({}))
   .handler(async () => {
-  try {
-    return Object.keys(REQUIREMENT_TEMPLATES).map((key) => ({
-      id: key,
-      name: key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-      requirementCount: REQUIREMENT_TEMPLATES[key].length,
-    }));
-  } catch (e) {
-    throw new Error(e instanceof Error ? e.message : String(e));
-  }
-});
+    try {
+      return Object.keys(REQUIREMENT_TEMPLATES).map((key) => ({
+        id: key,
+        name: key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        requirementCount: REQUIREMENT_TEMPLATES[key].length,
+      }));
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : String(e));
+    }
+  });

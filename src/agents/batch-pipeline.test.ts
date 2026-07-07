@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { batchEnrichDiscovered, batchEvaluateAll, type BatchResult } from "@/agents/batch-pipeline.server";
+import {
+  batchEnrichDiscovered,
+  batchEvaluateAll,
+  type BatchResult,
+} from "@/agents/batch-pipeline.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Use the admin demo user ID
@@ -13,9 +17,13 @@ describe("batch pipeline", () => {
     const ok = results.filter((r) => r.enrich?.ok);
     const failed = results.filter((r) => !r.enrich?.ok);
     for (const r of failed) {
-      console.error(`\n  [FAIL] ${r.grantId.slice(0, 8)} "${r.title.slice(0, 50)}": ${r.enrich?.error || r.enrich?.reason}`);
+      console.error(
+        `\n  [FAIL] ${r.grantId.slice(0, 8)} "${r.title.slice(0, 50)}": ${r.enrich?.error || r.enrich?.reason}`,
+      );
     }
-    console.log(`\nSummary: ${ok.length} enriched, ${failed.length} failed out of ${results.length}`);
+    console.log(
+      `\nSummary: ${ok.length} enriched, ${failed.length} failed out of ${results.length}`,
+    );
   }, 3_600_000);
 
   it("evaluates all enriched grants", async () => {
@@ -24,20 +32,21 @@ describe("batch pipeline", () => {
     const ok = results.filter((r) => r.evaluate?.ok);
     const failed = results.filter((r) => !r.evaluate?.ok);
     for (const r of failed) {
-      console.error(`\n  [FAIL] ${r.grantId.slice(0, 8)} "${r.title.slice(0, 50)}": ${r.evaluate?.error}`);
+      console.error(
+        `\n  [FAIL] ${r.grantId.slice(0, 8)} "${r.title.slice(0, 50)}": ${r.evaluate?.error}`,
+      );
     }
     console.log(`\nSummary: ${ok.length} scored, ${failed.length} failed out of ${results.length}`);
   }, 600_000);
-
 });
 
 function printReport(phase: string, results: BatchResult[]) {
-  console.log(`\n${'='.repeat(60)}`);
+  console.log(`\n${"=".repeat(60)}`);
   console.log(`  ${phase} RESULTS — ${results.length} grants`);
-  console.log(`${'='.repeat(60)}`);
+  console.log(`${"=".repeat(60)}`);
 
   for (const r of results) {
-    const status = r.enrich?.ok ?? r.evaluate?.ok ? "✓" : "✗";
+    const status = (r.enrich?.ok ?? r.evaluate?.ok) ? "✓" : "✗";
     const detail = r.enrich
       ? `${r.enrich.ok ? "OK" : "FAIL"} ${r.enrich.filled?.join(", ") || ""}`
       : r.evaluate

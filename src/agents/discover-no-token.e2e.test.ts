@@ -182,7 +182,11 @@ describe("Discovery runs with zero external API keys (local-only)", () => {
     const llmCalls = calls.filter((c) => c.startsWith(OLLAMA_API_URL));
     expect(llmCalls.length).toBeGreaterThanOrEqual(1);
     const cloudCalls = calls.filter(
-      (c) => c.includes("groq") || c.includes("cerebras") || c.includes("gemini") || c.includes("lovable"),
+      (c) =>
+        c.includes("groq") ||
+        c.includes("cerebras") ||
+        c.includes("gemini") ||
+        c.includes("lovable"),
     );
     expect(cloudCalls).toHaveLength(0);
   });
@@ -203,7 +207,11 @@ describe("Discovery runs with zero external API keys (local-only)", () => {
 
     // No cloud LLM endpoints were called.
     const cloudCalls = calls.filter(
-      (c) => c.includes("groq") || c.includes("cerebras") || c.includes("gemini") || c.includes("lovable"),
+      (c) =>
+        c.includes("groq") ||
+        c.includes("cerebras") ||
+        c.includes("gemini") ||
+        c.includes("lovable"),
     );
     expect(cloudCalls).toHaveLength(0);
   });
