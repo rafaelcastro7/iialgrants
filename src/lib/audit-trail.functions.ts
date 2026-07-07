@@ -31,13 +31,9 @@ export const logAuditEvent = createServerFn({ method: "POST" })
       metadata: z.record(z.unknown()).optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
 
       const { data: event, error } = await supabase
         .from("audit_trail")
@@ -47,7 +43,7 @@ export const logAuditEvent = createServerFn({ method: "POST" })
           action: data.action,
           changes: (data.changes || []) as Json,
           metadata: (data.metadata || {}) as Json,
-          performed_by: user?.id || "system",
+          performed_by: context.userId,
         })
         .select()
         .single();
