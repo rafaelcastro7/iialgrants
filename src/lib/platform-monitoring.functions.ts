@@ -10,10 +10,14 @@ import { createSupabaseAdmin } from "./supabase-admin";
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertAdmin } from "@/lib/admin-guard";
 
 export const getRateLimitStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
     try {
       const supabase = await createSupabaseAdmin();
 
@@ -45,8 +49,10 @@ export const getRateLimitStatus = createServerFn({ method: "GET" })
   });
 
 export const getCacheStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
     try {
       let embeddingStats: {
         totalEntries: number;
@@ -71,8 +77,10 @@ export const getCacheStats = createServerFn({ method: "GET" })
   });
 
 export const getBackgroundJobsStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
     try {
       const supabase = await createSupabaseAdmin();
 
