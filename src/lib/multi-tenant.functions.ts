@@ -3,32 +3,28 @@
 /**
  * Multi-Tenant Middleware
  *
- * Provides org-scoped data access. Injects org_id from user's profile
- * into all queries. Ensures data isolation between organizations.
+ * Provides org-scoped data access. Resolves org_id from the authenticated
+ * user's profile. Ensures data isolation between organizations.
  */
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Get current user's org_id from profile
+ * Get current user's org_id from profile.
  */
 export const getCurrentOrgId = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
     try {
       const supabase = await createSupabaseAdmin();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return null;
-
       const { data: profile } = await supabase
         .from("profiles")
         .select("org_id")
-        .eq("id", user.id)
+        .eq("id", context.userId)
         .single();
 
       return profile?.org_id || null;
@@ -38,23 +34,18 @@ export const getCurrentOrgId = createServerFn({ method: "GET" })
   });
 
 /**
- * Get current user's organization details
+ * Get current user's organization details.
  */
 export const getCurrentOrg = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
     try {
       const supabase = await createSupabaseAdmin();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return null;
-
       const { data: profile } = await supabase
         .from("profiles")
         .select("org_id, organizations(id, name, slug)")
-        .eq("id", user.id)
+        .eq("id", context.userId)
         .single();
 
       if (!profile?.org_id) return null;
@@ -70,23 +61,18 @@ export const getCurrentOrg = createServerFn({ method: "GET" })
   });
 
 /**
- * Check if user is admin of their organization
+ * Check if the current user is an admin.
  */
 export const isOrgAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
     try {
       const supabase = await createSupabaseAdmin();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return false;
-
       const { data: role } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
+        .eq("user_id", context.userId)
         .single();
 
       return role?.role === "admin";

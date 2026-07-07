@@ -12,6 +12,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
 
 type FunderUpdate = Database["public"]["Tables"]["funders"]["Update"];
@@ -94,6 +95,7 @@ async function scrapeFunderWebsite(url: string) {
  * Main enrichment function
  */
 export const enrichFunder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       funderId: z.string().uuid(),
@@ -160,6 +162,7 @@ export const enrichFunder = createServerFn({ method: "POST" })
  * Batch enrich multiple funders
  */
 export const batchEnrichFunders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       funderIds: z.array(z.string().uuid()).max(50),

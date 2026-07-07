@@ -7,8 +7,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const getTasks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.string().optional(),
@@ -37,6 +39,7 @@ export const getTasks = createServerFn({ method: "GET" })
   });
 
 export const createTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.string().min(1),
@@ -48,13 +51,9 @@ export const createTask = createServerFn({ method: "POST" })
       priority: z.enum(["low", "medium", "high"]).default("medium"),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
 
       const { data: task, error } = await supabase
         .from("tasks")
@@ -66,7 +65,7 @@ export const createTask = createServerFn({ method: "POST" })
           assigned_to: data.assignedTo,
           due_date: data.dueDate,
           priority: data.priority,
-          created_by: user?.id,
+          created_by: context.userId,
           status: "pending",
         })
         .select()
@@ -80,6 +79,7 @@ export const createTask = createServerFn({ method: "POST" })
   });
 
 export const updateTaskStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       taskId: z.string().uuid(),
@@ -103,6 +103,7 @@ export const updateTaskStatus = createServerFn({ method: "POST" })
   });
 
 export const getComments = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.string(),
@@ -128,6 +129,7 @@ export const getComments = createServerFn({ method: "GET" })
   });
 
 export const addComment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.string().min(1),
@@ -135,13 +137,9 @@ export const addComment = createServerFn({ method: "POST" })
       content: z.string().min(1),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
 
       const { data: comment, error } = await supabase
         .from("comments")
@@ -149,7 +147,7 @@ export const addComment = createServerFn({ method: "POST" })
           entity_type: data.entityType,
           entity_id: data.entityId,
           content: data.content,
-          author_id: user?.id,
+          author_id: context.userId,
         })
         .select()
         .single();
