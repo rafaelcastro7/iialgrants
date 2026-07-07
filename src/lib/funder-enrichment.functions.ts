@@ -90,13 +90,12 @@ async function scrapeFunderWebsite(url: string) {
 /**
  * Main enrichment function
  */
-export const enrichFunder = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const enrichFunder = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     funderId: z.string().uuid(),
     website: z.string().url().optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -149,13 +148,12 @@ export const enrichFunder = createServerFn({
 /**
  * Batch enrich multiple funders
  */
-export const batchEnrichFunders = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const batchEnrichFunders = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     funderIds: z.array(z.string().uuid()).max(50),
     force: z.boolean().optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const results = [];
     for (const funderId of data.funderIds) {

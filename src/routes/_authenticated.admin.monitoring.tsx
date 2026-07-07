@@ -90,7 +90,7 @@ function MonitoringPage() {
                 </div>
                 <p className="mt-1 text-2xl font-semibold">{cache.embeddings.totalEntries}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {cache.embeddings.totalSizeKB} KB
+                  {cache.embeddings.validEntries} valid / {cache.embeddings.expiredEntries} expired
                 </p>
               </CardContent>
             </Card>
@@ -149,16 +149,16 @@ function MonitoringPage() {
                   <span className="text-sm font-medium">{cache.embeddings.totalEntries}</span>
                 </div>
                 <div className="flex items-center justify-between border-b pb-2">
-                  <span className="text-sm">Size</span>
-                  <span className="text-sm font-medium">{cache.embeddings.totalSizeKB} KB</span>
+                  <span className="text-sm">TTL</span>
+                  <span className="text-sm font-medium">{cache.embeddings.ttlMs} ms</span>
                 </div>
                 <div className="flex items-center justify-between border-b pb-2">
                   <span className="text-sm">Hit Rate</span>
                   <span className="text-sm font-medium">
-                    {cache.embeddings.hits + cache.embeddings.misses > 0
+                    {cache.embeddings.validEntries + cache.embeddings.expiredEntries > 0
                       ? Math.round(
-                          (cache.embeddings.hits /
-                            (cache.embeddings.hits + cache.embeddings.misses)) *
+                          (cache.embeddings.validEntries /
+                            (cache.embeddings.validEntries + cache.embeddings.expiredEntries)) *
                             100,
                         )
                       : 0}

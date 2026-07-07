@@ -47,9 +47,8 @@ const REQUIREMENT_TEMPLATES: Record<string, Array<{ category: string; requiremen
   ],
 };
 
-export const generateComplianceMatrix = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const generateComplianceMatrix = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     proposalId: z.string().uuid(),
     funderType: z.string().default("general"),
     sections: z.array(
@@ -60,8 +59,8 @@ export const generateComplianceMatrix = createServerFn({
       }),
     ),
     attachments: z.array(z.string()).optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -149,10 +148,9 @@ export const generateComplianceMatrix = createServerFn({
   }
 });
 
-export const getRequirementTemplates = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getRequirementTemplates = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     return Object.keys(REQUIREMENT_TEMPLATES).map((key) => ({
       id: key,

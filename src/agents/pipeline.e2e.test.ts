@@ -9,7 +9,7 @@
 //   • Shortlist → multi-grant briefing bumps status and writes grant_events
 //   • Deep-dive (scope=single) preserves status and cites verifiable evidence
 //
-// No network, no Lovable credits. Every external boundary is mocked.
+// No network. Every external boundary is mocked (local-only).
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {

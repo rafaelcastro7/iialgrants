@@ -319,7 +319,7 @@ export const testAgentPrompt = createServerFn({ method: "POST" })
         responseFormat: cfg.json_mode ? "json" : undefined,
         // Playground tests the EXACT Lovable-hosted model the admin picked,
         // so bypass the free cascade here. Production agents keep it on.
-        forceLovable: true,
+        // forceLovable: true,
         messages: [
           { role: "system", content: cfg.system_prompt },
           { role: "user", content: data.user_message },

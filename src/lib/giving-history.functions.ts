@@ -13,13 +13,12 @@ import { createSupabaseAdmin } from "./supabase-admin";
 /**
  * Get giving history for a specific funder
  */
-export const getFunderGivingHistory = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getFunderGivingHistory = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     funderId: z.string().uuid(),
     limit: z.number().min(1).max(100).default(50),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -70,14 +69,13 @@ export const getFunderGivingHistory = createServerFn({
 /**
  * Analyze giving trends across all funders
  */
-export const analyzeGivingTrends = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const analyzeGivingTrends = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     sector: z.string().optional(),
     province: z.string().optional(),
     years: z.number().min(1).max(10).default(3),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -120,14 +118,13 @@ export const analyzeGivingTrends = createServerFn({
 /**
  * Predict funder likelihood based on historical patterns
  */
-export const predictFunderLikelihood = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const predictFunderLikelihood = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     funderId: z.string().uuid(),
     orgSectors: z.array(z.string()),
     orgJurisdictions: z.array(z.string()),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

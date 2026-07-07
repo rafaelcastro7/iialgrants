@@ -15,9 +15,8 @@ import { z } from "zod";
 /**
  * Search competitive grants
  */
-export const searchCompetitiveGrants = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const searchCompetitiveGrants = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     query: z.string().min(1).max(200),
     province: z.string().optional(),
     program: z.string().optional(),
@@ -26,8 +25,8 @@ export const searchCompetitiveGrants = createServerFn({
     year: z.number().optional(),
     limit: z.number().min(1).max(100).default(20),
     offset: z.number().min(0).default(0),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -62,14 +61,13 @@ export const searchCompetitiveGrants = createServerFn({
 /**
  * Get top recipients by funding
  */
-export const getTopRecipients = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getTopRecipients = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     province: z.string().optional(),
     program: z.string().optional(),
     limit: z.number().min(1).max(50).default(20),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -121,10 +119,9 @@ export const getTopRecipients = createServerFn({
 /**
  * Get competitive landscape summary
  */
-export const getCompetitiveLandscape = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getCompetitiveLandscape = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -170,13 +167,12 @@ export const getCompetitiveLandscape = createServerFn({
 /**
  * Find similar recipients (competitors)
  */
-export const findCompetitors = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const findCompetitors = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     recipientName: z.string().min(1),
     limit: z.number().min(1).max(20).default(10),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

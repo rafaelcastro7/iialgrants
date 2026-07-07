@@ -52,13 +52,13 @@ function ComplianceRoute() {
         <CardContent className="text-sm space-y-2">
           <p>
             {fr
-              ? "Toutes les données client sont stockées au Canada (région ca-central) via Lovable Cloud. Aucun transfert transfrontalier n'est effectué pour les données opérationnelles principales."
-              : "All customer data is stored in Canada (ca-central region) via Lovable Cloud. No cross-border transfer is performed for primary operational data."}
+               ? "Toutes les données client sont stockées localement sur l'infrastructure du client (PostgreSQL locale). Aucun transfert transfrontalier."
+              : "All customer data is stored locally on self-hosted infrastructure (local PostgreSQL). No cross-border transfer occurs."}
           </p>
           <p>
             {fr
-              ? "Les appels au Lovable AI Gateway pour les modèles Gemini peuvent être routés via des points de présence approuvés ; aucune donnée n'est utilisée pour entraîner des modèles tiers."
-              : "Calls to the Lovable AI Gateway for Gemini models may route through approved points-of-presence; no data is used to train third-party models."}
+               ? "Tous les appels aux modèles IA sont traités localement via Ollama (localhost). Aucune donnée n'est envoyée à des API externes."
+              : "All AI model calls are processed locally via Ollama (localhost). No data is sent to external APIs."}
           </p>
         </CardContent>
       </Card>

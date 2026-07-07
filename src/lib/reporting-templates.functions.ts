@@ -61,10 +61,9 @@ const BUILTIN_TEMPLATES = [
   },
 ] as const;
 
-export const getReportingTemplates = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getReportingTemplates = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     return BUILTIN_TEMPLATES;
   } catch (e) {
@@ -72,10 +71,9 @@ export const getReportingTemplates = createServerFn({
   }
 });
 
-export const getReportingTemplate = createServerFn({
-  method: "GET",
-  validator: z.object({ templateId: z.string() }),
-}).handler(async ({ data }) => {
+export const getReportingTemplate = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ templateId: z.string() }))
+  .handler(async ({ data }) => {
   try {
     return BUILTIN_TEMPLATES.find((t) => t.id === data.templateId) || null;
   } catch (e) {
@@ -85,10 +83,9 @@ export const getReportingTemplate = createServerFn({
 
 // ─── Logic Model ──────────────────────────────────────────────
 
-export const getLogicModel = createServerFn({
-  method: "GET",
-  validator: z.object({ proposalId: z.string().uuid() }),
-}).handler(async ({ data }) => {
+export const getLogicModel = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ proposalId: z.string().uuid() }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -106,9 +103,8 @@ export const getLogicModel = createServerFn({
   }
 });
 
-export const upsertLogicModel = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const upsertLogicModel = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     proposalId: z.string().uuid(),
     inputs: z.array(z.string()).default([]),
     activities: z.array(z.string()).default([]),
@@ -116,8 +112,8 @@ export const upsertLogicModel = createServerFn({
     outcomes: z.array(z.string()).default([]),
     impact: z.array(z.string()).default([]),
     assumptions: z.array(z.string()).default([]),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

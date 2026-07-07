@@ -10,10 +10,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
-export const getImpactMetrics = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getImpactMetrics = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -48,10 +47,9 @@ export const getImpactMetrics = createServerFn({
   }
 });
 
-export const getOutcomeDetails = createServerFn({
-  method: "GET",
-  validator: z.object({ limit: z.number().min(1).max(100).default(20) }),
-}).handler(async ({ data }) => {
+export const getOutcomeDetails = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ limit: z.number().min(1).max(100).default(20) }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

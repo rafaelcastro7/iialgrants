@@ -14,8 +14,6 @@ const MAX_PAGES_PER_RUN = 15;
 const MAX_MARKDOWN_LEN = 22_000;
 const SCRAPE_CONCURRENCY = 3;
 const FALLBACK_MAX_LINKS = 12;
-// Groq free tier is 30 RPM — 2.2s spacing keeps us safely below the limit
-// when several pages are processed sequentially for the same funder.
 const FALLBACK_LLM_THROTTLE_MS = 2_200;
 
 // Hard title normalization for canonical dedup. Strips:
@@ -415,7 +413,6 @@ export async function discoverFunderImpl(
           return;
         }
         const llm = await callLlm({
-          model: "google/gemini-2.5-flash",
           agent: "discoverer",
           runId,
           temperature: 0.1,
@@ -513,7 +510,7 @@ export async function discoverFunderImpl(
       run_id: runId,
       agent: "discoverer",
       status: "succeeded",
-      model: "google/gemini-2.5-flash",
+      model: "phi4-mini:latest",
       latency_ms: Date.now() - t0,
       input_tokens: inputTokens || null,
       output_tokens: outputTokens || null,
@@ -675,7 +672,7 @@ export async function discoverFunderImpl(
       run_id: runId,
       agent: "discoverer",
       status: "degraded",
-      model: "google/gemini-2.5-flash",
+      model: "phi4-mini:latest",
       latency_ms: Date.now() - t0,
       error: "page_too_short",
       metadata: {
@@ -762,7 +759,6 @@ export async function discoverFunderImpl(
 
     try {
       const llmPage = await callLlm({
-        model: "google/gemini-2.5-flash",
         agent: "discoverer",
         runId,
         temperature: 0.1,
@@ -808,7 +804,6 @@ export async function discoverFunderImpl(
       if (!looksFrench(g.title) && !looksFrench(g.summary)) continue;
       try {
         const tr = await callLlm({
-          model: "google/gemini-2.5-flash",
           agent: "discoverer",
           runId,
           temperature: 0,
@@ -923,7 +918,7 @@ export async function discoverFunderImpl(
     run_id: runId,
     agent: "discoverer",
     status: "succeeded",
-    model: "google/gemini-2.5-flash",
+    model: "phi4-mini:latest",
     input_tokens: inputTokens || null,
     output_tokens: outputTokens || null,
     latency_ms: Date.now() - t0,

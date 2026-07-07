@@ -13,7 +13,6 @@ export type LlmCallOptions = {
   agent: "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";
   runId?: string;
   responseFormat?: "json";
-  forceLovable?: boolean;
 };
 
 export type LlmCallResult = {

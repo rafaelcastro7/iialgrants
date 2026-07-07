@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import cases from "./golden/evaluator.cases.json";
 import { EvaluatorOutput } from "@/agents/schemas";
 
-// LLM-judge harness (offline mode). When LOVABLE_API_KEY + RUN_LLM_EVALS=1
-// are set, runs the real evaluator and checks the score bands. Otherwise
-// validates that every golden case is well-formed (structure + expectations).
-const runLlm = process.env.RUN_LLM_EVALS === "1" && !!process.env.LOVABLE_API_KEY;
+// LLM-judge harness (offline mode). When RUN_LLM_EVALS=1 is set, runs
+// the real evaluator (local-only via Ollama) and checks score bands.
+// Otherwise validates that every golden case is well-formed.
+const runLlm = process.env.RUN_LLM_EVALS === "1";
 
 describe("evals/evaluator golden set", () => {
   it("loaded 5 cases", () => {
@@ -44,7 +44,6 @@ describe("evals/evaluator golden set", () => {
         expected: { fit_score_min?: number; fit_score_max?: number; eligibility_pass?: boolean };
       }>) {
         const r = await callLlm({
-          model: "google/gemini-2.5-flash",
           agent: "evaluator",
           temperature: 0,
           responseFormat: "json",

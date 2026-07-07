@@ -39,7 +39,7 @@ async function logRetry(opts: {
       run_id: crypto.randomUUID(),
       agent: "discoverer",
       status: opts.willRetry ? "degraded" : "failed",
-      model: "google/gemini-2.5-flash",
+      model: "phi4-mini:latest",
       error: opts.error,
       metadata: {
         job_id: opts.jobId,
@@ -81,7 +81,7 @@ export async function runDiscoveryJob(
     run_id: jobId,
     agent: "discoverer",
     status: "running",
-    model: "google/gemini-2.5-flash",
+    model: "phi4-mini:latest",
     metadata: {
       job_id: jobId,
       stage: "orchestrator_started",
@@ -102,7 +102,7 @@ export async function runDiscoveryJob(
       run_id: crypto.randomUUID(),
       agent: "discoverer",
       status: "failed",
-      model: "google/gemini-2.5-flash",
+      model: "phi4-mini:latest",
       error: error.message,
       metadata: { job_id: jobId, stage: "orchestrator_funders_query" },
     });
@@ -201,7 +201,7 @@ export async function runDiscoveryJob(
     run_id: jobId,
     agent: "discoverer",
     status: "succeeded",
-    model: "google/gemini-2.5-flash",
+    model: "phi4-mini:latest",
     metadata: {
       job_id: jobId,
       stage: "orchestrator_completed",

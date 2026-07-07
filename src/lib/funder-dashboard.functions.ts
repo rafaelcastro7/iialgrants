@@ -13,10 +13,9 @@ import { createSupabaseAdmin } from "./supabase-admin";
 /**
  * Get overall funder statistics
  */
-export const getFunderDashboardStats = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getFunderDashboardStats = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -91,12 +90,11 @@ export const getFunderDashboardStats = createServerFn({
 /**
  * Get recent funder activity
  */
-export const getRecentFunderActivity = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getRecentFunderActivity = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     limit: z.number().min(1).max(50).default(10),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -136,13 +134,12 @@ export const getRecentFunderActivity = createServerFn({
 /**
  * Get top funders by various metrics
  */
-export const getTopFunders = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getTopFunders = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     metric: z.enum(["revenue", "grants", "recent"]),
     limit: z.number().min(1).max(20).default(10),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

@@ -11,7 +11,7 @@ async function basicUserFlow(page: Page) {
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
 
-  await page.goto("/auth");
+  await page.goto("/auth", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
   await expect(page.getByText(/demo autologin/i)).toBeVisible();
 
@@ -19,8 +19,15 @@ async function basicUserFlow(page: Page) {
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: /dashboard/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /browse grants/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
   await expect(page.getByText(/next best step/i)).toBeVisible();
+
+  // Desktop-only: sidebar avatar triggers a dropdown with Sign out
+  const isDesktop = page.viewportSize()?.width && page.viewportSize()!.width >= 768;
+  if (isDesktop) {
+    await page.getByRole("button", { name: "IIAL User" }).click();
+    await expect(page.getByText(/sign out/i)).toBeVisible();
+    await page.keyboard.press("Escape");
+  }
 
   await page.getByRole("link", { name: /browse grants/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);

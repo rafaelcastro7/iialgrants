@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,7 @@ function ApprovalWorkflowsPage() {
   const [newName, setNewName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"grant" | "proposal">("grant");
 
-  const stepsQuery = useSuspenseQuery({
+  const stepsQuery = useQuery({
     queryKey: ["approval-steps", expandedWfId],
     queryFn: () => fetchSteps({ data: { workflowId: expandedWfId! } }),
     enabled: !!expandedWfId,
@@ -196,7 +196,7 @@ function ApprovalWorkflowsPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {workflows.map((wf) => {
+                  {workflows.map((wf: any) => {
                     const isExpanded = expandedWfId === wf.id;
                     const steps = isExpanded ? (stepsQuery.data ?? []) : [];
                     const instances: Array<{
@@ -386,7 +386,7 @@ function ApprovalWorkflowsPage() {
           <div className="space-y-4 pt-4">
             <p className="text-sm text-muted-foreground">
               Submit a {submitWf?.entityType} for approval via{" "}
-              <strong>{workflows.find((w) => w.id === submitWf?.id)?.name}</strong>.
+              <strong>{workflows.find((w: any) => w.id === submitWf?.id)?.name}</strong>.
             </p>
             <div className="space-y-2">
               <Label htmlFor="entity-id">Entity ID (UUID)</Label>

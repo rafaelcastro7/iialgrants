@@ -75,7 +75,7 @@ export function ActivityFeed() {
 
       for (const proposal of proposals || []) {
         const type =
-          proposal.status === "approved"
+          proposal.status === "accepted"
             ? "proposal_approved"
             : proposal.status === "rejected"
               ? "proposal_rejected"

@@ -4,8 +4,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 
 // Security headers applied to every response from the worker.
-// Closes pen-test Issue #1 (CSP + X-Frame-Options).
-// - CSP: 'self' for scripts/styles; allow Lovable AI Gateway + Supabase Data API for XHR/fetch.
+// - CSP: 'self' for scripts/styles; localhost for Supabase + Ollama.
 // - frame-ancestors 'none' is the modern X-Frame-Options=DENY.
 // - 'unsafe-inline' is permitted for styles only (Tailwind runtime), not scripts.
 const CSP = [
@@ -14,7 +13,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co https://*.lovable.app https://*.lovable.dev wss://*.supabase.co",
+  "connect-src 'self' http://localhost:* ws://localhost:*",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

@@ -1,64 +1,34 @@
-import {
-  type FieldPath,
-  type FieldValues,
-  useController,
-  type UseControllerProps,
-} from "react-hook-form";
+import { type ReactNode } from "react";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-interface FormFieldProps<T extends FieldValues> extends UseControllerProps<T> {
+interface FormFieldProps {
   label?: string;
-  placeholder?: string;
-  type?: "text" | "email" | "number" | "password" | "url";
+  error?: string;
   description?: string;
   className?: string;
-  inputClassName?: string;
-  as?: "input" | "textarea";
+  children?: ReactNode;
+  htmlFor?: string;
 }
 
-export function FormField<T extends FieldValues>({
+export function FormField({
   label,
-  placeholder,
-  type = "text",
+  error,
   description,
   className,
-  inputClassName,
-  as = "input",
-  ...props
-}: FormFieldProps<T>) {
-  const {
-    field,
-    fieldState: { error },
-  } = useController(props);
-
+  children,
+  htmlFor,
+}: FormFieldProps) {
   return (
     <div className={cn("space-y-1.5", className)}>
       {label && (
-        <Label htmlFor={props.name} className={error ? "text-destructive" : ""}>
+        <Label htmlFor={htmlFor} className={error ? "text-destructive" : ""}>
           {label}
         </Label>
       )}
-      {as === "textarea" ? (
-        <Textarea
-          {...field}
-          id={props.name}
-          placeholder={placeholder}
-          className={cn(error && "border-destructive", inputClassName)}
-        />
-      ) : (
-        <Input
-          {...field}
-          id={props.name}
-          type={type}
-          placeholder={placeholder}
-          className={cn(error && "border-destructive", inputClassName)}
-        />
-      )}
+      {children}
       {description && !error && <p className="text-xs text-muted-foreground">{description}</p>}
-      {error && <p className="text-xs text-destructive">{error.message}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

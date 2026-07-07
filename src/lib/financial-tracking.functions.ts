@@ -10,10 +10,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
-export const getFinancialSummary = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getFinancialSummary = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -49,12 +48,11 @@ export const getFinancialSummary = createServerFn({
   }
 });
 
-export const getBudgetTracking = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getBudgetTracking = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     outcomeId: z.string().uuid().optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

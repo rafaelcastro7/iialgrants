@@ -11,10 +11,9 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-export const getRecipientProfile = createServerFn({
-  method: "GET",
-  validator: z.object({ recipientName: z.string().min(1) }),
-}).handler(async ({ data }) => {
+export const getRecipientProfile = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ recipientName: z.string().min(1) }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -45,10 +44,9 @@ export const getRecipientProfile = createServerFn({
   }
 });
 
-export const getTopRecipients = createServerFn({
-  method: "GET",
-  validator: z.object({ limit: z.number().min(1).max(100).default(25) }),
-}).handler(async ({ data }) => {
+export const getTopRecipients = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ limit: z.number().min(1).max(100).default(25) }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

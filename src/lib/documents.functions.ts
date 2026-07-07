@@ -23,13 +23,12 @@ const ALLOWED_TYPES = [
   "image/jpeg",
 ];
 
-export const listDocuments = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const listDocuments = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     entityType: z.enum(["grant", "proposal", "submission", "funder"]),
     entityId: z.string().uuid(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -47,17 +46,16 @@ export const listDocuments = createServerFn({
   }
 });
 
-export const uploadDocument = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const uploadDocument = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     entityType: z.enum(["grant", "proposal", "submission", "funder"]),
     entityId: z.string().uuid(),
     fileName: z.string().min(1),
     fileSize: z.number().max(MAX_FILE_SIZE),
     mimeType: z.string(),
     base64Data: z.string(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -94,10 +92,9 @@ export const uploadDocument = createServerFn({
   }
 });
 
-export const deleteDocument = createServerFn({
-  method: "POST",
-  validator: z.object({ documentId: z.string().uuid() }),
-}).handler(async ({ data }) => {
+export const deleteDocument = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ documentId: z.string().uuid() }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -123,10 +120,9 @@ export const deleteDocument = createServerFn({
   }
 });
 
-export const getDocumentUrl = createServerFn({
-  method: "GET",
-  validator: z.object({ documentId: z.string().uuid() }),
-}).handler(async ({ data }) => {
+export const getDocumentUrl = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ documentId: z.string().uuid() }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

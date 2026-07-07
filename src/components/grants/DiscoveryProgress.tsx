@@ -63,8 +63,8 @@ function categorizeError(msg: string): { category: ErrorCategory; hint: string; 
   ) {
     return {
       category: "auth",
-      hint: "Auth failed. Check Firecrawl / Lovable AI credentials.",
-      hintFr: "Échec d'authentification. Vérifiez les clés Firecrawl / Lovable AI.",
+      hint: "Auth failed. Check Firecrawl / local Supabase credentials.",
+      hintFr: "Échec d'authentification. Vérifiez les clés Firecrawl / Supabase local.",
     };
   }
   if (m.includes("404") || m.includes("not found")) {

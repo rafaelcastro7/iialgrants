@@ -14,13 +14,12 @@ import { z } from "zod";
 /**
  * Get submission outcomes
  */
-export const getSubmissionOutcomes = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getSubmissionOutcomes = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     submissionId: z.string().uuid().optional(),
     limit: z.number().min(1).max(100).default(50),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -51,12 +50,11 @@ export const getSubmissionOutcomes = createServerFn({
 /**
  * Calculate win rate and ROI
  */
-export const getAwardMetrics = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getAwardMetrics = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     period: z.enum(["month", "quarter", "year", "all"]).default("year"),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -93,12 +91,11 @@ export const getAwardMetrics = createServerFn({
 /**
  * Track reporting deadlines
  */
-export const getReportingDeadlines = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getReportingDeadlines = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     submissionId: z.string().uuid().optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -147,10 +144,9 @@ export const getReportingDeadlines = createServerFn({
 /**
  * Generate outcome report
  */
-export const generateOutcomeReport = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const generateOutcomeReport = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const metrics = await getAwardMetrics({ data: { period: "all" } });
     const outcomes = await getSubmissionOutcomes({ data: { limit: 100 } });

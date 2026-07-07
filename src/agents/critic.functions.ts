@@ -34,7 +34,6 @@ export const runCritic = createServerFn({ method: "POST" })
     if (se) throw new Error(se.message);
 
     const llm = await callLlm({
-      model: "google/gemini-2.5-pro",
       agent: "critic",
       runId,
       temperature: 0.1,
@@ -56,7 +55,7 @@ export const runCritic = createServerFn({ method: "POST" })
         run_id: runId,
         agent: "critic",
         status: "failed",
-        model: "google/gemini-2.5-pro",
+        model: "dolphin3:latest",
         input_tokens: llm.inputTokens ?? 0,
         output_tokens: llm.outputTokens ?? 0,
         latency_ms: Date.now() - t0,
@@ -104,7 +103,7 @@ export const runCritic = createServerFn({ method: "POST" })
       run_id: runId,
       agent: "critic",
       status: "succeeded",
-      model: "google/gemini-2.5-pro",
+      model: "dolphin3:latest",
       input_tokens: llm.inputTokens,
       output_tokens: llm.outputTokens,
       latency_ms: Date.now() - t0,

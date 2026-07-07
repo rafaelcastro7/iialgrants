@@ -79,7 +79,6 @@ export const draftSection = createServerFn({ method: "POST" })
     const allowed = new Set(hits.map((h) => h.id));
 
     const llm = await callLlm({
-      model: "google/gemini-2.5-flash",
       agent: "writer",
       runId,
       temperature: 0.3,
@@ -129,7 +128,7 @@ export const draftSection = createServerFn({ method: "POST" })
         run_id: runId,
         agent: "writer",
         status: "failed",
-        model: "google/gemini-2.5-flash",
+        model: "qwen3:14b",
         input_tokens: llm.inputTokens ?? 0,
         output_tokens: llm.outputTokens ?? 0,
         latency_ms: Date.now() - t0,
@@ -149,7 +148,7 @@ export const draftSection = createServerFn({ method: "POST" })
         run_id: runId,
         agent: "writer",
         status: "failed",
-        model: "google/gemini-2.5-flash",
+        model: "qwen3:14b",
         input_tokens: llm.inputTokens,
         output_tokens: llm.outputTokens,
         latency_ms: Date.now() - t0,
@@ -197,7 +196,7 @@ export const draftSection = createServerFn({ method: "POST" })
       run_id: runId,
       agent: "writer",
       status: "succeeded",
-      model: "google/gemini-2.5-flash",
+      model: "qwen3:14b",
       input_tokens: llm.inputTokens,
       output_tokens: llm.outputTokens,
       latency_ms: Date.now() - t0,

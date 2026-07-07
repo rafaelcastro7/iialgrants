@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Building2,
@@ -13,14 +14,38 @@ import {
   ArrowLeft,
   Award,
   BarChart3,
+  Plus,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { supabase } from "@/integrations/supabase/client";
 import { AppTopBar } from "@/components/AppSidebar";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/funders/$funderId")({
   component: FunderProfilePage,
@@ -58,7 +83,7 @@ function FunderProfilePage() {
     queryKey: ["funder", funderId],
     queryFn: async () => {
       const { data } = await supabase.from("funders").select("*").eq("id", funderId).single();
-      return data;
+      return data as any;
     },
   });
 
@@ -70,7 +95,7 @@ function FunderProfilePage() {
         .select("id, title, amount_min, amount_max, deadline, status")
         .eq("funder_id", funderId)
         .order("deadline", { ascending: false });
-      return data || [];
+      return (data || []) as any;
     },
     enabled: !!funderId,
   });
@@ -83,9 +108,49 @@ function FunderProfilePage() {
         .select("total_giving, multi_year_count, avg_grant_size")
         .eq("id", funderId)
         .single();
-      return data;
+      return data as any;
     },
     enabled: !!funderId,
+  });
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [grantForm, setGrantForm] = useState({
+    title: "",
+    description: "",
+    amount_min: "",
+    amount_max: "",
+    deadline: "",
+    status: "open" as const,
+  });
+
+  const queryClient = useQueryClient();
+  const createGrant = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("grants").insert({
+        funder_id: funderId,
+        title: grantForm.title,
+        description: grantForm.description || null,
+        amount_min: grantForm.amount_min ? Number(grantForm.amount_min) : null,
+        amount_max: grantForm.amount_max ? Number(grantForm.amount_max) : null,
+        deadline: grantForm.deadline || null,
+        status: grantForm.status,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Grant created");
+      setCreateOpen(false);
+      setGrantForm({
+        title: "",
+        description: "",
+        amount_min: "",
+        amount_max: "",
+        deadline: "",
+        status: "open",
+      });
+      queryClient.invalidateQueries({ queryKey: ["funder-grants", funderId] });
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   if (isLoading) return <FunderProfileSkeleton />;
@@ -98,22 +163,112 @@ function FunderProfilePage() {
     );
   }
 
-  const activeGrants = grants?.filter((g) => g.status === "open") || [];
-  const closedGrants = grants?.filter((g) => g.status === "closed") || [];
+  const activeGrants = grants?.filter((g: any) => g.status === "open") || [];
+  const closedGrants = grants?.filter((g: any) => g.status === "closed") || [];
   const trend = getGivingTrend(grants || []);
   const totalGiving = givingHistory?.total_giving || 0;
   const avgGrant = givingHistory?.avg_grant_size || 0;
   const multiYear = givingHistory?.multi_year_count || 0;
 
+  const chartData = (grants || [])
+    .filter((g: any) => g.amount_max)
+    .slice(0, 10)
+    .map((g: any) => ({
+      name: g.title!.length > 20 ? g.title!.slice(0, 20) + "…" : g.title,
+      amount: g.amount_max!,
+      status: g.status,
+    }));
+
+  const statusData = [
+    { name: "Open", value: activeGrants.length, color: "#22c55e" },
+    { name: "Closed", value: closedGrants.length, color: "#6b7280" },
+  ];
+
   return (
     <PageTransition>
       <AppTopBar title={funder.name || "Funder Profile"} />
       <div className="space-y-6 p-4 md:p-6">
-        <Link to="/grants">
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ArrowLeft className="h-4 w-4" /> Back to Grants
-          </Button>
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/grants">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <ArrowLeft className="h-4 w-4" /> Back to Grants
+            </Button>
+          </Link>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="mr-1.5 h-4 w-4" /> Create Grant
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Grant for {funder.name}</DialogTitle>
+              </DialogHeader>
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!grantForm.title) {
+                    toast.error("Title is required");
+                    return;
+                  }
+                  createGrant.mutate();
+                }}
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="grant-title">Title</Label>
+                  <Input
+                    id="grant-title"
+                    value={grantForm.title}
+                    onChange={(e) => setGrantForm((f) => ({ ...f, title: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="grant-desc">Description</Label>
+                  <Textarea
+                    id="grant-desc"
+                    value={grantForm.description}
+                    onChange={(e) => setGrantForm((f) => ({ ...f, description: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="grant-min">Min Amount (CAD)</Label>
+                    <Input
+                      id="grant-min"
+                      type="number"
+                      min={0}
+                      value={grantForm.amount_min}
+                      onChange={(e) => setGrantForm((f) => ({ ...f, amount_min: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="grant-max">Max Amount (CAD)</Label>
+                    <Input
+                      id="grant-max"
+                      type="number"
+                      min={0}
+                      value={grantForm.amount_max}
+                      onChange={(e) => setGrantForm((f) => ({ ...f, amount_max: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="grant-deadline">Deadline</Label>
+                  <Input
+                    id="grant-deadline"
+                    type="date"
+                    value={grantForm.deadline}
+                    onChange={(e) => setGrantForm((f) => ({ ...f, deadline: e.target.value }))}
+                  />
+                </div>
+                <Button type="submit" disabled={createGrant.isPending} className="w-full">
+                  {createGrant.isPending ? "Creating..." : "Create Grant"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <Card>
@@ -207,7 +362,7 @@ function FunderProfilePage() {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {grants.map((grant) => (
+                  {grants.map((grant: any) => (
                     <Link
                       key={grant.id}
                       to="/grants/$id"
@@ -246,22 +401,59 @@ function FunderProfilePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-muted-foreground" />
-                Statistics
+                Grant Amounts
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Active Grants</span>
-                <span className="text-sm font-medium">{activeGrants.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Closed Grants</span>
-                <span className="text-sm font-medium">{closedGrants.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total Programs</span>
-                <span className="text-sm font-medium">{grants?.length || 0}</span>
-              </div>
+            <CardContent>
+              {chartData.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No grant amount data available.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartData}>
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                Status Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {statusData.every((d) => d.value === 0) ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">No grants yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={statusData.filter((d) => d.value > 0)}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={70}
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {statusData
+                        .filter((d) => d.value > 0)
+                        .map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </div>

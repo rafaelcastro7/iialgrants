@@ -1,19 +1,14 @@
-// E2E — Discovery runs WITHOUT a Lovable API key.
+// E2E — Discovery runs with ZERO external API keys.
 //
-// Contract: when the free-tier providers (Groq / Google AI Studio / Cerebras)
-// are configured, the discovery pipeline performs LLM extraction through the
-// free cascade and NEVER calls the Lovable AI Gateway, even when
-// LOVABLE_API_KEY is completely absent from the environment.
+// Contract: when all cloud providers are removed and DISABLE_CLOUD_LLM=1,
+// the discovery pipeline performs LLM extraction through Ollama localhost
+// and NEVER calls any cloud LLM API.
 //
-// This is the proof for the user-stated requirement: "Garantiza que haga la
-// búsqueda de grants sin tener que depender de tokens".
+// Proof: "100% local, 0 cloud tokens".
 
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-const CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions";
-const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OLLAMA_API_URL = "http://localhost:11434/v1/chat/completions";
 
 // In-memory supabase (mirrors discover-enrich.gate.test pattern).
 type Row = Record<string, unknown>;
@@ -27,6 +22,7 @@ function makeQuery(table: string) {
     state.filters.push([c, v]);
     return api;
   };
+  api.neq = () => api;
   const match = () => db[table].filter((r) => state.filters.every(([c, v]) => r[c] === v));
   api.maybeSingle = async () => ({ data: match()[0] ?? null, error: null });
   api.insert = async (p: Row | Row[]) => {
@@ -48,9 +44,6 @@ vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: { from: (t: string) => makeQuery(t) },
 }));
 
-// Firecrawl mapping returns one program URL. Scrape returns markdown only
-// (no JSON) → forces the LLM extraction path, which exercises callLlm →
-// free cascade.
 vi.mock("@/lib/firecrawl.server", () => ({
   firecrawlAvailable: () => true,
   firecrawlMap: async () => ({
@@ -87,8 +80,6 @@ vi.mock("@/lib/web-fetch.server", () => ({
 
 vi.mock("@/lib/otel", () => ({ newRunId: () => "run_no_token", logGenAI: vi.fn() }));
 
-// Block the agent-config lookup so resolveAgentConfig doesn't try to read
-// from supabase (we already mock that, but this keeps the test focused).
 vi.mock("@/lib/agent-config.server", () => ({
   resolveAgentConfig: async () => {
     throw new Error("config_unavailable_in_test");
@@ -106,7 +97,7 @@ const okBody = (text: string) =>
     { status: 200, headers: { "content-type": "application/json" } },
   );
 
-describe("Discovery runs with zero Lovable credits when free providers are configured", () => {
+describe("Discovery runs with zero external API keys (local-only)", () => {
   const originalEnv = { ...process.env };
   const calls: string[] = [];
 
@@ -116,24 +107,29 @@ describe("Discovery runs with zero Lovable credits when free providers are confi
     db.agent_runs.length = 0;
     calls.length = 0;
 
-    // Critical: NO LOVABLE_API_KEY. Free providers only.
+    // No external API keys at all — not even set.
     delete process.env.LOVABLE_API_KEY;
-    process.env.GROQ_API_KEY = "test-groq-key";
-    process.env.GOOGLE_AI_STUDIO_KEY = "test-gemini-key";
-    process.env.CEREBRAS_API_KEY = "test-cerebras-key";
+    delete process.env.GROQ_API_KEY;
+    delete process.env.GOOGLE_AI_STUDIO_KEY;
+    delete process.env.CEREBRAS_API_KEY;
+    process.env.OLLAMA_BASE_URL = "http://localhost:11434";
 
-    // Spy on fetch — only the free-provider URLs are allowed.
+    // Spy on fetch — allow web/http calls (scraping) but FAIL on cloud LLM APIs.
     (globalThis as unknown as { fetch: unknown }).fetch = vi.fn(
       async (input: RequestInfo | URL) => {
         const url = typeof input === "string" ? input : input.toString();
         calls.push(url);
-        if (url === LOVABLE_URL) {
-          throw new Error(
-            "REGRESSION: Lovable Gateway was called despite free providers being available",
-          );
+
+        // Cloud LLM endpoints must NEVER be called.
+        if (url.includes("groq.com") || url.includes("cerebras") || url.includes("lovable")) {
+          throw new Error(`REGRESSION: cloud LLM called: ${url}`);
         }
-        if (url === GROQ_URL) {
-          // Groq returns valid JSON discovery output → succeeds first try.
+        if (url.includes("googleapis") && url.includes("gemini")) {
+          throw new Error(`REGRESSION: cloud LLM called: ${url}`);
+        }
+
+        // Ollama LLM calls succeed.
+        if (url.startsWith(OLLAMA_API_URL)) {
           return okBody(
             JSON.stringify({
               grants: [
@@ -152,7 +148,9 @@ describe("Discovery runs with zero Lovable credits when free providers are confi
             }),
           );
         }
-        throw new Error(`unexpected fetch in no-token test: ${url}`);
+
+        // Web fetches (robots.txt, scraping) are allowed.
+        return new Response("ok", { status: 200 });
       },
     );
 
@@ -172,7 +170,7 @@ describe("Discovery runs with zero Lovable credits when free providers are confi
     vi.restoreAllMocks();
   });
 
-  it("inserts grants through Groq (free) without ever calling Lovable Gateway", async () => {
+  it("inserts grants through Ollama (local) without ever calling cloud LLMs", async () => {
     const { discoverFunderImpl } = await import("./discoverer.impl.server");
     const res = await discoverFunderImpl(FUNDER_ID);
 
@@ -180,17 +178,33 @@ describe("Discovery runs with zero Lovable credits when free providers are confi
     expect(res.inserted).toBeGreaterThanOrEqual(1);
     expect(db.grants.length).toBeGreaterThanOrEqual(1);
 
-    // Hard guarantee: no token spent on Lovable.
-    expect(calls).not.toContain(LOVABLE_URL);
-    // Confirm extraction actually went through a free provider.
-    expect(calls.some((u) => u === GROQ_URL || u === GEMINI_URL || u === CEREBRAS_URL)).toBe(true);
+    // Hard guarantee: no cloud LLM was called.
+    const llmCalls = calls.filter((c) => c.startsWith(OLLAMA_API_URL));
+    expect(llmCalls.length).toBeGreaterThanOrEqual(1);
+    const cloudCalls = calls.filter(
+      (c) => c.includes("groq") || c.includes("cerebras") || c.includes("gemini") || c.includes("lovable"),
+    );
+    expect(cloudCalls).toHaveLength(0);
   });
 
-  it("LOVABLE_API_KEY remains unset for the entire run", async () => {
+  it("no external API keys were set at any point", async () => {
     expect(process.env.LOVABLE_API_KEY).toBeUndefined();
+    expect(process.env.GROQ_API_KEY).toBeUndefined();
+    expect(process.env.GOOGLE_AI_STUDIO_KEY).toBeUndefined();
+    expect(process.env.CEREBRAS_API_KEY).toBeUndefined();
+
     const { discoverFunderImpl } = await import("./discoverer.impl.server");
     await discoverFunderImpl(FUNDER_ID);
+
     expect(process.env.LOVABLE_API_KEY).toBeUndefined();
-    expect(calls).not.toContain(LOVABLE_URL);
+    expect(process.env.GROQ_API_KEY).toBeUndefined();
+    expect(process.env.GOOGLE_AI_STUDIO_KEY).toBeUndefined();
+    expect(process.env.CEREBRAS_API_KEY).toBeUndefined();
+
+    // No cloud LLM endpoints were called.
+    const cloudCalls = calls.filter(
+      (c) => c.includes("groq") || c.includes("cerebras") || c.includes("gemini") || c.includes("lovable"),
+    );
+    expect(cloudCalls).toHaveLength(0);
   });
 });

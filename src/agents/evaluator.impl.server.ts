@@ -136,10 +136,9 @@ export async function evaluateGrantImpl(opts: {
     { axes: axisBreakdown },
   );
 
-  await trace("llm_call", "Calling Gemini 2.5 Flash for fit verdict", "start");
+  await trace("llm_call", "Calling local model for fit verdict", "start");
   const tLlm = Date.now();
   const llm = await callLlm({
-    model: "google/gemini-2.5-flash",
     agent: "evaluator",
     runId,
     temperature: 0.1,
