@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,7 @@ const statsQO = queryOptions({
 
 const topFundersQO = queryOptions({
   queryKey: ["funders", "top"],
-  queryFn: () => getTopFunders({ data: { metric: "revenue", limit: 10 } }),
+  queryFn: () => getTopFunders({ data: { metric: "recent", limit: 12 } }),
 });
 
 export const Route = createFileRoute("/_authenticated/funders/")({
@@ -43,7 +43,7 @@ function FundersPage() {
   const fetchTopFunders = useServerFn(getTopFunders);
   const { data: topFunders } = useSuspenseQuery({
     queryKey: ["funders", "top"],
-    queryFn: () => fetchTopFunders({ data: { metric: "revenue", limit: 10 } }),
+    queryFn: () => fetchTopFunders({ data: { metric: "recent", limit: 12 } }),
   });
 
   const queryClient = useQueryClient();
@@ -199,7 +199,13 @@ function FundersPage() {
                         className="flex items-center justify-between rounded-md border p-3"
                       >
                         <div className="flex-1">
-                          <p className="text-sm font-medium">{funder.name}</p>
+                          <Link
+                            to="/funders/$funderId"
+                            params={{ funderId: funder.id }}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            {funder.name}
+                          </Link>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             {funder.category && (
                               <Badge variant="secondary">{funder.category}</Badge>
@@ -256,10 +262,10 @@ function FundersPage() {
             </CardContent>
           </Card>
 
-          {/* Top Funders by Revenue */}
+          {/* Funders directory */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Top Funders by Revenue</CardTitle>
+              <CardTitle className="text-base">Funders directory</CardTitle>
             </CardHeader>
             <CardContent>
               {topFunders.length === 0 ? (
@@ -274,7 +280,13 @@ function FundersPage() {
                       className="flex items-center justify-between rounded-md border p-3"
                     >
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{funder.name}</p>
+                        <Link
+                          to="/funders/$funderId"
+                          params={{ funderId: funder.id }}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          {funder.name}
+                        </Link>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {funder.category && <Badge variant="secondary">{funder.category}</Badge>}
                           {funder.province && (

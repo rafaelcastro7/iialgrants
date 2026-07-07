@@ -322,6 +322,7 @@ function GrantDetailPage() {
           <GrantDetailExpress
             title={title}
             funderName={funderName}
+            funderId={g.funder?.id ?? null}
             status={g.status}
             summary={summary}
             amountMin={g.amount_cad_min}
