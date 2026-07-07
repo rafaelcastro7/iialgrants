@@ -1,7 +1,10 @@
 // Resolves per-agent runtime config (model, prompt, generation params).
 // Called by callLlm and by the agent console. 30s in-memory cache to avoid
 // hammering the DB on every LLM call.
+// LOCAL-ONLY: default model is phi4-mini (fast, small, fits VRAM).
+// Agent-specific optimized models are in model-router.server.ts.
 import { PROMPTS } from "@/agents/schemas";
+import { resolveModel, resolveFallback } from "@/agents/model-router.server";
 
 export type AgentName =
   | "discoverer"
@@ -59,8 +62,8 @@ export async function resolveAgentConfig(agent: AgentName): Promise<AgentConfig>
 
   const cfg: AgentConfig = {
     agent,
-    model: (row.model as string) ?? "google/gemini-2.5-flash",
-    fallback_model: (row.fallback_model as string) ?? null,
+    model: (row.model as string) ?? resolveModel(agent),
+    fallback_model: (row.fallback_model as string) ?? resolveFallback(agent),
     temperature: Number(row.temperature ?? 0.2),
     top_p: Number(row.top_p ?? 1.0),
     max_output_tokens: Number(row.max_output_tokens ?? 2048),
