@@ -10,7 +10,7 @@ import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 // Admin role is checked client-side here AND server-side in every admin server fn
 // (defense in depth). SSR-friendly: no blocking await in beforeLoad.
 export const Route = createFileRoute("/_authenticated/admin")({
-  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
+  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} reset={reset} />,
   component: AdminLayout,
 });
 

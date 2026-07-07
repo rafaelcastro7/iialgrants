@@ -10,9 +10,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
-export const logAuditEvent = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const logAuditEvent = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     entityType: z.string().min(1),
     entityId: z.string().uuid(),
     action: z.enum(["create", "update", "delete", "status_change", "approval", "submission"]),
@@ -26,8 +25,8 @@ export const logAuditEvent = createServerFn({
       )
       .optional(),
     metadata: z.record(z.unknown()).optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -55,14 +54,13 @@ export const logAuditEvent = createServerFn({
   }
 });
 
-export const getAuditHistory = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getAuditHistory = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     entityType: z.string().optional(),
     entityId: z.string().uuid().optional(),
     limit: z.number().min(1).max(500).default(50),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -79,13 +77,12 @@ export const getAuditHistory = createServerFn({
   }
 });
 
-export const getEntityAuditSummary = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getEntityAuditSummary = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     entityType: z.string(),
     entityId: z.string().uuid(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

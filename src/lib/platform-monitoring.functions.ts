@@ -11,10 +11,9 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-export const getRateLimitStatus = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getRateLimitStatus = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -45,15 +44,14 @@ export const getRateLimitStatus = createServerFn({
   }
 });
 
-export const getCacheStats = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getCacheStats = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
-    let embeddingStats = { hits: 0, misses: 0, totalEntries: 0, totalSizeKB: 0 };
+    let embeddingStats: { totalEntries: number; validEntries: number; expiredEntries: number; ttlMs: number } = { totalEntries: 0, validEntries: 0, expiredEntries: 0, ttlMs: 0 };
     try {
-      const { getCacheStats } = await import("@/lib/embeddings-cache.server");
-      embeddingStats = getCacheStats();
+      const { getCacheStats: getEmbeddingCacheStats } = await import("@/lib/embeddings-cache.server");
+      embeddingStats = getEmbeddingCacheStats();
     } catch {
       // Module not available
     }
@@ -66,10 +64,9 @@ export const getCacheStats = createServerFn({
   }
 });
 
-export const getBackgroundJobsStatus = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getBackgroundJobsStatus = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 

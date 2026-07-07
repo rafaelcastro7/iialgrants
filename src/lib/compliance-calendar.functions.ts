@@ -10,13 +10,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
-export const getComplianceCalendar = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getComplianceCalendar = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     startDate: z.string().optional(),
     endDate: z.string().optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -71,17 +70,16 @@ export const getComplianceCalendar = createServerFn({
   }
 });
 
-export const createComplianceItem = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const createComplianceItem = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     submissionId: z.string().uuid().optional(),
     type: z.enum(["progress_report", "financial_report", "final_report", "audit", "other"]),
     title: z.string().min(1),
     description: z.string().optional(),
     dueDate: z.string(),
     frequency: z.enum(["once", "quarterly", "semi_annual", "annual"]).default("once"),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -106,10 +104,9 @@ export const createComplianceItem = createServerFn({
   }
 });
 
-export const markComplianceComplete = createServerFn({
-  method: "POST",
-  validator: z.object({ itemId: z.string().uuid() }),
-}).handler(async ({ data }) => {
+export const markComplianceComplete = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ itemId: z.string().uuid() }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -125,10 +122,9 @@ export const markComplianceComplete = createServerFn({
   }
 });
 
-export const getComplianceStats = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getComplianceStats = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 

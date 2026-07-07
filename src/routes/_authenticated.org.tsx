@@ -70,7 +70,7 @@ function OrgPage() {
   const p = data.profile;
 
   const form = useForm<OrgFormValues>({
-    resolver: zodResolver(orgSchema),
+    resolver: zodResolver(orgSchema) as any,
     defaultValues: {
       org_name: p?.org_name ?? "",
       sectors: (p?.sectors ?? []).join(", "),

@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirect({ to: "/auth", search: { redirect: location.pathname } });
     }
   },
-  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
+  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} reset={reset} />,
   component: AuthenticatedLayout,
 });
 

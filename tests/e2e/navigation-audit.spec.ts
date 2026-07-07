@@ -64,12 +64,12 @@ test.describe("navigation audit - member", () => {
 
     await page.goto("/dashboard");
     await clickAndAssert(page, "/proposals", /\/proposals\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /proposals/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /proposals/i }).first()).toBeVisible();
     });
 
     await page.goto("/dashboard");
     await clickAndAssert(page, "/submissions", /\/submissions\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /submissions/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /submissions/i }).first()).toBeVisible();
     });
 
     await page.goto("/dashboard");
@@ -79,17 +79,17 @@ test.describe("navigation audit - member", () => {
 
     await page.goto("/dashboard");
     await clickAndAssert(page, "/fit-rules", /\/fit-rules\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /screening rules/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /screening rules/i }).first()).toBeVisible();
     });
 
     await page.goto("/dashboard");
     await clickAndAssert(page, "/privacy", /\/privacy\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /privacy/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /privacy/i }).first()).toBeVisible();
     });
 
     await page.goto("/dashboard");
     await clickAndAssert(page, "/compliance", /\/compliance\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /compliance/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /compliance/i }).first()).toBeVisible();
     });
 
     expect(errors).toEqual([]);

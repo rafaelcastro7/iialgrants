@@ -416,7 +416,12 @@ export async function enrichGrantImpl(
       "start",
       { missing: missingAfterMain },
     );
-    const deepPages = await gatherDeepMarkdown(g.url, scraped.markdown, { max: 3, title: g.title });
+    let deepPages: Awaited<ReturnType<typeof gatherDeepMarkdown>> = [];
+    try {
+      deepPages = await gatherDeepMarkdown(g.url, scraped.markdown, { max: 3, title: g.title });
+    } catch (e) {
+      await trace("deep_crawl", `Deep crawl failed: ${e instanceof Error ? e.message : String(e)}`, "warn");
+    }
     if (deepPages.length > 0) {
       pages.push(...deepPages);
       await trace("deep_crawl", `Fetched ${deepPages.length} official detail page(s)`, "done", {
@@ -521,14 +526,13 @@ export async function enrichGrantImpl(
 
     if (hasFree) {
       const tLlm = Date.now();
-      await trace("llm_cascade", "Calling free LLM cascade (Groq -> Gemini -> Cerebras)", "start");
+      await trace("llm_cascade", "Calling local LLM cascade (primary -> fallback)", "start");
       try {
         const llm = await callFreeLlm({
           agent: "enricher",
           runId,
           temperature: 0.1,
           responseFormat: "json",
-          allowLovableFallback: false,
           messages: [
             {
               role: "system",
@@ -634,7 +638,6 @@ export async function enrichGrantImpl(
           runId,
           temperature: 0.1,
           responseFormat: "json",
-          allowLovableFallback: true,
           messages: [
             {
               role: "system",
@@ -880,6 +883,15 @@ export async function enrichGrantImpl(
       `Requirements analysis failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`,
       "warn",
     );
+  }
+
+  // Fix: ensure amount_cad_min <= amount_cad_max before update
+  const finalMin = patch.amount_cad_min ?? g.amount_cad_min;
+  const finalMax = patch.amount_cad_max ?? g.amount_cad_max;
+  if (finalMin != null && finalMax != null && finalMin > finalMax) {
+    patch.amount_cad_min = null;
+    patch.amount_cad_max = null;
+    await trace("schema", `amount_cad_min (${finalMin}) > amount_cad_max (${finalMax}) — clearing both to avoid constraint violation`, "warn");
   }
 
   patch.status = "enriched";

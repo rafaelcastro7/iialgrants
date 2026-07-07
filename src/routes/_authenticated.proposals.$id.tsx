@@ -833,7 +833,7 @@ function ProposalDetailPage() {
         onOpenChange={setSubmitDialogOpen}
         onSubmit={(method, conf) => doSubmit(method, conf)}
         loading={pending === "submit"}
-        warningMessage={submitWarning}
+        warningMessage={submitWarning ?? undefined}
         onForceSubmit={
           submitWarning
             ? () => {

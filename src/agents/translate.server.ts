@@ -1,6 +1,6 @@
 // Shared French→English translation helper used by Discoverer and Enricher.
-// Uses the free LLM cascade (Groq → Gemini → Cerebras) so it costs zero
-// Lovable credits. Safe to call on any string; returns the original on failure.
+// Uses the local LLM cascade (primary -> fallback) so it costs zero.
+// Safe to call on any string; returns the original on failure.
 
 const FRENCH_HINT =
   /\b(le|la|les|des|du|aux?|pour|avec|sans|sur|programme|subvention|prêt|prets?|aide|crédit|entreprises?|québec|développement|investissement|formation|d['’]|l['’]|qu['’])\b/gi;
@@ -41,7 +41,6 @@ export async function translateStringsToEnglish(opts: {
       runId: opts.runId,
       temperature: 0,
       responseFormat: "json",
-      allowLovableFallback: false,
       messages: [
         {
           role: "system",
@@ -67,7 +66,6 @@ export async function translateStringsToEnglish(opts: {
   } catch {
     /* keep originals */
   }
-  await sleep(2_000);
   return out;
 }
 

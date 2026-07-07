@@ -40,7 +40,6 @@ export async function runFunderScout(): Promise<RawCandidate[]> {
     try {
       const resp = await callLlm({
         agent: "discoverer",
-        model: "google/gemini-2.5-flash",
         responseFormat: "json",
         maxOutputTokens: 600,
         messages: [

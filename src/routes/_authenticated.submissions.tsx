@@ -22,7 +22,7 @@ const opts = queryOptions({ queryKey: ["submissions"], queryFn: () => listSubmis
 export const Route = createFileRoute("/_authenticated/submissions")({
   head: () => ({ meta: [{ title: "Submissions — IIAL" }] }),
   loader: ({ context }) => context.queryClient.ensureQueryData(opts),
-  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
+  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} reset={reset} />,
   pendingComponent: SubmissionsSkeleton,
   component: SubmissionsPage,
 });

@@ -1,8 +1,7 @@
 /**
  * Multi-axis grant scoring with explainability.
  * Replaces opaque single-number score with 5 transparent dimensions + reasoning.
- *
- * Uses qwen3:14b for analysis + deepseek-r1 for reasoning/explanation.
+ * Uses model-router assignment (evaluator → dolphin3 for honest scoring).
  */
 
 import { z } from "zod";
@@ -94,7 +93,7 @@ Be specific. Cite grant details and org facts. Be honest about weaknesses.
 
   try {
     const result = await callFreeLlm({
-      agent: "enricher", // Reuse enricher agent category
+      agent: "evaluator",
       messages: [
         {
           role: "system",
@@ -107,8 +106,7 @@ Be specific. Cite grant details and org facts. Be honest about weaknesses.
         },
       ],
       responseFormat: "json",
-      temperature: 0.3, // Deterministic scoring
-      allowLovableFallback: false,
+      temperature: 0.3,
     });
 
     const json = JSON.parse(result.text);
@@ -160,16 +158,16 @@ Be specific. Cite grant details and org facts. Be honest about weaknesses.
 export function formatMultiAxisScore(score: MultiAxisScore): string {
   const lines: string[] = [];
 
-  lines.push(`📊 Grant Fit Analysis`);
+  lines.push(`Grant Fit Analysis`);
   lines.push(`Overall: ${score.overall}/100 (Confidence: ${(score.confidence * 100).toFixed(0)}%)`);
   lines.push("");
 
   for (const axis of score.scores) {
     const bar = "█".repeat(Math.floor(axis.score)) + "░".repeat(10 - Math.floor(axis.score));
     lines.push(`${axis.axis.toUpperCase()}: ${axis.score}/10 [${bar}]`);
-    lines.push(`  → ${axis.reasoning}`);
+    lines.push(`  -> ${axis.reasoning}`);
     if (axis.evidence) {
-      lines.push(`  📌 ${axis.evidence}`);
+      lines.push(`  * ${axis.evidence}`);
     }
   }
 

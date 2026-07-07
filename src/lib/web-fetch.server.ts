@@ -272,10 +272,21 @@ export async function jinaSearch(
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${JINA_SEARCH_BASE}${encodeURIComponent(query)}`, {
-      headers: { ...jinaHeaders(), "X-Respond-With": "no-content" },
-      signal: ctrl.signal,
+    const headers = { ...jinaHeaders(), "X-Respond-With": "no-content" };
+    let res = await fetch(`${JINA_SEARCH_BASE}${encodeURIComponent(query)}`, {
+      headers,
+      signal: AbortSignal.timeout(15_000),
     });
+    if (res.status === 401) {
+      const key = process.env.JINA_API_KEY?.trim();
+      if (key) {
+        const plain: Record<string, string> = { "X-Respond-With": "no-content" };
+        res = await fetch(`${JINA_SEARCH_BASE}${encodeURIComponent(query)}`, {
+          headers: plain,
+          signal: AbortSignal.timeout(15_000),
+        });
+      }
+    }
     if (!res.ok) return { ok: false, error: `jina_search_${res.status}` };
     const data = (await res.json()) as {
       data?: Array<{ url?: string; title?: string; description?: string; content?: string }>;

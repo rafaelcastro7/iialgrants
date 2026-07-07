@@ -14,10 +14,9 @@ import { z } from "zod";
 /**
  * Get quality metrics for all proposals
  */
-export const getProposalQualityMetrics = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getProposalQualityMetrics = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -77,12 +76,11 @@ export const getProposalQualityMetrics = createServerFn({
 /**
  * Get quality trends over time
  */
-export const getQualityTrends = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getQualityTrends = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     days: z.number().min(7).max(365).default(30),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

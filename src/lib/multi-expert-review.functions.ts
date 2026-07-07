@@ -51,9 +51,8 @@ const REVIEWER_ARCHETYPES = [
   },
 ] as const;
 
-export const scoreProposal = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const scoreProposal = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     proposalId: z.string().uuid(),
     sections: z.array(
       z.object({
@@ -85,8 +84,8 @@ export const scoreProposal = createServerFn({
         capabilities: z.array(z.string()),
       })
       .optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -134,10 +133,9 @@ export const scoreProposal = createServerFn({
   }
 });
 
-export const getReviewerArchetypes = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getReviewerArchetypes = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     return REVIEWER_ARCHETYPES;
   } catch (e) {
@@ -145,12 +143,11 @@ export const getReviewerArchetypes = createServerFn({
   }
 });
 
-export const getProposalReviews = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getProposalReviews = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     proposalId: z.string().uuid(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

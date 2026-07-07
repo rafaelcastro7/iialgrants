@@ -14,10 +14,9 @@ import { createSupabaseAdmin } from "./supabase-admin";
 /**
  * Get current user's org_id from profile
  */
-export const getCurrentOrgId = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getCurrentOrgId = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -41,10 +40,9 @@ export const getCurrentOrgId = createServerFn({
 /**
  * Get current user's organization details
  */
-export const getCurrentOrg = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getCurrentOrg = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -74,10 +72,9 @@ export const getCurrentOrg = createServerFn({
 /**
  * Check if user is admin of their organization
  */
-export const isOrgAdmin = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const isOrgAdmin = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 

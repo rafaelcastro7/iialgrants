@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,7 +36,7 @@ function RecipientProfilingPage() {
   });
 
   const fetchProfile = useServerFn(getRecipientProfile);
-  const { data: profile } = useSuspenseQuery({
+  const { data: profile } = useQuery({
     queryKey: ["competitive", "recipient-profile", selectedRecipient],
     queryFn: () => fetchProfile({ data: { recipientName: selectedRecipient! } }),
     enabled: !!selectedRecipient,
@@ -161,7 +161,7 @@ function RecipientProfilingPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {topRecipients.map((r, i) => (
+                    {topRecipients.map((r: any, i: number) => (
                       <tr
                         key={r.name}
                         className="cursor-pointer border-b last:border-0 hover:bg-muted/50"

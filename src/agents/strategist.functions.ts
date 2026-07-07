@@ -58,7 +58,6 @@ export const runStrategist = createServerFn({ method: "POST" })
     if (!tpl) throw new Error("template_not_found");
 
     const llm = await callLlm({
-      model: "google/gemini-2.5-flash",
       agent: "strategist",
       runId,
       temperature: 0.2,
@@ -84,7 +83,7 @@ export const runStrategist = createServerFn({ method: "POST" })
         run_id: runId,
         agent: "strategist",
         status: "failed",
-        model: "google/gemini-2.5-flash",
+        model: "qwen3:14b",
         input_tokens: llm.inputTokens ?? 0,
         output_tokens: llm.outputTokens ?? 0,
         latency_ms: Date.now() - t0,
@@ -143,7 +142,7 @@ export const runStrategist = createServerFn({ method: "POST" })
       run_id: runId,
       agent: "strategist",
       status: "succeeded",
-      model: "google/gemini-2.5-flash",
+      model: "qwen3:14b",
       input_tokens: llm.inputTokens,
       output_tokens: llm.outputTokens,
       latency_ms: Date.now() - t0,

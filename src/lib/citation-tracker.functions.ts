@@ -11,9 +11,8 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-export const extractCitations = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const extractCitations = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     proposalId: z.string().uuid(),
     sections: z.array(
       z.object({
@@ -22,8 +21,8 @@ export const extractCitations = createServerFn({
         content: z.string(),
       }),
     ),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -99,12 +98,11 @@ export const extractCitations = createServerFn({
   }
 });
 
-export const validateCitation = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const validateCitation = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     doi: z.string(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const res = await fetch(`https://api.crossref.org/works/${data.doi}`, {
       headers: { "User-Agent": "IIAL-GrantIntelligence/1.0" },
@@ -131,12 +129,11 @@ export const validateCitation = createServerFn({
   }
 });
 
-export const getCitationSummary = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getCitationSummary = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     proposalId: z.string().uuid(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

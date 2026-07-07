@@ -80,11 +80,11 @@ const STEP_INFO: Record<string, { title: string; desc: string }> = {
   },
   llm_providers: {
     title: "Provider check",
-    desc: "List the free providers (Groq, Gemini, Cerebras) and Firecrawl JSON extraction available right now.",
+    desc: "List available local models and Firecrawl JSON extraction.",
   },
   llm_cascade: {
     title: "Free LLM cascade",
-    desc: "Call free providers in order (Groq → Gemini → Cerebras). No Lovable credits are consumed.",
+    desc: "Call local models in order (primary → fallback).",
   },
   llm_validate: {
     title: "Validate LLM output",

@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_authenticated/proposals/")({
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(proposalsQueryOptions),
-  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} onRetry={reset} />,
+  errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} reset={reset} />,
   pendingComponent: ProposalsListSkeleton,
   component: ProposalsPage,
 });

@@ -10,12 +10,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
-export const getApprovalWorkflows = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getApprovalWorkflows = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     entityType: z.enum(["grant", "proposal"]).optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -34,10 +33,9 @@ export const getApprovalWorkflows = createServerFn({
   }
 });
 
-export const getApprovalSteps = createServerFn({
-  method: "GET",
-  validator: z.object({ workflowId: z.string().uuid() }),
-}).handler(async ({ data }) => {
+export const getApprovalSteps = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ workflowId: z.string().uuid() }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -54,9 +52,8 @@ export const getApprovalSteps = createServerFn({
   }
 });
 
-export const createApprovalWorkflow = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const createApprovalWorkflow = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     name: z.string().min(1),
     entityType: z.enum(["grant", "proposal"]),
     steps: z.array(
@@ -66,8 +63,8 @@ export const createApprovalWorkflow = createServerFn({
         stepOrder: z.number().min(1),
       }),
     ),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -96,14 +93,13 @@ export const createApprovalWorkflow = createServerFn({
   }
 });
 
-export const submitForApproval = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const submitForApproval = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     entityType: z.enum(["grant", "proposal"]),
     entityId: z.string().uuid(),
     workflowId: z.string().uuid(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -126,15 +122,14 @@ export const submitForApproval = createServerFn({
   }
 });
 
-export const approveStep = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const approveStep = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     instanceId: z.string().uuid(),
     stepId: z.string().uuid(),
     decision: z.enum(["approved", "rejected"]),
     comments: z.string().optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

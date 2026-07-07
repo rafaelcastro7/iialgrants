@@ -18,7 +18,6 @@ export type FreeLlmOptions = {
   responseFormat?: "json";
   runId?: string;
   preferred?: string[];
-  allowLovableFallback?: boolean;
 };
 
 export type FreeLlmResult = {
@@ -89,6 +88,7 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
   const errors: string[] = [];
 
   for (const model of modelChain) {
+    let lastErrMsg: string | undefined;
     for (let attempt = 1; attempt <= 2; attempt++) {
       const t0 = Date.now();
       let ok = false;
@@ -124,11 +124,13 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
         };
       }
       if (errMsg && /rate_limited/.test(errMsg)) {
+        lastErrMsg = errMsg;
         await new Promise((r) => setTimeout(r, 1_000));
         continue;
       }
+      if (errMsg) lastErrMsg = errMsg;
     }
-    errors.push(`${model}:${errors[errors.length - 1] ?? "failed"}`);
+    errors.push(`${model}:${lastErrMsg ?? "failed"}`);
   }
 
   throw new Error(`all_local_models_failed: ${errors.join(" | ")}`);

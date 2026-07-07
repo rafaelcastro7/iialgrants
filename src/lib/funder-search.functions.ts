@@ -13,9 +13,8 @@ import { createSupabaseAdmin } from "./supabase-admin";
 /**
  * Search funders using full-text search + trigram similarity
  */
-export const searchFunders = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const searchFunders = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     query: z.string().min(1).max(200),
     province: z.string().optional(),
     type: z.string().optional(),
@@ -24,8 +23,8 @@ export const searchFunders = createServerFn({
     maxRevenue: z.number().optional(),
     limit: z.number().min(1).max(100).default(20),
     offset: z.number().min(0).default(0),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -68,13 +67,12 @@ export const searchFunders = createServerFn({
 /**
  * Get funder suggestions for autocomplete
  */
-export const suggestFunders = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const suggestFunders = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     query: z.string().min(2).max(100),
     limit: z.number().min(1).max(20).default(10),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -93,10 +91,9 @@ export const suggestFunders = createServerFn({
 /**
  * Get funder statistics
  */
-export const getFunderStats = createServerFn({
-  method: "GET",
-  validator: z.object({}),
-}).handler(async () => {
+export const getFunderStats = createServerFn({ method: "GET" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
   try {
     const supabase = await createSupabaseAdmin();
 

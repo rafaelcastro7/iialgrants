@@ -13,12 +13,11 @@ import { createSupabaseAdmin } from "./supabase-admin";
 
 const SEVERITY_ORDER = { critical: 0, major: 1, minor: 2, suggestion: 3 } as const;
 
-export const getRevisionPlan = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getRevisionPlan = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     proposalId: z.string().uuid(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 

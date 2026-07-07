@@ -8,15 +8,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
-export const getTasks = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getTasks = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     entityType: z.string().optional(),
     entityId: z.string().uuid().optional(),
     assignedTo: z.string().uuid().optional(),
     status: z.enum(["pending", "in_progress", "completed"]).optional(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -35,9 +34,8 @@ export const getTasks = createServerFn({
   }
 });
 
-export const createTask = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const createTask = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     entityType: z.string().min(1),
     entityId: z.string().uuid(),
     title: z.string().min(1),
@@ -45,8 +43,8 @@ export const createTask = createServerFn({
     assignedTo: z.string().uuid().optional(),
     dueDate: z.string().optional(),
     priority: z.enum(["low", "medium", "high"]).default("medium"),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -77,13 +75,12 @@ export const createTask = createServerFn({
   }
 });
 
-export const updateTaskStatus = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const updateTaskStatus = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     taskId: z.string().uuid(),
     status: z.enum(["pending", "in_progress", "completed"]),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -99,13 +96,12 @@ export const updateTaskStatus = createServerFn({
   }
 });
 
-export const getComments = createServerFn({
-  method: "GET",
-  validator: z.object({
+export const getComments = createServerFn({ method: "GET" })
+  .inputValidator(z.object({
     entityType: z.string(),
     entityId: z.string().uuid(),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
@@ -123,14 +119,13 @@ export const getComments = createServerFn({
   }
 });
 
-export const addComment = createServerFn({
-  method: "POST",
-  validator: z.object({
+export const addComment = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
     entityType: z.string().min(1),
     entityId: z.string().uuid(),
     content: z.string().min(1),
-  }),
-}).handler(async ({ data }) => {
+  }))
+  .handler(async ({ data }) => {
   try {
     const supabase = await createSupabaseAdmin();
 
