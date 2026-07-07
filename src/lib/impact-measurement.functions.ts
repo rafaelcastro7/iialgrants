@@ -7,10 +7,12 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
 export const getImpactMetrics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {
@@ -48,6 +50,7 @@ export const getImpactMetrics = createServerFn({ method: "GET" })
   });
 
 export const getOutcomeDetails = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ limit: z.number().min(1).max(100).default(20) }))
   .handler(async ({ data }) => {
     try {

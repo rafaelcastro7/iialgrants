@@ -9,12 +9,14 @@ import { createSupabaseAdmin } from "./supabase-admin";
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 /**
  * Get quality metrics for all proposals
  */
 export const getProposalQualityMetrics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {
@@ -77,6 +79,7 @@ export const getProposalQualityMetrics = createServerFn({ method: "GET" })
  * Get quality trends over time
  */
 export const getQualityTrends = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       days: z.number().min(7).max(365).default(30),

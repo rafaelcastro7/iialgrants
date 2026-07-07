@@ -8,10 +8,12 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
 export const getRenewalCandidates = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {
@@ -82,6 +84,7 @@ export const getRenewalCandidates = createServerFn({ method: "GET" })
   });
 
 export const getRenewalStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {

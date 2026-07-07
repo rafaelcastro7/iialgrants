@@ -10,6 +10,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const REVIEWER_ARCHETYPES = [
@@ -52,6 +53,7 @@ const REVIEWER_ARCHETYPES = [
 ] as const;
 
 export const scoreProposal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       proposalId: z.string().uuid(),
@@ -136,6 +138,7 @@ export const scoreProposal = createServerFn({ method: "POST" })
   });
 
 export const getReviewerArchetypes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {
@@ -146,6 +149,7 @@ export const getReviewerArchetypes = createServerFn({ method: "GET" })
   });
 
 export const getProposalReviews = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       proposalId: z.string().uuid(),

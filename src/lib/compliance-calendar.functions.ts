@@ -7,10 +7,12 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 
 export const getComplianceCalendar = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       startDate: z.string().optional(),
@@ -73,6 +75,7 @@ export const getComplianceCalendar = createServerFn({ method: "GET" })
   });
 
 export const createComplianceItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       submissionId: z.string().uuid().optional(),
@@ -109,6 +112,7 @@ export const createComplianceItem = createServerFn({ method: "POST" })
   });
 
 export const markComplianceComplete = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ itemId: z.string().uuid() }))
   .handler(async ({ data }) => {
     try {
@@ -127,6 +131,7 @@ export const markComplianceComplete = createServerFn({ method: "POST" })
   });
 
 export const getComplianceStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {

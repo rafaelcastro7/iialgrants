@@ -7,11 +7,13 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 import type { Json } from "@/integrations/supabase/types";
 
 export const logAuditEvent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.string().min(1),
@@ -58,6 +60,7 @@ export const logAuditEvent = createServerFn({ method: "POST" })
   });
 
 export const getAuditHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.string().optional(),
@@ -86,6 +89,7 @@ export const getAuditHistory = createServerFn({ method: "GET" })
   });
 
 export const getEntityAuditSummary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.string(),

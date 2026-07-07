@@ -9,12 +9,14 @@ import { createSupabaseAdmin } from "./supabase-admin";
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 /**
  * Get submission outcomes
  */
 export const getSubmissionOutcomes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       submissionId: z.string().uuid().optional(),
@@ -53,6 +55,7 @@ export const getSubmissionOutcomes = createServerFn({ method: "GET" })
  * Calculate win rate and ROI
  */
 export const getAwardMetrics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       period: z.enum(["month", "quarter", "year", "all"]).default("year"),
@@ -96,6 +99,7 @@ export const getAwardMetrics = createServerFn({ method: "GET" })
  * Track reporting deadlines
  */
 export const getReportingDeadlines = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       submissionId: z.string().uuid().optional(),
@@ -151,6 +155,7 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
  * Generate outcome report
  */
 export const generateOutcomeReport = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
   .handler(async () => {
     try {
