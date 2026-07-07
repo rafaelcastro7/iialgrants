@@ -11,6 +11,34 @@
 
 # IialGrants — AI-native Grant Intelligence for Canada
 
+> **100% local. 0 cloud tokens. Best-in-class patterns.**
+> Supabase local + Ollama local + PostgreSQL local + RAG local. Self-hosted, sovereign, auditable.
+
+## Local-First Architecture (Manifesto)
+
+IialGrants runs entirely on local infrastructure — no cloud API calls, no external LLM providers, no data leaving the machine. This is not a limitation; it is the **architectural superpower**.
+
+### Best-in-Class Patterns We Adopt
+
+| Pattern | Source | How We Use It |
+|---------|--------|---------------|
+| **Model Router** | Azure AI Gateway, Anthropic routing | Per-agent model assignment via `model-router.server.ts` — hardware-aware, fallback chain, DB-configurable |
+| **Agent Specialization** | Anthropic Agent Research (2025), Multi-agent best practices | 6 dedicated agents, each with purpose-optimized model (phi4-mini for throughput, dolphin3 for honest scoring, qwen3:14b for deep reasoning) |
+| **Hybrid Scoring** | Deterministic rules + LLM evaluation | `fit-rules.server.ts` with `F1–F5` SOP filters weighted alongside LLM scores — prevents score inflation, ensures auditability |
+| **Local AI Gateway** | Ollama ecosystem + custom circuit breaker | Auto-retry, per-agent fallback models, AbortSignal timeout, all traffic stays on `localhost:11434` |
+| **pgvector RAG** | Best-in-class vector search on PostgreSQL | `nomic-embed-text` (274MB) for embeddings, cosine similarity search, same DB as transactional data |
+| **Self-Hosted Supabase** | Production-grade local PostgreSQL | `supabase start` gives you Auth, RLS, realtime, pgvector in one command — zero cloud dependencies |
+| **Hardware-Aware Scheduling** | Cloud cost optimization patterns | GTX 1070 8GB VRAM VRAM budget: phi4-mini (2.5GB) for high-throughput, dolphin3 (4.9GB) for 2 agents, qwen3:14b (9.3GB CPU-offload) for only the 2 that need deep reasoning |
+
+### Why Local-First Wins
+
+- **$0 inference cost** — no per-token pricing, no API keys, no rate limits
+- **Data sovereignty** — PIPEDA, Law 25, AIDA compliant by default
+- **Offline operation** — no internet required after initial `ollama pull`
+- **Deterministic reproducibility** — same model, same seed, same output every time
+- **Uncensored evaluation** — dolphin3 gives honest scoring without politeness bias
+- **No vendor lock-in** — swap models, upgrade hardware, change providers freely
+
 ## Project Overview
 
 IIAL (Institute for Innovation in Applied Learning) grant discovery and proposal generation platform. Bilingual (EN/FR) AI agents discover Canadian grants, evaluate organizational fit via deterministic rules + LLM scoring, and generate proposal drafts with citation tracking.
@@ -19,9 +47,10 @@ IIAL (Institute for Innovation in Applied Learning) grant discovery and proposal
 
 - **Frontend**: React 19 + TanStack Start (file-based SSR) + Tailwind v4 + shadcn/ui (new-york style)
 - **Backend**: TanStack Server Functions (`createServerFn`) + Supabase (PostgreSQL + Auth + RLS)
-- **AI Gateway**: Lovable AI Gateway with free-tier cascade (Groq → Google AI Studio → Cerebras → Ollama fallback)
-- **Default LLM**: `google/gemini-2.5-flash` (configurable per agent)
-- **Local AI**: Ollama (`qwen3:14b`, `nomic-embed-text`) — zero-cost alternative
+- **AI Gateway**: LOCAL-ONLY — all cloud dependencies removed. Hardware-aware model router
+- **Model Router**: `src/agents/model-router.server.ts` — per-agent optimal model assignment
+- **Default LLM**: `phi4-mini:latest` (fast, 2.5GB, fits VRAM) — configurable per agent via DB
+- **Local AI**: Ollama (phi4-mini, dolphin3, qwen3:14b, nomic-embed-text) — zero-cost, zero-cloud-tokens
 - **Validation**: Zod schemas for all inputs/outputs
 - **Build**: Vite 8 + Lovable TanStack config plugin
 - **Testing**: Vitest (unit + jsdom) — **232 tests passing**
@@ -30,17 +59,18 @@ IIAL (Institute for Innovation in Applied Learning) grant discovery and proposal
 
 ## 6-Agent Pipeline
 
-| Agent | Role | Schema |
-|-------|------|--------|
-| **Discoverer** | Scrape funder pages, extract grant programs | `DiscoveredGrant`, `DiscovererOutput` |
-| **Enricher** | Fill missing fields (amounts, deadlines, eligibility) | `EnricherInput`, `EnricherOutput` |
-| **Evaluator** | Score grant-org fit (deterministic rules + LLM) | `EvaluatorOutput` |
-| **Strategist** | Plan proposal sections and angles | `StrategistOutput` |
-| **Writer** | Draft proposal sections with citations | `WriterOutput` |
-| **Critic** | Review draft quality, score + findings | `CriticOutput` |
+| Agent | Role | Schema | Local Model |
+|-------|------|--------|-------------|
+| **Discoverer** | Scrape funder pages, extract grant programs | `DiscoveredGrant`, `DiscovererOutput` | `phi4-mini` (fast extraction) |
+| **Enricher** | Fill missing fields (amounts, deadlines, eligibility) | `EnricherInput`, `EnricherOutput` | `phi4-mini` (batch JSON) |
+| **Evaluator** | Score grant-org fit (deterministic rules + LLM) | `EvaluatorOutput` | `dolphin3` (uncensored scoring) |
+| **Strategist** | Plan proposal sections and angles | `StrategistOutput` | `qwen3:14b` (best reasoning) |
+| **Writer** | Draft proposal sections with citations | `WriterOutput` | `qwen3:14b` (best prose) |
+| **Critic** | Review draft quality, score + findings | `CriticOutput` | `dolphin3` (unfiltered review) |
 
 Schemas and prompts: `src/agents/schemas.ts`
 Agent configs (DB-driven): `src/lib/agent-config.server.ts`
+Model router: `src/agents/model-router.server.ts`
 LLM client: `src/agents/llm.server.ts`
 
 ## Deterministic Fit Rules
@@ -191,13 +221,18 @@ Tasks: `tasks`, `comments`
 Logic Model: `logic_models`
 Multi-tenant: `organizations` + `org_id` on core tables
 
-## Environment
+## Environment (Local-Only)
 
-- `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` — Supabase connection
-- `VITE_SUPABASE_*` — Client-side Supabase keys
-- `LOVABLE_API_KEY` — Lovable AI Gateway (for production LLM calls)
-- Free-tier providers (Groq, Google AI Studio, Cerebras) used when available
-- Local AI: Ollama on `:11434` (qwen3:14b, nomic-embed-text)
+| Variable | Purpose |
+|----------|---------|
+| `SUPABASE_URL`, `SUPABASE_*` | Local Supabase (`localhost:15435`) |
+| `OLLAMA_BASE_URL` | Local Ollama (`localhost:11434`) |
+| `OLLAMA_MODEL` | Default model (`phi4-mini:latest`) |
+| `OLLAMA_TIMEOUT_MS` | 3 min timeout for cold starts |
+| `DISABLE_CLOUD_LLM=1` | Hard flag: no cloud LLMs ever |
+| `JINA_API_KEY` | Web fetch (Jina Reader) — only external call |
+
+No cloud LLM keys configured. No Lovable AI Gateway. No Groq, Google AI Studio, Cerebras. All inference runs on Ollama localhost.
 
 ## Scripts
 
