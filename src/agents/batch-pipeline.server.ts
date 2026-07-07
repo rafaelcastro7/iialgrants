@@ -11,7 +11,10 @@ export type BatchResult = {
   improvements: string[];
 };
 
-export async function batchEnrichDiscovered(adminUserId: string, limit = 49): Promise<BatchResult[]> {
+export async function batchEnrichDiscovered(
+  adminUserId: string,
+  limit = 49,
+): Promise<BatchResult[]> {
   const { data: grants } = await supabaseAdmin
     .from("grants")
     .select("id, title, status, enrich_attempts, enrich_last_error")
@@ -36,7 +39,9 @@ export async function batchEnrichDiscovered(adminUserId: string, limit = 49): Pr
       } else if (r.skipped) {
         result.improvements.push(`Skipped: ${r.reason}`);
       } else {
-        console.log(`  [OK]   ${grant.id.slice(0, 8)} enriched: ${(r.filled ?? []).join(", ") || "nothing new"}`);
+        console.log(
+          `  [OK]   ${grant.id.slice(0, 8)} enriched: ${(r.filled ?? []).join(", ") || "nothing new"}`,
+        );
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -128,6 +133,8 @@ function analyzeError(msg: string, result: BatchResult) {
     result.improvements.push("SYSTEM: auth failure — check Supabase service role key");
   }
   if (msg.includes("ollama") || msg.includes("localhost")) {
-    result.improvements.push("SYSTEM: Ollama unavailable — ensure ollama is running on localhost:11434");
+    result.improvements.push(
+      "SYSTEM: Ollama unavailable — ensure ollama is running on localhost:11434",
+    );
   }
 }

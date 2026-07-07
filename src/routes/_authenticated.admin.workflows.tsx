@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, useQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
+import {
+  useSuspenseQuery,
+  useQuery,
+  useMutation,
+  useQueryClient,
+  queryOptions,
+} from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Database } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -196,181 +203,185 @@ function ApprovalWorkflowsPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {workflows.map((wf: any) => {
-                    const isExpanded = expandedWfId === wf.id;
-                    const steps = isExpanded ? (stepsQuery.data ?? []) : [];
-                    const instances: Array<{
-                      id: string;
-                      status: string;
-                      current_step: number;
-                      entity_id: string;
-                      entity_type: string;
-                    }> = (wf as Record<string, unknown>).instances
-                      ? ((wf as Record<string, unknown>).instances as Array<{
-                          id: string;
-                          status: string;
-                          current_step: number;
-                          entity_id: string;
-                          entity_type: string;
-                        }>)
-                      : [];
+                  {workflows.map(
+                    (wf: Database["public"]["Tables"]["approval_workflows"]["Row"]) => {
+                      const isExpanded = expandedWfId === wf.id;
+                      const steps = isExpanded ? (stepsQuery.data ?? []) : [];
+                      const instances: Array<{
+                        id: string;
+                        status: string;
+                        current_step: number;
+                        entity_id: string;
+                        entity_type: string;
+                      }> = (wf as Record<string, unknown>).instances
+                        ? ((wf as Record<string, unknown>).instances as Array<{
+                            id: string;
+                            status: string;
+                            current_step: number;
+                            entity_id: string;
+                            entity_type: string;
+                          }>)
+                        : [];
 
-                    return (
-                      <div key={wf.id} className="rounded-md border">
-                        <div
-                          className="flex cursor-pointer items-center justify-between p-4 hover:bg-muted/50"
-                          onClick={() => setExpandedWfId(isExpanded ? null : wf.id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            {isExpanded ? (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            )}
-                            <GitBranch className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{wf.name}</span>
-                            <Badge variant="secondary">{wf.entity_type}</Badge>
+                      return (
+                        <div key={wf.id} className="rounded-md border">
+                          <div
+                            className="flex cursor-pointer items-center justify-between p-4 hover:bg-muted/50"
+                            onClick={() => setExpandedWfId(isExpanded ? null : wf.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <GitBranch className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{wf.name}</span>
+                              <Badge variant="secondary">{wf.entity_type}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={wf.is_active ? "default" : "outline"}>
+                                {wf.is_active ? "Active" : "Inactive"}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSubmitWf({ id: wf.id, entityType: wf.entity_type });
+                                  setSubmitDialogOpen(true);
+                                }}
+                              >
+                                Submit for Approval
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={wf.is_active ? "default" : "outline"}>
-                              {wf.is_active ? "Active" : "Inactive"}
-                            </Badge>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSubmitWf({ id: wf.id, entityType: wf.entity_type });
-                                setSubmitDialogOpen(true);
-                              }}
-                            >
-                              Submit for Approval
-                            </Button>
-                          </div>
-                        </div>
 
-                        {isExpanded && (
-                          <div className="border-t px-4 py-3">
-                            <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-                              Steps
-                            </h4>
-                            {steps.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">No steps configured.</p>
-                            ) : (
-                              <div className="space-y-2">
-                                {steps.map((step) => (
-                                  <div
-                                    key={step.id}
-                                    className="flex items-center justify-between rounded bg-muted/50 px-3 py-2 text-sm"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono text-xs text-muted-foreground">
-                                        #{step.step_order}
-                                      </span>
-                                      <span>{step.name}</span>
-                                      <Badge variant="outline" className="text-xs">
-                                        {step.approver_role}
-                                      </Badge>
-                                      <Badge
-                                        variant={
-                                          step.status === "approved"
-                                            ? "default"
-                                            : step.status === "rejected"
-                                              ? "destructive"
-                                              : "secondary"
-                                        }
-                                      >
-                                        {step.status}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {instances.length > 0 && (
-                              <>
-                                <h4 className="mb-2 mt-4 text-xs font-semibold uppercase text-muted-foreground">
-                                  Active Instances
-                                </h4>
+                          {isExpanded && (
+                            <div className="border-t px-4 py-3">
+                              <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                                Steps
+                              </h4>
+                              {steps.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                  No steps configured.
+                                </p>
+                              ) : (
                                 <div className="space-y-2">
-                                  {instances.map((inst) => (
+                                  {steps.map((step) => (
                                     <div
-                                      key={inst.id}
-                                      className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                                      key={step.id}
+                                      className="flex items-center justify-between rounded bg-muted/50 px-3 py-2 text-sm"
                                     >
                                       <div className="flex items-center gap-2">
-                                        <Clock className="h-3 w-3 text-muted-foreground" />
-                                        <span className="font-mono text-xs">
-                                          {inst.entity_type}:{inst.entity_id.slice(0, 8)}…
+                                        <span className="font-mono text-xs text-muted-foreground">
+                                          #{step.step_order}
                                         </span>
+                                        <span>{step.name}</span>
+                                        <Badge variant="outline" className="text-xs">
+                                          {step.approver_role}
+                                        </Badge>
                                         <Badge
                                           variant={
-                                            inst.status === "approved"
+                                            step.status === "approved"
                                               ? "default"
-                                              : inst.status === "rejected"
+                                              : step.status === "rejected"
                                                 ? "destructive"
                                                 : "secondary"
                                           }
                                         >
-                                          {inst.status}
+                                          {step.status}
                                         </Badge>
-                                        {inst.status === "pending" && (
-                                          <span className="text-xs text-muted-foreground">
-                                            step {inst.current_step}
-                                          </span>
-                                        )}
                                       </div>
-                                      {inst.status === "pending" && (
-                                        <div className="flex gap-1">
-                                          {steps
-                                            .filter((s) => s.step_order === inst.current_step)
-                                            .map((activeStep) => (
-                                              <div key={activeStep.id} className="flex gap-1">
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="h-7 px-2 text-green-600 hover:bg-green-50 hover:text-green-700"
-                                                  onClick={() =>
-                                                    approveMutation.mutate({
-                                                      instanceId: inst.id,
-                                                      stepId: activeStep.id,
-                                                      decision: "approved",
-                                                    })
-                                                  }
-                                                >
-                                                  <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                  Approve
-                                                </Button>
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="h-7 px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                                  onClick={() =>
-                                                    approveMutation.mutate({
-                                                      instanceId: inst.id,
-                                                      stepId: activeStep.id,
-                                                      decision: "rejected",
-                                                    })
-                                                  }
-                                                >
-                                                  <XCircle className="mr-1 h-3 w-3" />
-                                                  Reject
-                                                </Button>
-                                              </div>
-                                            ))}
-                                        </div>
-                                      )}
                                     </div>
                                   ))}
                                 </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                              )}
+
+                              {instances.length > 0 && (
+                                <>
+                                  <h4 className="mb-2 mt-4 text-xs font-semibold uppercase text-muted-foreground">
+                                    Active Instances
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {instances.map((inst) => (
+                                      <div
+                                        key={inst.id}
+                                        className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <Clock className="h-3 w-3 text-muted-foreground" />
+                                          <span className="font-mono text-xs">
+                                            {inst.entity_type}:{inst.entity_id.slice(0, 8)}…
+                                          </span>
+                                          <Badge
+                                            variant={
+                                              inst.status === "approved"
+                                                ? "default"
+                                                : inst.status === "rejected"
+                                                  ? "destructive"
+                                                  : "secondary"
+                                            }
+                                          >
+                                            {inst.status}
+                                          </Badge>
+                                          {inst.status === "pending" && (
+                                            <span className="text-xs text-muted-foreground">
+                                              step {inst.current_step}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {inst.status === "pending" && (
+                                          <div className="flex gap-1">
+                                            {steps
+                                              .filter((s) => s.step_order === inst.current_step)
+                                              .map((activeStep) => (
+                                                <div key={activeStep.id} className="flex gap-1">
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 px-2 text-green-600 hover:bg-green-50 hover:text-green-700"
+                                                    onClick={() =>
+                                                      approveMutation.mutate({
+                                                        instanceId: inst.id,
+                                                        stepId: activeStep.id,
+                                                        decision: "approved",
+                                                      })
+                                                    }
+                                                  >
+                                                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                                                    Approve
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                    onClick={() =>
+                                                      approveMutation.mutate({
+                                                        instanceId: inst.id,
+                                                        stepId: activeStep.id,
+                                                        decision: "rejected",
+                                                      })
+                                                    }
+                                                  >
+                                                    <XCircle className="mr-1 h-3 w-3" />
+                                                    Reject
+                                                  </Button>
+                                                </div>
+                                              ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    },
+                  )}
                 </div>
               )}
             </CardContent>
@@ -386,7 +397,15 @@ function ApprovalWorkflowsPage() {
           <div className="space-y-4 pt-4">
             <p className="text-sm text-muted-foreground">
               Submit a {submitWf?.entityType} for approval via{" "}
-              <strong>{workflows.find((w: any) => w.id === submitWf?.id)?.name}</strong>.
+              <strong>
+                {
+                  workflows.find(
+                    (w: Database["public"]["Tables"]["approval_workflows"]["Row"]) =>
+                      w.id === submitWf?.id,
+                  )?.name
+                }
+              </strong>
+              .
             </p>
             <div className="space-y-2">
               <Label htmlFor="entity-id">Entity ID (UUID)</Label>

@@ -87,9 +87,11 @@ function AuditTrailPage() {
                               </Badge>
                               <span className="text-sm font-medium">{event.entity_type}</span>
                             </div>
-                            {event.changes && event.changes.length > 0 && (
+                            {Array.isArray(event.changes) && event.changes.length > 0 && (
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {event.changes.map((c: { field: string }) => c.field).join(", ")}
+                                {(event.changes as Array<{ field: string }>)
+                                  .map((c) => c.field)
+                                  .join(", ")}
                               </p>
                             )}
                           </div>

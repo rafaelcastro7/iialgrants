@@ -24,7 +24,7 @@ const topFundersQO = queryOptions({
   queryFn: () => getTopFunders({ data: { metric: "revenue", limit: 10 } }),
 });
 
-export const Route = createFileRoute("/_authenticated/funders")({
+export const Route = createFileRoute("/_authenticated/funders/")({
   head: () => ({ meta: [{ title: "Funders — IIAL" }] }),
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(statsQO);
@@ -52,7 +52,7 @@ function FundersPage() {
     {
       id: string;
       name: string;
-      type: string | null;
+      category: string | null;
       province: string | null;
       total_revenue: number | null;
       website: string | null;
@@ -201,7 +201,9 @@ function FundersPage() {
                         <div className="flex-1">
                           <p className="text-sm font-medium">{funder.name}</p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {funder.type && <Badge variant="secondary">{funder.type}</Badge>}
+                            {funder.category && (
+                              <Badge variant="secondary">{funder.category}</Badge>
+                            )}
                             {funder.province && (
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
@@ -274,7 +276,7 @@ function FundersPage() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{funder.name}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {funder.type && <Badge variant="secondary">{funder.type}</Badge>}
+                          {funder.category && <Badge variant="secondary">{funder.category}</Badge>}
                           {funder.province && (
                             <span className="flex items-center gap-1">
                               <MapPin className="h-3 w-3" />

@@ -45,9 +45,9 @@ function ProgramAnalysisPage() {
       years: new Set(),
     };
     existing.count++;
-    existing.totalAmount += g.amount || 0;
+    existing.totalAmount += g.agreement_value || 0;
     if (g.recipient_name) existing.recipients.add(g.recipient_name);
-    if (g.fiscal_year) existing.years.add(g.fiscal_year);
+    if (g.data_year) existing.years.add(g.data_year);
     programs.set(name, existing);
   }
 
@@ -64,7 +64,7 @@ function ProgramAnalysisPage() {
     .sort((a, b) => b.totalAmount - a.totalAmount);
 
   const totalGrants = allGrants.length;
-  const totalFunding = allGrants.reduce((s, g) => s + (g.amount || 0), 0);
+  const totalFunding = allGrants.reduce((s, g) => s + (g.agreement_value || 0), 0);
 
   return (
     <PageTransition>

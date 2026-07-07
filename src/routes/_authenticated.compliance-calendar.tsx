@@ -175,7 +175,16 @@ function ComplianceCalendarPage() {
   } as const;
 
   function exportICS() {
-    const ics = generateICal(items);
+    const ics = generateICal(
+      items
+        .filter((i) => i.due_date && i.title)
+        .map((i) => ({
+          title: i.title as string,
+          due_date: i.due_date as string,
+          type: i.type ?? "",
+          description: i.description ?? undefined,
+        })),
+    );
     const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -467,7 +476,9 @@ function ComplianceCalendarPage() {
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <Badge className={`text-[10px] ${urgencyColor[item.urgency as keyof typeof urgencyColor]}`}>
+                          <Badge
+                            className={`text-[10px] ${urgencyColor[item.urgency as keyof typeof urgencyColor]}`}
+                          >
                             {item.urgency}
                           </Badge>
                           <span className="text-sm font-medium">{item.title}</span>

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { queryOptions, useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -70,7 +70,7 @@ function OrgPage() {
   const p = data.profile;
 
   const form = useForm<OrgFormValues>({
-    resolver: zodResolver(orgSchema) as any,
+    resolver: zodResolver(orgSchema) as unknown as UseFormProps<OrgFormValues>["resolver"],
     defaultValues: {
       org_name: p?.org_name ?? "",
       sectors: (p?.sectors ?? []).join(", "),

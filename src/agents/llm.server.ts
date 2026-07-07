@@ -30,7 +30,8 @@ const LOCAL_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 0) || 180_000;
 
 function toLocalModel(model: string | null | undefined): string {
   if (!model) return DEFAULT_LOCAL_MODEL;
-  const looksCloud = model.includes("/") || /^(gpt|o1|o3|claude|gemini|command|mistral-large)/i.test(model);
+  const looksCloud =
+    model.includes("/") || /^(gpt|o1|o3|claude|gemini|command|mistral-large)/i.test(model);
   return looksCloud ? DEFAULT_LOCAL_MODEL : model;
 }
 
@@ -68,9 +69,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   let text = "";
 
   // Resolve model: explicit > agent-optimized > env default
-  const agentModel = opts.model
-    ? toLocalModel(opts.model)
-    : resolveModel(opts.agent);
+  const agentModel = opts.model ? toLocalModel(opts.model) : resolveModel(opts.agent);
   const fallback = resolveFallback(opts.agent);
 
   let usedModel = agentModel;
@@ -94,23 +93,41 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   const fallbackModel = fallback ? toLocalModel(fallback) : null;
 
   try {
-    let res = await doOllamaCall(usedModel, opts.messages, resolvedTemp, resolvedMax, resolvedJson,
-      AbortSignal.timeout(LOCAL_TIMEOUT_MS));
+    let res = await doOllamaCall(
+      usedModel,
+      opts.messages,
+      resolvedTemp,
+      resolvedMax,
+      resolvedJson,
+      AbortSignal.timeout(LOCAL_TIMEOUT_MS),
+    );
 
     let attempt = 0;
     const maxRetries = 2;
     while (!res.ok && (res.status === 429 || res.status >= 500) && attempt < maxRetries) {
       attempt++;
       await new Promise((r) => setTimeout(r, 250 * Math.pow(2, attempt)));
-      res = await doOllamaCall(usedModel, opts.messages, resolvedTemp, resolvedMax, resolvedJson,
-        AbortSignal.timeout(LOCAL_TIMEOUT_MS));
+      res = await doOllamaCall(
+        usedModel,
+        opts.messages,
+        resolvedTemp,
+        resolvedMax,
+        resolvedJson,
+        AbortSignal.timeout(LOCAL_TIMEOUT_MS),
+      );
     }
 
     // Fallback to secondary model if primary fails
     if (!res.ok && fallbackModel && fallbackModel !== usedModel) {
       usedModel = fallbackModel;
-      res = await doOllamaCall(fallbackModel, opts.messages, resolvedTemp, resolvedMax, resolvedJson,
-        AbortSignal.timeout(LOCAL_TIMEOUT_MS));
+      res = await doOllamaCall(
+        fallbackModel,
+        opts.messages,
+        resolvedTemp,
+        resolvedMax,
+        resolvedJson,
+        AbortSignal.timeout(LOCAL_TIMEOUT_MS),
+      );
     }
 
     if (!res.ok) throw new Error(`ollama_error_${res.status}: ${await res.text()}`);

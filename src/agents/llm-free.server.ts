@@ -93,7 +93,9 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       const t0 = Date.now();
       let ok = false;
       let errMsg: string | undefined;
-      let result: { text: string; inputTokens?: number; outputTokens?: number; model: string } | undefined;
+      let result:
+        | { text: string; inputTokens?: number; outputTokens?: number; model: string }
+        | undefined;
       try {
         result = await callOpenAICompat(`${OLLAMA_URL}/v1/chat/completions`, model, opts);
         ok = true;

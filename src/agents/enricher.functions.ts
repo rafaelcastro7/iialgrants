@@ -420,7 +420,11 @@ export async function enrichGrantImpl(
     try {
       deepPages = await gatherDeepMarkdown(g.url, scraped.markdown, { max: 3, title: g.title });
     } catch (e) {
-      await trace("deep_crawl", `Deep crawl failed: ${e instanceof Error ? e.message : String(e)}`, "warn");
+      await trace(
+        "deep_crawl",
+        `Deep crawl failed: ${e instanceof Error ? e.message : String(e)}`,
+        "warn",
+      );
     }
     if (deepPages.length > 0) {
       pages.push(...deepPages);
@@ -891,7 +895,11 @@ export async function enrichGrantImpl(
   if (finalMin != null && finalMax != null && finalMin > finalMax) {
     patch.amount_cad_min = null;
     patch.amount_cad_max = null;
-    await trace("schema", `amount_cad_min (${finalMin}) > amount_cad_max (${finalMax}) — clearing both to avoid constraint violation`, "warn");
+    await trace(
+      "schema",
+      `amount_cad_min (${finalMin}) > amount_cad_max (${finalMax}) — clearing both to avoid constraint violation`,
+      "warn",
+    );
   }
 
   patch.status = "enriched";

@@ -23,7 +23,7 @@ const topRecipientsQO = queryOptions({
   queryFn: () => getTopRecipients({ data: { limit: 10 } }),
 });
 
-export const Route = createFileRoute("/_authenticated/competitive")({
+export const Route = createFileRoute("/_authenticated/competitive/")({
   head: () => ({ meta: [{ title: "Competitive Intel — IIAL" }] }),
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(landscapeQO);

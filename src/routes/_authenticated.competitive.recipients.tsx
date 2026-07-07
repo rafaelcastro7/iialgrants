@@ -130,8 +130,8 @@ function RecipientProfilingPage() {
                         {profile.recentGrants.map((g, i) => (
                           <tr key={i} className="border-b last:border-0">
                             <td className="py-2">{g.program_name ?? "—"}</td>
-                            <td className="py-2">${g.amount?.toLocaleString() ?? "—"}</td>
-                            <td className="py-2">{g.fiscal_year ?? "—"}</td>
+                            <td className="py-2">${g.agreement_value?.toLocaleString() ?? "—"}</td>
+                            <td className="py-2">{g.data_year ?? "—"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -161,21 +161,23 @@ function RecipientProfilingPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {topRecipients.map((r: any, i: number) => (
-                      <tr
-                        key={r.name}
-                        className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
-                        onClick={() => {
-                          setSearchTerm(r.name);
-                          setSelectedRecipient(r.name);
-                        }}
-                      >
-                        <td className="py-2 text-muted-foreground">{i + 1}</td>
-                        <td className="py-2 font-medium">{r.name}</td>
-                        <td className="py-2 text-right">{r.count}</td>
-                        <td className="py-2 text-right">${r.totalAmount.toLocaleString()}</td>
-                      </tr>
-                    ))}
+                    {topRecipients.map(
+                      (r: { name: string; count: number; totalAmount: number }, i: number) => (
+                        <tr
+                          key={r.name}
+                          className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
+                          onClick={() => {
+                            setSearchTerm(r.name);
+                            setSelectedRecipient(r.name);
+                          }}
+                        >
+                          <td className="py-2 text-muted-foreground">{i + 1}</td>
+                          <td className="py-2 font-medium">{r.name}</td>
+                          <td className="py-2 text-right">{r.count}</td>
+                          <td className="py-2 text-right">${r.totalAmount.toLocaleString()}</td>
+                        </tr>
+                      ),
+                    )}
                   </tbody>
                 </table>
               </div>
