@@ -10,6 +10,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { MAX_ENRICH_ATTEMPTS } from "@/agents/pipeline-stages.shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ type Requirement = { category: string; requirement: string; isCritical: boolean 
 export function GrantDetailExpress({
   title,
   funderName,
+  funderId,
   status,
   summary,
   amountMin,
@@ -39,6 +41,7 @@ export function GrantDetailExpress({
 }: {
   title: string;
   funderName: string;
+  funderId?: string | null;
   status: string;
   summary: string | null;
   amountMin: number | null;
@@ -102,7 +105,17 @@ export function GrantDetailExpress({
     <div className="space-y-4 max-w-2xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold leading-tight">{title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{funderName}</p>
+        {funderId ? (
+          <Link
+            to="/funders/$funderId"
+            params={{ funderId }}
+            className="mt-1 inline-block text-sm text-primary hover:underline"
+          >
+            {funderName}
+          </Link>
+        ) : (
+          <p className="mt-1 text-sm text-muted-foreground">{funderName}</p>
+        )}
       </div>
 
       {status === "discovered" && (enrichAttempts ?? 0) >= MAX_ENRICH_ATTEMPTS && (
