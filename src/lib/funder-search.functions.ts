@@ -9,6 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { sanitizePgrstTerm } from "./search-sanitize";
 
 /**
  * Search funders using full-text search + trigram similarity
@@ -29,15 +30,14 @@ export const searchFunders = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const term = sanitizePgrstTerm(data.query);
 
       let query = supabase
         .from("funders")
         .select(
           `id, name, designation, category, province, city, charity_status, total_revenue, website`,
         )
-        .or(
-          `name.ilike.%${data.query}%,legal_name.ilike.%${data.query}%,city.ilike.%${data.query}%`,
-        );
+        .or(`name.ilike.%${term}%,legal_name.ilike.%${term}%,city.ilike.%${term}%`);
 
       if (data.province) query = query.eq("province", data.province);
       if (data.type) query = query.eq("category", data.type);

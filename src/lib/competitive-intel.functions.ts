@@ -11,6 +11,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { sanitizePgrstTerm } from "./search-sanitize";
 
 /**
  * Search competitive grants
@@ -34,11 +35,12 @@ export const searchCompetitiveGrants = createServerFn({ method: "GET" })
     try {
       const supabase = await createSupabaseAdmin();
 
+      const term = sanitizePgrstTerm(data.query);
       let query = supabase
         .from("competitive_grants")
         .select("*")
         .or(
-          `recipient_name.ilike.%${data.query}%,program_name.ilike.%${data.query}%,agreement_title.ilike.%${data.query}%`,
+          `recipient_name.ilike.%${term}%,program_name.ilike.%${term}%,agreement_title.ilike.%${term}%`,
         );
 
       if (data.province) query = query.eq("recipient_province", data.province);
