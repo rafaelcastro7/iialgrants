@@ -9,6 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 const ALLOWED_TYPES = [
@@ -24,6 +25,7 @@ const ALLOWED_TYPES = [
 ];
 
 export const listDocuments = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.enum(["grant", "proposal", "submission", "funder"]),
@@ -49,6 +51,7 @@ export const listDocuments = createServerFn({ method: "GET" })
   });
 
 export const uploadDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       entityType: z.enum(["grant", "proposal", "submission", "funder"]),
@@ -97,6 +100,7 @@ export const uploadDocument = createServerFn({ method: "POST" })
   });
 
 export const deleteDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ documentId: z.string().uuid() }))
   .handler(async ({ data }) => {
     try {
@@ -125,6 +129,7 @@ export const deleteDocument = createServerFn({ method: "POST" })
   });
 
 export const getDocumentUrl = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ documentId: z.string().uuid() }))
   .handler(async ({ data }) => {
     try {

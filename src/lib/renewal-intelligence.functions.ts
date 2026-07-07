@@ -24,7 +24,7 @@ export const getRenewalCandidates = createServerFn({ method: "GET" })
           id, result, amount_awarded_cad, decision_date,
           submission:submissions(
             id,
-            grant:grants(id, title, funder_id, deadline, amount_min_cad, amount_max_cad),
+            grant:grants(id, title, funder_id, deadline, amount_cad_min, amount_cad_max),
             proposal:proposals(id, title)
           )
         `,
