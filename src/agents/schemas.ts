@@ -228,7 +228,10 @@ Rules:
 - The "citations" array MUST list every marker you used in content_en, with the
   chunk_id and a verbatim snippet (<=300 chars) from that chunk.
 - Do NOT invent chunk ids. Only use chunks that were provided.
-- Respond ONLY with strict JSON.`,
+- Do NOT repeat or echo the input. Write NEW prose for the section.
+Respond with ONLY this JSON object, nothing before or after:
+{"content_en":"<section text you write, one string, >= 40 characters>","content_fr":"","citations":[{"marker":"[d1]","chunk_id":"<a chunk_id from the provided chunks>","snippet":"<verbatim quote <=300 chars>"}]}
+If you cite no chunk, use an empty citations array.`,
   },
   critic: {
     version: "1.1.0",

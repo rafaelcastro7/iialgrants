@@ -17,6 +17,42 @@ function extractJsonObject(text: string): string {
   return t;
 }
 
+// Coerce the writer LLM output into a valid WriterOutput. Local models put the
+// prose under varying keys and cite imperfectly, so we (1) harvest content_en
+// from any plausible key, (2) keep ONLY citations whose chunk_id was actually
+// provided, and (3) strip orphan [dN] markers from the prose so citation
+// validation passes. If no usable prose is found, WriterOutput.parse still fails
+// (content_en < 40) — an honest failure, not silent garbage.
+function coerceWriterOutput(
+  raw: unknown,
+  allowed: Set<string>,
+): { content_en: string; content_fr: string; citations: Array<Record<string, string>> } {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const pick = (...keys: string[]): string => {
+    for (const k of keys) {
+      const v = o[k];
+      if (typeof v === "string" && v.trim().length >= 40) return v.trim();
+    }
+    return "";
+  };
+  let content = pick("content_en", "content", "text", "draft", "body", "section_content", "prose");
+  const citations: Array<Record<string, string>> = [];
+  const seen = new Set<string>();
+  for (const c of Array.isArray(o.citations) ? o.citations : []) {
+    const cr = c && typeof c === "object" ? (c as Record<string, unknown>) : {};
+    const marker = typeof cr.marker === "string" ? cr.marker : "";
+    const chunk_id = typeof cr.chunk_id === "string" ? cr.chunk_id : "";
+    const snippet = typeof cr.snippet === "string" ? cr.snippet.slice(0, 500) : "";
+    if (/^\[d\d+\]$/.test(marker) && allowed.has(chunk_id) && snippet && !seen.has(marker)) {
+      seen.add(marker);
+      citations.push({ marker, chunk_id, snippet });
+    }
+  }
+  const valid = new Set(citations.map((c) => c.marker));
+  content = content.replace(/\[d\d+\]/g, (m) => (valid.has(m) ? m : "")).trim();
+  return { content_en: content, content_fr: "", citations };
+}
+
 // Validates that every [dN] marker in content references a provided chunk id.
 export function validateCitations(
   content: string,
@@ -135,7 +171,9 @@ export const draftSection = createServerFn({ method: "POST" })
     const model = resolveModel("writer");
     let parsed;
     try {
-      parsed = WriterOutput.parse(JSON.parse(extractJsonObject(llm.text)));
+      parsed = WriterOutput.parse(
+        coerceWriterOutput(JSON.parse(extractJsonObject(llm.text)), allowed),
+      );
     } catch (parseErr) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("agent_runs").insert({
