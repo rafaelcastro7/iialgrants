@@ -2,6 +2,98 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PROMPTS, StrategistOutput } from "@/agents/schemas";
+import { resolveModel } from "@/agents/model-router.server";
+
+// Local models sometimes wrap JSON in ```fences``` or add a sentence before it.
+// Strip fences and slice to the outermost object so a strict schema parse does
+// not fail on cosmetic wrapping (the historical strategist parse_error cause).
+function extractJsonObject(text: string): string {
+  let t = (text ?? "").trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) t = fence[1].trim();
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  if (start !== -1 && end > start) t = t.slice(start, end + 1);
+  return t;
+}
+
+type TemplateSection = { kind: string; heading_en: string; heading_fr?: string | null };
+type SectionHint = { angle?: string; must_cover?: string[] };
+const STRATEGIST_KINDS = new Set([
+  "summary",
+  "problem",
+  "solution",
+  "impact",
+  "budget",
+  "team",
+  "timeline",
+  "sustainability",
+  "evaluation",
+  "other",
+]);
+const asRecord = (v: unknown): Record<string, unknown> =>
+  v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+
+// Coerce the strategist LLM output into a valid StrategistOutput by ANCHORING on
+// the template sections (deterministic structure) and enriching angle/must_cover
+// from whatever the model returned — an array under `sections`, or named keys
+// like `introduction: {...}`. Local 8B models drift from the exact schema, so we
+// never trust their shape; we only harvest their content. Guarantees the schema
+// passes (title >= 3 chars, >= 3 valid sections).
+function coerceStrategistPlan(
+  raw: unknown,
+  grantTitle: string,
+  templateSections: TemplateSection[],
+): StrategistOutput {
+  const obj = asRecord(raw);
+  let title = typeof obj.proposal_title === "string" ? obj.proposal_title.trim() : "";
+  if (title.length < 3) title = `Proposal — ${grantTitle}`.slice(0, 300);
+
+  const hints = new Map<string, SectionHint>();
+  const addHint = (key: string, val: unknown) => {
+    const v = asRecord(val);
+    const angle =
+      typeof v.angle === "string" ? v.angle : typeof v.summary === "string" ? v.summary : undefined;
+    const must_cover = Array.isArray(v.must_cover)
+      ? v.must_cover.filter((x): x is string => typeof x === "string")
+      : undefined;
+    if (key && (angle || must_cover)) hints.set(key.toLowerCase(), { angle, must_cover });
+  };
+  if (Array.isArray(obj.sections)) {
+    for (const s of obj.sections) {
+      const sr = asRecord(s);
+      const k =
+        typeof sr.kind === "string"
+          ? sr.kind
+          : typeof sr.heading_en === "string"
+            ? sr.heading_en
+            : "";
+      addHint(k, s);
+    }
+  }
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === "proposal_title" || k === "proposal_title_fr" || k === "sections") continue;
+    addHint(k, v);
+  }
+
+  const sections = (templateSections.length ? templateSections : []).slice(0, 12).map((tsec) => {
+    const kind = STRATEGIST_KINDS.has(tsec.kind) ? tsec.kind : "other";
+    const h = hints.get(tsec.kind.toLowerCase()) ?? hints.get(tsec.heading_en.toLowerCase()) ?? {};
+    let angle = (h.angle ?? "").trim();
+    if (angle.length < 10) {
+      angle = `Make the case for ${tsec.heading_en} in "${grantTitle}", grounded in the grant's stated objectives and the organization's profile.`;
+    }
+    return {
+      kind,
+      heading_en: tsec.heading_en,
+      heading_fr: tsec.heading_fr ?? "",
+      angle: angle.slice(0, 1000),
+      must_cover: (h.must_cover ?? []).slice(0, 8),
+    };
+  });
+
+  return StrategistOutput.parse({ proposal_title: title, proposal_title_fr: "", sections });
+}
 
 // Plan a proposal for a grant using a template, then persist as draft.
 export const runStrategist = createServerFn({ method: "POST" })
@@ -74,16 +166,21 @@ export const runStrategist = createServerFn({ method: "POST" })
       ],
     });
 
+    const model = resolveModel("strategist");
     let parsed;
     try {
-      parsed = StrategistOutput.parse(JSON.parse(llm.text));
+      parsed = coerceStrategistPlan(
+        JSON.parse(extractJsonObject(llm.text)),
+        g.title,
+        (tpl.sections ?? []) as TemplateSection[],
+      );
     } catch (parseErr) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("agent_runs").insert({
         run_id: runId,
         agent: "strategist",
         status: "failed",
-        model: "qwen3:14b",
+        model,
         input_tokens: llm.inputTokens ?? 0,
         output_tokens: llm.outputTokens ?? 0,
         latency_ms: Date.now() - t0,
@@ -142,7 +239,7 @@ export const runStrategist = createServerFn({ method: "POST" })
       run_id: runId,
       agent: "strategist",
       status: "succeeded",
-      model: "qwen3:14b",
+      model,
       input_tokens: llm.inputTokens,
       output_tokens: llm.outputTokens,
       latency_ms: Date.now() - t0,
