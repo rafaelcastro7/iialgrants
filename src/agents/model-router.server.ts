@@ -35,16 +35,16 @@ export const AGENT_MODEL_MAP: Record<AgentName, ModelAssignment> = {
       "Fit scoring necesita evaluación honesta. Dolphin3 sin censura = sin inflación de scores. Deterministic rules hacen el trabajo pesado.",
   },
   strategist: {
-    primary: "qwen3:14b",
-    fallback: "dolphin3:latest",
+    primary: "dolphin3:latest",
+    fallback: "qwen3:14b",
     reason:
-      "Planificación de propuesta necesita mejor razonamiento disponible. qwen3:14b con CPU offload.",
+      "dolphin3 (4.9GB) CABE en la GTX 1070 8GB y responde en segundos; qwen3:14b (9.3GB) hace CPU-offload y tardó ~114s en cargar+generar UNA palabra → cuelga el flujo interactivo de Draft. Razonamiento suficiente para planificar propuesta. qwen3:14b queda como fallback para GPUs mayores.",
   },
   writer: {
-    primary: "qwen3:14b",
-    fallback: "dolphin3:latest",
+    primary: "dolphin3:latest",
+    fallback: "qwen3:14b",
     reason:
-      "Mejor calidad de prosa de los modelos disponibles. qwen3:14b necesario para texto fluido.",
+      "Misma razón hardware que strategist: dolphin3 cabe en VRAM y genera prosa fluida en segundos. qwen3:14b sólo viable con más VRAM (fallback).",
   },
   critic: {
     primary: "dolphin3:latest",
