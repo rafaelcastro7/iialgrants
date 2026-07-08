@@ -215,6 +215,38 @@ function isRootIndex(url: string): boolean {
   }
 }
 
+// Reject corporate / policy / governance pages by URL path. The LLM sometimes
+// invents a clean-looking title for a page like
+// nrc.canada.ca/en/corporate/values-ethics/policy-covid-19-vaccination, so the
+// title filter misses it — but the path betrays it as non-grant. Derived from
+// real noise observed in the discovered-grant backlog (values-ethics, asbestos
+// inventory, planning reports, standards/certification, HR policy). Kept narrow
+// so real program paths (support-technology-innovation, financement,
+// soutien-linnovation, accompagnement) are never matched. EN + FR.
+const NON_GRANT_URL_PATTERNS: RegExp[] = [
+  /\/values?-ethics?\b/i,
+  /\/valeurs-?(et-)?[ée]thique/i,
+  /\/transparency\b/i,
+  /\/transparence\b/i,
+  /\/planification-rapports\b/i,
+  /\/planning-reporting\b/i,
+  /\/certifications?-[ée]valuations?-standards?\b/i,
+  /\basbestos\b|\bamiante\b/i,
+  /vaccinat/i,
+  /wrongdoing|actes?-r[ée]pr[ée]hensibles?/i,
+  /outside-employment|emploi.*ext[ée]rieur/i,
+  /code-of-conduct|code-de-conduite/i,
+  /national-inventory/i,
+];
+export function isNonGrantUrl(url: string): boolean {
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    return NON_GRANT_URL_PATTERNS.some((re) => re.test(path));
+  } catch {
+    return false;
+  }
+}
+
 // Multi-grant page output: a page (index or program) may yield 0..N grants.
 const MultiPageOutput = z.object({
   grants: z.array(DiscoveredGrant).max(25).default([]),
@@ -454,8 +486,8 @@ export async function discoverFunderImpl(
       perPageStats.push({ url, found: pageGrants.length, via });
 
       for (const g of pageGrants) {
-        if (isGenericTitle(g.title) || isRootIndex(g.url || url)) {
-          continue; // structural filter: skip landing-page / index-only entries
+        if (isGenericTitle(g.title) || isRootIndex(g.url || url) || isNonGrantUrl(g.url || url)) {
+          continue; // structural filter: skip landing-page / index / non-grant policy pages
         }
         const ck = canonicalKey(F.id, g.title, F.name);
         const { data: existing } = await supabaseAdmin

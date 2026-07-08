@@ -10,7 +10,7 @@
 //    Protection Act Compliance") entered the catalog as grants because their
 //    acronyms (NRC/IRAP/COI) tripped the escape hatch in isGenericTitle.
 import { describe, expect, it } from "vitest";
-import { canonicalKey, isGenericTitle } from "@/agents/discoverer.impl.server";
+import { canonicalKey, isGenericTitle, isNonGrantUrl } from "@/agents/discoverer.impl.server";
 
 const FUNDER_ID = "00000000-0000-0000-0000-0000000000aa";
 const FUNDER_NAME = "National Research Council Canada (IRAP)";
@@ -100,6 +100,38 @@ describe("isGenericTitle rejects administrative pages despite acronyms", () => {
   for (const title of realPrograms) {
     it(`accepts: ${title.slice(0, 60)}`, () => {
       expect(isGenericTitle(title)).toBe(false);
+    });
+  }
+});
+
+// URL-path noise filter, driven by REAL non-grant pages that sat unenriched in
+// the discovered backlog on 2026-07-08 (NRC corporate/policy pages the title
+// filter missed because the LLM gave them plausible titles).
+describe("isNonGrantUrl blocks corporate/policy pages by path", () => {
+  const noise = [
+    "https://nrc.canada.ca/en/corporate/values-ethics/acts-founded-wrongdoing",
+    "https://nrc.canada.ca/en/corporate/values-ethics/outside-employment-guidelines",
+    "https://nrc.canada.ca/en/corporate/values-ethics/policy-covid-19-vaccination",
+    "https://nrc.canada.ca/en/corporate/transparency/national-inventory-asbestos",
+    "https://nrc.canada.ca/en/certifications-evaluations-standards/codes-canada",
+    "https://nrc.canada.ca/fr/organisation/planification-rapports/evaluation-programme",
+  ];
+  for (const url of noise) {
+    it(`blocks: ${url.slice(30, 80)}`, () => {
+      expect(isNonGrantUrl(url)).toBe(true);
+    });
+  }
+
+  const realPrograms = [
+    "https://nrc.canada.ca/en/support-technology-innovation/nrc-irap-funding",
+    "https://nrc.canada.ca/en/support-technology-innovation/nrc-irap-international",
+    "https://www.investquebec.com/fr/financement/investissement/capital-de-developpement",
+    "https://www.investquebec.com/fr/accompagnement/conseil-daffaires",
+    "https://www.mitacs.ca/mitacs-supported-eligible-research-and-adjudication",
+  ];
+  for (const url of realPrograms) {
+    it(`allows: ${url.slice(30, 80)}`, () => {
+      expect(isNonGrantUrl(url)).toBe(false);
     });
   }
 });
