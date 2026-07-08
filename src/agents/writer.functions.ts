@@ -3,6 +3,19 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PROMPTS, WriterOutput } from "@/agents/schemas";
 import { bumpProposalVersion } from "@/lib/proposal-versioning";
+import { resolveModel } from "@/agents/model-router.server";
+
+// Local models sometimes wrap JSON in ```fences``` or add prose; slice to the
+// outermost object so a strict schema parse doesn't fail on cosmetic wrapping.
+function extractJsonObject(text: string): string {
+  let t = (text ?? "").trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) t = fence[1].trim();
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  if (start !== -1 && end > start) t = t.slice(start, end + 1);
+  return t;
+}
 
 // Validates that every [dN] marker in content references a provided chunk id.
 export function validateCitations(
@@ -119,16 +132,17 @@ export const draftSection = createServerFn({ method: "POST" })
       ],
     });
 
+    const model = resolveModel("writer");
     let parsed;
     try {
-      parsed = WriterOutput.parse(JSON.parse(llm.text));
+      parsed = WriterOutput.parse(JSON.parse(extractJsonObject(llm.text)));
     } catch (parseErr) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("agent_runs").insert({
         run_id: runId,
         agent: "writer",
         status: "failed",
-        model: "qwen3:14b",
+        model,
         input_tokens: llm.inputTokens ?? 0,
         output_tokens: llm.outputTokens ?? 0,
         latency_ms: Date.now() - t0,
@@ -148,7 +162,7 @@ export const draftSection = createServerFn({ method: "POST" })
         run_id: runId,
         agent: "writer",
         status: "failed",
-        model: "qwen3:14b",
+        model,
         input_tokens: llm.inputTokens,
         output_tokens: llm.outputTokens,
         latency_ms: Date.now() - t0,
