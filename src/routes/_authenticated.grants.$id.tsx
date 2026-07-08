@@ -323,12 +323,17 @@ function GrantDetailPage() {
             title={title}
             funderName={funderName}
             funderId={g.funder?.id ?? null}
+            jurisdiction={g.funder?.jurisdiction ?? null}
             status={g.status}
             summary={summary}
             amountMin={g.amount_cad_min}
             amountMax={g.amount_cad_max}
             deadline={g.deadline}
+            sectors={g.sectors}
+            eligibility={g.eligibility}
+            discoveredAt={g.discovered_at}
             url={g.url}
+            funderUrl={g.funder?.source_url ?? null}
             evaluation={data.evaluation}
             requirements={g.requirements}
             enrichAttempts={g.enrich_attempts}
