@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { getTasks, createTask, updateTaskStatus } from "@/lib/team-collaboration.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { ListTodo, Clock, CheckCircle2, Plus, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -98,105 +99,104 @@ function TasksPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title="Tasks" />
-        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-3xl leading-none">Tasks</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Task assignments across grants and proposals.
-              </p>
-            </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Create Task
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Task</DialogTitle>
-                </DialogHeader>
-                <form
-                  className="space-y-4"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!form.title.trim()) return toast.error("Title is required");
-                    createMutation.mutate(form);
-                  }}
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor="task-title">Title</Label>
-                    <Input
-                      id="task-title"
-                      value={form.title}
-                      onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                      placeholder="Task title"
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="task-entity">Entity Type</Label>
-                      <select
-                        id="task-entity"
-                        value={form.entityType}
-                        onChange={(e) => setForm((f) => ({ ...f, entityType: e.target.value }))}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <option value="grant">Grant</option>
-                        <option value="proposal">Proposal</option>
-                        <option value="submission">Submission</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="task-priority">Priority</Label>
-                      <select
-                        id="task-priority"
-                        value={form.priority}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            priority: e.target.value as "low" | "medium" | "high",
-                          }))
-                        }
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="task-entity-id">Entity ID</Label>
-                      <Input
-                        id="task-entity-id"
-                        value={form.entityId}
-                        onChange={(e) => setForm((f) => ({ ...f, entityId: e.target.value }))}
-                        placeholder="UUID"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="task-due">Due Date</Label>
-                      <Input
-                        id="task-due"
-                        type="date"
-                        value={form.dueDate}
-                        onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                    {createMutation.isPending ? "Creating..." : "Create Task"}
+        <PageContainer size="wide">
+          <PageHeader
+            eyebrow="Operations"
+            title="Tasks"
+            description="Task assignments across grants and proposals."
+            actions={
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Create Task
                   </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Task</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    className="space-y-4"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!form.title.trim()) return toast.error("Title is required");
+                      createMutation.mutate(form);
+                    }}
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="task-title">Title</Label>
+                      <Input
+                        id="task-title"
+                        value={form.title}
+                        onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                        placeholder="Task title"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="task-entity">Entity Type</Label>
+                        <select
+                          id="task-entity"
+                          value={form.entityType}
+                          onChange={(e) => setForm((f) => ({ ...f, entityType: e.target.value }))}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="grant">Grant</option>
+                          <option value="proposal">Proposal</option>
+                          <option value="submission">Submission</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="task-priority">Priority</Label>
+                        <select
+                          id="task-priority"
+                          value={form.priority}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              priority: e.target.value as "low" | "medium" | "high",
+                            }))
+                          }
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="task-entity-id">Entity ID</Label>
+                        <Input
+                          id="task-entity-id"
+                          value={form.entityId}
+                          onChange={(e) => setForm((f) => ({ ...f, entityId: e.target.value }))}
+                          placeholder="UUID"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="task-due">Due Date</Label>
+                        <Input
+                          id="task-due"
+                          type="date"
+                          value={form.dueDate}
+                          onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                      {createMutation.isPending ? "Creating..." : "Create Task"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            }
+          />
 
           <div className="grid gap-3 sm:grid-cols-3">
             <Card>
@@ -297,7 +297,7 @@ function TasksPage() {
               )}
             </CardContent>
           </Card>
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

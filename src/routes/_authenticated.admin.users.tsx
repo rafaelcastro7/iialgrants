@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 const qo = queryOptions({ queryKey: ["admin", "users"], queryFn: () => listAdminUsers() });
 
@@ -96,42 +97,43 @@ function UsersPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Users</h1>
-          <p className="text-sm text-muted-foreground">Manage workspace members and roles.</p>
-        </div>
-        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-          <DialogTrigger asChild>
-            <Button>Invite user</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Invite a new user</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <Input
-                placeholder="email@example.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={inviteAdmin} onCheckedChange={setInviteAdmin} />
-                Grant admin role on signup
-              </label>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setInviteOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={doInvite} disabled={!inviteEmail}>
-                Send invite
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <PageContainer size="wide">
+      <PageHeader
+        eyebrow="Admin"
+        title="Users"
+        description="Manage workspace members and roles."
+        actions={
+          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+            <DialogTrigger asChild>
+              <Button>Invite user</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Invite a new user</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Input
+                  placeholder="email@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch checked={inviteAdmin} onCheckedChange={setInviteAdmin} />
+                  Grant admin role on signup
+                </label>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setInviteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={doInvite} disabled={!inviteEmail}>
+                  Send invite
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
       <Card>
         <CardHeader className="pb-3">
@@ -269,6 +271,6 @@ function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PipelineAnalyticsCard } from "@/components/admin/PipelineAnalyticsCard";
 import { syncClientLocale } from "@/i18n/sync";
 import { AppTopBar } from "@/components/AppSidebar";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import "@/i18n";
 
 const opts = queryOptions({ queryKey: ["ops"], queryFn: () => getOpsMetrics() });
@@ -42,12 +43,11 @@ function OpsPage() {
   const errPct = totalRuns ? ((totalErr / totalRuns) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className="min-h-screen">
       <AppTopBar title={t("ops.title")} />
 
-      <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-        <h1 className="font-display text-4xl leading-none">{t("ops.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("ops.subtitle")}</p>
+      <PageContainer size="wide">
+        <PageHeader eyebrow="Operations" title={t("ops.title")} description={t("ops.subtitle")} />
 
         <div className="grid gap-3 sm:grid-cols-4">
           <Stat label={t("ops.runs30d")} value={String(totalRuns)} />
@@ -130,7 +130,7 @@ function OpsPage() {
             ))}
           </CardContent>
         </Card>
-      </section>
+      </PageContainer>
     </div>
   );
 }

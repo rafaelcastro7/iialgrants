@@ -30,6 +30,7 @@ import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { GrantExpressView } from "@/components/grants/GrantExpressView";
 import { GrantKanban } from "@/components/grants/GrantKanban";
 import { AppTopBar } from "@/components/AppSidebar";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageTransition } from "@/components/PageTransition";
 import { GrantsListSkeleton } from "@/components/Skeletons";
@@ -283,47 +284,34 @@ function GrantsPage() {
 
   return (
     <PageTransition>
-      <div className="relative min-h-screen overflow-hidden text-foreground">
+      <div className="min-h-screen text-foreground">
         <AppTopBar title={t("nav.grants")} />
 
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute left-[-8rem] top-[-6rem] h-72 w-72 rounded-full bg-brand/10 blur-3xl" />
-          <div className="absolute right-[-10rem] top-24 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
-        </div>
-
-        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 md:py-10">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                Grants workspace
-              </p>
-              <h1 className="font-display text-4xl leading-none text-foreground md:text-5xl">
-                Grants Workspace
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
-                {viewMode === "express"
-                  ? "Your best opportunities first. Plain and simple. Switch to Advanced for the full pipeline."
-                  : "Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step."}
-              </p>
-            </div>
-            <Tabs
-              value={viewMode}
-              onValueChange={(v) => switchView(v as "express" | "advanced")}
-              className="self-start md:self-end"
-            >
-              <TabsList
-                className="h-11 rounded-full border border-border/70 bg-card/90 p-1 shadow-sm"
-                aria-label="View mode"
-              >
-                <TabsTrigger value="express" className="min-h-9 rounded-full px-4 text-xs">
-                  Express
-                </TabsTrigger>
-                <TabsTrigger value="advanced" className="min-h-9 rounded-full px-4 text-xs">
-                  Advanced
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+        <PageContainer size="wide">
+          <PageHeader
+            eyebrow="Grants"
+            title="Grants workspace"
+            description={
+              viewMode === "express"
+                ? "Your best opportunities first. Plain and simple. Switch to Advanced for the full pipeline."
+                : "Manage the lifecycle of IIAL funding opportunities from discovery to submission. Each card guides the next step."
+            }
+            actions={
+              <Tabs value={viewMode} onValueChange={(v) => switchView(v as "express" | "advanced")}>
+                <TabsList
+                  className="h-11 rounded-full border border-border/70 bg-card/90 p-1 shadow-sm"
+                  aria-label="View mode"
+                >
+                  <TabsTrigger value="express" className="min-h-9 rounded-full px-4 text-xs">
+                    Express
+                  </TabsTrigger>
+                  <TabsTrigger value="advanced" className="min-h-9 rounded-full px-4 text-xs">
+                    Advanced
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            }
+          />
 
           {activeJob && (
             <DiscoveryProgress
@@ -444,7 +432,7 @@ function GrantsPage() {
               <EventLog fr={false} />
             </div>
           )}
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

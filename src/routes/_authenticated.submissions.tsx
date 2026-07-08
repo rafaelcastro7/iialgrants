@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/DataTable";
 import { syncClientLocale } from "@/i18n/sync";
 import { AppTopBar } from "@/components/AppSidebar";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { SubmissionsSkeleton } from "@/components/Skeletons";
 import "@/i18n";
@@ -72,11 +73,11 @@ function SubmissionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen">
       <AppTopBar title={t("submissions.title")} />
 
-      <section className="max-w-5xl mx-auto px-4 py-8 space-y-4">
-        <h1 className="text-2xl font-semibold">{t("submissions.title")}</h1>
+      <PageContainer size="default">
+        <PageHeader eyebrow="Pipeline" title={t("submissions.title")} />
         {err && <p className="text-sm text-destructive">{err}</p>}
         {data.submissions.length === 0 && (
           <p className="text-muted-foreground">{t("submissions.empty")}</p>
@@ -168,7 +169,7 @@ function SubmissionsPage() {
             </Card>
           );
         })}
-      </section>
+      </PageContainer>
     </div>
   );
 }

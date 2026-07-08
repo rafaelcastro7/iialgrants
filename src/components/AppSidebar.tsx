@@ -201,10 +201,10 @@ export function AppTopBar({ title }: { title?: string }) {
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/60 bg-background/75 px-4 py-3 backdrop-blur-xl md:px-6">
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2">
         <MobileNav />
         {title && (
-          <h1 className="font-display text-xl leading-none text-foreground md:text-2xl">{title}</h1>
+          <span className="truncate text-sm font-medium text-muted-foreground">{title}</span>
         )}
       </div>
       <div className="flex items-center gap-2">

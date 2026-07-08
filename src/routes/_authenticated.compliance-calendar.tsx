@@ -22,6 +22,7 @@ import {
 } from "@/lib/compliance-calendar.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { toast } from "sonner";
 import {
   Calendar,
@@ -197,123 +198,124 @@ function ComplianceCalendarPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title="Compliance Calendar" />
-        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-3xl leading-none">Compliance Calendar</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Reporting deadlines and compliance milestones.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={exportICS}>
-                <Download className="mr-1.5 h-4 w-4" />
-                Export .ics
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "grid" ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </Button>
-              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Create Item
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  {/* ... dialog content same as before ... */}
-                  <DialogHeader>
-                    <DialogTitle>Create Compliance Item</DialogTitle>
-                  </DialogHeader>
-                  <form
-                    className="space-y-4"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (!formValues.title || !formValues.dueDate) {
-                        toast.error("Title and due date are required");
-                        return;
-                      }
-                      createMutation.mutate();
-                    }}
-                  >
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={formValues.title}
-                        onChange={(e) => setFormValues((v) => ({ ...v, title: e.target.value }))}
-                        placeholder="e.g. Q3 Financial Report"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Type</Label>
-                      <select
-                        id="type"
-                        value={formValues.type}
-                        onChange={(e) =>
-                          setFormValues((v) => ({
-                            ...v,
-                            type: e.target.value as typeof formValues.type,
-                          }))
-                        }
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="progress_report">Progress Report</option>
-                        <option value="financial_report">Financial Report</option>
-                        <option value="final_report">Final Report</option>
-                        <option value="audit">Audit</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dueDate">Due Date</Label>
-                      <Input
-                        id="dueDate"
-                        type="date"
-                        value={formValues.dueDate}
-                        onChange={(e) => setFormValues((v) => ({ ...v, dueDate: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="frequency">Frequency</Label>
-                      <select
-                        id="frequency"
-                        value={formValues.frequency}
-                        onChange={(e) =>
-                          setFormValues((v) => ({
-                            ...v,
-                            frequency: e.target.value as typeof formValues.frequency,
-                          }))
-                        }
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="once">Once</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="semi_annual">Semi-Annual</option>
-                        <option value="annual">Annual</option>
-                      </select>
-                    </div>
-                    <Button type="submit" disabled={createMutation.isPending} className="w-full">
-                      {createMutation.isPending ? "Creating..." : "Create Item"}
+        <PageContainer size="wide">
+          <PageHeader
+            eyebrow="Operations"
+            title="Compliance Calendar"
+            description="Reporting deadlines and compliance milestones."
+            actions={
+              <>
+                <Button variant="outline" size="sm" onClick={exportICS}>
+                  <Download className="mr-1.5 h-4 w-4" />
+                  Export .ics
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "grid" ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+                <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Create Item
                     </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
+                  </DialogTrigger>
+                  <DialogContent>
+                    {/* ... dialog content same as before ... */}
+                    <DialogHeader>
+                      <DialogTitle>Create Compliance Item</DialogTitle>
+                    </DialogHeader>
+                    <form
+                      className="space-y-4"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!formValues.title || !formValues.dueDate) {
+                          toast.error("Title and due date are required");
+                          return;
+                        }
+                        createMutation.mutate();
+                      }}
+                    >
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Title</Label>
+                        <Input
+                          id="title"
+                          value={formValues.title}
+                          onChange={(e) => setFormValues((v) => ({ ...v, title: e.target.value }))}
+                          placeholder="e.g. Q3 Financial Report"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="type">Type</Label>
+                        <select
+                          id="type"
+                          value={formValues.type}
+                          onChange={(e) =>
+                            setFormValues((v) => ({
+                              ...v,
+                              type: e.target.value as typeof formValues.type,
+                            }))
+                          }
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="progress_report">Progress Report</option>
+                          <option value="financial_report">Financial Report</option>
+                          <option value="final_report">Final Report</option>
+                          <option value="audit">Audit</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="dueDate">Due Date</Label>
+                        <Input
+                          id="dueDate"
+                          type="date"
+                          value={formValues.dueDate}
+                          onChange={(e) =>
+                            setFormValues((v) => ({ ...v, dueDate: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="frequency">Frequency</Label>
+                        <select
+                          id="frequency"
+                          value={formValues.frequency}
+                          onChange={(e) =>
+                            setFormValues((v) => ({
+                              ...v,
+                              frequency: e.target.value as typeof formValues.frequency,
+                            }))
+                          }
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="once">Once</option>
+                          <option value="quarterly">Quarterly</option>
+                          <option value="semi_annual">Semi-Annual</option>
+                          <option value="annual">Annual</option>
+                        </select>
+                      </div>
+                      <Button type="submit" disabled={createMutation.isPending} className="w-full">
+                        {createMutation.isPending ? "Creating..." : "Create Item"}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </>
+            }
+          />
 
           <div className="grid gap-3 sm:grid-cols-4">
             <Card>
@@ -524,7 +526,7 @@ function ComplianceCalendarPage() {
               )}
             </CardContent>
           </Card>
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

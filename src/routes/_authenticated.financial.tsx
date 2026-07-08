@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getFinancialSummary, getBudgetTracking } from "@/lib/financial-tracking.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { DollarSign, TrendingUp, Calendar, BarChart3 } from "lucide-react";
 
 const summaryQO = queryOptions({
@@ -42,16 +43,15 @@ function FinancialTrackingPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title="Financial Tracking" />
 
-        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-          <div>
-            <h1 className="font-display text-3xl leading-none">Financial Tracking</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Grant expenditures, burn rates, and budget utilization.
-            </p>
-          </div>
+        <PageContainer size="wide">
+          <PageHeader
+            eyebrow="Post-award"
+            title="Financial Tracking"
+            description="Grant expenditures, burn rates, and budget utilization."
+          />
 
           <div className="grid gap-3 sm:grid-cols-4">
             <Card>
@@ -182,7 +182,7 @@ function FinancialTrackingPage() {
               </CardContent>
             </Card>
           )}
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

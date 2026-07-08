@@ -263,9 +263,9 @@ function GrantDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-4">
+    <main className="min-h-screen text-foreground">
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/75 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <Button asChild variant="ghost" size="sm">
             <Link to="/grants">
               <ArrowLeft className="mr-1 h-4 w-4" />
@@ -350,7 +350,7 @@ function GrantDetailPage() {
             <div className="space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-2xl font-bold leading-tight">{title}</h1>
+                  <h1 className="font-display text-2xl leading-tight tracking-tight">{title}</h1>
                   <p className="mt-1 text-sm text-muted-foreground">
                     <Building2 className="mr-1 inline h-3.5 w-3.5" />
                     {funderName}

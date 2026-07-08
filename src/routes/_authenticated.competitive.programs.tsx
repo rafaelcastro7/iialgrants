@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { searchCompetitiveGrants } from "@/lib/competitive-intel.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { Search, BarChart3, TrendingUp, DollarSign } from "lucide-react";
 
 const allGrantsQO = queryOptions({
@@ -68,27 +69,26 @@ function ProgramAnalysisPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title="Program Analysis" />
 
-        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-3xl leading-none">Program Analysis</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Analyze government grant programs by funding volume and recipients.
-              </p>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Filter programs..."
-                className="pl-9 w-64"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
+        <PageContainer size="wide">
+          <PageHeader
+            eyebrow="Market intelligence"
+            title="Program Analysis"
+            description="Analyze government grant programs by funding volume and recipients."
+            actions={
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Filter programs..."
+                  className="pl-9 w-64"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            }
+          />
 
           <div className="grid gap-3 sm:grid-cols-3">
             <Card>
@@ -161,7 +161,7 @@ function ProgramAnalysisPage() {
               </div>
             </CardContent>
           </Card>
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

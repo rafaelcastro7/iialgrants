@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getRevisionPlan } from "@/lib/revision-agent.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { AlertTriangle, CheckCircle2, FileText, ArrowRight, Zap } from "lucide-react";
 
 function revisionQO(proposalId: string) {
@@ -45,23 +46,22 @@ function RevisionPlanPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title="Revision Plan" />
 
-        <section className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="font-display text-3xl leading-none">Revision Plan</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Actionable revision suggestions prioritized by severity.
-              </p>
-            </div>
-            <Link to="/proposals/$id" params={{ id: proposalId }}>
-              <Button variant="outline" size="sm" className="gap-1">
-                Back to Proposal <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
-          </div>
+        <PageContainer size="default">
+          <PageHeader
+            eyebrow="Proposal"
+            title="Revision Plan"
+            description="Actionable revision suggestions prioritized by severity."
+            actions={
+              <Link to="/proposals/$id" params={{ id: proposalId }}>
+                <Button variant="outline" size="sm" className="gap-1">
+                  Back to Proposal <ArrowRight className="h-3 w-3" />
+                </Button>
+              </Link>
+            }
+          />
 
           <div className="grid gap-3 sm:grid-cols-4">
             <Card>
@@ -183,7 +183,7 @@ function RevisionPlanPage() {
               </Card>
             ))
           )}
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

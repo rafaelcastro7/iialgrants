@@ -61,14 +61,20 @@ function AdminLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="flex min-h-screen w-full">
         <AdminSidebar />
-        <div className="flex-1 flex flex-col">
-          <header className="h-12 border-b flex items-center px-2 gap-2">
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-20 flex items-center gap-2.5 border-b border-border/60 bg-background/75 px-3 py-3 backdrop-blur-xl md:px-4">
             <SidebarTrigger />
-            <span className="text-sm font-semibold">IIAL Admin</span>
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-primary-foreground">
+              II
+            </div>
+            <span aria-hidden className="text-muted-foreground/40">
+              /
+            </span>
+            <span className="text-sm font-medium text-foreground/80">Admin console</span>
           </header>
-          <main className="flex-1 p-6">
+          <main className="flex-1">
             <Outlet />
           </main>
         </div>

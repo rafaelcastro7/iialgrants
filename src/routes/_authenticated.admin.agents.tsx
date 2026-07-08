@@ -39,7 +39,6 @@ import {
 } from "@/components/ui/table";
 import {
   Activity,
-  Bot,
   Cpu,
   Gauge,
   RotateCcw,
@@ -48,6 +47,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 const qo = queryOptions({
   queryKey: ["admin", "agent-configs"],
@@ -75,17 +75,12 @@ function AgentsPage() {
   const current = data.agents.find((a) => a.agent === active)!;
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Bot className="h-6 w-6" /> Agent Console
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Full parametrization for each of the 6 LLM agents — model, prompt, generation params,
-          reliability, and a live test playground. Inspired by Langfuse, LangSmith and OpenAI Agent
-          Builder consoles.
-        </p>
-      </header>
+    <PageContainer size="wide">
+      <PageHeader
+        eyebrow="Admin"
+        title="Agent Console"
+        description="Full parametrization for each of the 6 LLM agents — model, prompt, generation params, reliability, and a live test playground. Inspired by Langfuse, LangSmith and OpenAI Agent Builder consoles."
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {data.agents.map((a) => (
@@ -109,7 +104,7 @@ function AgentsPage() {
       </div>
 
       <AgentEditor key={current.agent} agent={current} models={data.models} />
-    </div>
+    </PageContainer>
   );
 }
 

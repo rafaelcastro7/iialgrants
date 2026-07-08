@@ -42,7 +42,7 @@ function ComplianceRoute() {
         <LanguageSwitcher />
       </header>
 
-      <h1 className="text-3xl font-bold mb-2">{t("compliance.title")}</h1>
+      <h1 className="font-display text-3xl tracking-tight mb-2">{t("compliance.title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">{t("compliance.maintainedBy")}</p>
 
       <Card className="mb-4">
