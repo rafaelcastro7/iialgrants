@@ -10,6 +10,7 @@ import {
 } from "@/lib/post-award.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { Trophy, TrendingUp, AlertTriangle, Calendar, DollarSign } from "lucide-react";
 
 const metricsQO = queryOptions({
@@ -61,16 +62,15 @@ function PostAwardPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title="Post-Award Tracker" />
 
-        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-          <div>
-            <h1 className="font-display text-3xl leading-none">Post-Award Tracker</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Outcomes, win rates, and reporting deadlines.
-            </p>
-          </div>
+        <PageContainer size="wide">
+          <PageHeader
+            eyebrow="Post-award"
+            title="Post-Award Tracker"
+            description="Outcomes, win rates, and reporting deadlines."
+          />
 
           <div className="grid gap-3 sm:grid-cols-4">
             <Card>
@@ -220,7 +220,7 @@ function PostAwardPage() {
               </CardContent>
             </Card>
           )}
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

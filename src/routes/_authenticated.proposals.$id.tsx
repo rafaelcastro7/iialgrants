@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { DocumentManager } from "@/components/DocumentManager";
+import { ArrowLeft } from "lucide-react";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
@@ -287,14 +288,15 @@ function ProposalDetailPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <nav className="flex items-center gap-4">
-            <Link to="/dashboard" className="font-semibold">
-              {t("app.name")}
-            </Link>
-            <Link to="/proposals" className="text-sm text-muted-foreground hover:underline">
+    <main className="min-h-screen text-foreground">
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/75 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <nav className="flex min-w-0 items-center gap-2 text-sm">
+            <Link
+              to="/proposals"
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
               {t("nav.proposals")}
             </Link>
           </nav>
@@ -351,7 +353,7 @@ function ProposalDetailPage() {
           <>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold">{proposal.title}</h1>
+                <h1 className="font-display text-2xl tracking-tight">{proposal.title}</h1>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   <Badge variant="secondary">{t(`proposals.status.${proposal.status}`)}</Badge>
                   <span>

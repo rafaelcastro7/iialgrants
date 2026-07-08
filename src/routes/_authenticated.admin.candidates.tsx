@@ -22,6 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 export const Route = createFileRoute("/_authenticated/admin/candidates")({
   component: CandidatesPage,
@@ -94,19 +95,17 @@ function CandidatesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Funder Candidates</h1>
-          <p className="text-sm text-muted-foreground">
-            Auto-discovered funders from CRA / TBS G&amp;C / PFC. Review and approve to add to the
-            catalog.
-          </p>
-        </div>
-        <Button onClick={handleRunNow} disabled={busy}>
-          {busy ? "Running…" : "Run curator now"}
-        </Button>
-      </div>
+    <PageContainer size="wide">
+      <PageHeader
+        eyebrow="Admin"
+        title="Funder Candidates"
+        description="Auto-discovered funders from CRA / TBS G&C / PFC. Review and approve to add to the catalog."
+        actions={
+          <Button onClick={handleRunNow} disabled={busy}>
+            {busy ? "Running…" : "Run curator now"}
+          </Button>
+        }
+      />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
@@ -235,6 +234,6 @@ function CandidatesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

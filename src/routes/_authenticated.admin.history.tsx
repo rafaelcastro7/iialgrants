@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { listDiscoveryHistory } from "@/lib/admin-history.functions";
 import { DataTable } from "@/components/DataTable";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 const qo = queryOptions({ queryKey: ["admin", "history"], queryFn: () => listDiscoveryHistory() });
 
@@ -147,13 +148,12 @@ function HistoryPage() {
   }));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Discovery History</h1>
-        <p className="text-sm text-muted-foreground">
-          Cached sources and entities the Discoverer reuses across runs.
-        </p>
-      </div>
+    <PageContainer size="wide">
+      <PageHeader
+        eyebrow="Admin"
+        title="Discovery History"
+        description="Cached sources and entities the Discoverer reuses across runs."
+      />
 
       <Card>
         <CardHeader>
@@ -236,6 +236,6 @@ function HistoryPage() {
           })}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

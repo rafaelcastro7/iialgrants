@@ -12,6 +12,7 @@ import { syncClientLocale } from "@/i18n/sync";
 import { AppTopBar } from "@/components/AppSidebar";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { ProposalsListSkeleton } from "@/components/Skeletons";
 import { DataTable } from "@/components/DataTable";
 import "@/i18n";
@@ -154,16 +155,19 @@ function ProposalsPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title={t("proposals.title")} />
 
-        <section className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">{t("proposals.title")}</h1>
-            <Button size="sm" variant="secondary" onClick={onIngest} disabled={ingesting}>
-              {ingesting ? t("app.loading") : t("proposals.ingestKnowledge")}
-            </Button>
-          </div>
+        <PageContainer size="default">
+          <PageHeader
+            eyebrow="Pipeline"
+            title={t("proposals.title")}
+            actions={
+              <Button size="sm" variant="secondary" onClick={onIngest} disabled={ingesting}>
+                {ingesting ? t("app.loading") : t("proposals.ingestKnowledge")}
+              </Button>
+            }
+          />
           {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
 
           {rows.length === 0 ? (
@@ -180,7 +184,7 @@ function ProposalsPage() {
               searchPlaceholder="Search proposals..."
             />
           )}
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

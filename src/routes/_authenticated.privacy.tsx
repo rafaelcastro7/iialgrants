@@ -152,7 +152,7 @@ function PrivacyCenter() {
         <LanguageSwitcher />
       </header>
 
-      <h1 className="text-2xl font-bold mb-2">{t("privacy.title")}</h1>
+      <h1 className="font-display text-2xl tracking-tight mb-2">{t("privacy.title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">{t("privacy.subtitle")}</p>
 
       {msg && <div className="mb-4 text-sm rounded border border-border bg-muted p-2">{msg}</div>}

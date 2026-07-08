@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { getTopRecipients, getRecipientProfile } from "@/lib/recipient-profiling.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { Search, Users, TrendingUp } from "lucide-react";
 
 const topRecipientsQO = (limit: number) =>
@@ -44,41 +45,40 @@ function RecipientProfilingPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title="Recipient Profiling" />
 
-        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-3xl leading-none">Recipient Profiling</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Analyze organizations that have received government grants.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search recipients..."
-                  className="pl-9 w-64"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && searchTerm.trim()) {
-                      setSelectedRecipient(searchTerm.trim());
-                    }
-                  }}
-                />
-              </div>
-              <Button
-                size="sm"
-                onClick={() => searchTerm.trim() && setSelectedRecipient(searchTerm.trim())}
-                disabled={!searchTerm.trim()}
-              >
-                Search
-              </Button>
-            </div>
-          </div>
+        <PageContainer size="wide">
+          <PageHeader
+            eyebrow="Market intelligence"
+            title="Recipient Profiling"
+            description="Analyze organizations that have received government grants."
+            actions={
+              <>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search recipients..."
+                    className="pl-9 w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && searchTerm.trim()) {
+                        setSelectedRecipient(searchTerm.trim());
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => searchTerm.trim() && setSelectedRecipient(searchTerm.trim())}
+                  disabled={!searchTerm.trim()}
+                >
+                  Search
+                </Button>
+              </>
+            }
+          />
 
           {profile && (
             <Card>
@@ -183,7 +183,7 @@ function RecipientProfilingPage() {
               </div>
             </CardContent>
           </Card>
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

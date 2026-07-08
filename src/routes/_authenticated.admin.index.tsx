@@ -5,6 +5,7 @@ import { listAdminUsers } from "@/lib/admin-users.functions";
 import { listModuleFlags } from "@/lib/admin-modules.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PipelineAnalyticsCard } from "@/components/admin/PipelineAnalyticsCard";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 const usersQO = queryOptions({ queryKey: ["admin", "users"], queryFn: () => listAdminUsers() });
 const modsQO = queryOptions({ queryKey: ["admin", "modules"], queryFn: () => listModuleFlags() });
@@ -49,11 +50,12 @@ function AdminOverview() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Overview</h1>
-        <p className="text-sm text-muted-foreground">Workspace administration at a glance.</p>
-      </div>
+    <PageContainer size="wide">
+      <PageHeader
+        eyebrow="Admin"
+        title="Overview"
+        description="Workspace administration at a glance."
+      />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((s) => (
           <Card key={s.label}>
@@ -94,6 +96,6 @@ function AdminOverview() {
       </Card>
 
       <PipelineAnalyticsCard />
-    </div>
+    </PageContainer>
   );
 }

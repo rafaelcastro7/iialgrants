@@ -7,6 +7,7 @@ import { listModuleFlags, toggleModuleFlag } from "@/lib/admin-modules.functions
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 const qo = queryOptions({ queryKey: ["admin", "modules"], queryFn: () => listModuleFlags() });
 
@@ -43,14 +44,12 @@ function ModulesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Modules</h1>
-        <p className="text-sm text-muted-foreground">
-          Enable or disable product modules across the workspace. Disabled modules hide from
-          navigation and block their server functions.
-        </p>
-      </div>
+    <PageContainer size="wide">
+      <PageHeader
+        eyebrow="Admin"
+        title="Modules"
+        description="Enable or disable product modules across the workspace. Disabled modules hide from navigation and block their server functions."
+      />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {data.modules.map((m) => (
           <Card key={m.module}>
@@ -83,6 +82,6 @@ function ModulesPage() {
         ))}
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-    </div>
+    </PageContainer>
   );
 }

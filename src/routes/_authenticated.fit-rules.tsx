@@ -167,9 +167,9 @@ function FitRulesPage() {
   }, [prev.data, r.threshold_fit_pass]);
 
   return (
-    <main className="min-h-screen bg-background text-foreground pb-24">
+    <main className="min-h-screen text-foreground pb-24">
       {/* ── Header ───────────────────────────────────────────── */}
-      <header className="border-b bg-card/40">
+      <header className="border-b border-border/60 bg-card/60">
         <div className="max-w-6xl mx-auto px-6 pt-6 pb-5">
           <nav className="flex gap-4 text-sm text-muted-foreground mb-3">
             <Link to="/dashboard" className="hover:text-foreground">
@@ -185,7 +185,7 @@ function FitRulesPage() {
           </nav>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="space-y-1">
-              <h1 className="text-2xl font-bold tracking-tight">Screening rules</h1>
+              <h1 className="font-display text-2xl tracking-tight">Screening rules</h1>
               <p className="text-sm text-muted-foreground max-w-2xl">
                 Decide which grants land in your inbox. Pick a profile to start, then fine-tune any
                 filter.

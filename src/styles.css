@@ -61,6 +61,14 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Work Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -87,6 +95,14 @@
   --brand-foreground: oklch(0.129 0.042 264.695);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
+  /* Semantic status hues — used app-wide for eligibility, deadlines, health,
+     so screens stop hand-rolling emerald-600 / amber-600 / red-600. */
+  --success: oklch(0.6 0.13 155);
+  --success-foreground: oklch(0.984 0.003 247.858);
+  --warning: oklch(0.72 0.15 65);
+  --warning-foreground: oklch(0.2 0.03 65);
+  --info: oklch(0.55 0.11 250);
+  --info-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(0.885 0.012 255);
   --input: oklch(0.885 0.012 255);
   --ring: oklch(0.704 0.04 256.788);
@@ -124,6 +140,12 @@
   --brand-foreground: oklch(0.129 0.042 264.695);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.984 0.003 247.858);
+  --success: oklch(0.7 0.14 155);
+  --success-foreground: oklch(0.129 0.042 264.695);
+  --warning: oklch(0.78 0.15 65);
+  --warning-foreground: oklch(0.2 0.03 65);
+  --info: oklch(0.68 0.12 250);
+  --info-foreground: oklch(0.129 0.042 264.695);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);
@@ -159,10 +181,13 @@
   body {
     min-height: 100vh;
     background-color: var(--color-background);
-    background-image:
-      radial-gradient(circle at 12% 0%, color-mix(in oklch, var(--primary) 16%, transparent) 0%, transparent 32%),
-      radial-gradient(circle at 88% 10%, color-mix(in oklch, var(--brand) 14%, transparent) 0%, transparent 28%),
-      linear-gradient(180deg, color-mix(in oklch, var(--background) 94%, white 6%), var(--background));
+    /* A single, quiet top wash — enough to lift the canvas off pure flat,
+       but calm enough that cards read cleanly and nothing floats. */
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--background) 92%, white 8%),
+      var(--background) 40%
+    );
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: "Work Sans", ui-sans-serif, system-ui, sans-serif;
@@ -176,8 +201,10 @@
   h3,
   h4,
   .font-display {
-    font-family: "Instrument Serif", ui-serif, Georgia, serif;
-    letter-spacing: -0.01em;
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+    font-weight: 500;
   }
 
   ::selection {

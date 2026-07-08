@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getImpactMetrics, getOutcomeDetails } from "@/lib/impact-measurement.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { Target, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
 
 const metricsQO = queryOptions({
@@ -42,16 +43,15 @@ function ImpactMeasurementPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen">
         <AppTopBar title="Impact Measurement" />
 
-        <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-          <div>
-            <h1 className="font-display text-3xl leading-none">Impact Measurement</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Community impact, beneficiary reach, and grant effectiveness.
-            </p>
-          </div>
+        <PageContainer size="wide">
+          <PageHeader
+            eyebrow="Post-award"
+            title="Impact Measurement"
+            description="Community impact, beneficiary reach, and grant effectiveness."
+          />
 
           <div className="grid gap-3 sm:grid-cols-4">
             <Card>
@@ -135,7 +135,7 @@ function ImpactMeasurementPage() {
               )}
             </CardContent>
           </Card>
-        </section>
+        </PageContainer>
       </div>
     </PageTransition>
   );

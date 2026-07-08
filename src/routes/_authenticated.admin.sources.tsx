@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CrawlLedgerWidget } from "@/components/admin/CrawlLedgerWidget";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 export const Route = createFileRoute("/_authenticated/admin/sources")({
   component: SourcesPage,
@@ -148,39 +149,42 @@ function SourcesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Discovery Sources</h1>
-          <p className="text-sm text-muted-foreground">
+    <PageContainer size="wide">
+      <PageHeader
+        eyebrow="Admin"
+        title="Discovery Sources"
+        description={
+          <>
             Self-growing catalog of grant funders. {sources.length} sources registered ·{" "}
             {sources.filter((s) => s.enabled).length} enabled.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => runTier("A")} disabled={busy !== null}>
-            Run Tier A
-          </Button>
-          <Button variant="outline" onClick={() => runTier("B")} disabled={busy !== null}>
-            Run Tier B
-          </Button>
-          <Button variant="outline" onClick={() => runTier("C")} disabled={busy !== null}>
-            Run Tier C
-          </Button>
-          <Button variant="outline" onClick={() => runTier("scout")} disabled={busy !== null}>
-            Run Scout
-          </Button>
-          <Button onClick={() => runTier("all")} disabled={busy !== null}>
-            Run ALL
-          </Button>
-          <Button variant="secondary" onClick={promote} disabled={busy !== null}>
-            Promote stale
-          </Button>
-          <Link to="/admin/candidates">
-            <Button variant="ghost">View candidates →</Button>
-          </Link>
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="outline" onClick={() => runTier("A")} disabled={busy !== null}>
+              Run Tier A
+            </Button>
+            <Button variant="outline" onClick={() => runTier("B")} disabled={busy !== null}>
+              Run Tier B
+            </Button>
+            <Button variant="outline" onClick={() => runTier("C")} disabled={busy !== null}>
+              Run Tier C
+            </Button>
+            <Button variant="outline" onClick={() => runTier("scout")} disabled={busy !== null}>
+              Run Scout
+            </Button>
+            <Button onClick={() => runTier("all")} disabled={busy !== null}>
+              Run ALL
+            </Button>
+            <Button variant="secondary" onClick={promote} disabled={busy !== null}>
+              Promote stale
+            </Button>
+            <Link to="/admin/candidates">
+              <Button variant="ghost">View candidates →</Button>
+            </Link>
+          </>
+        }
+      />
 
       <CrawlLedgerWidget />
 
@@ -394,6 +398,6 @@ function SourcesPage() {
           </Table>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

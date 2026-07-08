@@ -51,10 +51,12 @@ function SharedReportPage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-[#f4f7fa] text-foreground">
-      <header className="border-b bg-card">
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border/60 bg-card">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="font-semibold text-[#0f1b3d]">IIAL · Grant Fit Report</span>
+          <span className="font-display text-lg tracking-tight text-primary">
+            IIAL · Grant Fit Report
+          </span>
           <Badge variant="outline" className="text-[10px]">
             Shared read-only view
           </Badge>
@@ -75,7 +77,7 @@ function ReportBody({ report }: { report: SharedReport }) {
     <Shell>
       <div className="space-y-5">
         <div>
-          <h1 className="text-2xl font-semibold text-[#0f1b3d]">{grant.title}</h1>
+          <h1 className="font-display text-2xl tracking-tight text-foreground">{grant.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {grant.funder?.name ?? "Unknown funder"}
             {grant.funder?.jurisdiction ? ` · ${grant.funder.jurisdiction}` : ""}
