@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import "@/i18n";
+import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 
 function DashboardSkeleton() {
   return (
@@ -55,8 +56,6 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 const DAY_MS = 86_400_000;
-const TERMINAL = ["archived", "expired", "lost"];
-
 function Dashboard() {
   const { t } = useTranslation();
   const [email, setEmail] = useState<string | null>(null);
@@ -79,7 +78,7 @@ function Dashboard() {
   }, []);
 
   const loading = grantData === undefined;
-  const grants = (grantData?.grants ?? []).filter((g) => !TERMINAL.includes(g.status));
+  const grants = (grantData?.grants ?? []).filter((g) => isActiveGrantStatus(g.status));
   const now = Date.now();
 
   const eligible = grants.filter((g) => g.evaluation?.eligibility_pass).length;
@@ -182,8 +181,8 @@ function Dashboard() {
             <StatTile
               icon={Search}
               value={loading ? "—" : grants.length}
-              label="Opportunities"
-              hint="Active grants tracked"
+              label="Active opportunities"
+              hint="Live grants tracked"
               to="/grants"
             />
             <StatTile

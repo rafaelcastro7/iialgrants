@@ -2,6 +2,7 @@
 // best-fit first, one primary action per card.
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ export function GrantExpressView({
 }) {
   // Express ordering: eligible + best fit first, then closest deadline.
   const ranked = [...grants]
-    .filter((g) => !["archived", "expired", "lost"].includes(g.status))
+    .filter((g) => isActiveGrantStatus(g.status))
     .sort((a, b) => {
       const ae = a.evaluation?.eligibility_pass ? 1 : 0;
       const be = b.evaluation?.eligibility_pass ? 1 : 0;
@@ -75,7 +76,8 @@ export function GrantExpressView({
   if (ranked.length === 0) {
     return (
       <div className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground shadow-sm">
-        No opportunities yet. Run discovery from the Admin panel, or switch to the Advanced view.
+        No active opportunities yet. Run discovery from the Admin panel, or switch to the Advanced
+        view.
       </div>
     );
   }

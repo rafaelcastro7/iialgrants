@@ -49,6 +49,21 @@ export function canTransition(from: GrantStatus, to: GrantStatus): boolean {
   return GRANT_TRANSITIONS[from].includes(to);
 }
 
+/** Terminal statuses that should be excluded from "active opportunity" counts. */
+export const TERMINAL_GRANT_STATUSES = ["archived", "expired", "lost"] as const;
+
+export function isTerminalGrantStatus(
+  status: unknown,
+): status is (typeof TERMINAL_GRANT_STATUSES)[number] {
+  return (
+    typeof status === "string" && (TERMINAL_GRANT_STATUSES as readonly string[]).includes(status)
+  );
+}
+
+export function isActiveGrantStatus(status: unknown): status is GrantStatus {
+  return isGrantStatus(status) && !isTerminalGrantStatus(status);
+}
+
 // Grants that fail enrichment this many times stop being retried automatically
 // (see enrichGrantImpl in enricher.functions.ts) and stay stuck in
 // "discovered" with the fetch error preserved on enrich_last_error. Lives in
