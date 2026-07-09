@@ -71,6 +71,27 @@
   --font-sans: "Work Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
+/*
+ * Elevation system. Flat single-layer black shadows read as "cardboard";
+ * real surfaces cast TWO shadows (a tight contact shadow + a soft ambient
+ * one), and tinting them with the brand navy instead of pure black keeps
+ * them from looking sooty (Stripe/Material technique). These override
+ * Tailwind's defaults, so every existing shadow-sm/md/lg card upgrades at
+ * once — no per-component changes.
+ */
+@theme {
+  --shadow-2xs: 0 1px 2px 0 oklch(0.2 0.05 262 / 0.05);
+  --shadow-xs: 0 1px 2px 0 oklch(0.2 0.05 262 / 0.06);
+  --shadow-sm:
+    0 1px 2px 0 oklch(0.2 0.05 262 / 0.07), 0 3px 10px -2px oklch(0.2 0.05 262 / 0.08);
+  --shadow-md:
+    0 2px 4px -1px oklch(0.2 0.05 262 / 0.08), 0 8px 20px -4px oklch(0.2 0.05 262 / 0.12);
+  --shadow-lg:
+    0 4px 8px -2px oklch(0.2 0.05 262 / 0.09), 0 16px 36px -8px oklch(0.2 0.05 262 / 0.16);
+  --shadow-xl:
+    0 8px 16px -4px oklch(0.2 0.05 262 / 0.1), 0 24px 48px -12px oklch(0.2 0.05 262 / 0.2);
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(0.95 0.01 255);
@@ -103,8 +124,10 @@
   --warning-foreground: oklch(0.2 0.03 65);
   --info: oklch(0.55 0.11 250);
   --info-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.885 0.012 255);
-  --input: oklch(0.885 0.012 255);
+  /* Slightly deeper than the old 0.885 so card edges read crisp against the
+     background instead of dissolving into it. */
+  --border: oklch(0.868 0.014 255);
+  --input: oklch(0.868 0.014 255);
   --ring: oklch(0.704 0.04 256.788);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
