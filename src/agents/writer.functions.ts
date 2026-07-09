@@ -136,11 +136,12 @@ export const draftSection = createServerFn({ method: "POST" })
         agent: "writer",
         runId,
         temperature: 0.3,
-        // Hard-bound generation length: one section is 300–600 tokens of prose;
-        // the DB default (3000) let dolphin3 ramble past the 300s timeout on
-        // this GPU (~10–20 tok/s). 800 tokens ≈ 3,200 chars — well inside the
-        // schema's 8,000-char cap and bounds latency to ~40–80s warm.
-        maxOutputTokens: 800,
+        // Hard-bound generation length. Live E2E on this GTX 1070 showed
+        // successful proposal sections landing at ~288-384 output tokens,
+        // while 800-token generations could exceed Ollama's practical
+        // non-streamed request window. 450 keeps enough room for a useful
+        // section plus citations while bounding local latency.
+        maxOutputTokens: 450,
         responseFormat: "json",
         messages: [
           {
@@ -165,6 +166,8 @@ export const draftSection = createServerFn({ method: "POST" })
                 heading_fr: section.heading_fr,
                 angle: notes.angle,
                 must_cover: notes.must_cover,
+                output_contract:
+                  "Write content_en as the full section body in 120-220 words. Do not return the heading as content_en.",
               },
               chunks: numbered.map((c) => ({
                 marker: c.marker,
@@ -275,7 +278,7 @@ export const draftSection = createServerFn({ method: "POST" })
       run_id: runId,
       agent: "writer",
       status: "succeeded",
-      model: "qwen3:14b",
+      model: llm.model ?? model,
       input_tokens: llm.inputTokens,
       output_tokens: llm.outputTokens,
       latency_ms: Date.now() - t0,
