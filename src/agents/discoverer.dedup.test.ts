@@ -115,6 +115,8 @@ describe("isNonGrantUrl blocks corporate/policy pages by path", () => {
     "https://nrc.canada.ca/en/corporate/transparency/national-inventory-asbestos",
     "https://nrc.canada.ca/en/certifications-evaluations-standards/codes-canada",
     "https://nrc.canada.ca/fr/organisation/planification-rapports/evaluation-programme",
+    "https://en.wikipedia.org/wiki/Industrial_Research_Assistance_Program",
+    "https://www.linkedin.com/company/nrc-irap",
   ];
   for (const url of noise) {
     it(`blocks: ${url.slice(30, 80)}`, () => {
