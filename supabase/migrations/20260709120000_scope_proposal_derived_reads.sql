@@ -10,6 +10,7 @@
 -- evaluator/strategist/writer runs are per-user and reveal the org's fit
 -- reasoning + proposal content. Allow: own runs OR system (NULL) runs.
 drop policy if exists "authenticated_read_traces" on public.agent_trace_steps;
+drop policy if exists "read own or system traces" on public.agent_trace_steps;
 create policy "read own or system traces" on public.agent_trace_steps
   for select
   using (
@@ -21,12 +22,14 @@ create policy "read own or system traces" on public.agent_trace_steps
 
 -- compliance_matrices: generated per proposal → owner-only read.
 drop policy if exists "Authenticated users can read compliance matrices" on public.compliance_matrices;
+drop policy if exists "read own compliance matrices" on public.compliance_matrices;
 create policy "read own compliance matrices" on public.compliance_matrices
   for select
   using (proposal_id in (select id from public.proposals where user_id = auth.uid()));
 
 -- proposal_reviews: multi-expert review of a proposal → owner-only read.
 drop policy if exists "Authenticated users can read proposal reviews" on public.proposal_reviews;
+drop policy if exists "read own proposal reviews" on public.proposal_reviews;
 create policy "read own proposal reviews" on public.proposal_reviews
   for select
   using (proposal_id in (select id from public.proposals where user_id = auth.uid()));
@@ -34,6 +37,7 @@ create policy "read own proposal reviews" on public.proposal_reviews
 -- proposal_citation_reports: was FOR ALL with `true` (read AND write leak).
 -- Scope every command to the owning proposal.
 drop policy if exists "Authenticated can manage citation reports" on public.proposal_citation_reports;
+drop policy if exists "manage own citation reports" on public.proposal_citation_reports;
 create policy "manage own citation reports" on public.proposal_citation_reports
   for all
   using (proposal_id in (select id from public.proposals where user_id = auth.uid()))
