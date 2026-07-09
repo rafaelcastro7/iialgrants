@@ -235,7 +235,7 @@ export function GrantKanban({
           label="Avg Fit"
           value={kpis.avgFit == null ? "-" : `${Math.round(kpis.avgFit * 100)}%`}
         />
-        <Kpi label="In Pipeline" value={fmtCad(kpis.pipelineValueCad)} dark />
+        <Kpi label="Pipeline value (CAD)" value={fmtCad(kpis.pipelineValueCad)} dark />
       </div>
 
       {/* Workflow ribbon */}
