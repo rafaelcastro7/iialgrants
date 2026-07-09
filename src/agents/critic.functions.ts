@@ -33,19 +33,40 @@ export const runCritic = createServerFn({ method: "POST" })
       .order("ord", { ascending: true });
     if (se) throw new Error(se.message);
 
-    const llm = await callLlm({
-      agent: "critic",
-      runId,
-      temperature: 0.1,
-      responseFormat: "json",
-      messages: [
-        {
-          role: "system",
-          content: `${PROMPTS.critic.system}\nPrompt version: ${PROMPTS.critic.version}`,
-        },
-        { role: "user", content: JSON.stringify({ grant, sections: sections ?? [] }) },
-      ],
-    });
+    // A throwing LLM call (e.g. Ollama timeout on a cold model) must still
+    // leave a failed agent_runs row — same observability fix as the writer.
+    let llm: Awaited<ReturnType<typeof callLlm>>;
+    try {
+      llm = await callLlm({
+        agent: "critic",
+        runId,
+        temperature: 0.1,
+        responseFormat: "json",
+        messages: [
+          {
+            role: "system",
+            content: `${PROMPTS.critic.system}\nPrompt version: ${PROMPTS.critic.version}`,
+          },
+          { role: "user", content: JSON.stringify({ grant, sections: sections ?? [] }) },
+        ],
+      });
+    } catch (llmErr) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("agent_runs").insert({
+        run_id: runId,
+        agent: "critic",
+        status: "failed",
+        model: "dolphin3:latest",
+        input_tokens: 0,
+        output_tokens: 0,
+        latency_ms: Date.now() - t0,
+        user_id: context.userId,
+        grant_id: grant?.id ?? null,
+        error: `llm_error: ${llmErr instanceof Error ? llmErr.message : "unknown"}`,
+        metadata: { proposal_id: proposal.id },
+      });
+      throw new Error(`critic_llm_failed: ${llmErr instanceof Error ? llmErr.message : "unknown"}`);
+    }
     let parsed;
     try {
       parsed = CriticOutput.parse(JSON.parse(llm.text));

@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-const OLLAMA_URL = "http://localhost:11434/v1/chat/completions";
+const OLLAMA_URL = "http://localhost:11434/api/chat";
 
 function mockFetch(impl: (url: string) => Response | Promise<Response>) {
   const spy = vi.fn(async (input: RequestInfo | URL) => {
@@ -20,7 +20,7 @@ function mockFetch(impl: (url: string) => Response | Promise<Response>) {
 const okBody = (text: string) =>
   new Response(
     JSON.stringify({
-      choices: [{ message: { content: text } }],
+      message: { content: text },
       usage: { prompt_tokens: 1, completion_tokens: 1 },
     }),
     { status: 200, headers: { "content-type": "application/json" } },
