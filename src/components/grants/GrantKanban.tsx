@@ -225,7 +225,7 @@ export function GrantKanban({
     <div className="space-y-6">
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Total Opportunities" value={String(kpis.total).padStart(2, "0")} />
+        <Kpi label="Active Opportunities" value={String(kpis.total).padStart(2, "0")} />
         <Kpi
           label="Needs Action"
           value={String(kpis.needsAction).padStart(2, "0")}

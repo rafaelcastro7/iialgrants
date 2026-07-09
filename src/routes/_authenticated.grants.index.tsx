@@ -35,6 +35,7 @@ import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageTransition } from "@/components/PageTransition";
 import { GrantsListSkeleton } from "@/components/Skeletons";
 import type { GrantRowData } from "@/components/grants/GrantRow";
+import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import "@/i18n";
 
 const grantsQueryOptions = queryOptions({
@@ -256,9 +257,14 @@ function GrantsPage() {
     [data.grants, search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline],
   );
 
+  const activeFiltered = useMemo(
+    () => filtered.filter((g) => isActiveGrantStatus(g.status)),
+    [filtered],
+  );
+
   const kpis = useMemo(() => {
-    const total = filtered.length;
-    const needsAction = filtered.filter((g) => {
+    const total = activeFiltered.length;
+    const needsAction = activeFiltered.filter((g) => {
       if (g.status === "discovered") return true;
       if (g.status === "enriched" && !g.evaluation) return true;
       const d = g.deadline
@@ -271,16 +277,16 @@ function GrantsPage() {
         !["submitted", "won", "lost", "expired", "archived"].includes(g.status)
       );
     }).length;
-    const scored = filtered
+    const scored = activeFiltered
       .map((g) => g.evaluation?.fit_score ?? g.fit_score)
       .filter((v): v is number => v != null);
     const avgFit = scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
-    const pipelineValueCad = filtered.reduce(
+    const pipelineValueCad = activeFiltered.reduce(
       (sum, g) => sum + (g.amount_cad_max ?? g.amount_cad_min ?? 0),
       0,
     );
     return { total, needsAction, avgFit, pipelineValueCad };
-  }, [filtered]);
+  }, [activeFiltered]);
 
   return (
     <PageTransition>
