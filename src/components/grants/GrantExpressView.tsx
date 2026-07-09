@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "@/components/grants/GrantRow";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const DAY_MS = 86_400_000;
@@ -63,17 +62,24 @@ export function GrantExpressView({
   evaluatingIds: Set<string>;
   onEvaluate: (id: string) => void;
 }) {
-  // Express ordering: eligible + best fit first, then closest deadline.
-  const ranked = [...grants]
-    .filter((g) => isActiveGrantStatus(g.status))
+  const active = grants.filter((g) => isActiveGrantStatus(g.status));
+
+  // Evaluated opportunities lead — eligible first, then best fit. Un-evaluated
+  // grants go in a separate "Not yet checked" group so they don't bury the real
+  // matches (a basic user should see what to act on first).
+  const evaluated = active
+    .filter((g) => g.evaluation)
     .sort((a, b) => {
       const ae = a.evaluation?.eligibility_pass ? 1 : 0;
       const be = b.evaluation?.eligibility_pass ? 1 : 0;
       if (ae !== be) return be - ae;
       return (fitOf(b) ?? -1) - (fitOf(a) ?? -1);
     });
+  const unchecked = active
+    .filter((g) => !g.evaluation)
+    .sort((a, b) => a.title.localeCompare(b.title));
 
-  if (ranked.length === 0) {
+  if (active.length === 0) {
     return (
       <div className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground shadow-sm">
         No active opportunities yet. Run discovery from the Admin panel, or switch to the Advanced
@@ -83,126 +89,178 @@ export function GrantExpressView({
   }
 
   return (
-    <ul className="mx-auto max-w-4xl space-y-3">
-      {ranked.map((g) => {
-        const fit = fitOf(g);
-        const dl = deadlineInfo(g);
-        const action = primaryAction(g);
-        const evaluating = evaluatingIds.has(g.id);
-        const eligible = g.evaluation ? g.evaluation.eligibility_pass : null;
-        const tierBorder =
-          fit == null
-            ? "border-l-slate-200"
-            : fit >= 0.7
-              ? "border-l-emerald-500"
-              : fit >= 0.45
-                ? "border-l-amber-500"
-                : "border-l-slate-300";
+    <div className="mx-auto max-w-4xl space-y-6">
+      {evaluated.length > 0 && (
+        <section>
+          <GroupHeader
+            title="Top matches"
+            count={evaluated.length}
+            hint="Eligible and best-fit first"
+          />
+          <ul className="space-y-3">
+            {evaluated.map((g) => (
+              <GrantCard
+                key={g.id}
+                g={g}
+                evaluating={evaluatingIds.has(g.id)}
+                onEvaluate={onEvaluate}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
 
-        return (
-          <li
-            key={g.id}
-            className={`rounded-2xl border border-l-4 ${tierBorder} bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:p-5`}
+      {unchecked.length > 0 && (
+        <section>
+          <GroupHeader
+            title="Not yet checked"
+            count={unchecked.length}
+            hint="Run a fit check to score these against your organization"
+          />
+          <ul className="space-y-3">
+            {unchecked.map((g) => (
+              <GrantCard
+                key={g.id}
+                g={g}
+                evaluating={evaluatingIds.has(g.id)}
+                onEvaluate={onEvaluate}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function GroupHeader({ title, count, hint }: { title: string; count: number; hint: string }) {
+  return (
+    <div className="mb-3 flex items-baseline gap-2">
+      <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <span aria-hidden className="h-2.5 w-2.5 rounded-[3px] bg-brand" />
+        {title}
+        <span className="rounded-full bg-muted px-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+          {count}
+        </span>
+      </h2>
+      <span className="text-xs text-muted-foreground">· {hint}</span>
+    </div>
+  );
+}
+
+function GrantCard({
+  g,
+  evaluating,
+  onEvaluate,
+}: {
+  g: GrantRowData;
+  evaluating: boolean;
+  onEvaluate: (id: string) => void;
+}) {
+  const fit = fitOf(g);
+  const dl = deadlineInfo(g);
+  const action = primaryAction(g);
+  const eligible = g.evaluation ? g.evaluation.eligibility_pass : null;
+  const tierBorder =
+    fit == null
+      ? "border-l-slate-200"
+      : fit >= 0.7
+        ? "border-l-emerald-500"
+        : fit >= 0.45
+          ? "border-l-amber-500"
+          : "border-l-slate-300";
+
+  return (
+    <li
+      className={`rounded-2xl border border-l-4 ${tierBorder} bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:p-5`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <Link
+            to="/grants/$id"
+            params={{ id: g.id }}
+            className="block truncate text-base font-semibold text-primary hover:underline"
+            title={g.title}
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <Link
-                  to="/grants/$id"
-                  params={{ id: g.id }}
-                  className="block truncate text-base font-semibold text-primary hover:underline"
-                  title={g.title}
-                >
-                  {g.title}
-                </Link>
-                <p className="mt-0.5 text-xs text-muted-foreground">{funderName(g)}</p>
-              </div>
-              {fit != null && (
-                <div className="text-right">
-                  <div
-                    className={`text-2xl font-bold tabular-nums ${
-                      fit >= 0.7
-                        ? "text-emerald-600"
-                        : fit >= 0.45
-                          ? "text-amber-600"
-                          : "text-slate-400"
-                    }`}
-                  >
-                    {Math.round(fit * 100)}
-                  </div>
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                    match
-                  </div>
-                </div>
-              )}
+            {g.title}
+          </Link>
+          <p className="mt-0.5 text-xs text-muted-foreground">{funderName(g)}</p>
+        </div>
+        {fit != null && (
+          <div className="text-right">
+            <div
+              className={`text-2xl font-bold tabular-nums ${
+                fit >= 0.7 ? "text-emerald-600" : fit >= 0.45 ? "text-amber-600" : "text-slate-400"
+              }`}
+            >
+              {Math.round(fit * 100)}
             </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-              <span className="font-medium tabular-nums">{amountLabel(g)}</span>
-              <span
-                className={`inline-flex items-center gap-1 ${
-                  dl.tone === "urgent"
-                    ? "font-medium text-rose-600"
-                    : dl.tone === "soon"
-                      ? "text-amber-600"
-                      : "text-muted-foreground"
-                }`}
-              >
-                <CalendarDays className="h-3.5 w-3.5" /> {dl.label}
-              </span>
-              {eligible != null &&
-                (eligible ? (
-                  <span className="inline-flex items-center gap-1 text-emerald-600">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> You can apply
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-rose-600">
-                    <XCircle className="h-3.5 w-3.5" /> Likely not eligible
-                  </span>
-                ))}
-              {eligible == null && (
-                <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-[10px]">
-                  Not checked yet
-                </Badge>
-              )}
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              match
             </div>
+          </div>
+        )}
+      </div>
 
-            {g.evaluation?.rationale_en && (
-              <p className="mt-2 line-clamp-2 text-xs leading-6 text-muted-foreground">
-                {g.evaluation.rationale_en}
-              </p>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+        <span className="font-medium tabular-nums">{amountLabel(g)}</span>
+        <span
+          className={`inline-flex items-center gap-1 ${
+            dl.tone === "urgent"
+              ? "font-medium text-rose-600"
+              : dl.tone === "soon"
+                ? "text-amber-600"
+                : "text-muted-foreground"
+          }`}
+        >
+          <CalendarDays className="h-3.5 w-3.5" /> {dl.label}
+        </span>
+        {eligible != null &&
+          (eligible ? (
+            <span className="inline-flex items-center gap-1 text-emerald-600">
+              <CheckCircle2 className="h-3.5 w-3.5" /> You can apply
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-rose-600">
+              <XCircle className="h-3.5 w-3.5" /> Likely not eligible
+            </span>
+          ))}
+      </div>
+
+      {g.evaluation?.rationale_en && (
+        <p className="mt-2 line-clamp-2 text-xs leading-6 text-muted-foreground">
+          {g.evaluation.rationale_en}
+        </p>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
+        {action === "evaluate" ? (
+          <Button size="sm" disabled={evaluating} onClick={() => onEvaluate(g.id)}>
+            {evaluating ? (
+              <>
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                Checking fit...
+              </>
+            ) : (
+              "Check my fit"
             )}
-
-            <div className="mt-3 flex items-center gap-2">
-              {action === "evaluate" ? (
-                <Button size="sm" disabled={evaluating} onClick={() => onEvaluate(g.id)}>
-                  {evaluating ? (
-                    <>
-                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                      Checking fit...
-                    </>
-                  ) : (
-                    "Check my fit"
-                  )}
-                </Button>
-              ) : (
-                <Button asChild size="sm">
-                  <Link to="/grants/$id" params={{ id: g.id }}>
-                    See details <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              )}
-              <a
-                href={g.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-muted-foreground hover:underline"
-              >
-                Official page
-              </a>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+          </Button>
+        ) : (
+          <Button asChild size="sm">
+            <Link to="/grants/$id" params={{ id: g.id }}>
+              See details <ArrowRight className="ml-1 h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        )}
+        <a
+          href={g.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-muted-foreground hover:underline"
+        >
+          Official page
+        </a>
+      </div>
+    </li>
   );
 }
