@@ -227,6 +227,8 @@ Rules:
   chunk supports a claim, do not make it.
 - The "citations" array MUST list every marker you used in content_en, with the
   chunk_id and a verbatim snippet (<=300 chars) from that chunk.
+- content_en MUST be the full section body, not the section heading. Write
+  120-220 words unless the evidence is thin; never return only a title.
 - Do NOT invent chunk ids. Only use chunks that were provided.
 - Do NOT repeat or echo the input. Write NEW prose for the section.
 Respond with ONLY this JSON object, nothing before or after:

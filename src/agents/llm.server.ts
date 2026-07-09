@@ -28,15 +28,18 @@ const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const DEFAULT_LOCAL_MODEL = process.env.OLLAMA_MODEL || "phi4-mini:latest";
 const LOCAL_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 0) || 180_000;
 
-// Long-form drafting agents regularly exceed the env baseline on this
-// hardware: measured writer latencies on dolphin3 / 8GB GPU are 50–95s WARM
-// (agent_runs 2026-07-08), plus 10–25s model load when cold — a 120s baseline
-// aborts mid-generation ("The operation was aborted due to timeout", found by
-// live E2E). Generation-heavy agents get a 5-minute floor; cheap extraction
-// agents keep the baseline.
-const SLOW_AGENTS = new Set(["writer", "strategist", "critic"]);
+// Long-form drafting agents exceed the env baseline on this hardware. Live E2E
+// measurements on dolphin3 / GTX 1070 show writer warm runs around 220s and
+// cold-start streamed runs can reach ~410s. Give writer a safer floor; keep the
+// other generation-heavy agents at 5 minutes and cheap extraction agents on
+// the env baseline.
+const SLOW_AGENT_TIMEOUT_FLOORS_MS: Record<string, number> = {
+  writer: 600_000,
+  strategist: 300_000,
+  critic: 300_000,
+};
 function timeoutFor(agent: string): number {
-  return SLOW_AGENTS.has(agent) ? Math.max(LOCAL_TIMEOUT_MS, 300_000) : LOCAL_TIMEOUT_MS;
+  return Math.max(LOCAL_TIMEOUT_MS, SLOW_AGENT_TIMEOUT_FLOORS_MS[agent] ?? 0);
 }
 
 function toLocalModel(model: string | null | undefined): string {
@@ -52,6 +55,7 @@ async function doOllamaCall(
   temperature: number,
   maxTokens: number | undefined,
   jsonMode: boolean,
+  stream: boolean,
   signal: AbortSignal,
 ) {
   // Native /api/chat, NOT the OpenAI-compat /v1 endpoint: the compat layer
@@ -62,7 +66,7 @@ async function doOllamaCall(
   // output bound server-side.
   const options: Record<string, unknown> = { num_ctx: 4096, temperature };
   if (maxTokens) options.num_predict = maxTokens;
-  const body: Record<string, unknown> = { model, messages, stream: false, options };
+  const body: Record<string, unknown> = { model, messages, stream, options };
   if (jsonMode) body.format = "json";
   return fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
@@ -70,6 +74,73 @@ async function doOllamaCall(
     body: JSON.stringify(body),
     signal,
   });
+}
+
+async function readOllamaResponse(res: Response, stream: boolean) {
+  if (!stream) return res.json();
+  if (!res.body) throw new Error("ollama_stream_missing_body");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let content = "";
+  let promptEvalCount: number | undefined;
+  let evalCount: number | undefined;
+
+  const consumeLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const data = JSON.parse(trimmed);
+    content += data?.message?.content ?? "";
+    if (data?.done) {
+      promptEvalCount = data?.prompt_eval_count;
+      evalCount = data?.eval_count;
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) consumeLine(line);
+  }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) consumeLine(buffer);
+
+  return {
+    message: { content },
+    prompt_eval_count: promptEvalCount,
+    eval_count: evalCount,
+  };
+}
+
+async function isModelLoaded(model: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${OLLAMA_URL}/api/ps`, { signal: AbortSignal.timeout(5_000) });
+    if (!res.ok) return false;
+    const data = await res.json();
+    const models = Array.isArray(data?.models) ? data.models : [];
+    return models.some((m: Record<string, unknown>) => m.name === model || m.model === model);
+  } catch {
+    return false;
+  }
+}
+
+async function prewarmModel(model: string, signal: AbortSignal): Promise<void> {
+  if (await isModelLoaded(model)) return;
+  const res = await doOllamaCall(
+    model,
+    [{ role: "user", content: "OK" }],
+    0,
+    1,
+    false,
+    false,
+    signal,
+  );
+  if (!res.ok) throw new Error(`ollama_prewarm_${res.status}: ${await res.text()}`);
 }
 
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
@@ -104,14 +175,20 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   // Normalize cloud model IDs that might come from DB
   usedModel = toLocalModel(usedModel);
   const fallbackModel = fallback ? toLocalModel(fallback) : null;
+  const streamResponse = !!SLOW_AGENT_TIMEOUT_FLOORS_MS[opts.agent];
 
   try {
+    if (SLOW_AGENT_TIMEOUT_FLOORS_MS[opts.agent]) {
+      await prewarmModel(usedModel, AbortSignal.timeout(180_000));
+    }
+
     let res = await doOllamaCall(
       usedModel,
       opts.messages,
       resolvedTemp,
       resolvedMax,
       resolvedJson,
+      streamResponse,
       AbortSignal.timeout(timeoutFor(opts.agent)),
     );
 
@@ -126,6 +203,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         resolvedTemp,
         resolvedMax,
         resolvedJson,
+        streamResponse,
         AbortSignal.timeout(timeoutFor(opts.agent)),
       );
     }
@@ -139,13 +217,14 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         resolvedTemp,
         resolvedMax,
         resolvedJson,
+        streamResponse,
         AbortSignal.timeout(timeoutFor(opts.agent)),
       );
     }
 
     if (!res.ok) throw new Error(`ollama_error_${res.status}: ${await res.text()}`);
 
-    const data = await res.json();
+    const data = await readOllamaResponse(res, streamResponse);
     text = data?.message?.content ?? "";
     inputTokens = data?.prompt_eval_count;
     outputTokens = data?.eval_count;
