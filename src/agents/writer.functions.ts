@@ -127,46 +127,73 @@ export const draftSection = createServerFn({ method: "POST" })
     const numbered = hits.map((h, i) => ({ marker: `[d${i + 1}]`, ...h }));
     const allowed = new Set(hits.map((h) => h.id));
 
-    const llm = await callLlm({
-      agent: "writer",
-      runId,
-      temperature: 0.3,
-      responseFormat: "json",
-      messages: [
-        {
-          role: "system",
-          content: `${PROMPTS.writer.system}\nPrompt version: ${PROMPTS.writer.version}`,
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            grant: {
-              title: grant.title,
-              summary: grant.summary,
-              deadline: grant.deadline,
-              amount_cad_min: grant.amount_cad_min,
-              amount_cad_max: grant.amount_cad_max,
-              eligibility: grant.eligibility,
-              sectors: grant.sectors,
-            },
-            section: {
-              kind: section.kind,
-              heading_en: section.heading_en,
-              heading_fr: section.heading_fr,
-              angle: notes.angle,
-              must_cover: notes.must_cover,
-            },
-            chunks: numbered.map((c) => ({
-              marker: c.marker,
-              id: c.id,
-              source: c.source,
-              language: c.language,
-              content: c.content,
-            })),
-          }),
-        },
-      ],
-    });
+    // A throwing LLM call (e.g. Ollama timeout on a cold model) must still
+    // leave a failed agent_runs row — otherwise the Agent Console shows
+    // nothing and the failure is invisible (found by live E2E, 2026-07-09).
+    let llm: Awaited<ReturnType<typeof callLlm>>;
+    try {
+      llm = await callLlm({
+        agent: "writer",
+        runId,
+        temperature: 0.3,
+        // Hard-bound generation length: one section is 300–600 tokens of prose;
+        // the DB default (3000) let dolphin3 ramble past the 300s timeout on
+        // this GPU (~10–20 tok/s). 800 tokens ≈ 3,200 chars — well inside the
+        // schema's 8,000-char cap and bounds latency to ~40–80s warm.
+        maxOutputTokens: 800,
+        responseFormat: "json",
+        messages: [
+          {
+            role: "system",
+            content: `${PROMPTS.writer.system}\nPrompt version: ${PROMPTS.writer.version}`,
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              grant: {
+                title: grant.title,
+                summary: grant.summary,
+                deadline: grant.deadline,
+                amount_cad_min: grant.amount_cad_min,
+                amount_cad_max: grant.amount_cad_max,
+                eligibility: grant.eligibility,
+                sectors: grant.sectors,
+              },
+              section: {
+                kind: section.kind,
+                heading_en: section.heading_en,
+                heading_fr: section.heading_fr,
+                angle: notes.angle,
+                must_cover: notes.must_cover,
+              },
+              chunks: numbered.map((c) => ({
+                marker: c.marker,
+                id: c.id,
+                source: c.source,
+                language: c.language,
+                content: c.content,
+              })),
+            }),
+          },
+        ],
+      });
+    } catch (llmErr) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("agent_runs").insert({
+        run_id: runId,
+        agent: "writer",
+        status: "failed",
+        model: resolveModel("writer"),
+        input_tokens: 0,
+        output_tokens: 0,
+        latency_ms: Date.now() - t0,
+        user_id: context.userId,
+        grant_id: grant.id,
+        error: `llm_error: ${llmErr instanceof Error ? llmErr.message : "unknown"}`,
+        metadata: { section_id: section.id },
+      });
+      throw new Error(`writer_llm_failed: ${llmErr instanceof Error ? llmErr.message : "unknown"}`);
+    }
 
     const model = resolveModel("writer");
     let parsed;

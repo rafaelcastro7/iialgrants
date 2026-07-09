@@ -28,6 +28,17 @@ const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const DEFAULT_LOCAL_MODEL = process.env.OLLAMA_MODEL || "phi4-mini:latest";
 const LOCAL_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 0) || 180_000;
 
+// Long-form drafting agents regularly exceed the env baseline on this
+// hardware: measured writer latencies on dolphin3 / 8GB GPU are 50–95s WARM
+// (agent_runs 2026-07-08), plus 10–25s model load when cold — a 120s baseline
+// aborts mid-generation ("The operation was aborted due to timeout", found by
+// live E2E). Generation-heavy agents get a 5-minute floor; cheap extraction
+// agents keep the baseline.
+const SLOW_AGENTS = new Set(["writer", "strategist", "critic"]);
+function timeoutFor(agent: string): number {
+  return SLOW_AGENTS.has(agent) ? Math.max(LOCAL_TIMEOUT_MS, 300_000) : LOCAL_TIMEOUT_MS;
+}
+
 function toLocalModel(model: string | null | undefined): string {
   if (!model) return DEFAULT_LOCAL_MODEL;
   const looksCloud =
@@ -99,7 +110,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       resolvedTemp,
       resolvedMax,
       resolvedJson,
-      AbortSignal.timeout(LOCAL_TIMEOUT_MS),
+      AbortSignal.timeout(timeoutFor(opts.agent)),
     );
 
     let attempt = 0;
@@ -113,7 +124,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         resolvedTemp,
         resolvedMax,
         resolvedJson,
-        AbortSignal.timeout(LOCAL_TIMEOUT_MS),
+        AbortSignal.timeout(timeoutFor(opts.agent)),
       );
     }
 
@@ -126,7 +137,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         resolvedTemp,
         resolvedMax,
         resolvedJson,
-        AbortSignal.timeout(LOCAL_TIMEOUT_MS),
+        AbortSignal.timeout(timeoutFor(opts.agent)),
       );
     }
 
