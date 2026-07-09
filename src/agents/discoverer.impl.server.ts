@@ -238,10 +238,27 @@ const NON_GRANT_URL_PATTERNS: RegExp[] = [
   /code-of-conduct|code-de-conduite/i,
   /national-inventory/i,
 ];
+// Hosts that are never a funder's own program page — encyclopedias, social
+// networks, aggregators. A grant lives on the funder's site, not Wikipedia.
+// Observed: a /wiki/Industrial_Research_Assistance_Program page was ingested as
+// an IRAP "grant". Matches the host and any subdomain (e.g. en.wikipedia.org).
+const NON_GRANT_HOSTS = [
+  "wikipedia.org",
+  "wikimedia.org",
+  "linkedin.com",
+  "facebook.com",
+  "twitter.com",
+  "x.com",
+  "youtube.com",
+  "crunchbase.com",
+  "reddit.com",
+];
 export function isNonGrantUrl(url: string): boolean {
   try {
-    const path = new URL(url).pathname.toLowerCase();
-    return NON_GRANT_URL_PATTERNS.some((re) => re.test(path));
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (NON_GRANT_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) return true;
+    return NON_GRANT_URL_PATTERNS.some((re) => re.test(u.pathname.toLowerCase()));
   } catch {
     return false;
   }
