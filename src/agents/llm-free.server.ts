@@ -37,19 +37,26 @@ type ProviderConfig = {
 
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
-async function callOpenAICompat(
+// Native /api/chat, NOT the OpenAI-compat /v1 endpoint — the compat layer
+// silently ignores `options` (num_ctx/num_predict were never applied). Same
+// fix as llm.server.ts; 4096 ctx is what fits an 8GB card without offload.
+async function callOllamaNative(
   url: string,
   model: string,
   opts: FreeLlmOptions,
 ): Promise<{ text: string; inputTokens?: number; outputTokens?: number; model: string }> {
+  const options: Record<string, unknown> = {
+    num_ctx: 4096,
+    temperature: opts.temperature ?? 0.2,
+  };
+  if (opts.maxOutputTokens) options.num_predict = opts.maxOutputTokens;
   const body: Record<string, unknown> = {
     model,
     messages: opts.messages,
-    temperature: opts.temperature ?? 0.2,
-    options: { num_ctx: 8192 },
+    stream: false,
+    options,
   };
-  if (opts.maxOutputTokens) body.max_tokens = opts.maxOutputTokens;
-  if (opts.responseFormat === "json") body.response_format = { type: "json_object" };
+  if (opts.responseFormat === "json") body.format = "json";
 
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 180_000);
@@ -62,11 +69,11 @@ async function callOpenAICompat(
     });
     if (!res.ok) throw new Error(`local_${res.status}: ${(await res.text()).slice(0, 200)}`);
     const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content ?? "";
+    const text = data?.message?.content ?? "";
     return {
       text,
-      inputTokens: data?.usage?.prompt_tokens,
-      outputTokens: data?.usage?.completion_tokens,
+      inputTokens: data?.prompt_eval_count,
+      outputTokens: data?.eval_count,
       model,
     };
   } finally {
@@ -97,7 +104,7 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
         | { text: string; inputTokens?: number; outputTokens?: number; model: string }
         | undefined;
       try {
-        result = await callOpenAICompat(`${OLLAMA_URL}/v1/chat/completions`, model, opts);
+        result = await callOllamaNative(`${OLLAMA_URL}/api/chat`, model, opts);
         ok = true;
       } catch (e) {
         errMsg = e instanceof Error ? e.message : String(e);

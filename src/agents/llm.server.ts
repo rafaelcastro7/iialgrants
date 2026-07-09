@@ -54,15 +54,17 @@ async function doOllamaCall(
   jsonMode: boolean,
   signal: AbortSignal,
 ) {
-  const body: Record<string, unknown> = {
-    model,
-    messages,
-    temperature,
-    options: { num_ctx: 8192 },
-  };
-  if (maxTokens) body.max_tokens = maxTokens;
-  if (jsonMode) body.response_format = { type: "json_object" };
-  return fetch(`${OLLAMA_URL}/v1/chat/completions`, {
+  // Native /api/chat, NOT the OpenAI-compat /v1 endpoint: the compat layer
+  // silently IGNORES the `options` field, so the old num_ctx=8192 was never
+  // applied (found via `ollama ps` showing ctx 4096 during live runs). We
+  // codify 4096 — the context every successful run actually used, and what
+  // fits an 8GB card without CPU offload. num_predict enforces the caller's
+  // output bound server-side.
+  const options: Record<string, unknown> = { num_ctx: 4096, temperature };
+  if (maxTokens) options.num_predict = maxTokens;
+  const body: Record<string, unknown> = { model, messages, stream: false, options };
+  if (jsonMode) body.format = "json";
+  return fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -144,9 +146,9 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     if (!res.ok) throw new Error(`ollama_error_${res.status}: ${await res.text()}`);
 
     const data = await res.json();
-    text = data?.choices?.[0]?.message?.content ?? "";
-    inputTokens = data?.usage?.prompt_tokens;
-    outputTokens = data?.usage?.completion_tokens;
+    text = data?.message?.content ?? "";
+    inputTokens = data?.prompt_eval_count;
+    outputTokens = data?.eval_count;
     ok = true;
     return { text, inputTokens, outputTokens, runId, model: usedModel, provider: "ollama" };
   } catch (err) {

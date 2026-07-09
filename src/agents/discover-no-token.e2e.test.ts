@@ -8,7 +8,7 @@
 
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
-const OLLAMA_API_URL = "http://localhost:11434/v1/chat/completions";
+const OLLAMA_API_URL = "http://localhost:11434/api/chat";
 
 // In-memory supabase (mirrors discover-enrich.gate.test pattern).
 type Row = Record<string, unknown>;
@@ -91,8 +91,9 @@ const FUNDER_ID = "33333333-3333-3333-3333-333333333333";
 const okBody = (text: string) =>
   new Response(
     JSON.stringify({
-      choices: [{ message: { content: text } }],
-      usage: { prompt_tokens: 1, completion_tokens: 1 },
+      message: { content: text },
+      prompt_eval_count: 1,
+      eval_count: 1,
     }),
     { status: 200, headers: { "content-type": "application/json" } },
   );

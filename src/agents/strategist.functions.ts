@@ -149,22 +149,48 @@ export const runStrategist = createServerFn({ method: "POST" })
     if (te) throw new Error(te.message);
     if (!tpl) throw new Error("template_not_found");
 
-    const llm = await callLlm({
-      agent: "strategist",
-      runId,
-      temperature: 0.2,
-      responseFormat: "json",
-      messages: [
-        {
-          role: "system",
-          content: `${PROMPTS.strategist.system}\nPrompt version: ${PROMPTS.strategist.version}`,
-        },
-        {
-          role: "user",
-          content: JSON.stringify({ grant: g, organization: org, template_sections: tpl.sections }),
-        },
-      ],
-    });
+    // A throwing LLM call (e.g. Ollama timeout on a cold model) must still
+    // leave a failed agent_runs row — same observability fix as the writer.
+    let llm: Awaited<ReturnType<typeof callLlm>>;
+    try {
+      llm = await callLlm({
+        agent: "strategist",
+        runId,
+        temperature: 0.2,
+        responseFormat: "json",
+        messages: [
+          {
+            role: "system",
+            content: `${PROMPTS.strategist.system}\nPrompt version: ${PROMPTS.strategist.version}`,
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              grant: g,
+              organization: org,
+              template_sections: tpl.sections,
+            }),
+          },
+        ],
+      });
+    } catch (llmErr) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("agent_runs").insert({
+        run_id: runId,
+        agent: "strategist",
+        status: "failed",
+        model: resolveModel("strategist"),
+        input_tokens: 0,
+        output_tokens: 0,
+        latency_ms: Date.now() - t0,
+        user_id: context.userId,
+        grant_id: g.id,
+        error: `llm_error: ${llmErr instanceof Error ? llmErr.message : "unknown"}`,
+      });
+      throw new Error(
+        `strategist_llm_failed: ${llmErr instanceof Error ? llmErr.message : "unknown"}`,
+      );
+    }
 
     const model = resolveModel("strategist");
     let parsed;
