@@ -9,10 +9,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ProposalReadiness } from "@/lib/proposal-readiness";
 
 const STATUS_ICON = {
-  ready: <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />,
-  partial: <MinusCircle className="h-4 w-4 text-amber-600 shrink-0" />,
-  blocked: <Circle className="h-4 w-4 text-slate-300 shrink-0" />,
+  ready: <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />,
+  partial: <MinusCircle className="h-4 w-4 shrink-0 text-warning" />,
+  blocked: <Circle className="h-4 w-4 shrink-0 text-muted-foreground/40" />,
 } as const;
+
+function scoreTone(score: number): string {
+  return score >= 80 ? "text-success" : score >= 50 ? "text-warning" : "text-muted-foreground";
+}
+
+function barTone(score: number): string {
+  return score >= 80 ? "bg-success" : score >= 50 ? "bg-warning" : "bg-muted-foreground/40";
+}
 
 export function ProposalDetailExpress({
   title,
@@ -33,28 +41,37 @@ export function ProposalDetailExpress({
 }) {
   const nextSection = readiness.sections.find((s) => s.status !== "ready");
   const readyToSubmit = readiness.score >= 80 && readiness.openCriticalRequirements.length === 0;
+  const readyCount = readiness.sections.filter((s) => s.status === "ready").length;
+  const totalSections = readiness.sections.length;
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl space-y-4">
       <div>
-        <h1 className="text-2xl font-bold leading-tight">{title}</h1>
+        <h1 className="font-display text-3xl leading-tight tracking-tight">{title}</h1>
       </div>
 
       <Card>
-        <CardContent className="pt-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Proposal readiness</p>
-            <div
-              className={`text-3xl font-bold tabular-nums ${
-                readiness.score >= 80
-                  ? "text-emerald-600"
-                  : readiness.score >= 50
-                    ? "text-amber-600"
-                    : "text-slate-400"
-              }`}
-            >
+        <CardContent className="space-y-3 pt-5">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Proposal readiness
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {readyCount} of {totalSections} section{totalSections === 1 ? "" : "s"} ready
+                {readyToSubmit ? " · ready to submit" : ""}
+              </p>
+            </div>
+            <div className={`text-3xl font-bold tabular-nums ${scoreTone(readiness.score)}`}>
               {readiness.score}%
             </div>
+          </div>
+
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full transition-all ${barTone(readiness.score)}`}
+              style={{ width: `${Math.min(100, Math.max(0, readiness.score))}%` }}
+            />
           </div>
 
           {readiness.openCriticalRequirements.length > 0 && (
