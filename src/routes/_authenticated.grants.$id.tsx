@@ -265,7 +265,7 @@ function GrantDetailPage() {
   return (
     <main className="min-h-screen text-foreground">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
           <Button asChild variant="ghost" size="sm">
             <Link to="/grants">
               <ArrowLeft className="mr-1 h-4 w-4" />
@@ -317,7 +317,7 @@ function GrantDetailPage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+      <section className="mx-auto max-w-7xl space-y-6 px-4 py-6">
         {viewMode === "express" && (
           <GrantDetailExpress
             title={title}
