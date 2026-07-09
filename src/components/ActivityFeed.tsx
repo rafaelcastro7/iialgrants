@@ -48,17 +48,30 @@ export function ActivityFeed() {
   const { data: events, isLoading } = useQuery({
     queryKey: ["activity-feed"],
     queryFn: async () => {
+      // Grants are the shared catalog — "New grant discovered" is a legit
+      // workspace-wide event. Proposals are user-owned artifacts, so this
+      // personal feed MUST scope them to the current user: RLS currently lets
+      // an org_id=NULL proposal be read by any authenticated user, which would
+      // otherwise surface another user's proposal here (found by logging in as
+      // demo-member-a and seeing the admin's PSCE proposal).
       const { data: grants } = await supabase
         .from("grants")
         .select("id, title, created_at")
         .order("created_at", { ascending: false })
         .limit(3);
 
-      const { data: proposals } = await supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const proposalQuery = supabase
         .from("proposals")
         .select("id, title, status, created_at, grant_id")
         .order("created_at", { ascending: false })
         .limit(5);
+      const { data: proposals } = await (user
+        ? proposalQuery.eq("user_id", user.id)
+        : proposalQuery);
 
       const activityEvents: ActivityEvent[] = [];
 
