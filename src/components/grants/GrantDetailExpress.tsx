@@ -1,16 +1,21 @@
+import type { ComponentType, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  AlertTriangle,
+  AlertCircle,
   ArrowRight,
+  BarChart3,
   Building2,
   CalendarDays,
   CheckCircle2,
+  Circle,
   Clock3,
   ExternalLink,
   FileCheck2,
   FileText,
+  Flag,
+  Globe2,
   Landmark,
-  Layers3,
+  Link2,
   Loader2,
   MapPin,
   ShieldCheck,
@@ -27,6 +32,7 @@ const DAY_MS = 86_400_000;
 type Requirement = {
   category: string;
   requirement: string;
+  value?: string;
   isCritical: boolean;
 };
 
@@ -34,7 +40,16 @@ type Evaluation = {
   fit_score: number;
   eligibility_pass: boolean;
   rationale_en: string;
+  created_at?: string | null;
+  axis_breakdown?: unknown;
 } | null;
+
+type GrantEvent = {
+  from_status: string | null;
+  to_status: string;
+  created_at: string;
+  metadata?: unknown;
+};
 
 type DeadlineState = {
   label: string;
@@ -45,8 +60,8 @@ type DeadlineState = {
 
 const STATUS_LABEL: Record<string, string> = {
   discovered: "Discovered",
-  enriched: "Enriched",
-  scored: "Scored",
+  enriched: "Details fetched",
+  scored: "Fit checked",
   shortlisted: "Shortlisted",
   in_proposal: "In proposal",
   submitted: "Submitted",
@@ -56,93 +71,88 @@ const STATUS_LABEL: Record<string, string> = {
   archived: "Archived",
 };
 
-const ACRONYMS: Record<string, string> = {
-  ai: "AI",
-  api: "API",
-  cra: "CRA",
-  gst: "GST",
-  hst: "HST",
-  id: "ID",
-  ip: "IP",
-  ml: "ML",
-  ngo: "NGO",
-  rd: "R&D",
-  sme: "SME",
-  url: "URL",
+const STATUS_DETAIL: Record<string, string> = {
+  discovered: "The source exists, but the opportunity still needs reliable structured detail.",
+  enriched: "Core details were extracted and are ready for a fit decision.",
+  scored: "The opportunity has been evaluated against IIAL criteria.",
+  shortlisted: "The opportunity is marked for active consideration.",
+  in_proposal: "A proposal workflow already exists for this opportunity.",
+  submitted: "The proposal has been submitted.",
+  won: "The opportunity was awarded.",
+  lost: "The opportunity was not awarded.",
+  expired: "The opportunity is no longer open.",
+  archived: "The opportunity is retained for records only.",
 };
 
-function fmtCad(n: number): string {
+const STOPWORDS = new Set([
+  "grant",
+  "grants",
+  "fund",
+  "funding",
+  "program",
+  "programme",
+  "support",
+  "the",
+  "and",
+  "for",
+  "with",
+]);
+
+function formatCad(value: number): string {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(value);
 }
 
 function amountLabel(min: number | null, max: number | null): string {
-  if (min != null && max != null) return `${fmtCad(min)} - ${fmtCad(max)}`;
-  if (max != null) return `Up to ${fmtCad(max)}`;
-  if (min != null) return `From ${fmtCad(min)}`;
+  if (min != null && max != null)
+    return min === max ? formatCad(max) : `${formatCad(min)} to ${formatCad(max)}`;
+  if (max != null) return `Up to ${formatCad(max)}`;
+  if (min != null) return `From ${formatCad(min)}`;
   return "Not published";
+}
+
+function formatDate(value: string | null | undefined, withTime = false): string {
+  if (!value) return "Not available";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return withTime
+    ? date.toLocaleString("en-CA", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : date.toLocaleDateString("en-CA", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
 }
 
 function deadlineState(deadline: string | null): DeadlineState {
   if (!deadline) {
-    return { label: "Rolling", detail: "No fixed deadline published", days: null, tone: "neutral" };
-  }
-  const d = new Date(deadline);
-  if (Number.isNaN(d.getTime())) {
     return {
-      label: "Rolling",
-      detail: "Deadline could not be parsed",
+      label: "No fixed deadline",
+      detail: "Treat as rolling or not yet extracted",
       days: null,
       tone: "neutral",
     };
   }
-  const exact = d.toLocaleDateString("en-CA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-  const days = Math.ceil((d.getTime() - Date.now()) / DAY_MS);
+  const date = new Date(deadline);
+  if (Number.isNaN(date.getTime())) {
+    return { label: "Unparsed deadline", detail: deadline, days: null, tone: "neutral" };
+  }
+  const exact = formatDate(deadline);
+  const days = Math.ceil((date.getTime() - Date.now()) / DAY_MS);
   if (days < 0) return { label: "Closed", detail: exact, days, tone: "danger" };
   if (days === 0) return { label: "Closes today", detail: exact, days, tone: "danger" };
-  if (days <= 7)
-    return {
-      label: `${days} day${days === 1 ? "" : "s"} left`,
-      detail: exact,
-      days,
-      tone: "danger",
-    };
-  if (days <= 30) return { label: `${days} days left`, detail: exact, days, tone: "warning" };
+  if (days <= 14) return { label: `${days} days left`, detail: exact, days, tone: "danger" };
+  if (days <= 45) return { label: `${days} days left`, detail: exact, days, tone: "warning" };
   return { label: exact, detail: `${days} days away`, days, tone: "good" };
-}
-
-function humanize(value: string): string {
-  const words = value
-    .split(/[_\-\s]+/)
-    .filter(Boolean)
-    .map((part) => ACRONYMS[part.toLowerCase()] ?? part.replace(/\b\w/g, (c) => c.toUpperCase()));
-  // Join runs of consecutive acronyms with a slash so "ai_ml" reads "AI/ML",
-  // not "AI ML"; ordinary words keep spaces.
-  return words
-    .map((w, i) => {
-      const prevAcronym = i > 0 && /^[A-Z&]+$/.test(words[i - 1]);
-      const thisAcronym = /^[A-Z&]+$/.test(w);
-      return (i > 0 ? (prevAcronym && thisAcronym ? "/" : " ") : "") + w;
-    })
-    .join("");
-}
-
-function initialsOf(name: string): string {
-  const parts = name
-    .replace(/\(.*?\)/g, "")
-    .split(/\s+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 function parseMaybeJson(value: unknown): unknown {
@@ -162,40 +172,100 @@ function parseMaybeJson(value: unknown): unknown {
   return value;
 }
 
+function labelFromKey(value: string): string {
+  const cleaned = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!cleaned) return value;
+  return cleaned.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function displayTag(value: string): string {
+  if (!/[_-]/.test(value)) return value;
+  return labelFromKey(value);
+}
+
+function initialsOf(name: string): string {
+  const parts = name
+    .replace(/\(.*?\)/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 function eligibilityRows(eligibility: unknown): Array<[string, unknown]> {
   const parsed = parseMaybeJson(eligibility);
   if (!parsed || typeof parsed !== "object") return [];
-  const value =
-    !Array.isArray(parsed) &&
-    Object.keys(parsed as Record<string, unknown>).length === 1 &&
-    "items" in (parsed as Record<string, unknown>)
-      ? parseMaybeJson((parsed as Record<string, unknown>).items)
-      : parsed;
-  if (!value || typeof value !== "object") return [];
-  const rows = Array.isArray(value)
-    ? value.map(
-        (item, index) => [`Criterion ${index + 1}`, parseMaybeJson(item)] as [string, unknown],
-      )
-    : Object.entries(value as Record<string, unknown>).map(
-        ([key, rowValue]) => [key, parseMaybeJson(rowValue)] as [string, unknown],
-      );
-  return rows.filter(([, rowValue]) => {
-    if (rowValue == null || rowValue === "") return false;
-    if (Array.isArray(rowValue) && rowValue.length === 0) return false;
-    return true;
-  });
+  if (Array.isArray(parsed)) {
+    return parsed.map((item, index) => [`Criterion ${index + 1}`, parseMaybeJson(item)]);
+  }
+  return Object.entries(parsed as Record<string, unknown>)
+    .map(([key, value]) => [key, parseMaybeJson(value)] as [string, unknown])
+    .filter(([, value]) => {
+      if (value == null || value === "") return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    });
 }
 
-function strategicVerdict({
+function titleTokens(title: string): string[] {
+  return Array.from(
+    new Set(
+      title
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .split(/\s+/)
+        .filter((token) => token.length >= 4 && !STOPWORDS.has(token)),
+    ),
+  );
+}
+
+function computeCompleteness({
+  summary,
+  amountMin,
+  amountMax,
+  deadline,
+  sectors,
+  eligibilityRowsCount,
+  requirements,
+  evaluation,
+}: {
+  summary: string | null;
+  amountMin: number | null;
+  amountMax: number | null;
+  deadline: string | null;
+  sectors?: string[] | null;
+  eligibilityRowsCount: number;
+  requirements: Requirement[];
+  evaluation: Evaluation;
+}) {
+  const checks = [
+    { label: "Summary", ok: !!summary },
+    { label: "Funding", ok: amountMin != null || amountMax != null },
+    { label: "Deadline", ok: !!deadline },
+    { label: "Eligibility", ok: eligibilityRowsCount > 0 },
+    { label: "Sectors", ok: !!sectors?.length },
+    { label: "Requirements", ok: requirements.length > 0 },
+    { label: "Fit", ok: !!evaluation },
+  ];
+  const known = checks.filter((check) => check.ok).length;
+  return { checks, known, total: checks.length, pct: Math.round((known / checks.length) * 100) };
+}
+
+function verdictFor({
+  status,
   evaluation,
   deadline,
-  status,
-  lowData,
+  completenessPct,
+  enrichmentFailed,
 }: {
+  status: string;
   evaluation: Evaluation;
   deadline: DeadlineState;
-  status: string;
-  lowData: boolean;
+  completenessPct: number;
+  enrichmentFailed: boolean;
 }): { label: string; detail: string; tone: "good" | "warning" | "danger" | "neutral" } {
   if (
     ["archived", "expired", "lost"].includes(status) ||
@@ -203,33 +273,38 @@ function strategicVerdict({
   ) {
     return {
       label: "Do not prioritize",
-      detail:
-        "This opportunity is closed or no longer active. Keep it for records unless a new intake opens.",
+      detail: "This record is closed, archived, or no longer actionable.",
       tone: "danger",
     };
   }
-  if (lowData) {
+  if (enrichmentFailed) {
     return {
-      label: "Validate first",
+      label: "Validate source first",
       detail:
-        "The catalog does not have enough reliable detail yet. Confirm eligibility and requirements before investing proposal time.",
+        "Automation could not verify the core grant facts. Review the official page before proposal work.",
+      tone: "warning",
+    };
+  }
+  if (completenessPct < 55) {
+    return {
+      label: "Incomplete lead",
+      detail:
+        "Enough information exists to track the opportunity, but not enough to make a confident pursue/no-pursue decision.",
       tone: "warning",
     };
   }
   if (!evaluation) {
     return {
-      label: "Check fit",
-      detail:
-        "Run the evaluator to compare this opportunity against IIAL before deciding whether to pursue it.",
-      tone: "warning",
+      label: "Ready for fit check",
+      detail: "The record has usable detail. Run the evaluator before allocating proposal time.",
+      tone: "neutral",
     };
   }
   const score = evaluation.fit_score;
   if (evaluation.eligibility_pass && score >= 0.7) {
     return {
       label: "Strong pursue",
-      detail:
-        "This is a high-fit opportunity. Move quickly on requirements and start the proposal plan.",
+      detail: "High fit and no eligibility blocker were found. Move into proposal planning.",
       tone: "good",
     };
   }
@@ -237,35 +312,34 @@ function strategicVerdict({
     return {
       label: "Selective pursue",
       detail:
-        "This may be worth pursuing if the program aligns with a current project or partner need.",
+        "Potentially useful if the opportunity maps to a current project or partner commitment.",
       tone: "warning",
     };
   }
   if (!evaluation.eligibility_pass) {
     return {
       label: "Eligibility risk",
-      detail:
-        "The fit check found an eligibility concern. Review the rule rationale before spending proposal time.",
+      detail: "The evaluator found an eligibility issue. Resolve that before drafting.",
       tone: "danger",
     };
   }
   return {
     label: "Low priority",
-    detail: "The match score is weak. Keep this as a reference unless strategic context changes.",
+    detail: "The fit signal is weak. Keep the record for reference unless strategy changes.",
     tone: "neutral",
   };
 }
 
-function toneClasses(tone: "good" | "warning" | "danger" | "neutral") {
+function toneClass(tone: "good" | "warning" | "danger" | "neutral") {
   switch (tone) {
     case "good":
-      return "border-success/30 bg-success/5 text-success";
+      return "border-success/30 bg-success/10 text-success";
     case "warning":
-      return "border-warning/30 bg-warning/5 text-warning";
+      return "border-warning/30 bg-warning/10 text-warning";
     case "danger":
-      return "border-destructive/30 bg-destructive/5 text-destructive";
+      return "border-destructive/30 bg-destructive/10 text-destructive";
     default:
-      return "border-border bg-muted/30 text-muted-foreground";
+      return "border-border bg-muted/40 text-muted-foreground";
   }
 }
 
@@ -281,14 +355,21 @@ export function GrantDetailExpress({
   deadline,
   sectors,
   eligibility,
+  requirements,
+  language,
   discoveredAt,
+  enrichedAt,
+  scoredAt,
+  lastSeenAt,
+  timesSeen,
   url,
   funderUrl,
   evaluation,
-  requirements,
+  events,
   enrichAttempts,
   enrichLastError,
   busy,
+  onFetchDetails,
   onEvaluate,
   onDraft,
   onShowAdvanced,
@@ -304,55 +385,83 @@ export function GrantDetailExpress({
   deadline: string | null;
   sectors?: string[] | null;
   eligibility?: unknown;
+  requirements: Requirement[] | null;
+  language?: string | null;
   discoveredAt?: string | null;
+  enrichedAt?: string | null;
+  scoredAt?: string | null;
+  lastSeenAt?: string | null;
+  timesSeen?: number | null;
   url: string;
   funderUrl?: string | null;
   evaluation: Evaluation;
-  requirements: Requirement[] | null;
+  events?: GrantEvent[];
   enrichAttempts?: number | null;
   enrichLastError?: string | null;
   busy: string | null;
+  onFetchDetails: () => void;
   onEvaluate: () => void;
   onDraft: () => void;
   onShowAdvanced: () => void;
 }) {
   const dl = deadlineState(deadline);
-  const rows = eligibilityRows(eligibility);
   const reqs = requirements ?? [];
-  const criticalReqs = reqs.filter((r) => r.isCritical);
-  const supportingReqs = reqs.filter((r) => !r.isCritical);
+  const criticalReqs = reqs.filter((requirement) => requirement.isCritical);
+  const supportingReqs = reqs.filter((requirement) => !requirement.isCritical);
+  const rows = eligibilityRows(eligibility);
   const fitScore = evaluation ? Math.round(evaluation.fit_score * 100) : null;
-  const canDraft = ["scored", "shortlisted", "in_proposal"].includes(status);
-  const shouldEvaluate = status === "discovered" || (status === "enriched" && !evaluation);
-  const isTracking = ["submitted", "won", "lost"].includes(status);
   const enrichmentFailed = status === "discovered" && (enrichAttempts ?? 0) >= MAX_ENRICH_ATTEMPTS;
-  const lowData = !summary && !evaluation?.rationale_en && rows.length === 0 && reqs.length === 0;
-  const verdict = strategicVerdict({ evaluation, deadline: dl, status, lowData });
+  const canDraft = ["scored", "shortlisted", "in_proposal"].includes(status);
+  const shouldEvaluate = status === "enriched" || status === "scored" || !!evaluation;
+  const shouldFetch = status === "discovered" && !enrichmentFailed;
+  const completeness = computeCompleteness({
+    summary,
+    amountMin,
+    amountMax,
+    deadline,
+    sectors,
+    eligibilityRowsCount: rows.length,
+    requirements: reqs,
+    evaluation,
+  });
+  const verdict = verdictFor({
+    status,
+    evaluation,
+    deadline: dl,
+    completenessPct: completeness.pct,
+    enrichmentFailed,
+  });
   const amount = amountLabel(amountMin, amountMax);
-  const statusLabel = STATUS_LABEL[status] ?? humanize(status);
+  const statusLabel = STATUS_LABEL[status] ?? labelFromKey(status);
+  const titleSignal = titleTokens(title).slice(0, 5);
+  const timeline = [
+    { label: "Discovered", value: discoveredAt, done: !!discoveredAt },
+    { label: "Details", value: enrichedAt, done: !!enrichedAt },
+    {
+      label: "Fit checked",
+      value: scoredAt ?? evaluation?.created_at,
+      done: !!(scoredAt || evaluation),
+    },
+    { label: "Proposal", value: null, done: ["in_proposal", "submitted", "won"].includes(status) },
+  ];
+  const latestEvents = (events ?? []).slice(0, 4);
 
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="p-5 sm:p-6 lg:p-7">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-              <FunderMark name={funderName} />
-              <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClasses(verdict.tone)}`}
-                  >
-                    {verdict.label}
-                  </span>
-                  <span className="rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                    {statusLabel}
-                  </span>
-                </div>
-                <h1 className="font-display text-3xl leading-tight tracking-tight text-foreground sm:text-4xl">
-                  {title}
-                </h1>
-                <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+    <div className="space-y-5">
+      <section className="rounded-lg border bg-card">
+        <div className="border-b p-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <StatusPill tone={verdict.tone}>{verdict.label}</StatusPill>
+                <StatusPill>{statusLabel}</StatusPill>
+                <StatusPill>{completeness.pct}% data complete</StatusPill>
+              </div>
+              <h1 className="max-w-5xl break-words font-display text-2xl leading-tight text-foreground sm:text-3xl">
+                {title}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
                   <Building2 className="h-4 w-4" />
                   {funderId ? (
                     <Link
@@ -363,295 +472,442 @@ export function GrantDetailExpress({
                       {funderName}
                     </Link>
                   ) : (
-                    <span className="font-medium text-foreground/80">{funderName}</span>
+                    <span className="font-medium text-foreground">{funderName}</span>
                   )}
-                  {jurisdiction && (
-                    <>
-                      <span aria-hidden>/</span>
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {jurisdiction}
-                      </span>
-                    </>
-                  )}
-                </p>
-                <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground">
-                  {verdict.detail}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <aside className="border-t bg-muted/20 p-5 sm:p-6 lg:border-l lg:border-t-0">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-              <SignalTile label="Match" icon={Target}>
-                {fitScore == null ? (
-                  <span className="text-sm text-muted-foreground">Not checked</span>
-                ) : (
-                  <span
-                    className={
-                      fitScore >= 70
-                        ? "text-success"
-                        : fitScore >= 45
-                          ? "text-warning"
-                          : "text-muted-foreground"
-                    }
-                  >
-                    {fitScore}
-                    <span className="text-xs font-normal text-muted-foreground">/100</span>
+                </span>
+                {jurisdiction && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4" />
+                    {jurisdiction}
                   </span>
                 )}
-              </SignalTile>
-              <SignalTile label="Eligibility" icon={ShieldCheck}>
-                {evaluation ? (
-                  evaluation.eligibility_pass ? (
-                    <span className="text-success">Pass</span>
-                  ) : (
-                    <span className="text-destructive">Risk</span>
-                  )
-                ) : (
-                  <span className="text-sm text-muted-foreground">Unknown</span>
+                {language && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Globe2 className="h-4 w-4" />
+                    {language.toUpperCase()}
+                  </span>
                 )}
-              </SignalTile>
-              <SignalTile label="Amount" icon={Landmark}>
-                <span className="text-sm">{amount}</span>
-              </SignalTile>
-              <SignalTile label="Deadline" icon={CalendarDays}>
-                <span
-                  className={
-                    dl.tone === "danger"
-                      ? "text-destructive"
-                      : dl.tone === "warning"
-                        ? "text-warning"
-                        : ""
-                  }
-                >
-                  {dl.label}
-                </span>
-              </SignalTile>
+              </div>
             </div>
-          </aside>
-        </div>
-      </section>
 
-      {enrichmentFailed && (
-        <div className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Details could not be loaded automatically</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Automatic enrichment stopped after {MAX_ENRICH_ATTEMPTS} attempts.
-              {enrichLastError ? ` Last error: ${enrichLastError}.` : ""} Use the official page or
-              open Advanced to inspect and retry the source fetch.
-            </p>
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <main className="space-y-5">
-          <BriefSection title="Executive summary" icon={Sparkles}>
-            <p className="text-sm leading-7 text-foreground/90">
-              {summary ??
-                "No reliable program summary is available in the catalog yet. Treat this as an unvalidated lead until the official page is reviewed or enrichment succeeds."}
-            </p>
-          </BriefSection>
-
-          {evaluation?.rationale_en && (
-            <BriefSection title="Fit rationale" icon={Target}>
-              <p className="text-sm leading-7 text-foreground/90">{evaluation.rationale_en}</p>
-            </BriefSection>
-          )}
-
-          <BriefSection title="Eligibility readout" icon={ShieldCheck}>
-            {rows.length > 0 ? (
-              <div className="divide-y divide-border/60">
-                {rows.slice(0, 8).map(([label, value]) => (
-                  <EligibilityLine key={label} label={label} value={value} />
-                ))}
-              </div>
-            ) : (
-              <EmptyCopy>
-                Eligibility detail is not structured yet. Run a fit check, review the official
-                criteria, or open Advanced for raw extracted fields.
-              </EmptyCopy>
-            )}
-          </BriefSection>
-
-          <BriefSection title="Application package" icon={FileCheck2}>
-            {reqs.length > 0 ? (
-              <div className="space-y-3">
-                {criticalReqs.length > 0 && (
-                  <RequirementGroup label="Required" requirements={criticalReqs} critical />
-                )}
-                {supportingReqs.length > 0 && (
-                  <RequirementGroup label="Supporting" requirements={supportingReqs} />
-                )}
-              </div>
-            ) : (
-              <EmptyCopy>
-                No application requirements have been extracted yet. Use the official grant page
-                before starting a draft.
-              </EmptyCopy>
-            )}
-          </BriefSection>
-
-          {sectors && sectors.length > 0 && (
-            <BriefSection title="Strategic fit tags" icon={Layers3}>
-              <div className="flex flex-wrap gap-1.5">
-                {sectors.map((sector) => (
-                  <Badge key={sector} variant="secondary" className="font-normal">
-                    {humanize(sector)}
-                  </Badge>
-                ))}
-              </div>
-            </BriefSection>
-          )}
-        </main>
-
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          <div className="rounded-xl border bg-card p-5 shadow-sm">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Next best action
-            </h2>
-            <div className="mt-4 space-y-2">
-              {shouldEvaluate ? (
-                <Button className="w-full" disabled={busy === "eval"} onClick={onEvaluate}>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col">
+              {shouldFetch ? (
+                <Button disabled={busy === "enrich"} onClick={onFetchDetails}>
+                  {busy === "enrich" ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Fetching details
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Fetch details
+                    </>
+                  )}
+                </Button>
+              ) : shouldEvaluate && !canDraft ? (
+                <Button disabled={busy === "eval"} onClick={onEvaluate}>
                   {busy === "eval" ? (
                     <>
-                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Checking fit
                     </>
                   ) : (
-                    "Check my fit"
+                    <>
+                      <Target className="mr-2 h-4 w-4" />
+                      Check fit
+                    </>
                   )}
                 </Button>
               ) : canDraft ? (
-                <Button className="w-full" disabled={busy === "draft"} onClick={onDraft}>
-                  {busy === "draft" ? "Starting draft" : "Draft proposal"}
-                </Button>
-              ) : isTracking ? (
-                <Button asChild className="w-full" variant="outline">
-                  <Link to="/submissions">
-                    <FileText className="mr-1.5 h-4 w-4" />
-                    Track outcome
-                  </Link>
+                <Button disabled={busy === "draft"} onClick={onDraft}>
+                  {busy === "draft" ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Starting draft
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Draft proposal
+                    </>
+                  )}
                 </Button>
               ) : (
-                <Button className="w-full" variant="outline" onClick={onShowAdvanced}>
-                  Review full analysis
+                <Button variant="outline" onClick={onShowAdvanced}>
+                  Review diagnostics
                 </Button>
               )}
-              <Button asChild className="w-full" variant="outline">
+              <Button asChild variant="outline">
                 <a href={url} target="_blank" rel="noopener noreferrer">
-                  Official grant page
-                  <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                  Official page
+                  <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </Button>
             </div>
           </div>
+        </div>
 
-          <div className="rounded-xl border bg-card p-5 shadow-sm">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Source and timing
-            </h2>
-            <dl className="mt-4 space-y-3 text-sm">
-              <MetaLine label="Funder">{funderName}</MetaLine>
-              {jurisdiction && <MetaLine label="Jurisdiction">{jurisdiction}</MetaLine>}
-              <MetaLine label="Deadline">
-                <span
-                  className={
-                    dl.tone === "danger"
-                      ? "text-destructive"
-                      : dl.tone === "warning"
-                        ? "text-warning"
-                        : ""
-                  }
-                >
-                  {dl.label}
-                </span>
-                <span className="block text-xs font-normal text-muted-foreground">{dl.detail}</span>
-              </MetaLine>
-              {discoveredAt && (
-                <MetaLine label="Discovered">
-                  {new Date(discoveredAt).toLocaleDateString("en-CA", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </MetaLine>
-              )}
-              <MetaLine label="Source">
-                <a
-                  href={funderUrl || url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-primary hover:underline"
-                >
-                  Open source <ExternalLink className="h-3 w-3" />
-                </a>
-              </MetaLine>
-            </dl>
-            <button
-              type="button"
-              onClick={onShowAdvanced}
-              className="mt-4 inline-flex items-center gap-1 border-t pt-4 text-xs font-semibold text-primary hover:underline"
-            >
-              Evidence, trace and audit trail <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+        <div className="grid border-b lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-4 p-5">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Decision</p>
+              <p className="mt-2 max-w-4xl text-sm leading-7 text-muted-foreground">
+                {verdict.detail}
+              </p>
+            </div>
+            <LifecycleSteps steps={timeline} />
           </div>
+
+          <div className="border-t bg-muted/20 p-5 lg:border-l lg:border-t-0">
+            <div className="grid grid-cols-2 gap-4">
+              <Metric label="Fit" icon={Target}>
+                {fitScore == null ? "Not checked" : `${fitScore}/100`}
+              </Metric>
+              <Metric label="Eligibility" icon={ShieldCheck}>
+                {!evaluation ? "Unknown" : evaluation.eligibility_pass ? "Pass" : "Risk"}
+              </Metric>
+              <Metric label="Funding" icon={Landmark}>
+                {amount}
+              </Metric>
+              <Metric label="Timing" icon={CalendarDays} tone={dl.tone}>
+                {dl.label}
+              </Metric>
+            </div>
+          </div>
+        </div>
+
+        {enrichmentFailed && (
+          <div className="border-b border-warning/30 bg-warning/10 p-4">
+            <div className="flex gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+              <div className="min-w-0 text-sm">
+                <p className="font-semibold text-foreground">Automatic extraction hit its limit.</p>
+                <p className="mt-1 leading-6 text-muted-foreground">
+                  The record reached {MAX_ENRICH_ATTEMPTS} enrichment attempts. The official source
+                  still matters, but the catalog should be treated as incomplete until a person
+                  verifies the missing facts.
+                </p>
+                {enrichLastError && (
+                  <p className="mt-2 break-words rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
+                    {enrichLastError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid divide-y lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+          <Fact label="Deadline" value={dl.detail} helper={dl.label} tone={dl.tone} />
+          <Fact label="Amount" value={amount} helper="CAD, when published" />
+          <Fact
+            label="Source sightings"
+            value={String(timesSeen ?? 1)}
+            helper={lastSeenAt ? `Last seen ${formatDate(lastSeenAt)}` : "First sighting"}
+          />
+          <Fact label="Funder" value={funderName} helper={jurisdiction ?? "Jurisdiction unknown"} />
+        </div>
+      </section>
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <main className="space-y-5">
+          <Panel title="Program brief" icon={FileText}>
+            <p className="text-sm leading-7 text-foreground">
+              {summary ??
+                "No reliable summary has been extracted yet. Use the official page and diagnostics before committing proposal time."}
+            </p>
+            {titleSignal.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {titleSignal.map((token) => (
+                  <Badge key={token} variant="outline" className="font-normal">
+                    {token}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="Grant facts" icon={BarChart3}>
+            <SummaryList
+              rows={[
+                [
+                  "Status",
+                  `${statusLabel} - ${STATUS_DETAIL[status] ?? "No status note available."}`,
+                ],
+                ["Funding range", amount],
+                ["Deadline", `${dl.label} (${dl.detail})`],
+                ["Language", language ? language.toUpperCase() : "Unknown"],
+                ["Discovered", formatDate(discoveredAt)],
+                ["Details fetched", formatDate(enrichedAt)],
+                ["Fit evaluated", formatDate(scoredAt ?? evaluation?.created_at)],
+                ["Official URL", url],
+              ]}
+            />
+          </Panel>
+
+          <Panel title="Eligibility and fit" icon={ShieldCheck}>
+            <div className="grid gap-4 xl:grid-cols-[260px_1fr]">
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Fit signal</p>
+                <p className="mt-3 text-3xl font-semibold tabular-nums">
+                  {fitScore == null ? "--" : fitScore}
+                  {fitScore != null && (
+                    <span className="text-sm font-normal text-muted-foreground">/100</span>
+                  )}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {!evaluation
+                    ? "No evaluator result yet."
+                    : evaluation.eligibility_pass
+                      ? "Eligibility passed in the latest evaluation."
+                      : "Eligibility risk flagged in the latest evaluation."}
+                </p>
+              </div>
+              <div className="space-y-4">
+                {evaluation?.rationale_en && (
+                  <p className="text-sm leading-7 text-foreground">{evaluation.rationale_en}</p>
+                )}
+                {rows.length > 0 ? (
+                  <div className="divide-y rounded-lg border">
+                    {rows.map(([label, value]) => (
+                      <EligibilityLine key={label} label={label} value={value} />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState>
+                    Eligibility is not structured yet. Validate applicant type, geography, sector,
+                    and any cost-share rule from the source page.
+                  </EmptyState>
+                )}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Application package" icon={FileCheck2}>
+            {reqs.length > 0 ? (
+              <div className="space-y-5">
+                {criticalReqs.length > 0 && (
+                  <RequirementList label="Critical requirements" items={criticalReqs} critical />
+                )}
+                {supportingReqs.length > 0 && (
+                  <RequirementList label="Supporting requirements" items={supportingReqs} />
+                )}
+              </div>
+            ) : (
+              <EmptyState>
+                No application requirements have been extracted. Check the official opportunity for
+                forms, budget documents, matching funds, reporting duties, and submission portal.
+              </EmptyState>
+            )}
+          </Panel>
+
+          <Panel title="Focus areas" icon={Flag}>
+            {sectors && sectors.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {sectors.map((sector) => (
+                  <Badge key={sector} variant="secondary" className="font-normal">
+                    {displayTag(sector)}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <EmptyState>No sectors have been extracted yet.</EmptyState>
+            )}
+          </Panel>
+        </main>
+
+        <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
+          <Panel title="Data quality" icon={CheckCircle2}>
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">Completeness</span>
+                  <span className="tabular-nums">
+                    {completeness.known}/{completeness.total}
+                  </span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full bg-primary" style={{ width: `${completeness.pct}%` }} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                {completeness.checks.map((check) => (
+                  <div key={check.label} className="flex items-center gap-2 text-sm">
+                    {check.ok ? (
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className={check.ok ? "text-foreground" : "text-muted-foreground"}>
+                      {check.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Source" icon={Link2}>
+            <div className="space-y-3 text-sm">
+              <SourceLink href={url}>Official grant page</SourceLink>
+              {funderUrl && funderUrl !== url && (
+                <SourceLink href={funderUrl}>Funder website</SourceLink>
+              )}
+              <SummaryList
+                compact
+                rows={[
+                  ["Discovered", formatDate(discoveredAt)],
+                  ["Last seen", formatDate(lastSeenAt)],
+                  ["Times seen", String(timesSeen ?? 1)],
+                  ["Attempts", String(enrichAttempts ?? 0)],
+                ]}
+              />
+              <Button className="w-full" variant="outline" onClick={onShowAdvanced}>
+                Evidence and trace
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </Panel>
+
+          <Panel title="Timeline" icon={Clock3}>
+            {latestEvents.length > 0 ? (
+              <ol className="space-y-3">
+                {latestEvents.map((event, index) => (
+                  <li key={`${event.created_at}-${index}`} className="flex gap-3 text-sm">
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    <span>
+                      <span className="font-medium">
+                        {STATUS_LABEL[event.to_status] ?? labelFromKey(event.to_status)}
+                      </span>
+                      {event.from_status && (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          from {STATUS_LABEL[event.from_status] ?? labelFromKey(event.from_status)}
+                        </span>
+                      )}
+                      <span className="block text-xs text-muted-foreground">
+                        {formatDate(event.created_at, true)}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <EmptyState>No workflow events recorded yet.</EmptyState>
+            )}
+          </Panel>
         </aside>
       </div>
     </div>
   );
 }
 
-function FunderMark({ name }: { name: string }) {
+function StatusPill({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: "good" | "warning" | "danger" | "neutral";
+}) {
   return (
-    <div
-      aria-hidden
-      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-display text-sm font-semibold text-primary"
+    <span
+      className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-semibold ${toneClass(tone)}`}
     >
-      {initialsOf(name)}
-    </div>
+      {children}
+    </span>
   );
 }
 
-function SignalTile({
+function Metric({
   label,
   icon: Icon,
   children,
+  tone = "neutral",
 }: {
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
+  icon: ComponentType<{ className?: string }>;
+  children: ReactNode;
+  tone?: "neutral" | "good" | "warning" | "danger";
 }) {
   return (
-    <div className="min-w-0 border-t border-border/60 pt-3 first:border-t-0 first:pt-0">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
+    <div className="min-w-0">
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+        <Icon className="h-4 w-4" />
         {label}
       </div>
-      <div className="mt-2 break-words text-lg font-semibold leading-tight tabular-nums">
+      <div
+        className={`mt-2 break-words text-base font-semibold leading-snug ${tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}
+      >
         {children}
       </div>
     </div>
   );
 }
 
-function BriefSection({
+function Fact({
+  label,
+  value,
+  helper,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+  tone?: "neutral" | "good" | "warning" | "danger";
+}) {
+  return (
+    <div className="min-w-0 p-4">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+      <p
+        className={`mt-2 break-words text-sm font-semibold ${tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}
+      >
+        {value}
+      </p>
+      {helper && <p className="mt-1 text-xs leading-5 text-muted-foreground">{helper}</p>}
+    </div>
+  );
+}
+
+function LifecycleSteps({
+  steps,
+}: {
+  steps: Array<{ label: string; value: string | null | undefined; done: boolean }>;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-4">
+      {steps.map((step) => (
+        <div key={step.label} className="rounded-lg border bg-background p-3">
+          <div className="flex items-center gap-2">
+            {step.done ? (
+              <CheckCircle2 className="h-4 w-4 text-success" />
+            ) : (
+              <Circle className="h-4 w-4 text-muted-foreground" />
+            )}
+            <span className="text-sm font-medium">{step.label}</span>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {step.value ? formatDate(step.value) : step.done ? "Complete" : "Pending"}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Panel({
   title,
   icon: Icon,
   children,
 }: {
   title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
+  icon: ComponentType<{ className?: string }>;
+  children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border bg-card p-5 shadow-sm">
-      <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        <Icon className="h-4 w-4" />
+    <section className="rounded-lg border bg-card p-5">
+      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+        <Icon className="h-4 w-4 text-muted-foreground" />
         {title}
       </h2>
       {children}
@@ -659,38 +915,71 @@ function BriefSection({
   );
 }
 
-function EmptyCopy({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm leading-6 text-muted-foreground">{children}</p>;
+function SummaryList({
+  rows,
+  compact = false,
+}: {
+  rows: Array<[string, ReactNode]>;
+  compact?: boolean;
+}) {
+  return (
+    <dl className="divide-y rounded-lg border">
+      {rows.map(([label, value]) => (
+        <div
+          key={label}
+          className={`grid gap-2 px-3 py-3 sm:grid-cols-[160px_minmax(0,1fr)] ${compact ? "text-xs" : "text-sm"}`}
+        >
+          <dt className="font-medium text-muted-foreground">{label}</dt>
+          <dd className="min-w-0 break-words text-foreground">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function EmptyState({ children }: { children: ReactNode }) {
+  return (
+    <p className="rounded-lg border border-dashed p-4 text-sm leading-6 text-muted-foreground">
+      {children}
+    </p>
+  );
 }
 
 function EligibilityLine({ label, value }: { label: string; value: unknown }) {
-  const yes = value === true || value === "yes" || value === "Yes";
-  const no = value === false || value === "no" || value === "No";
   const parsed = parseMaybeJson(value);
+  const yes = parsed === true || parsed === "yes" || parsed === "Yes";
+  const no = parsed === false || parsed === "no" || parsed === "No";
   return (
-    <div className="flex gap-3 py-2">
-      {yes ? (
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-      ) : no ? (
-        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-      ) : (
-        <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{humanize(label)}</p>
-        {!yes && !no && <EligibilityValue value={parsed} />}
+    <div className="grid gap-2 px-4 py-3 sm:grid-cols-[190px_minmax(0,1fr)]">
+      <div className="flex items-center gap-2">
+        {yes ? (
+          <CheckCircle2 className="h-4 w-4 text-success" />
+        ) : no ? (
+          <XCircle className="h-4 w-4 text-destructive" />
+        ) : (
+          <Circle className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className="text-sm font-medium">{labelFromKey(label)}</span>
+      </div>
+      <div className="min-w-0">
+        {yes || no ? (
+          <span className="text-sm text-muted-foreground">{yes ? "Yes" : "No"}</span>
+        ) : (
+          <ValueBlock value={parsed} />
+        )}
       </div>
     </div>
   );
 }
 
-function EligibilityValue({ value }: { value: unknown }) {
-  if (value == null || value === "") return null;
+function ValueBlock({ value }: { value: unknown }) {
+  if (value == null || value === "")
+    return <span className="text-sm text-muted-foreground">Not specified</span>;
   if (Array.isArray(value)) {
     return (
-      <div className="mt-1 flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {value.map((item, index) => (
-          <Badge key={index} variant="outline" className="text-[11px] font-normal">
+          <Badge key={index} variant="outline" className="font-normal">
             {typeof item === "object" ? JSON.stringify(item) : String(item)}
           </Badge>
         ))}
@@ -699,42 +988,52 @@ function EligibilityValue({ value }: { value: unknown }) {
   }
   if (typeof value === "object") {
     return (
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        {Object.entries(value as Record<string, unknown>)
-          .map(
-            ([key, rowValue]) =>
-              `${humanize(key)}: ${Array.isArray(rowValue) ? rowValue.join(", ") : String(rowValue)}`,
-          )
-          .join(" | ")}
-      </p>
+      <div className="space-y-1 text-sm">
+        {Object.entries(value as Record<string, unknown>).map(([key, rowValue]) => (
+          <div key={key} className="grid gap-1 sm:grid-cols-[140px_1fr]">
+            <span className="font-medium text-muted-foreground">{labelFromKey(key)}</span>
+            <span className="break-words">
+              {Array.isArray(rowValue) ? rowValue.join(", ") : String(rowValue)}
+            </span>
+          </div>
+        ))}
+      </div>
     );
   }
-  return <p className="mt-1 text-xs leading-5 text-muted-foreground">{String(value)}</p>;
+  return <p className="break-words text-sm leading-6 text-foreground">{String(value)}</p>;
 }
 
-function RequirementGroup({
+function RequirementList({
   label,
-  requirements,
+  items,
   critical = false,
 }: {
   label: string;
-  requirements: Requirement[];
+  items: Requirement[];
   critical?: boolean;
 }) {
   return (
     <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </p>
+      <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <ul className="space-y-2">
-        {requirements.map((requirement, index) => (
-          <li key={`${requirement.requirement}-${index}`} className="flex gap-2 text-sm leading-6">
-            {critical ? (
-              <AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-warning" />
-            ) : (
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
-            )}
-            <span>{requirement.requirement}</span>
+        {items.map((item, index) => (
+          <li key={`${item.requirement}-${index}`} className="rounded-lg border bg-background p-3">
+            <div className="flex gap-2">
+              {critical ? (
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              ) : (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-6">{item.requirement}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{labelFromKey(item.category)}</p>
+                {item.value && (
+                  <p className="mt-2 break-words rounded-md bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
+                    {item.value}
+                  </p>
+                )}
+              </div>
+            </div>
           </li>
         ))}
       </ul>
@@ -742,13 +1041,16 @@ function RequirementGroup({
   );
 }
 
-function MetaLine({ label, children }: { label: string; children: React.ReactNode }) {
+function SourceLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[100px_1fr] gap-3">
-      <dt className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="min-w-0 text-right font-medium">{children}</dd>
-    </div>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 font-medium text-primary hover:bg-muted/40"
+    >
+      <span className="min-w-0 break-words">{children}</span>
+      <ExternalLink className="h-4 w-4 shrink-0" />
+    </a>
   );
 }

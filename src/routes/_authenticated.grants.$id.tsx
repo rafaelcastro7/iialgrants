@@ -331,14 +331,23 @@ function GrantDetailPage() {
             deadline={g.deadline}
             sectors={g.sectors}
             eligibility={g.eligibility}
-            discoveredAt={g.discovered_at}
-            url={g.url}
-            funderUrl={g.funder?.source_url ?? null}
             evaluation={data.evaluation}
             requirements={g.requirements}
+            language={g.language}
+            discoveredAt={g.discovered_at}
+            enrichedAt={g.enriched_at}
+            scoredAt={g.scored_at}
+            lastSeenAt={g.last_seen_at}
+            timesSeen={g.times_seen}
+            url={g.url}
+            funderUrl={g.funder?.source_url ?? null}
+            events={data.events}
             enrichAttempts={g.enrich_attempts}
             enrichLastError={g.enrich_last_error}
             busy={busy}
+            onFetchDetails={() =>
+              run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))
+            }
             onEvaluate={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}
             onDraft={onDraft}
             onShowAdvanced={() => switchView("advanced")}
