@@ -28,13 +28,14 @@ const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const DEFAULT_LOCAL_MODEL = process.env.OLLAMA_MODEL || "phi4-mini:latest";
 const LOCAL_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 0) || 180_000;
 
-// Long-form drafting agents exceed the env baseline on this hardware. Live E2E
+// Generation-heavy agents exceed the env baseline on this hardware. Live E2E
 // measurements on dolphin3 / GTX 1070 show writer warm runs around 220s and
-// cold-start streamed runs can reach ~410s. Give writer a safer floor; keep the
-// other generation-heavy agents at 5 minutes and cheap extraction agents on
-// the env baseline.
+// cold-start streamed runs can reach ~410s; evaluator batch runs have also hit
+// 120s env aborts under load. Give writer a safer floor; keep the other slow
+// agents at 5 minutes and cheap extraction agents on the env baseline.
 const SLOW_AGENT_TIMEOUT_FLOORS_MS: Record<string, number> = {
   writer: 600_000,
+  evaluator: 300_000,
   strategist: 300_000,
   critic: 300_000,
 };
