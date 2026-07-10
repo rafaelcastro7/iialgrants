@@ -418,7 +418,15 @@ export async function enrichGrantImpl(
     );
     let deepPages: Awaited<ReturnType<typeof gatherDeepMarkdown>> = [];
     try {
-      deepPages = await gatherDeepMarkdown(g.url, scraped.markdown, { max: 3, title: g.title });
+      deepPages = await gatherDeepMarkdown(g.url, scraped.markdown, {
+        max: 3,
+        title: g.title,
+        onSearchError: (query, searchError) =>
+          trace("deep_crawl_search", `Official site search failed: ${searchError}`, "warn", {
+            query,
+            error: searchError,
+          }),
+      });
     } catch (e) {
       await trace(
         "deep_crawl",

@@ -140,7 +140,11 @@ async function scrapeCandidateUrls(urls: string[], max: number): Promise<DeepPag
 export async function gatherDeepMarkdown(
   baseUrl: string,
   mainMarkdown: string,
-  opts: { max?: number; title?: string } = {},
+  opts: {
+    max?: number;
+    title?: string;
+    onSearchError?: (query: string, error: string) => void | Promise<void>;
+  } = {},
 ): Promise<DeepPage[]> {
   const max = opts.max ?? 3;
   const inlineUrls = pickDeepLinks(mainMarkdown, baseUrl, max);
@@ -183,8 +187,21 @@ export async function gatherDeepMarkdown(
   const searchQueries = buildOfficialSearchQueries(baseUrl, opts.title);
   const searchHits: SearchHit[] = [];
   for (const query of searchQueries) {
-    const hits = await searchWeb(query, 8);
-    searchHits.push(...hits);
+    try {
+      const hits = await searchWeb(query, 8);
+      searchHits.push(...hits);
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      try {
+        await opts.onSearchError?.(query, error);
+      } catch {
+        // Search telemetry must never erase official pages already found.
+      }
+    }
+  }
+
+  if (searchHits.length === 0) {
+    return [...inlinePages, ...htmlPages, ...sitemapPages].slice(0, max);
   }
 
   const searchUrls = pickSearchHits(
