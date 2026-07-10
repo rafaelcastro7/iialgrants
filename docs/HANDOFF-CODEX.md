@@ -8,6 +8,7 @@ America/Toronto.
 
 Current HEAD after this handoff update should be on top of:
 
+- `b8d4575` redesign(grant-detail): replace Express view with grant dossier
 - `76db6ff` fix(pipeline): preserve official deep pages when search fails
 - `dc39fca` fix(writer): stream slow Ollama drafting calls
 - `b4a3fef` fix(migration): make RLS-scoping migration idempotent
@@ -19,6 +20,22 @@ Current HEAD after this handoff update should be on top of:
 
 What changed in the latest loop:
 
+- `b8d4575` replaces the grant detail Express page again after user rejected
+  the previous visual direction. The new surface is a grant dossier, not a
+  marketing-style hero: decision state, lifecycle, key facts, extraction
+  warning, grant facts summary list, eligibility/fit, application package,
+  focus areas, data quality, source links, and timeline. The route now passes
+  language, enriched/scored/last-seen timestamps, source sightings, events, and
+  a fetch-details action into the Express component.
+- Real UI verification for `b8d4575`: opened
+  `http://localhost:8080/grants/7f00b146-7b75-483e-8613-da644a34d3e7` as demo
+  Admin in Playwright on desktop 1440px and mobile 390px. H1 loaded as
+  "Capital of Development"; decision/data-quality/grant-facts sections were
+  present; console/page errors were zero after waiting for demo auth correctly.
+- Design basis used for `b8d4575`: summary-list style key facts, progressive
+  disclosure of diagnostics, and grant-lifecycle thinking. Sources consulted:
+  NN/g progressive disclosure, GOV.UK summary list/details, Grants.gov grant
+  terminology/lifecycle, and Instrumentl's lifecycle grant-work positioning.
 - Grant detail Express view was rebuilt earlier into a professional
   decision-brief surface: hero recommendation, fit/eligibility/amount/deadline
   snapshot, next action sidebar, clearer section names, and wider route
