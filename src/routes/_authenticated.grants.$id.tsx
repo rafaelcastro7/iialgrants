@@ -265,7 +265,7 @@ function GrantDetailPage() {
   return (
     <main className="min-h-screen text-foreground">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
           <Button asChild variant="ghost" size="sm">
             <Link to="/grants">
               <ArrowLeft className="mr-1 h-4 w-4" />
@@ -295,7 +295,7 @@ function GrantDetailPage() {
             ))}
           </div>
           {viewMode === "advanced" && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {g.url && (
                 <Button asChild size="sm">
                   <a href={g.url} target="_blank" rel="noopener noreferrer">
