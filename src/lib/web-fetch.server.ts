@@ -4,13 +4,24 @@
 // which engines ran and why each failed.
 //
 // Engine order (free, zero external-API cost by default):
-//   1. scrapeEngine    — local Readability + linkedom + turndown
-//   2. jinaReader      — free remote markdownifier (handles JS-rendered SPAs)
-//   3. rawHtml(chrome) — last-resort tag-stripped fetch with desktop UA
-//   4. rawHtml(google) — same, but Googlebot UA (many gov sites whitelist it)
-//   5. wayback         — Internet Archive snapshot (geo/bot-block bypass)
-//   6. archiveToday    — archive.ph snapshot (different infra than Wayback)
-//   7. firecrawl       — only if USE_FIRECRAWL=1 + FIRECRAWL_API_KEY
+//   1. scrapeEngine    — local Readability + linkedom + turndown (static HTML)
+//   2. browserRender   — local headless Chromium: real JS execution +
+//                         best-effort click-through on Eligibility/How-to-apply
+//                         tabs, for content the static engines can't see
+//   3. jinaReader      — free remote markdownifier (also handles JS-rendered
+//                         SPAs, but is a third-party service — tried after our
+//                         own local browser, not before)
+//   4. rawHtml(chrome) — last-resort tag-stripped fetch with desktop UA
+//   5. rawHtml(google) — same, but Googlebot UA (many gov sites whitelist it)
+//   6. wayback         — Internet Archive snapshot (geo/bot-block bypass)
+//   7. archiveToday    — archive.ph snapshot (different infra than Wayback)
+//   8. firecrawl       — only if USE_FIRECRAWL=1 + FIRECRAWL_API_KEY
+//
+// Every fact later extracted from ANY of these engines' markdown still has to
+// pass the existing grounding gate (snippetIsGrounded in evidence.server.ts,
+// the field-quote check in enricher-steps.server.ts) before being written —
+// widening HOW content is obtained never weakens the "don't invent data"
+// guarantee.
 //
 // Public surface:
 //   - jinaReader(url)
@@ -20,9 +31,11 @@
 
 import { firecrawlAvailable, firecrawlScrape } from "@/lib/firecrawl.server";
 import { scrapeEngineFetch } from "@/lib/scrape-engine.server";
+import { renderWithBrowser } from "@/lib/browser-render.server";
 
 export type FetchVia =
   | "scrape_engine"
+  | "browser_render"
   | "firecrawl_json"
   | "firecrawl"
   | "jina_reader"
@@ -386,33 +399,58 @@ export async function scrapeWithFallback(
     return { ok: false, url, error: eng.error, via: "scrape_engine", attempts };
   }
 
-  // 2. Jina Reader
+  // 2. Local headless-browser render — real JS execution + best-effort
+  // navigation (clicking Eligibility/How-to-apply tabs). Tried before the
+  // remote Jina Reader because it's local/free and, unlike Jina, can interact
+  // with the page rather than just rendering it once.
+  const tBr = Date.now();
+  const br = await renderWithBrowser(url, { minContentChars });
+  push({
+    engine: "browser_render",
+    ok: br.ok,
+    latency_ms: Date.now() - tBr,
+    error: br.ok ? undefined : br.error,
+    bytes: br.ok ? br.markdown.length : undefined,
+    ts: new Date().toISOString(),
+  });
+  if (br.ok) {
+    return {
+      ok: true,
+      url: br.url,
+      markdown: br.markdown,
+      title: br.title,
+      via: "browser_render",
+      attempts,
+    };
+  }
+
+  // 3. Jina Reader
   const jr = await jinaReader(url, 20_000, minContentChars);
   push(jr.attempt);
   if (jr.page.ok) return { ...jr.page, attempts };
 
-  // 3. Raw HTML (Chrome UA)
+  // 4. Raw HTML (Chrome UA)
   const raw = await rawFetch(url, CHROME_UA, "raw_html", 10_000, minContentChars);
   push(raw.attempt);
   if (raw.page.ok) return { ...raw.page, attempts };
 
-  // 4. Raw HTML (Googlebot UA) — many gov / news sites whitelist Googlebot
+  // 5. Raw HTML (Googlebot UA) — many gov / news sites whitelist Googlebot
   //    but block desktop browsers from datacentre IPs.
   const gb = await rawFetch(url, GOOGLEBOT_UA, "raw_html_googlebot", 10_000, minContentChars);
   push(gb.attempt);
   if (gb.page.ok) return { ...gb.page, attempts };
 
-  // 5. Wayback Machine
+  // 6. Wayback Machine
   const wb = await waybackFetch(url, 18_000, minContentChars);
   push(wb.attempt);
   if (wb.page.ok) return { ...wb.page, attempts };
 
-  // 6. archive.today / archive.ph
+  // 7. archive.today / archive.ph
   const at = await archiveTodayFetch(url, 15_000, minContentChars);
   push(at.attempt);
   if (at.page.ok) return { ...at.page, attempts };
 
-  // 7. Optional Firecrawl
+  // 8. Optional Firecrawl
   if (!opts.skipFirecrawl && firecrawlEnabled()) {
     const tFc = Date.now();
     const fc = await firecrawlScrape(url, {
