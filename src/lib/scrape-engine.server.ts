@@ -29,7 +29,10 @@ const ROBOTS_TTL_MS = 6 * 3600_000; // 6h cache
 const robotsCache = new Map<string, { allow: (url: string) => boolean; expires: number }>();
 const lastHitAt = new Map<string, number>();
 
-async function loadRobots(origin: string): Promise<(url: string) => boolean> {
+// Exported so other engines (e.g. browser-render.server.ts) share the SAME
+// robots cache and per-host throttle state — two engines hitting one host
+// independently would defeat the politeness guarantee.
+export async function loadRobots(origin: string): Promise<(url: string) => boolean> {
   const cached = robotsCache.get(origin);
   if (cached && cached.expires > Date.now()) return cached.allow;
   let txt = "";
@@ -48,7 +51,7 @@ async function loadRobots(origin: string): Promise<(url: string) => boolean> {
   return allow;
 }
 
-async function throttle(host: string): Promise<void> {
+export async function throttle(host: string): Promise<void> {
   const last = lastHitAt.get(host) ?? 0;
   const wait = MIN_GAP_MS - (Date.now() - last);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -63,6 +66,66 @@ const turndown = new TurndownService({
 });
 // Drop noise.
 turndown.remove(["script", "style", "noscript", "iframe", "form", "nav", "footer"]);
+
+// Shared HTML → LLM-ready-markdown pipeline (Readability main-content
+// extraction, falling back to whole-body turndown, falling back to a crude
+// tag-strip). Exported so browser-render.server.ts's post-JS HTML goes
+// through the exact same deterministic extraction as the static-fetch path —
+// one extraction algorithm, two ways of obtaining the HTML.
+export function htmlToReadableMarkdown(
+  html: string,
+  url: string,
+): { title?: string; markdown: string } {
+  let title: string | undefined;
+  let mainHtml: string | null = null;
+  try {
+    const { document } = parseHTML(html);
+    // Readability needs an absolute base URL to resolve hrefs.
+    try {
+      const baseEl = document.createElement("base");
+      baseEl.setAttribute("href", url);
+      document.head?.appendChild(baseEl);
+    } catch {
+      /* no head, fine */
+    }
+    // Cast: linkedom's Document is structurally compatible with Readability's expectation.
+    const reader = new Readability(document as unknown as Document, { charThreshold: 250 });
+    const article = reader.parse();
+    if (article) {
+      title = article.title || undefined;
+      mainHtml = article.content || null;
+    }
+    if (!title) {
+      const t = document.querySelector("title")?.textContent;
+      if (t) title = t.trim();
+    }
+  } catch (e) {
+    // Readability failed (often on weird/SPA markup) — fall through to raw turndown.
+    void e;
+  }
+
+  let markdown = "";
+  try {
+    if (mainHtml) {
+      markdown = turndown.turndown(mainHtml).trim();
+    } else {
+      // Strip script/style then turndown the body.
+      const cleaned = html
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ");
+      markdown = turndown.turndown(cleaned).trim();
+    }
+  } catch {
+    markdown = html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Collapse excessive blank lines, hard cap.
+  markdown = markdown.replace(/\n{3,}/g, "\n\n").slice(0, 60_000);
+  return { title, markdown };
+}
 
 export type ScrapeEngineResult =
   | {
@@ -203,55 +266,8 @@ export async function scrapeEngineFetch(
     };
   }
 
-  // linkedom + Readability.
-  let title: string | undefined;
-  let mainHtml: string | null = null;
-  try {
-    const { document } = parseHTML(html);
-    // Readability needs an absolute base URL to resolve hrefs.
-    try {
-      const baseEl = document.createElement("base");
-      baseEl.setAttribute("href", url);
-      document.head?.appendChild(baseEl);
-    } catch {
-      /* no head, fine */
-    }
-    // Cast: linkedom's Document is structurally compatible with Readability's expectation.
-    const reader = new Readability(document as unknown as Document, { charThreshold: 250 });
-    const article = reader.parse();
-    if (article) {
-      title = article.title || undefined;
-      mainHtml = article.content || null;
-    }
-    if (!title) {
-      const t = document.querySelector("title")?.textContent;
-      if (t) title = t.trim();
-    }
-  } catch (e) {
-    // Readability failed (often on weird/SPA markup) — fall through to raw turndown.
-    void e;
-  }
-
-  let markdown = "";
-  try {
-    if (mainHtml) {
-      markdown = turndown.turndown(mainHtml).trim();
-    } else {
-      // Strip script/style then turndown the body.
-      const cleaned = html
-        .replace(/<script[\s\S]*?<\/script>/gi, " ")
-        .replace(/<style[\s\S]*?<\/style>/gi, " ");
-      markdown = turndown.turndown(cleaned).trim();
-    }
-  } catch {
-    markdown = html
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  // Collapse excessive blank lines, hard cap.
-  markdown = markdown.replace(/\n{3,}/g, "\n\n").slice(0, 60_000);
+  const { title, markdown: rawMarkdown } = htmlToReadableMarkdown(html, url);
+  const markdown = rawMarkdown;
 
   if (markdown.length < 200) {
     return {

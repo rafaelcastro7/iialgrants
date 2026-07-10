@@ -419,7 +419,12 @@ export async function enrichGrantImpl(
     let deepPages: Awaited<ReturnType<typeof gatherDeepMarkdown>> = [];
     try {
       deepPages = await gatherDeepMarkdown(g.url, scraped.markdown, {
-        max: 3,
+        // Was 3 — raised so a grant missing critical fields gets a genuinely
+        // thorough look at the funder's site (inline links, then HTML-
+        // discovered links, then sitemap.xml — gatherDeepMarkdown widens
+        // through all three tiers internally) before we accept "missing" as
+        // the honest final answer.
+        max: 6,
         title: g.title,
         onSearchError: (query, searchError) =>
           trace("deep_crawl_search", `Official site search failed: ${searchError}`, "warn", {
