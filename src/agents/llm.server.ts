@@ -39,8 +39,13 @@ const SLOW_AGENT_TIMEOUT_FLOORS_MS: Record<string, number> = {
   strategist: 300_000,
   critic: 300_000,
 };
-function timeoutFor(agent: string): number {
-  return Math.max(LOCAL_TIMEOUT_MS, SLOW_AGENT_TIMEOUT_FLOORS_MS[agent] ?? 0);
+// configuredMs (agent_configs.timeout_ms, admin-editable) can only RAISE the
+// floor, never lower it — otherwise an admin setting a low value would
+// reintroduce the mid-generation abort bug this file was built to fix.
+// Previously this parameter was accepted nowhere: the admin-facing timeout_ms
+// field was silently ignored, so raising it in the UI had zero real effect.
+function timeoutFor(agent: string, configuredMs?: number): number {
+  return Math.max(LOCAL_TIMEOUT_MS, SLOW_AGENT_TIMEOUT_FLOORS_MS[agent] ?? 0, configuredMs ?? 0);
 }
 
 function toLocalModel(model: string | null | undefined): string {
@@ -99,17 +104,24 @@ async function readOllamaResponse(res: Response, stream: boolean) {
     }
   };
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) consumeLine(line);
-  }
+  // A malformed/truncated ndjson line (JSON.parse inside consumeLine) must
+  // still release the reader lock on its way out — without this, a parse
+  // error left the stream reader locked instead of failing cleanly.
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) consumeLine(line);
+    }
 
-  buffer += decoder.decode();
-  if (buffer.trim()) consumeLine(buffer);
+    buffer += decoder.decode();
+    if (buffer.trim()) consumeLine(buffer);
+  } finally {
+    reader.releaseLock();
+  }
 
   return {
     message: { content },
@@ -121,12 +133,18 @@ async function readOllamaResponse(res: Response, stream: boolean) {
 async function isModelLoaded(model: string): Promise<boolean> {
   try {
     const res = await fetch(`${OLLAMA_URL}/api/ps`, { signal: AbortSignal.timeout(5_000) });
-    if (!res.ok) return false;
+    if (!res.ok) return true; // can't confirm — assume loaded, see catch below
     const data = await res.json();
     const models = Array.isArray(data?.models) ? data.models : [];
     return models.some((m: Record<string, unknown>) => m.name === model || m.model === model);
   } catch {
-    return false;
+    // A transient /api/ps hiccup is most likely when Ollama is already busy
+    // serving another slow agent's call — exactly when a serial 1-token
+    // prewarm request would queue in front of the real call and add latency
+    // for nothing. Fail OPEN (assume loaded, skip prewarm): a genuinely cold
+    // model still succeeds because the main call's timeout floor already
+    // budgets for cold-start load time (see SLOW_AGENT_TIMEOUT_FLOORS_MS).
+    return true;
   }
 }
 
@@ -162,6 +180,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   let resolvedMax = opts.maxOutputTokens;
   let resolvedJson = opts.responseFormat === "json";
 
+  let configuredTimeoutMs: number | undefined;
   try {
     const { resolveAgentConfig } = await import("@/lib/agent-config.server");
     const cfg = await resolveAgentConfig(opts.agent);
@@ -169,6 +188,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     resolvedTemp = cfg.temperature;
     resolvedMax = opts.maxOutputTokens ?? cfg.max_output_tokens;
     resolvedJson = cfg.json_mode || resolvedJson;
+    configuredTimeoutMs = cfg.timeout_ms;
   } catch {
     // DB config unreachable — use resolved values above
   }
@@ -177,9 +197,22 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   usedModel = toLocalModel(usedModel);
   const fallbackModel = fallback ? toLocalModel(fallback) : null;
   const streamResponse = !!SLOW_AGENT_TIMEOUT_FLOORS_MS[opts.agent];
+  const callTimeoutMs = timeoutFor(opts.agent, configuredTimeoutMs);
+
+  // A discarded streamed Response (retry/fallback below) leaves its body
+  // unread — undici won't release the underlying socket back to the
+  // connection pool until the body is consumed or cancelled, so every
+  // retried/superseded response must be explicitly cancelled here.
+  const discard = (response: Response) => {
+    if (streamResponse) response.body?.cancel().catch(() => {});
+  };
 
   try {
     if (SLOW_AGENT_TIMEOUT_FLOORS_MS[opts.agent]) {
+      // True worst case for a cold model on a slow agent is prewarm (up to
+      // 180s) PLUS the main call (up to callTimeoutMs, e.g. 600s for writer)
+      // — up to 780s, not just callTimeoutMs alone. Any watchdog/reverse-proxy
+      // timeout wrapping draftSection or similar must account for both.
       await prewarmModel(usedModel, AbortSignal.timeout(180_000));
     }
 
@@ -190,13 +223,14 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       resolvedMax,
       resolvedJson,
       streamResponse,
-      AbortSignal.timeout(timeoutFor(opts.agent)),
+      AbortSignal.timeout(callTimeoutMs),
     );
 
     let attempt = 0;
     const maxRetries = 2;
     while (!res.ok && (res.status === 429 || res.status >= 500) && attempt < maxRetries) {
       attempt++;
+      discard(res);
       await new Promise((r) => setTimeout(r, 250 * Math.pow(2, attempt)));
       res = await doOllamaCall(
         usedModel,
@@ -205,12 +239,13 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         resolvedMax,
         resolvedJson,
         streamResponse,
-        AbortSignal.timeout(timeoutFor(opts.agent)),
+        AbortSignal.timeout(callTimeoutMs),
       );
     }
 
     // Fallback to secondary model if primary fails
     if (!res.ok && fallbackModel && fallbackModel !== usedModel) {
+      discard(res);
       usedModel = fallbackModel;
       res = await doOllamaCall(
         fallbackModel,
@@ -219,7 +254,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         resolvedMax,
         resolvedJson,
         streamResponse,
-        AbortSignal.timeout(timeoutFor(opts.agent)),
+        AbortSignal.timeout(callTimeoutMs),
       );
     }
 

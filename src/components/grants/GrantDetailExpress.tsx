@@ -669,10 +669,23 @@ export function GrantDetailExpress({
                   <p className="text-sm leading-7 text-foreground">{evaluation.rationale_en}</p>
                 )}
                 {rows.length > 0 ? (
-                  <div className="divide-y rounded-lg border">
-                    {rows.map(([label, value]) => (
-                      <EligibilityLine key={label} label={label} value={value} />
-                    ))}
+                  <div>
+                    {/* Disambiguates against the rationale above: these checks
+                        describe categories the FUNDER declared eligible for this
+                        grant, not a confirmation that this org matches them — the
+                        evaluator's rationale (e.g. "cannot confirm AI/ML focus")
+                        is a separate, org-specific judgment call. Without this
+                        caption a green "Yes" here reads as contradicting a
+                        rationale that just said it couldn't confirm the same
+                        criterion. */}
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Eligible categories declared by the funder — not a personalized match
+                    </p>
+                    <div className="divide-y rounded-lg border">
+                      {rows.map(([label, value]) => (
+                        <EligibilityLine key={label} label={label} value={value} />
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <EmptyState>
@@ -976,11 +989,29 @@ function ValueBlock({ value }: { value: unknown }) {
   if (value == null || value === "")
     return <span className="text-sm text-muted-foreground">Not specified</span>;
   if (Array.isArray(value)) {
+    // Object items (e.g. eligibility.items = [{sector: [...], territory: [...]}],
+    // real shape seen on the PSCE grant) need the same key/value formatting as
+    // a top-level object below — not a raw JSON dump in a badge, which used to
+    // render literal `{"sector":["..."],"territory":["Canada"]}` to the user.
+    const hasObjectItems = value.some(
+      (item) => item != null && typeof item === "object" && !Array.isArray(item),
+    );
+    if (hasObjectItems) {
+      return (
+        <div className="space-y-2">
+          {value.map((item, index) => (
+            <div key={index} className="rounded-md border bg-muted/20 p-2">
+              <ValueBlock value={item} />
+            </div>
+          ))}
+        </div>
+      );
+    }
     return (
       <div className="flex flex-wrap gap-1.5">
         {value.map((item, index) => (
           <Badge key={index} variant="outline" className="font-normal">
-            {typeof item === "object" ? JSON.stringify(item) : String(item)}
+            {String(item)}
           </Badge>
         ))}
       </div>
