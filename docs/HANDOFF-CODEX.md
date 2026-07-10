@@ -1,7 +1,98 @@
-# Handoff for Codex - IIAL Grants
+# Handoff for Codex / Claude - IIAL Grants
 
 Living handoff so another agent can continue safely. Read this plus
-`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-05.
+`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-09
+America/Toronto.
+
+## Bitacora Para Claude - 2026-07-09
+
+Current HEAD after this handoff update should be on top of:
+
+- `76db6ff` fix(pipeline): preserve official deep pages when search fails
+- `dc39fca` fix(writer): stream slow Ollama drafting calls
+- `b4a3fef` fix(migration): make RLS-scoping migration idempotent
+- `91b6a10` fix(security): close remaining cross-tenant read leaks
+- `154d13c` fix(security): stop org_id=NULL proposals/submissions leaking across users
+- `3e3567f` redesign(grant-detail): hero decision card + recommendation line
+- `92a60b9` fix(agents): native Ollama /api/chat and observable strategist/critic failures
+- `7f417cb` fix(writer): bounded generation + first slow-agent timeout floor
+
+What changed in the latest loop:
+
+- Grant detail Express view was rebuilt earlier into a professional
+  decision-brief surface: hero recommendation, fit/eligibility/amount/deadline
+  snapshot, next action sidebar, clearer section names, and wider route
+  container.
+- Multi-tenant security audit closed real cross-tenant reads:
+  org_id=NULL proposals/submissions stopped leaking, proposal citations,
+  agent trace steps, proposal reviews, compliance matrices, and citation
+  reports were scoped to proposal/run owners. Write-side IDOR was tested:
+  member A could not update admin proposal sections.
+- Migrations `20260709100000`, `20260709110000`, and `20260709120000` were
+  made/rechecked as idempotent and registered locally.
+- Writer local-Ollama drafting was hardened in `dc39fca`:
+  slow agents use streaming `/api/chat` reads, unloaded models are prewarmed,
+  writer timeout floor is 600s, writer output is capped at 450 tokens, prompt
+  contract forbids title-only output, and `agent_runs.model` logs the actual
+  model instead of a hardcoded value.
+- Real writer validation:
+  warm PSCE `Expected Impact` succeeded in about 210s; cold PSCE `Budget`
+  succeeded in about 411s using `dolphin3:latest`, wrote 735 chars, and logged
+  a succeeded `agent_runs` row with 387 output tokens.
+- Deep-crawl search honesty was fixed in `76db6ff`:
+  `gatherDeepMarkdown()` no longer throws away already scraped first-party
+  pages when third-party Jina/site-search fails. Search failure is reported via
+  optional `onSearchError`, and the enricher records `deep_crawl_search`
+  warnings instead of collapsing the whole deep-crawl result.
+- The full Vitest run before `76db6ff` formally passed, but exposed hidden
+  evaluator timeouts: batch evaluator calls were aborting at the 120s env
+  baseline while the test still reported success. `76db6ff` puts evaluator on
+  the slow local-Ollama streaming path with a 300s floor. Targeted batch
+  validation after the fix scored all 3 evaluator cases successfully
+  (latencies observed: ~239s, ~216s, ~73s).
+
+Validation already run for the latest state:
+
+- `bunx tsc --noEmit` OK
+- `bun run lint` OK
+- `bunx vitest run src/lib/deep-crawl.test.ts src/lib/deep-crawl.gather.test.ts --reporter=verbose`
+  OK, 6 tests passed
+- `bunx vitest run src/agents/batch-pipeline.test.ts --reporter=verbose`
+  OK, enrichment 15/15 skipped as expected due max attempts, evaluator 3/3
+  succeeded
+- `bunx vitest run --reporter=verbose` was run before the evaluator timeout
+  floor fix: 254 passed, 2 skipped, but the output contained the now-fixed
+  evaluator timeout symptom
+- `bun run build` OK after the evaluator/deep-crawl fixes
+
+Important working-tree notes:
+
+- `scripts/local-audit.mjs` may appear as modified on Windows because of
+  autocrlf/EOL metadata. It has no real diff: `git diff --quiet --
+  scripts/local-audit.mjs` returned `0`, and its working hash matched
+  `HEAD:scripts/local-audit.mjs`. Do not include it unless there is a real diff.
+- Pre-existing untracked artifacts are intentionally outside scope:
+  `admin-modules.png`, `admin-modules-2.png`, `audit-report/`,
+  `synthetixvideo-audit-report.md`.
+- `.remember/now.md` and `.remember/today-2026-07-09.md` were updated locally,
+  but `.remember/*` is ignored by design.
+- The skill heuristic file outside the repo was updated:
+  `C:\Users\rafae\.codex\skills\grant-scraping-improvement\references\heuristics.md`
+  now records that search-provider failures must not discard already scraped
+  official pages.
+
+Next high-value work for Claude:
+
+- Re-run full Vitest only when willing to spend several minutes on local
+  Ollama; the targeted batch evaluator test is the better smoke for this
+  class of timeout.
+- If evaluator remains too slow, investigate routing/config tradeoffs
+  (`dolphin3:latest` honesty vs `phi4-mini` speed) before changing model
+  assignments.
+- Continue grant scraping improvements empirically: inspect failed
+  `agent_runs`/attempt trails, classify failure layer first, then patch the
+  smallest structural rule.
+- Keep local-first invariant: no cloud LLM providers, no external token spend.
 
 ## Current State
 
