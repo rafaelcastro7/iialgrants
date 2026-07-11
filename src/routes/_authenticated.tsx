@@ -4,6 +4,9 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
+import { V2AuthenticatedShell } from "@/components/v2/V2AuthenticatedShell";
+import { UiVersionProvider } from "@/components/v2/UiVersionProvider";
+import { useUiVersion } from "@/components/v2/ui-version";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -18,6 +21,25 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+  return (
+    <UiVersionProvider>
+      <AuthenticatedLayoutInner />
+    </UiVersionProvider>
+  );
+}
+
+function AuthenticatedLayoutInner() {
+  const { version } = useUiVersion();
+
+  if (version === "v2") {
+    return (
+      <V2AuthenticatedShell>
+        <CommandPalette />
+        <Outlet />
+      </V2AuthenticatedShell>
+    );
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
