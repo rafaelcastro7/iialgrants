@@ -96,7 +96,7 @@ Known follow-up debt:
 
 ## Bitacora Para Codex/Claude - 2026-07-11
 
-Current HEAD after this update should be on top of (newest first):
+Recent relevant commits (newest first, not exhaustive):
 
 - `e5d980f` redesign(frontend): introduce V2 app shell
 - `98ca0db` feat(ops): add local-only live audit daemon
