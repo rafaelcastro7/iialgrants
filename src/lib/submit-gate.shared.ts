@@ -10,6 +10,13 @@
 // a proposal is considered not ready to submit unless the user forces it.
 export const MIN_CRITIC_SCORE_TO_SUBMIT = 0.6;
 
+// Below this, computeProposalReadiness (proposal-readiness.ts) itself already
+// calls a section "blocked" rather than "partial" — reuse that same cutoff so
+// a proposal whose sections are mostly blocked can't pass the gate purely
+// because it has one thin drafted section and a critic score from before the
+// others were even started.
+export const MIN_READINESS_SCORE_TO_SUBMIT = 45;
+
 export type SubmitGateInput = {
   criticScore: number | null; // 0-1
   readinessScore: number; // 0-100
@@ -26,5 +33,6 @@ export function canSubmit(g: SubmitGateInput): { ok: boolean; reasons: string[] 
   if (g.criticScore == null) reasons.push("not_reviewed");
   else if (g.criticScore < MIN_CRITIC_SCORE_TO_SUBMIT) reasons.push("low_critic_score");
   if (g.openCriticalRequirements > 0) reasons.push("open_critical_requirements");
+  if (g.readinessScore < MIN_READINESS_SCORE_TO_SUBMIT) reasons.push("low_readiness");
   return { ok: reasons.length === 0, reasons };
 }

@@ -257,6 +257,12 @@ export const draftSection = createServerFn({ method: "POST" })
       .eq("id", section.id);
     if (ue) throw new Error(ue.message);
 
+    // A prior critic run scored the OLD section content — once it's
+    // rewritten, that score no longer describes what's actually on the page.
+    // Left in place, canSubmit() would pass a proposal whose current text was
+    // never reviewed by the critic at all.
+    await context.supabase.from("proposals").update({ critic_score: null }).eq("id", proposal.id);
+
     // Append immutable citation rows.
     if (parsed.citations.length) {
       const { error: ce } = await context.supabase.from("proposal_citations").insert(

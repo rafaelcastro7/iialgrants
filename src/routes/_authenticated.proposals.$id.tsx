@@ -63,7 +63,8 @@ function ProposalDetailPage() {
     overallScore: number;
     scores: Array<{
       reviewer: string;
-      score: number;
+      score: number | null;
+      reviewed: boolean;
       strengths: string[];
       weaknesses: string[];
     }>;
@@ -210,6 +211,7 @@ function ProposalDetailPage() {
     not_reviewed: "the proposal has not been run through the quality review",
     low_critic_score: "the quality review score is below the submit threshold",
     open_critical_requirements: "a critical funder requirement is not yet covered",
+    low_readiness: "most sections are still too thin or missing citations",
   };
 
   async function doSubmit(method: string, confirmationNumber: string, force = false) {
@@ -624,17 +626,23 @@ function ProposalDetailPage() {
                                 {s.reviewer}
                               </td>
                               <td className="py-2 pr-4">
-                                <Badge
-                                  variant={
-                                    s.score >= 7
-                                      ? "default"
-                                      : s.score >= 5
-                                        ? "secondary"
-                                        : "destructive"
-                                  }
-                                >
-                                  {s.score}
-                                </Badge>
+                                {s.reviewed && s.score != null ? (
+                                  <Badge
+                                    variant={
+                                      s.score >= 7
+                                        ? "default"
+                                        : s.score >= 5
+                                          ? "secondary"
+                                          : "destructive"
+                                    }
+                                  >
+                                    {s.score}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" title="This reviewer did not respond">
+                                    not reviewed
+                                  </Badge>
+                                )}
                               </td>
                               <td className="py-2 pr-4 text-muted-foreground">
                                 {s.strengths.length > 0 ? s.strengths.join("; ") : "—"}
@@ -844,9 +852,9 @@ function ProposalDetailPage() {
         warningMessage={submitWarning ?? undefined}
         onForceSubmit={
           submitWarning
-            ? () => {
+            ? (method, conf) => {
                 setSubmitWarning(null);
-                doSubmit("portal", "", true);
+                doSubmit(method, conf, true);
               }
             : undefined
         }
