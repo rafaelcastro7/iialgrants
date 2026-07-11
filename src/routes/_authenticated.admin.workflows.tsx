@@ -75,6 +75,11 @@ function ApprovalWorkflowsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"grant" | "proposal">("grant");
+  // Every workflow created here used to be hardcoded to steps: [] with no way
+  // to ever add one — the approval chain could never actually gate anything.
+  const [newSteps, setNewSteps] = useState<Array<{ name: string; approverRole: string }>>([
+    { name: "", approverRole: "" },
+  ]);
 
   const stepsQuery = useQuery({
     queryKey: ["approval-steps", expandedWfId],
@@ -123,7 +128,13 @@ function ApprovalWorkflowsPage() {
         data: {
           name: newName,
           entityType: newEntityType,
-          steps: [],
+          steps: newSteps
+            .filter((s) => s.name.trim() && s.approverRole.trim())
+            .map((s, i) => ({
+              name: s.name.trim(),
+              approverRole: s.approverRole.trim(),
+              stepOrder: i + 1,
+            })),
         },
       }),
     onSuccess: () => {
@@ -132,6 +143,7 @@ function ApprovalWorkflowsPage() {
       setCreateDialogOpen(false);
       setNewName("");
       setNewEntityType("grant");
+      setNewSteps([{ name: "", approverRole: "" }]);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -175,6 +187,59 @@ function ApprovalWorkflowsPage() {
                       <option value="grant">Grant</option>
                       <option value="proposal">Proposal</option>
                     </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Approval Steps (in order)</Label>
+                    {newSteps.map((s, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input
+                          value={s.name}
+                          onChange={(e) =>
+                            setNewSteps((prev) =>
+                              prev.map((p, idx) =>
+                                idx === i ? { ...p, name: e.target.value } : p,
+                              ),
+                            )
+                          }
+                          placeholder={`Step ${i + 1} name (e.g. Finance review)`}
+                          className="flex-1"
+                        />
+                        <Input
+                          value={s.approverRole}
+                          onChange={(e) =>
+                            setNewSteps((prev) =>
+                              prev.map((p, idx) =>
+                                idx === i ? { ...p, approverRole: e.target.value } : p,
+                              ),
+                            )
+                          }
+                          placeholder="Approver role"
+                          className="flex-1"
+                        />
+                        {newSteps.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setNewSteps((prev) => prev.filter((_, idx) => idx !== i))
+                            }
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setNewSteps((prev) => [...prev, { name: "", approverRole: "" }])
+                      }
+                    >
+                      <Plus className="mr-1 h-4 w-4" /> Add step
+                    </Button>
                   </div>
                   <Button
                     onClick={() => createMutation.mutate()}
