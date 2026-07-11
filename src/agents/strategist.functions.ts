@@ -149,6 +149,24 @@ export const runStrategist = createServerFn({ method: "POST" })
     if (te) throw new Error(te.message);
     if (!tpl) throw new Error("template_not_found");
 
+    // Idempotency guard: a second "Draft proposal" click (no unique DB
+    // constraint exists on grant_id/user_id) used to insert a second,
+    // orphaned proposals row and burn a real LLM call. Reuse the existing
+    // non-dead proposal instead.
+    const { data: existing, error: ee } = await context.supabase
+      .from("proposals")
+      .select("id")
+      .eq("grant_id", data.grantId)
+      .eq("user_id", context.userId)
+      .not("status", "in", "(rejected,withdrawn)")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (ee) throw new Error(ee.message);
+    if (existing) {
+      return { proposalId: existing.id, runId, reused: true };
+    }
+
     // A throwing LLM call (e.g. Ollama timeout on a cold model) must still
     // leave a failed agent_runs row — same observability fix as the writer.
     let llm: Awaited<ReturnType<typeof callLlm>>;

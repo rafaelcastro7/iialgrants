@@ -239,7 +239,17 @@ function GrantsPage() {
     setPending(grantId + ":enrich");
     setEvalError(null);
     try {
-      await enrichOne({ data: { grantId } });
+      const r = await enrichOne({ data: { grantId } });
+      // enrichOne resolves (never throws) on scrape failure or max-attempts —
+      // both used to look identical to success from here (card just re-renders
+      // unchanged, no feedback at all).
+      if (!r.ok) {
+        setEvalError(`Enrichment failed: ${r.error ?? "unknown error"}`);
+      } else if (r.skipped && r.reason === "max_attempts_reached") {
+        setEvalError(
+          "This grant has reached the maximum number of enrichment attempts and could not be completed automatically. Review the official page manually.",
+        );
+      }
       await qc.invalidateQueries({ queryKey: ["grants"] });
     } catch (e) {
       setEvalError(e instanceof Error ? e.message : String(e));
@@ -255,6 +265,16 @@ function GrantsPage() {
         sortKey,
       ) as GrantRowData[],
     [data.grants, search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline],
+  );
+
+  // Search/jurisdiction/eligibleOnly/onlyWithDeadline live in GrantFilters,
+  // which only renders inside the Advanced/Kanban view — Express has no UI to
+  // show or clear them, so a filter left on from a prior Advanced session
+  // used to silently shrink (or empty) the Express list with no explanation.
+  // Express only ever needs sorting.
+  const expressGrants = useMemo(
+    () => sortGrants(data.grants, sortKey) as GrantRowData[],
+    [data.grants, sortKey],
   );
 
   const activeFiltered = useMemo(
@@ -353,7 +373,7 @@ function GrantsPage() {
 
           {viewMode === "express" && (
             <GrantExpressView
-              grants={filtered}
+              grants={expressGrants}
               evaluatingIds={evaluatingIds}
               onEvaluate={onEvaluate}
             />
