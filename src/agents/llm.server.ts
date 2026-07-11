@@ -2,6 +2,7 @@
 // Routes each agent to its optimal local model via model-router.
 import { logGenAI, newRunId } from "@/lib/otel";
 import { resolveModel, resolveFallback } from "@/agents/model-router.server";
+import { timeoutFor, usesStreamingClient } from "@/agents/llm-timeouts.server";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -26,27 +27,10 @@ export type LlmCallResult = {
 
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const DEFAULT_LOCAL_MODEL = process.env.OLLAMA_MODEL || "phi4-mini:latest";
-const LOCAL_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 0) || 180_000;
-
-// Generation-heavy agents exceed the env baseline on this hardware. Live E2E
-// measurements on dolphin3 / GTX 1070 show writer warm runs around 220s and
-// cold-start streamed runs can reach ~410s; evaluator batch runs have also hit
-// 120s env aborts under load. Give writer a safer floor; keep the other slow
-// agents at 5 minutes and cheap extraction agents on the env baseline.
-const SLOW_AGENT_TIMEOUT_FLOORS_MS: Record<string, number> = {
-  writer: 600_000,
-  evaluator: 300_000,
-  strategist: 300_000,
-  critic: 300_000,
-};
-// configuredMs (agent_configs.timeout_ms, admin-editable) can only RAISE the
-// floor, never lower it — otherwise an admin setting a low value would
-// reintroduce the mid-generation abort bug this file was built to fix.
-// Previously this parameter was accepted nowhere: the admin-facing timeout_ms
-// field was silently ignored, so raising it in the UI had zero real effect.
-function timeoutFor(agent: string, configuredMs?: number): number {
-  return Math.max(LOCAL_TIMEOUT_MS, SLOW_AGENT_TIMEOUT_FLOORS_MS[agent] ?? 0, configuredMs ?? 0);
-}
+// timeoutFor/usesStreamingClient live in llm-timeouts.server.ts, SHARED with
+// llm-free.server.ts's callFreeLlm (enricher's gap-fill cascade) — this exact
+// bug happened once already when the two clients' timeout logic diverged (see
+// that file's header comment).
 
 function toLocalModel(model: string | null | undefined): string {
   if (!model) return DEFAULT_LOCAL_MODEL;
@@ -143,7 +127,7 @@ async function isModelLoaded(model: string): Promise<boolean> {
     // prewarm request would queue in front of the real call and add latency
     // for nothing. Fail OPEN (assume loaded, skip prewarm): a genuinely cold
     // model still succeeds because the main call's timeout floor already
-    // budgets for cold-start load time (see SLOW_AGENT_TIMEOUT_FLOORS_MS).
+    // budgets for cold-start load time (see llm-timeouts.server.ts).
     return true;
   }
 }
@@ -196,7 +180,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   // Normalize cloud model IDs that might come from DB
   usedModel = toLocalModel(usedModel);
   const fallbackModel = fallback ? toLocalModel(fallback) : null;
-  const streamResponse = !!SLOW_AGENT_TIMEOUT_FLOORS_MS[opts.agent];
+  const streamResponse = usesStreamingClient(opts.agent);
   const callTimeoutMs = timeoutFor(opts.agent, configuredTimeoutMs);
 
   // A discarded streamed Response (retry/fallback below) leaves its body
@@ -208,7 +192,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   };
 
   try {
-    if (SLOW_AGENT_TIMEOUT_FLOORS_MS[opts.agent]) {
+    if (usesStreamingClient(opts.agent)) {
       // True worst case for a cold model on a slow agent is prewarm (up to
       // 180s) PLUS the main call (up to callTimeoutMs, e.g. 600s for writer)
       // — up to 780s, not just callTimeoutMs alone. Any watchdog/reverse-proxy

@@ -6,6 +6,7 @@
 
 import { logGenAI, newRunId } from "@/lib/otel";
 import { resolveModel, resolveFallback } from "@/agents/model-router.server";
+import { timeoutFor } from "@/agents/llm-timeouts.server";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 type Agent = "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";
@@ -59,7 +60,10 @@ async function callOllamaNative(
   if (opts.responseFormat === "json") body.format = "json";
 
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 180_000);
+  // Was a hardcoded 180_000 — the exact bug llm-timeouts.server.ts's header
+  // comment documents: this sibling client kept its own timeout and never got
+  // the per-agent floor, so every enricher gap-fill call aborted at 180s.
+  const t = setTimeout(() => ctrl.abort(), timeoutFor(opts.agent));
   try {
     const res = await fetch(url, {
       method: "POST",
