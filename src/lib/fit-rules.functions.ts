@@ -76,14 +76,34 @@ export const previewFitRules = createServerFn({ method: "POST" })
       .neq("status", "discovered")
       .limit(data.limit);
     if (error) throw new Error(error.message);
+
+    // The "Trust the AI vs. the rules" slider (weight_llm) has no effect
+    // unless a real LLM fit score enters combined_score() — reuse each
+    // grant's already-computed grant_evaluations.fit_score (real, not
+    // re-invoked here) so the preview's pass/review/block counts actually
+    // shift with the slider, matching what evaluator.impl.server.ts does.
+    const grantIds = (rows ?? []).map((g) => g.id as string);
+    const llmScoreById = new Map<string, number>();
+    if (grantIds.length > 0) {
+      const { data: evals } = await context.supabase
+        .from("grant_evaluations")
+        .select("grant_id, fit_score")
+        .eq("user_id", context.userId)
+        .in("grant_id", grantIds);
+      for (const e of evals ?? []) llmScoreById.set(e.grant_id, e.fit_score);
+    }
+
     const out = (rows ?? []).map((g) => {
       const r = evaluateRules(data.rules as FitRules, g);
+      const llmFit = llmScoreById.get(g.id as string);
       return {
         id: g.id as string,
         title: g.title as string,
         status: g.status as string,
         hard_fail: r.hard_fail,
         rule_score: r.rule_score,
+        combined_score: r.combined_score(llmFit ?? 0),
+        has_llm_score: llmFit != null,
         checks: r.checks,
       };
     });
