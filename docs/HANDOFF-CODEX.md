@@ -108,7 +108,10 @@ Known follow-up debt:
   Screenshots:
   `test-results/v2-grants-index.png`,
   `test-results/v2-grants-lifecycle.png`, and
-  `test-results/v2-grants-index-mobile.png`.
+  `test-results/v2-grants-index-mobile.png`. Follow-up fix: `a1474cd`
+  (`fix(frontend): wire V2 exception draft action`) passes the real
+  `onDraft` handler into the Exceptions queue so scored/shortlisted exception
+  rows cannot render a no-op Draft button.
 - Remaining deep route interiors still to rebuild as V2-native work surfaces:
   Proposal Detail and Admin pages.
 - The large entry chunk warning remains. Fixing it likely means deeper
