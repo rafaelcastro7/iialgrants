@@ -37,7 +37,11 @@ describe("batch pipeline", () => {
       );
     }
     console.log(`\nSummary: ${ok.length} scored, ${failed.length} failed out of ${results.length}`);
-  }, 600_000);
+    // Was 600_000 (10 min) — a live run on 2026-07-11 hit this ceiling after
+    // scoring only 3 grants (dolphin3 evaluator calls take ~100-250s each in
+    // practice); matches the enrichment test's floor since the same "too
+    // short for the real backlog size" class of bug applies here too.
+  }, 3_600_000);
 });
 
 function printReport(phase: string, results: BatchResult[]) {
