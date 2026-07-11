@@ -181,9 +181,26 @@ function labelFromKey(value: string): string {
   return cleaned.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+// Sector/focus-area values are stored as lowercase snake_case ("agriculture",
+// "arts_culture", "ai"). labelFromKey only Title-Cased values containing an
+// underscore/hyphen, so single-word values passed through unchanged and sat
+// next to Title-Cased multi-word ones with no visible reason for the
+// difference ("agriculture, technology, Arts Culture, construction..."). Now
+// applied uniformly, with a small known-acronym exception list so it doesn't
+// turn "ai" into "Ai".
+const KNOWN_ACRONYMS = new Set(["ai", "sme", "rd", "hr", "it", "csr", "esg"]);
 function displayTag(value: string): string {
-  if (!/[_-]/.test(value)) return value;
-  return labelFromKey(value);
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((word) =>
+      KNOWN_ACRONYMS.has(word.toLowerCase())
+        ? word.toUpperCase()
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ");
 }
 
 function initialsOf(name: string): string {
@@ -291,8 +308,13 @@ function verdictFor({
     };
   }
   if (status === "submitted" || status === "in_proposal") {
+    // Label deliberately differs from STATUS_LABEL[status] (also "In
+    // proposal") — the two pills render side by side in the header, and
+    // reusing the identical string made it read as a rendering glitch
+    // (the same badge appearing twice) rather than two distinct signals
+    // (lifecycle status vs. pursuit-priority verdict).
     return {
-      label: status === "submitted" ? "Awaiting funder decision" : "In proposal",
+      label: status === "submitted" ? "Awaiting funder decision" : "Drafting in progress",
       detail:
         status === "submitted"
           ? "A proposal has been submitted. No further pursuit action is needed until the funder responds."

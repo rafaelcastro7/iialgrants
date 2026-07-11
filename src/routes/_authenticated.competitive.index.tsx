@@ -149,7 +149,7 @@ function CompetitivePage() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{r.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {r.count} grants · {r.province || "—"}
+                        {r.count} {r.count === 1 ? "grant" : "grants"} · {r.province || "—"}
                       </p>
                     </div>
                     <span className="text-sm font-medium shrink-0">

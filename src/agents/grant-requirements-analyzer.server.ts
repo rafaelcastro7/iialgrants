@@ -106,7 +106,18 @@ function snippetAround(text: string, index: number, length: number, pad = 90): s
   const end = Math.min(text.length, index + length + pad);
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
-  return `${prefix}${text.slice(start, end).replace(/\s+/g, " ").trim()}${suffix}`;
+  const raw = text.slice(start, end);
+  // PDF/table-of-contents dot-leaders ("........ 4" between a heading and its
+  // page number) survive markdown conversion as literal runs of periods —
+  // \s+ collapsing alone leaves them intact, so a snippet landing near one
+  // read as garbled noise ("........ 4 3. Critères de sélection ........")
+  // instead of the real requirement text. Collapse any run of 3+ dots (with
+  // optional interspersed spaces) to a single separator before trimming.
+  const cleaned = raw
+    .replace(/(?:\.\s?){3,}/g, " ... ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return `${prefix}${cleaned}${suffix}`;
 }
 
 /**

@@ -69,8 +69,13 @@ function QualityDashboardPage() {
                   <CheckCircle2 className="h-4 w-4" />
                   <p className="text-xs">Avg Score</p>
                 </div>
+                {/* metrics.avgScore/min/maxScore all default to 0 server-side
+                    when zero proposals have been critic-reviewed yet — showed
+                    a confident "0%" indistinguishable from "reviewed
+                    proposals average zero quality", when the real state is
+                    "nothing reviewed yet". metrics.scored disambiguates. */}
                 <p className="mt-1 text-2xl font-semibold">
-                  {(metrics.avgScore * 100).toFixed(0)}%
+                  {metrics.scored > 0 ? `${(metrics.avgScore * 100).toFixed(0)}%` : "—"}
                 </p>
               </CardContent>
             </Card>
@@ -81,7 +86,9 @@ function QualityDashboardPage() {
                   <p className="text-xs">Score Range</p>
                 </div>
                 <p className="mt-1 text-2xl font-semibold">
-                  {(metrics.minScore * 100).toFixed(0)}% – {(metrics.maxScore * 100).toFixed(0)}%
+                  {metrics.scored > 0
+                    ? `${(metrics.minScore * 100).toFixed(0)}% – ${(metrics.maxScore * 100).toFixed(0)}%`
+                    : "No scores yet"}
                 </p>
               </CardContent>
             </Card>
