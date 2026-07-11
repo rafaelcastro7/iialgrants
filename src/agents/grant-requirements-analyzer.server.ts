@@ -168,26 +168,17 @@ export function analyzeGrantRequirements(grantMarkdown: string): {
     });
   }
 
-  if (/incorporated|corporation|not-for-profit|nonprofit/i.test(grantMarkdown)) {
-    const type = grantMarkdown.match(/incorporated|corporation|not-for-profit|nonprofit/i)?.[0];
-    requirements.push({
-      category: "legal",
-      requirement: `Must be registered as: ${type}`,
-      isCritical: true,
-    });
-  }
-
-  if (/revenue|budget|annual|fiscal/i.test(grantMarkdown)) {
-    const revenueMatch = grantMarkdown.match(/\$?\d+[KMB]?\s*(thousand|million|billion)?/);
-    if (revenueMatch) {
-      requirements.push({
-        category: "financial",
-        requirement: "Financial documentation required",
-        value: revenueMatch[0],
-        isCritical: true,
-      });
-    }
-  }
+  // A prior "legal registration type" detector matched bare words
+  // (incorporated/corporation/nonprofit/etc.) anywhere in the whole scraped
+  // page — including the funder's own about-us boilerplate, unrelated to any
+  // actual applicant obligation — and a "financial documentation" detector
+  // flagged the first digit sequence found near revenue/budget/annual/fiscal
+  // (a year, a phone digit, a page number). Both set isCritical:true with NO
+  // snippetAround grounding, unlike every pattern below, so a fabricated
+  // "critical" requirement could permanently confuse the submit-readiness
+  // gate over text that was never a real applicant requirement. Removed —
+  // the legitimate cases (incorporation proof, financial statements) are
+  // already covered, grounded, below.
 
   for (const p of DOCUMENT_PATTERNS) {
     const m = p.re.exec(grantMarkdown);
