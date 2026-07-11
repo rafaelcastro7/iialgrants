@@ -122,7 +122,16 @@ export const listAgentConfigs = createServerFn({ method: "GET" })
         timeout_ms: cfg.timeout_ms,
         max_retries: cfg.max_retries,
         concurrency: cfg.concurrency,
-        updated_at: f?.updated_at ?? new Date().toISOString(),
+        // "Updated" should reflect whichever really changed last — a prompt/
+        // model save (agent_configs.updated_at) or an Enabled toggle
+        // (agent_flags.updated_at) — not just the flag, which used to mean a
+        // Save Changes click never moved this timestamp while an unrelated
+        // Enabled toggle did.
+        updated_at:
+          [cfg.updated_at, f?.updated_at]
+            .filter((d): d is string => !!d)
+            .sort()
+            .at(-1) ?? new Date().toISOString(),
         updated_by: f?.updated_by ?? null,
         stats: {
           runs_24h: s?.n ?? 0,

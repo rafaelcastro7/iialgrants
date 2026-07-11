@@ -2,7 +2,7 @@
 // Server-only. Caller passes the per-user supabase client (RLS-scoped).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { embedText } from "@/agents/embeddings.server";
+import { getEmbeddingCached } from "@/lib/embeddings-cache.server";
 
 export type RagHit = {
   id: string;
@@ -40,7 +40,7 @@ export async function ragRetrieve(
     .slice(0, 12)
     .join(" | ");
 
-  const [{ data: ftsRows }, embeddings] = await Promise.all([
+  const [{ data: ftsRows }, queryEmbedding] = await Promise.all([
     tsQuery
       ? supabase
           .from("knowledge_chunks")
@@ -51,10 +51,13 @@ export async function ragRetrieve(
       : Promise.resolve({
           data: [] as Array<{ id: string; content: string; source: string; language: "en" | "fr" }>,
         }),
-    embedText(query),
+    // Cached: the same section-drafting query is often re-issued within a
+    // session (retry, re-open the same section) — this is also the only
+    // real call site the Monitoring page's "Embedding Cache" card can now
+    // reflect, since it was previously wired to nothing.
+    getEmbeddingCached(query),
   ]);
 
-  const [queryEmbedding] = embeddings;
   const { data: vecRows, error: vecErr } = await supabase.rpc("match_knowledge_chunks", {
     query_embedding: queryEmbedding as unknown as string,
     match_user_id: userId,

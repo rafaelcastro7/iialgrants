@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
+import { AlertTriangle } from "lucide-react";
 
 const qo = queryOptions({ queryKey: ["admin", "users"], queryFn: () => listAdminUsers() });
 
@@ -135,6 +136,14 @@ function UsersPage() {
         }
       />
 
+      {data.truncated && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Showing the first 4,000 users only — this workspace has more accounts than fit on one
+          page. Search may not find every match.
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
@@ -185,6 +194,8 @@ function UsersPage() {
                     <TableCell>
                       {isBanned ? (
                         <Badge variant="destructive">banned</Badge>
+                      ) : !u.last_sign_in_at ? (
+                        <Badge variant="secondary">invited</Badge>
                       ) : (
                         <Badge variant="outline">active</Badge>
                       )}

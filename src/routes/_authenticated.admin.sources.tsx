@@ -386,6 +386,14 @@ function SourcesPage() {
                     <Badge variant={r.status === "succeeded" ? "default" : "destructive"}>
                       {r.status}
                     </Badge>
+                    {r.status !== "succeeded" && r.error_message ? (
+                      <p
+                        className="mt-0.5 max-w-xs truncate text-xs text-destructive/90"
+                        title={r.error_message}
+                      >
+                        {r.error_message}
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-xs">
                     {r.rows_in ?? 0} / {r.candidates_out ?? 0} / {r.auto_approved ?? 0} /{" "}

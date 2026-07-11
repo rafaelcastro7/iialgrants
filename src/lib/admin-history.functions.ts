@@ -24,7 +24,7 @@ export const listDiscoveryHistory = createServerFn({ method: "GET" })
         .limit(50),
       supabaseAdmin
         .from("agent_runs")
-        .select("run_id, agent, status, latency_ms, metadata, created_at")
+        .select("run_id, agent, status, latency_ms, metadata, created_at, error")
         .eq("agent", "discoverer")
         .order("created_at", { ascending: false })
         .limit(20),

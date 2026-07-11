@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { User } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "@/lib/admin-guard";
 
@@ -34,13 +35,25 @@ export const listAdminUsers = createServerFn({ method: "GET" })
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 200,
-    });
-    if (error) throw new Error(error.message);
+    // A single page-1/200 call silently truncated any workspace past 200
+    // users — no pagination control existed anywhere in the UI, so the roster
+    // just looked complete when it wasn't. Page through everything, with a
+    // generous cap (4,000 users) as a backstop against a runaway loop rather
+    // than an expected real limit.
+    const perPage = 200;
+    const maxPages = 20;
+    let page = 1;
+    const allUsers: User[] = [];
+    let truncated = false;
+    for (; page <= maxPages; page++) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+      if (error) throw new Error(error.message);
+      allUsers.push(...data.users);
+      if (data.users.length < perPage) break;
+      if (page === maxPages) truncated = true;
+    }
 
-    const ids = users.users.map((u) => u.id);
+    const ids = allUsers.map((u) => u.id);
     const [rolesResp, profilesResp] = await Promise.all([
       supabaseAdmin.from("user_roles").select("user_id, role").in("user_id", ids),
       supabaseAdmin.from("profiles").select("id, preferred_lang, org_name").in("id", ids),
@@ -50,7 +63,7 @@ export const listAdminUsers = createServerFn({ method: "GET" })
     const adminSet = new Set(roles.filter((r) => r.role === "admin").map((r) => r.user_id));
     const profileMap = new Map(profiles.map((p) => [p.id, p]));
 
-    const rows: AdminUserRow[] = users.users.map((u) => {
+    const rows: AdminUserRow[] = allUsers.map((u) => {
       const p = profileMap.get(u.id);
       return {
         id: u.id,
@@ -64,7 +77,7 @@ export const listAdminUsers = createServerFn({ method: "GET" })
       };
     });
     rows.sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
-    return { users: rows };
+    return { users: rows, truncated };
   });
 
 export const setUserAdminRole = createServerFn({ method: "POST" })

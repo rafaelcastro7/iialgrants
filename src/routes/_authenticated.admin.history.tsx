@@ -116,6 +116,27 @@ function HistoryPage() {
       ),
     },
     {
+      accessorKey: "times_seen",
+      header: "Times seen",
+      cell: ({ row }) => <span className="text-sm">{row.original.times_seen}</span>,
+    },
+    {
+      accessorKey: "text_length",
+      header: "Text length",
+      cell: ({ row }) => {
+        const len = row.original.text_length;
+        const thin = len != null && len < 500;
+        return (
+          <span
+            className={`text-sm ${thin ? "text-amber-600" : ""}`}
+            title={thin ? "Thin scrape — page may have failed to render fully" : undefined}
+          >
+            {len != null ? `${len.toLocaleString()} chars` : "—"}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: "last_fetched_at",
       header: "Last Fetched",
       cell: ({ row }) => (
@@ -199,6 +220,12 @@ function HistoryPage() {
           {data.runs.length === 0 && <p className="text-muted-foreground">No runs recorded.</p>}
           {data.runs.map((r, index) => {
             const meta = (r.metadata ?? {}) as Record<string, unknown>;
+            const funderName = meta.funder_name ?? meta.funder_id;
+            // The job-completion marker (stage: "orchestrator_completed") writes
+            // totalInserted/totalSeenAgain/totalProcessed for the WHOLE job, not
+            // the per-funder found/inserted/seen_again keys every other row uses
+            // — reading the wrong keys made this summary row always show zeros.
+            const isJobSummary = meta.stage === "orchestrator_completed";
             return (
               <div
                 key={`${r.run_id}-${index}`}
@@ -211,7 +238,9 @@ function HistoryPage() {
                         ? "default"
                         : r.status === "degraded"
                           ? "secondary"
-                          : "destructive"
+                          : r.status === "running"
+                            ? "outline"
+                            : "destructive"
                     }
                   >
                     {r.status}
@@ -219,9 +248,26 @@ function HistoryPage() {
                   <span className="text-xs text-muted-foreground">
                     {new Date(r.created_at).toLocaleString()}
                   </span>
+                  {!isJobSummary && !!funderName && (
+                    <span className="text-xs text-muted-foreground"> · {String(funderName)}</span>
+                  )}
+                  {r.error && (
+                    <p
+                      className="text-xs text-destructive mt-0.5 max-w-md truncate"
+                      title={r.error}
+                    >
+                      {r.error}
+                    </p>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground text-right">
-                  {meta.cached ? (
+                  {isJobSummary ? (
+                    <>
+                      job total: inserted {String(meta.totalInserted ?? 0)} · seen again{" "}
+                      {String(meta.totalSeenAgain ?? 0)} · processed{" "}
+                      {String(meta.totalProcessed ?? 0)}
+                    </>
+                  ) : meta.cached ? (
                     <>cached ({String(meta.reason ?? "—")})</>
                   ) : (
                     <>
