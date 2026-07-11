@@ -36,6 +36,8 @@ export const submitProposal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => SubmitInput.parse(i))
   .handler(async ({ data, context }) => {
+    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+    await assertModuleEnabled("submissions");
     const { supabase, userId } = context;
     const { data: proposal, error: pe } = await supabase
       .from("proposals")

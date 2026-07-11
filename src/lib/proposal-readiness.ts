@@ -51,7 +51,14 @@ function requirementLooksCovered(requirement: ProposalRequirement, corpus: strin
     (w) => !["required", "requirement", "available", "grant", "information"].includes(w),
   );
   if (tokens.length === 0) return false;
-  return tokens.slice(0, 6).some((token) => corpus.includes(token));
+  const sample = tokens.slice(0, 6);
+  const matched = sample.filter((token) => corpus.includes(token)).length;
+  // A single generic word from the requirement (e.g. "board", "application")
+  // can appear anywhere in an unrelated sentence — that used to be enough
+  // (.some()) to mark a critical funder deliverable "covered" with nothing
+  // actually addressing it. Require a real majority of the requirement's own
+  // words to show up before treating it as covered.
+  return matched >= Math.max(2, Math.ceil(sample.length / 2));
 }
 
 export function computeProposalReadiness(input: {

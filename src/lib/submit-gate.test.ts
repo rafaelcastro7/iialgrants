@@ -3,7 +3,11 @@
 // has drafted content, and covers every critical funder requirement — unless
 // the user explicitly forces it (tested at the route level, not here).
 import { describe, expect, it } from "vitest";
-import { canSubmit, MIN_CRITIC_SCORE_TO_SUBMIT } from "@/lib/submit-gate.shared";
+import {
+  canSubmit,
+  MIN_CRITIC_SCORE_TO_SUBMIT,
+  MIN_READINESS_SCORE_TO_SUBMIT,
+} from "@/lib/submit-gate.shared";
 
 const ready = {
   criticScore: 0.85,
@@ -48,6 +52,17 @@ describe("canSubmit reviewer-simulation gate", () => {
     expect(r.reasons).toContain("open_critical_requirements");
   });
 
+  it("blocks a proposal whose sections are mostly still blocked, even with a passing critic score", () => {
+    const r = canSubmit({ ...ready, readinessScore: MIN_READINESS_SCORE_TO_SUBMIT - 1 });
+    expect(r.ok).toBe(false);
+    expect(r.reasons).toContain("low_readiness");
+  });
+
+  it("accepts a readiness score exactly at the threshold", () => {
+    const r = canSubmit({ ...ready, readinessScore: MIN_READINESS_SCORE_TO_SUBMIT });
+    expect(r.ok).toBe(true);
+  });
+
   it("accumulates multiple reasons", () => {
     const r = canSubmit({
       criticScore: null,
@@ -57,7 +72,12 @@ describe("canSubmit reviewer-simulation gate", () => {
     });
     expect(r.ok).toBe(false);
     expect(r.reasons).toEqual(
-      expect.arrayContaining(["no_sections_drafted", "not_reviewed", "open_critical_requirements"]),
+      expect.arrayContaining([
+        "no_sections_drafted",
+        "not_reviewed",
+        "open_critical_requirements",
+        "low_readiness",
+      ]),
     );
   });
 });

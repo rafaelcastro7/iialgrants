@@ -24,7 +24,7 @@ interface SubmitDialogProps {
   onSubmit: (method: string, confirmationNumber: string) => void;
   loading?: boolean;
   warningMessage?: string;
-  onForceSubmit?: () => void;
+  onForceSubmit?: (method: string, confirmationNumber: string) => void;
 }
 
 export function SubmitDialog({
@@ -88,7 +88,11 @@ export function SubmitDialog({
 
         <DialogFooter>
           {warningMessage && onForceSubmit && (
-            <Button variant="destructive" onClick={onForceSubmit} disabled={loading}>
+            <Button
+              variant="destructive"
+              onClick={() => onForceSubmit(method, confirmationNumber)}
+              disabled={loading}
+            >
               Submit Anyway
             </Button>
           )}
