@@ -37,3 +37,6 @@ playwright-report/
 test-results/
 grants-*.jpeg
 grants-dom.md
+
+# live-audit-daemon runtime state (regenerated on every cycle)
+scripts/.live-audit-state.json
