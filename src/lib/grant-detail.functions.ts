@@ -12,12 +12,31 @@ export const getGrantDetail = createServerFn({ method: "GET" })
     const { data: grant, error } = await context.supabase
       .from("grants")
       .select(
-        "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, eligibility, requirements, language, url, status, fit_score, discovered_at, enriched_at, scored_at, last_seen_at, times_seen, enrich_attempts, enrich_last_error, funder:funders(id, name, name_fr, jurisdiction, source_url)",
+        "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, eligibility, requirements, language, url, status, fit_score, discovered_at, enriched_at, scored_at, last_seen_at, times_seen, enrich_attempts, enrich_last_error, funder_id, funder:funders(id, name, name_fr, jurisdiction, source_url)",
       )
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!grant) throw new Error("Grant not found");
+
+    // Same duplicate-record signal as listGrants — a real, recurring
+    // data-quality issue (see grants.functions.ts's normalizeTitle comment).
+    const DIACRITICS = new RegExp("[\\u0300-\\u036f]", "g");
+    const normalizeTitle = (t: string) =>
+      t
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(DIACRITICS, "")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+    const { data: siblings } = await context.supabase
+      .from("grants")
+      .select("id, title")
+      .eq("funder_id", grant.funder_id);
+    const normalizedSelf = normalizeTitle(grant.title);
+    const duplicateGroupSize = (siblings ?? []).filter(
+      (s) => normalizeTitle(s.title) === normalizedSelf,
+    ).length;
 
     const { data: evaluation } = await context.supabase
       .from("grant_evaluations")
@@ -45,5 +64,11 @@ export const getGrantDetail = createServerFn({ method: "GET" })
       .limit(1)
       .maybeSingle();
 
-    return { grant, evaluation, events: events ?? [], existingProposal: existingProposal ?? null };
+    return {
+      grant,
+      evaluation,
+      events: events ?? [],
+      existingProposal: existingProposal ?? null,
+      duplicateGroupSize,
+    };
   });

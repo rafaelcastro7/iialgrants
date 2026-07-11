@@ -7,6 +7,7 @@
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
+  AlertTriangle,
   CalendarDays,
   CheckCircle2,
   Landmark,
@@ -281,6 +282,14 @@ function MatchCard({ g, mode }: { g: GrantRowData; mode: "progress" | "match" })
                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${chip.cls}`}
               >
                 {chip.label}
+              </span>
+            )}
+            {(g.duplicateGroupSize ?? 1) > 1 && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning"
+                title="Other active records share this funder and a near-identical title — figures may be inconsistent between them."
+              >
+                <AlertTriangle className="h-3 w-3" /> {g.duplicateGroupSize} similar records
               </span>
             )}
           </div>

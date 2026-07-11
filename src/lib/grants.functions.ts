@@ -34,7 +34,7 @@ export const listGrants = createServerFn({ method: "GET" })
     let q = context.supabase
       .from("grants")
       .select(
-        "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder:funders(name, name_fr, jurisdiction)",
+        "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder_id, funder:funders(name, name_fr, jurisdiction)",
       )
       .order("fit_score", { ascending: false, nullsFirst: false })
       .order("deadline", { ascending: true, nullsFirst: false })
@@ -72,8 +72,33 @@ export const listGrants = createServerFn({ method: "GET" })
       }
     }
 
+    // Duplicate-record signal: group by (funder_id, normalized title) — the
+    // canonical_key unique index only protects rows where canonical_key was
+    // actually set (a test-seed bug left ~17 rows with canonical_key NULL,
+    // see docs/HANDOFF or memory), so a canonical_key-only check misses
+    // exactly the contaminated rows a user most needs warned about. This is
+    // read-only UI signal, not a dedup/merge — no data is changed here.
+    const DIACRITICS = new RegExp("[\\u0300-\\u036f]", "g");
+    const normalizeTitle = (t: string) =>
+      t
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(DIACRITICS, "")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+    const groupCounts = new Map<string, number>();
+    for (const g of grants) {
+      const key = `${g.funder_id ?? "none"}|${normalizeTitle(g.title)}`;
+      groupCounts.set(key, (groupCounts.get(key) ?? 0) + 1);
+    }
+
     return {
-      grants: grants.map((g) => ({ ...g, evaluation: evalsByGrant.get(g.id) ?? null })),
+      grants: grants.map((g) => ({
+        ...g,
+        evaluation: evalsByGrant.get(g.id) ?? null,
+        duplicateGroupSize:
+          groupCounts.get(`${g.funder_id ?? "none"}|${normalizeTitle(g.title)}`) ?? 1,
+      })),
     };
   });
 
