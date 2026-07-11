@@ -4,6 +4,95 @@ Living handoff so another agent can continue safely. Read this plus
 `docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-11
 America/Toronto.
 
+## Frontend V2 Redesign - 2026-07-11
+
+User request: "realiza un rediseno completo del front... no quiero ver nada
+de lo que hay... deja la que esta como version uno... crea desde cero la
+version dos... investiga las mejores interfaces... usa modelos locales...
+documenta todo."
+
+What shipped:
+
+- Added a persistent V1/V2 UI switch. V2 is the default; V1 remains available
+  through `localStorage["iial.ui.version"]` and the visible V1/V2 toggle.
+- Added the new authenticated V2 shell:
+  `src/components/v2/V2AuthenticatedShell.tsx`.
+  It replaces the old sidebar/topbar with an "Opportunity operating system"
+  layout: workstream navigation, command search, lifecycle strip, local-only
+  status, mobile sheet navigation, and sign-out/version controls.
+- Preserved V1 instead of deleting it:
+  `src/routes/_authenticated.tsx` chooses V2 shell by default, or the original
+  `AppSidebar`/`SidebarProvider` shell when version is `v1`.
+- Hid legacy route topbars only inside V2 via `.v1-app-topbar`; V1 still shows
+  the original `AppTopBar`.
+- Rebuilt the dashboard as a separate V2 presentation while leaving the old
+  dashboard JSX available for V1. The V2 dashboard is a command center with:
+  next-best action, local intelligence posture, active/eligible/deadline/
+  pipeline metrics, opportunity queue, and activity stream.
+- Added V2 global visual tokens in `src/styles.css`: new light/dark palette,
+  8px radius, denser shadows, Work Sans headings inside V2, grid canvas, and
+  V2-only card/radius overrides. This changes the visual language across all
+  authenticated routes without destroying V1.
+- Cleaned toolchain noise: `vite.config.ts` now uses Vite 8 native
+  `resolve.tsconfigPaths` instead of the deprecated `vite-tsconfig-paths`
+  plugin path, and `scripts/live-audit-daemon.mjs` was formatted to restore a
+  clean lint result.
+
+Research used:
+
+- Instrumentl positions grant work as an operating system: one workspace to
+  find, write, manage, and collaborate on grants.
+  Source: https://www.instrumentl.com/
+- Fluxx emphasizes role-based dashboards, visibility, accountability, and
+  centralized grant workspaces.
+  Source: https://www.fluxx.io/about-us and
+  https://www.fluxx.io/grantelligence-grants-management
+- Foundant GLM emphasizes the full grant lifecycle in one configurable system.
+  Source:
+  https://www.foundant.com/products/grant-management-software-for-foundations/
+- Grants.gov lifecycle language informed the V2 lifecycle strip
+  (pre-award/apply, award, post-award/reporting).
+  Source: https://www.grants.gov/learn-grants/grants-101/the-grant-lifecycle
+
+Important: the implementation clones interaction/information patterns, not
+proprietary pixels or assets.
+
+Local-model note:
+
+- Tried to use local Ollama for a design critique:
+  `opencode-fast:latest` timed out after ~184s, `phi4-mini:latest` timed out
+  after ~124s, and `deepseek-r1:1.5b` timed out after ~94s. `ollama ps` showed
+  models loaded on GPU but not returning usable text. Models were stopped with
+  `ollama stop ...`. No cloud LLMs were used. Treat this as an Ollama
+  interactive-runtime issue to investigate separately; it did not block the
+  UI work.
+
+Verification:
+
+- `bun run lint` OK, no warnings.
+- `bun run build` OK. Remaining build output is non-blocking: TanStack plugin
+  timing info and a pre-existing large client entry chunk warning
+  (`index-*.js` around 753 kB). The obsolete `vite-tsconfig-paths` warning is
+  gone.
+- Browser verification through demo Admin login on `http://localhost:8080`:
+  V2 rendered at `/dashboard`, old `.v1-app-topbar` was absent/hidden, no
+  console/page errors, grants loaded, and screenshots were written to
+  `test-results/v2-dashboard-loaded.png` and
+  `test-results/v2-dashboard-mobile.png`.
+- Mobile check at 390x844: no horizontal overflow and H1 punctuation fixed.
+
+Known follow-up debt:
+
+- V2 phase 1 covers the authenticated shell, global theme/tokens, and dashboard
+  rebuild. Deep route interiors inherit the V2 shell/theme but are not all
+  individually rewritten yet. Next best follow-up: rebuild Grant Detail,
+  Grants Index, Proposal Detail, and Admin pages as V2-native work surfaces.
+- The large entry chunk warning remains. Fixing it likely means deeper
+  route-level/dynamic import work or adjusting TanStack Start code-splitting;
+  do not hide it by merely raising the warning limit.
+- Investigate why direct `ollama run` design prompts timed out even for
+  small/local models while `ollama ps` showed loaded models.
+
 ## Bitacora Para Codex/Claude - 2026-07-11
 
 Current HEAD after this update should be on top of (newest first):

@@ -54,6 +54,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UiVersionToggle } from "@/components/v2/UiVersionToggle";
 import "@/i18n";
 
 type NavItem = {
@@ -272,7 +273,7 @@ export function AppTopBar({ title }: { title?: string }) {
   const isAdmin = useIsAdmin();
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/60 bg-background/75 px-4 py-3 backdrop-blur-xl md:px-6">
+    <header className="v1-app-topbar sticky top-0 z-20 flex items-center justify-between border-b border-border/60 bg-background/75 px-4 py-3 backdrop-blur-xl md:px-6">
       <div className="flex min-w-0 items-center gap-2">
         <MobileNav />
         {title && (
@@ -295,6 +296,7 @@ export function AppTopBar({ title }: { title?: string }) {
           </kbd>
         </Button>
         <NotificationBell />
+        <UiVersionToggle compact />
         {isAdmin && (
           <Link to="/admin">
             <Button variant="outline" size="sm" className="gap-1">

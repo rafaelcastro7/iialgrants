@@ -78,7 +78,10 @@ async function runCodeAudit(state) {
     state.lastCommit = head;
     return;
   }
-  log("code-audit", `auditing ${files.length} file(s) changed since last cycle: ${files.join(", ")}`);
+  log(
+    "code-audit",
+    `auditing ${files.length} file(s) changed since last cycle: ${files.join(", ")}`,
+  );
   for (const file of files.slice(0, 5)) {
     // Cap 5/cycle — local-audit.mjs is slow (minutes/file); don't let one
     // cycle balloon past the poll interval.
@@ -127,16 +130,18 @@ async function runProcessHealthAudit() {
   await checkHttp("Ollama proxy", "http://localhost:11435/proxy-health");
 
   try {
-    const out = execSync(
-      'docker ps --filter "name=docker-" --format "{{.Names}}\\t{{.Status}}"',
-      { encoding: "utf8" },
-    ).trim();
+    const out = execSync('docker ps --filter "name=docker-" --format "{{.Names}}\\t{{.Status}}"', {
+      encoding: "utf8",
+    }).trim();
     const lines = out ? out.split("\n") : [];
     const expected = ["docker-kong-1", "docker-db-1", "docker-auth-1", "docker-rest-1"];
     const runningNames = lines.map((l) => l.split("\t")[0]);
     const missing = expected.filter((n) => !runningNames.includes(n));
     if (missing.length > 0) {
-      log("process-health", `DOWN: expected Supabase containers not running: ${missing.join(", ")}`);
+      log(
+        "process-health",
+        `DOWN: expected Supabase containers not running: ${missing.join(", ")}`,
+      );
     }
     const unhealthy = lines.filter((l) => /unhealthy|restarting|exited/i.test(l));
     if (unhealthy.length > 0) {
@@ -230,7 +235,6 @@ async function cycle() {
 
 async function main() {
   log("daemon", `live-audit-daemon started, polling every ${INTERVAL_MIN} minutes`);
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     await cycle().catch((e) => log("cycle", `FATAL (continuing): ${e.message}`));
     await new Promise((r) => setTimeout(r, INTERVAL_MIN * 60 * 1000));
