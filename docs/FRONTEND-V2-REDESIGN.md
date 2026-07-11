@@ -56,6 +56,12 @@ it does not copy proprietary visuals, assets, or page layouts.
   topbar is hidden inside V2 via `.v1-app-topbar`.
 - `src/routes/_authenticated.dashboard.tsx`: V2 dashboard command center added
   as a separate presentation; old dashboard remains the V1 path.
+- `src/components/v2/V2GrantsWorkspace.tsx`: V2-native grants index / grant
+  radar with decision hero, operations console, metrics, filters, ranked queue,
+  lifecycle board, exceptions queue, and admin discovery controls.
+- `src/routes/_authenticated.grants.index.tsx`: renders
+  `V2GrantsWorkspace` when `iial.ui.version` is `v2`, while preserving the old
+  Express/Advanced grants workspace as V1.
 - `src/routes/_authenticated.grants.$id.tsx`: renders `V2GrantDetail` when
   `iial.ui.version` is `v2`, while keeping the old Express/Advanced grant
   detail flow for V1.
@@ -89,14 +95,19 @@ Ollama interactive CLI/runtime health separately.
   `/grants/7f00b146-7b75-483e-8613-da644a34d3e7`:
   `test-results/v2-grant-detail.png` and
   `test-results/v2-grant-detail-mobile.png`.
+- Playwright grants index verification on `/grants`:
+  `test-results/v2-grants-index.png`,
+  `test-results/v2-grants-lifecycle.png`, and
+  `test-results/v2-grants-index-mobile.png`.
 - Browser checks: V2 marker present, V1 topbar absent/hidden, no console/page
-  errors, grants load, grant detail V2 has no Express/Advanced toggle, and
-  dashboard/detail mobile views have no horizontal overflow.
+  errors, grants load, grants index and grant detail V2 have no
+  Express/Advanced toggle, and dashboard/grants/detail mobile views have no
+  horizontal overflow.
 
 ## Follow-Up
 
 - Rebuild remaining deep route interiors as V2-native work surfaces: Grants
-  Index, Proposal Detail, Admin pages.
+  Index is now covered; next are Proposal Detail and Admin pages.
 - Address the large entry chunk with real code-splitting, not by raising the
   warning limit.
 - Fix or diagnose local Ollama prompt timeouts before relying on it for future

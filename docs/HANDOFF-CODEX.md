@@ -95,8 +95,20 @@ Known follow-up debt:
   overflow after adding `min-w-0` to the V2 detail grid. Screenshots:
   `test-results/v2-grant-detail.png` and
   `test-results/v2-grant-detail-mobile.png`.
+- This continuation rebuilt Grants Index as a V2-native grant radar in
+  `src/components/v2/V2GrantsWorkspace.tsx`, wired from
+  `src/routes/_authenticated.grants.index.tsx` only for V2. V1 still keeps the
+  old Express/Advanced grants workspace. New V2 grants index includes decision
+  hero, operations console, metrics, filter bar, ranked decision queue,
+  lifecycle board, exception queue, discovery progress/messages, admin funder
+  selection, NotebookLM bridge, and event log. Browser-verified `/grants` at
+  desktop and 390px mobile: no console/page errors, no Express/Advanced text in
+  V2, no `.v1-app-topbar`, and no horizontal overflow. Screenshots:
+  `test-results/v2-grants-index.png`,
+  `test-results/v2-grants-lifecycle.png`, and
+  `test-results/v2-grants-index-mobile.png`.
 - Remaining deep route interiors still to rebuild as V2-native work surfaces:
-  Grants Index, Proposal Detail, Admin pages.
+  Proposal Detail and Admin pages.
 - The large entry chunk warning remains. Fixing it likely means deeper
   route-level/dynamic import work or adjusting TanStack Start code-splitting;
   do not hide it by merely raising the warning limit.

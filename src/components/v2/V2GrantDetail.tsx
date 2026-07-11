@@ -190,8 +190,7 @@ export function V2GrantDetail({
   const canEvaluate = grant.status !== "discovered" || !!evaluation;
   const canDraft = ["scored", "shortlisted", "in_proposal"].includes(grant.status);
   const actionDisabled = busy != null;
-  const hasBriefingTools =
-    grant.status !== "discovered" || (isAdmin && grant.status === "scored") || !!traceRun;
+  const hasBriefingTools = grant.status !== "discovered" || !!traceRun;
 
   return (
     <section className="mx-auto max-w-[1500px] space-y-5 px-4 py-5 sm:px-6 lg:py-6">

@@ -34,6 +34,8 @@ import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageTransition } from "@/components/PageTransition";
 import { GrantsListSkeleton } from "@/components/Skeletons";
+import { V2GrantsWorkspace } from "@/components/v2/V2GrantsWorkspace";
+import { useUiVersion } from "@/components/v2/ui-version";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import "@/i18n";
@@ -69,6 +71,7 @@ export const Route = createFileRoute("/_authenticated/grants/")({
 
 function GrantsPage() {
   const { t } = useTranslation();
+  const { version } = useUiVersion();
   const navigate = useNavigate();
   const isAdmin = useIsAdmin();
   const fetchGrants = useServerFn(listGrants);
@@ -307,6 +310,47 @@ function GrantsPage() {
     );
     return { total, needsAction, avgFit, pipelineValueCad };
   }, [activeFiltered]);
+
+  if (version === "v2") {
+    return (
+      <PageTransition>
+        <V2GrantsWorkspace
+          activeJob={activeJob}
+          allGrants={data.grants as GrantRowData[]}
+          autoMsg={autoMsg}
+          discoveryMsg={discoveryMsg}
+          eligibleOnly={eligibleOnly}
+          error={evalError}
+          evaluatingIds={evaluatingIds}
+          filteredGrants={filtered}
+          isAdmin={isAdmin}
+          jurisdiction={jurisdiction}
+          onlyWithDeadline={onlyWithDeadline}
+          pending={pending}
+          search={search}
+          selectedFunders={selectedFunders}
+          sortKey={sortKey}
+          onClearAutoMsg={() => setAutoMsg(null)}
+          onClearDiscoveryMsg={() => setDiscoveryMsg(null)}
+          onClearError={() => setEvalError(null)}
+          onCloseJob={() => {
+            setActiveJob(null);
+            qc.invalidateQueries({ queryKey: ["grants"] });
+          }}
+          onDiscoverAll={onDiscoverAll}
+          onDraft={onDraft}
+          onEligibleOnlyChange={setEligibleOnly}
+          onEnrich={onEnrich}
+          onEvaluate={onEvaluate}
+          onJurisdictionChange={setJurisdiction}
+          onOnlyWithDeadlineChange={setOnlyWithDeadline}
+          onSearchChange={setSearch}
+          onSelectedFundersChange={setSelectedFunders}
+          onSortKeyChange={setSortKey}
+        />
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
