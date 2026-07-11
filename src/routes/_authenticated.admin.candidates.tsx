@@ -195,19 +195,29 @@ function CandidatesPage() {
           )}
           <ul className="text-xs space-y-1 font-mono">
             {qRuns.data?.map((r) => (
-              <li key={r.id as string} className="flex gap-2">
-                <span className="text-muted-foreground">
-                  {new Date(r.run_at as string).toISOString().slice(0, 16)}
-                </span>
-                <span className="font-semibold">{r.dataset as string}</span>
-                <span>rows={r.rows_in as number}</span>
-                <span>new={r.candidates_out as number}</span>
-                <span>auto={r.auto_approved as number}</span>
-                <span>dup={r.duplicates as number}</span>
-                <span>err={r.errors as number}</span>
-                <span className={r.status === "succeeded" ? "text-emerald-600" : "text-red-600"}>
-                  {r.status as string}
-                </span>
+              <li key={r.id as string} className="flex flex-col gap-0.5">
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground">
+                    {new Date(r.run_at as string).toISOString().slice(0, 16)}
+                  </span>
+                  <span className="font-semibold">{r.dataset as string}</span>
+                  <span>rows={r.rows_in as number}</span>
+                  <span>new={r.candidates_out as number}</span>
+                  <span>auto={r.auto_approved as number}</span>
+                  <span>dup={r.duplicates as number}</span>
+                  <span>err={r.errors as number}</span>
+                  <span className={r.status === "succeeded" ? "text-emerald-600" : "text-red-600"}>
+                    {r.status as string}
+                  </span>
+                </div>
+                {r.status !== "succeeded" && r.error_message ? (
+                  <span
+                    className="pl-2 text-destructive/90 truncate max-w-full"
+                    title={r.error_message as string}
+                  >
+                    {r.error_message as string}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>

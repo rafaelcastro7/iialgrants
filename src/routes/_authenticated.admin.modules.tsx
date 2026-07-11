@@ -48,7 +48,7 @@ function ModulesPage() {
       <PageHeader
         eyebrow="Admin"
         title="Modules"
-        description="Enable or disable product modules across the workspace. Disabled modules hide from navigation and block their server functions."
+        description="Enable or disable pipeline modules. These are enforcement switches, not visibility toggles — disabling one blocks the matching server action directly (e.g. 'submissions' off blocks new proposal submissions); it does not hide anything from the sidebar."
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {data.modules.map((m) => (

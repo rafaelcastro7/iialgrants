@@ -28,7 +28,7 @@ export const funderActivityRollup = createServerFn({ method: "GET" })
 
     const { data: funders, error: fErr } = await supabaseAdmin
       .from("funders")
-      .select("id, name, source_url")
+      .select("id, name, source_url, last_discovered_at")
       .eq("active", true)
       .order("name");
     if (fErr) throw fErr;
@@ -58,15 +58,12 @@ export const funderActivityRollup = createServerFn({ method: "GET" })
       const own = (grants ?? []).filter((g) => g.funder_id === f.id);
       let evTotal = 0;
       let lastEv: string | null = null;
-      let lastDisc: string | null = null;
       for (const g of own) {
         const m = evMap.get(g.id);
         if (m) {
           evTotal += m.count;
           if (m.last && (!lastEv || m.last > lastEv)) lastEv = m.last;
         }
-        if (g.discovered_at && (!lastDisc || g.discovered_at > lastDisc))
-          lastDisc = g.discovered_at;
       }
       return {
         funder_id: f.id,
@@ -79,7 +76,12 @@ export const funderActivityRollup = createServerFn({ method: "GET" })
           (g) => g.status === "shortlisted" || g.status === "in_proposal",
         ).length,
         evidences_total: evTotal,
-        last_discovered_at: lastDisc,
+        // funders.last_discovered_at is bumped on every successful discoverer
+        // run for this funder regardless of whether any new grant was
+        // inserted — MAX(grants.discovered_at) was frozen at first-insert
+        // time and stayed stale for a funder that's fully ingested but still
+        // being actively (successfully) re-scanned every cycle.
+        last_discovered_at: f.last_discovered_at,
         last_evidence_at: lastEv,
         recent_grants: own.slice(0, 5).map((g) => ({
           id: g.id,

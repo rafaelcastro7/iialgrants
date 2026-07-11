@@ -29,6 +29,7 @@ export type AgentConfig = {
   timeout_ms: number;
   max_retries: number;
   concurrency: number;
+  updated_at: string | null;
 };
 
 type CacheEntry = { value: AgentConfig; expires: number };
@@ -75,6 +76,7 @@ export async function resolveAgentConfig(agent: AgentName): Promise<AgentConfig>
     timeout_ms: Number(row.timeout_ms ?? 60000),
     max_retries: Number(row.max_retries ?? 2),
     concurrency: Number(row.concurrency ?? 4),
+    updated_at: (row.updated_at as string) ?? null,
   };
   cache.set(agent, { value: cfg, expires: Date.now() + TTL_MS });
   return cfg;
