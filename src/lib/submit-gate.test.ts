@@ -3,7 +3,7 @@
 // has drafted content, and covers every critical funder requirement — unless
 // the user explicitly forces it (tested at the route level, not here).
 import { describe, expect, it } from "vitest";
-import { canSubmit, MIN_CRITIC_SCORE_TO_SUBMIT } from "@/lib/submissions.functions";
+import { canSubmit, MIN_CRITIC_SCORE_TO_SUBMIT } from "@/lib/submit-gate.shared";
 
 const ready = {
   criticScore: 0.85,

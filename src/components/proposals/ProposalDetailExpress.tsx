@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ProposalReadiness } from "@/lib/proposal-readiness";
+import { canSubmit } from "@/lib/submit-gate.shared";
 
 const STATUS_ICON = {
   ready: <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />,
@@ -25,6 +26,8 @@ function barTone(score: number): string {
 export function ProposalDetailExpress({
   title,
   readiness,
+  criticScore,
+  draftedSections,
   pending,
   onDraftSection,
   onCritic,
@@ -33,6 +36,11 @@ export function ProposalDetailExpress({
 }: {
   title: string;
   readiness: ProposalReadiness;
+  criticScore: number | null;
+  // Count of sections with any non-empty content_en — mirrors
+  // submitProposal's exact definition (submissions.functions.ts) so this
+  // component's gate can't drift from the server's.
+  draftedSections: number;
   pending: string | null;
   onDraftSection: (sectionId: string) => void;
   onCritic: () => void;
@@ -40,7 +48,20 @@ export function ProposalDetailExpress({
   onShowAdvanced: () => void;
 }) {
   const nextSection = readiness.sections.find((s) => s.status !== "ready");
-  const readyToSubmit = readiness.score >= 80 && readiness.openCriticalRequirements.length === 0;
+  // Mirrors submitProposal's actual server-side gate (submit-gate.shared.ts)
+  // instead of only checking section/requirement readiness — the previous
+  // check let the primary CTA jump straight from "draft sections" to "Submit
+  // proposal" the moment every section scored >=80, skipping the "Run
+  // quality review" step entirely (critic_score is never part of readiness).
+  // A click would then hit the server's real gate and bounce with
+  // "not reviewed" — this makes that state visible in the CTA ladder instead.
+  const gate = canSubmit({
+    criticScore,
+    readinessScore: readiness.score,
+    openCriticalRequirements: readiness.openCriticalRequirements.length,
+    draftedSections,
+  });
+  const readyToSubmit = gate.ok;
   const readyCount = readiness.sections.filter((s) => s.status === "ready").length;
   const totalSections = readiness.sections.length;
 
