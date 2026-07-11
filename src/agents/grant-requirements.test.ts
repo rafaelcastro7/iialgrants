@@ -49,4 +49,19 @@ describe("analyzeGrantRequirements - RFP documents & process", () => {
       clean.requirements.filter((r) => r.category === "document" || r.category === "process"),
     ).toEqual([]);
   });
+
+  it("cleans PDF/table-of-contents dot-leaders out of the snippet instead of surfacing them verbatim", () => {
+    // Real shape seen on a live grant page (PSCE Volet II): a scraped table
+    // of contents renders as literal ".........." runs around the matched
+    // keyword, which used to reach the UI as unreadable noise.
+    const tocLike = `Programme d'aide ${".".repeat(40)} 4\n3. ${"critères de sélection"} ${".".repeat(40)}`;
+    const result = analyzeGrantRequirements(tocLike);
+    const criteria = result.requirements.find((r) =>
+      r.requirement.toLowerCase().includes("evaluation criteria"),
+    );
+    expect(criteria).toBeDefined();
+    // The cleanup collapses a dot-leader run to a literal "..." ellipsis
+    // marker (3 dots) — the regression is a 4+ run of raw, uncollapsed dots.
+    expect(criteria!.value).not.toMatch(/\.{4,}/);
+  });
 });

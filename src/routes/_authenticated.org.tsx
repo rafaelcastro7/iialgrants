@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useForm, type UseFormProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,10 +10,12 @@ import { getOrgProfile, saveOrgProfile } from "@/lib/org.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { syncClientLocale } from "@/i18n/sync";
 import { toast } from "sonner";
 import { FormField } from "@/components/FormField";
+import { AppTopBar } from "@/components/AppSidebar";
+import { PageContainer, PageHeader } from "@/components/PageLayout";
 import "@/i18n";
 
 const orgQueryOptions = queryOptions({
@@ -99,53 +101,51 @@ function OrgPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground p-6">
-      <header className="flex items-center justify-between mb-6 max-w-2xl mx-auto">
-        <nav className="flex gap-4 text-sm">
-          <Link to="/dashboard">{t("nav.dashboard")}</Link>
-          <Link to="/grants">{t("nav.grants")}</Link>
-          <span className="font-semibold">{t("org.title")}</span>
-        </nav>
-      </header>
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>{t("org.title")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField label={t("org.name")} error={form.formState.errors.org_name?.message}>
-              <Input {...form.register("org_name")} required />
-            </FormField>
-            <FormField label={t("org.sectors")} description="Comma-separated: tech, retail">
-              <Input {...form.register("sectors")} placeholder="tech, retail" />
-            </FormField>
-            <FormField label={t("org.jurisdictions")} description="Comma-separated: CA, ON">
-              <Input {...form.register("jurisdictions")} placeholder="CA, ON" />
-            </FormField>
-            <FormField label={t("org.stage")}>
-              <select
-                className="w-full border rounded h-10 px-3 bg-background"
-                {...form.register("stage")}
-              >
-                {STAGES.map((s) => (
-                  <option key={s} value={s}>
-                    {t(`org.stages.${s}`)}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label={t("org.budget")}>
-              <Input type="number" min="0" {...form.register("annual_budget_cad")} />
-            </FormField>
-            <FormField label={t("org.focus")}>
-              <Textarea rows={3} {...form.register("focus_areas")} />
-            </FormField>
-            <Button type="submit" disabled={mut.isPending}>
-              {mut.isPending ? t("app.loading") : t("org.save")}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </main>
+    <div className="min-h-screen text-foreground">
+      <AppTopBar title={t("org.title")} />
+      <PageContainer size="form">
+        <PageHeader
+          eyebrow="Workspace"
+          title={t("org.title")}
+          description="Sectors, jurisdictions, and budget let the system score grants against who you actually are — not generic defaults."
+        />
+        <Card>
+          <CardContent className="pt-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField label={t("org.name")} error={form.formState.errors.org_name?.message}>
+                <Input {...form.register("org_name")} required />
+              </FormField>
+              <FormField label={t("org.sectors")} description="Comma-separated: tech, retail">
+                <Input {...form.register("sectors")} placeholder="tech, retail" />
+              </FormField>
+              <FormField label={t("org.jurisdictions")} description="Comma-separated: CA, ON">
+                <Input {...form.register("jurisdictions")} placeholder="CA, ON" />
+              </FormField>
+              <FormField label={t("org.stage")}>
+                <select
+                  className="w-full border rounded h-10 px-3 bg-background"
+                  {...form.register("stage")}
+                >
+                  {STAGES.map((s) => (
+                    <option key={s} value={s}>
+                      {t(`org.stages.${s}`)}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label={t("org.budget")}>
+                <Input type="number" min="0" {...form.register("annual_budget_cad")} />
+              </FormField>
+              <FormField label={t("org.focus")}>
+                <Textarea rows={3} {...form.register("focus_areas")} />
+              </FormField>
+              <Button type="submit" disabled={mut.isPending}>
+                {mut.isPending ? t("app.loading") : t("org.save")}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </PageContainer>
+    </div>
   );
 }

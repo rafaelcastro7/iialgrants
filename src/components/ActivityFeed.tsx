@@ -5,6 +5,7 @@ import { FileText, Send, CheckCircle, AlertTriangle, Clock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { TERMINAL_GRANT_STATUSES } from "@/agents/pipeline-stages.shared";
 
 interface ActivityEvent {
   id: string;
@@ -54,9 +55,14 @@ export function ActivityFeed() {
       // an org_id=NULL proposal be read by any authenticated user, which would
       // otherwise surface another user's proposal here (found by logging in as
       // demo-member-a and seeing the admin's PSCE proposal).
+      // Was unfiltered — "New grant discovered" for a grant that's already
+      // archived/expired/lost tells the user something is fresh when it's
+      // dead on arrival (confirmed reproducible: 4 of the 5 most-recently-
+      // created real grants are already archived).
       const { data: grants } = await supabase
         .from("grants")
         .select("id, title, created_at")
+        .not("status", "in", `(${TERMINAL_GRANT_STATUSES.join(",")})`)
         .order("created_at", { ascending: false })
         .limit(3);
 

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { DEFAULT_RULES, type FitRules } from "@/agents/fit-rules.shared";
 import { cn } from "@/lib/utils";
+import { AppTopBar } from "@/components/AppSidebar";
 
 const rulesQO = queryOptions({ queryKey: ["fit-rules"], queryFn: () => getFitRules() });
 
@@ -168,6 +169,7 @@ function FitRulesPage() {
 
   return (
     <main className="min-h-screen text-foreground pb-24">
+      <AppTopBar title="Screening rules" />
       {/* ── Header ───────────────────────────────────────────── */}
       <header className="border-b border-border/60 bg-card/60">
         <div className="max-w-6xl mx-auto px-6 pt-6 pb-5">
