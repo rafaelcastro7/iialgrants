@@ -83,6 +83,7 @@ function Dashboard() {
 
   const eligible = grants.filter((g) => g.evaluation?.eligibility_pass).length;
   const scored = grants.filter((g) => g.evaluation).length;
+  const withDeadline = grants.filter((g) => !!g.deadline).length;
   const closingSoon = grants.filter((g) => {
     if (!g.deadline) return false;
     const d = (new Date(g.deadline).getTime() - now) / DAY_MS;
@@ -91,6 +92,9 @@ function Dashboard() {
   const inPipeline = grants.filter((g) =>
     ["shortlisted", "in_proposal", "submitted", "won"].includes(g.status),
   ).length;
+  // "Never enriched" (status still "discovered") looks identical to "checked,
+  // nothing interesting" in a bare count — the enriched count disambiguates.
+  const enrichedCount = grants.filter((g) => g.status !== "discovered").length;
 
   // Excludes submitted/won: those already have a decision in flight or made —
   // "review your top match" should point at something still worth acting on,
@@ -185,7 +189,7 @@ function Dashboard() {
               icon={Search}
               value={loading ? "—" : grants.length}
               label="Active opportunities"
-              hint="Live grants tracked"
+              hint={loading ? "Live grants tracked" : `${enrichedCount} enriched so far`}
               to="/grants"
             />
             <StatTile
@@ -200,7 +204,13 @@ function Dashboard() {
               icon={CalendarClock}
               value={loading ? "—" : closingSoon}
               label="Closing soon"
-              hint="Deadline within 30 days"
+              hint={
+                loading
+                  ? "Deadline within 30 days"
+                  : withDeadline > 0
+                    ? "Deadline within 30 days"
+                    : `${withDeadline} of ${grants.length} have a known deadline`
+              }
               tone={closingSoon > 0 ? "warn" : "neutral"}
               to="/grants"
             />
