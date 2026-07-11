@@ -84,10 +84,19 @@ Verification:
 
 Known follow-up debt:
 
-- V2 phase 1 covers the authenticated shell, global theme/tokens, and dashboard
-  rebuild. Deep route interiors inherit the V2 shell/theme but are not all
-  individually rewritten yet. Next best follow-up: rebuild Grant Detail,
-  Grants Index, Proposal Detail, and Admin pages as V2-native work surfaces.
+- V2 phase 1 covered the authenticated shell, global theme/tokens, and
+  dashboard rebuild. The next continuation rebuilt Grant Detail as a V2-native
+  work surface in `src/components/v2/V2GrantDetail.tsx`, wired from
+  `src/routes/_authenticated.grants.$id.tsx` only when `iial.ui.version` is
+  `v2`; V1 still retains the old Express/Advanced grant detail flow. It was
+  browser-verified on
+  `/grants/7f00b146-7b75-483e-8613-da644a34d3e7` at desktop and 390px mobile:
+  no console/page errors, no Express/Advanced toggle in V2, and no horizontal
+  overflow after adding `min-w-0` to the V2 detail grid. Screenshots:
+  `test-results/v2-grant-detail.png` and
+  `test-results/v2-grant-detail-mobile.png`.
+- Remaining deep route interiors still to rebuild as V2-native work surfaces:
+  Grants Index, Proposal Detail, Admin pages.
 - The large entry chunk warning remains. Fixing it likely means deeper
   route-level/dynamic import work or adjusting TanStack Start code-splitting;
   do not hide it by merely raising the warning limit.

@@ -42,6 +42,10 @@ it does not copy proprietary visuals, assets, or page layouts.
 
 - `src/components/v2/V2AuthenticatedShell.tsx`: new desktop/mobile shell,
   command search, lifecycle strip, local AI status, V2 navigation taxonomy.
+- `src/components/v2/V2GrantDetail.tsx`: V2-native grant detail surface with
+  decision brief, source quality, fit/evaluation, requirements, eligibility,
+  sectors, official sources, lifecycle history, source retrieval health, and
+  briefing tools.
 - `src/components/v2/ui-version.ts`: V1/V2 context and persistence helpers.
 - `src/components/v2/UiVersionProvider.tsx`: provider used by the authenticated
   layout.
@@ -52,6 +56,9 @@ it does not copy proprietary visuals, assets, or page layouts.
   topbar is hidden inside V2 via `.v1-app-topbar`.
 - `src/routes/_authenticated.dashboard.tsx`: V2 dashboard command center added
   as a separate presentation; old dashboard remains the V1 path.
+- `src/routes/_authenticated.grants.$id.tsx`: renders `V2GrantDetail` when
+  `iial.ui.version` is `v2`, while keeping the old Express/Advanced grant
+  detail flow for V1.
 - `src/styles.css`: V2-only tokens, radius, typography, shadows, and canvas.
 - `vite.config.ts`: replaced deprecated `vite-tsconfig-paths` plugin usage with
   Vite 8 native `resolve.tsconfigPaths`.
@@ -78,13 +85,18 @@ Ollama interactive CLI/runtime health separately.
   `test-results/v2-dashboard-loaded.png`.
 - Playwright mobile verification:
   `test-results/v2-dashboard-mobile.png`.
+- Playwright grant detail verification on
+  `/grants/7f00b146-7b75-483e-8613-da644a34d3e7`:
+  `test-results/v2-grant-detail.png` and
+  `test-results/v2-grant-detail-mobile.png`.
 - Browser checks: V2 marker present, V1 topbar absent/hidden, no console/page
-  errors, grants load, and mobile has no horizontal overflow.
+  errors, grants load, grant detail V2 has no Express/Advanced toggle, and
+  dashboard/detail mobile views have no horizontal overflow.
 
 ## Follow-Up
 
-- Rebuild deep route interiors as V2-native work surfaces: Grant Detail,
-  Grants Index, Proposal Detail, Admin pages.
+- Rebuild remaining deep route interiors as V2-native work surfaces: Grants
+  Index, Proposal Detail, Admin pages.
 - Address the large entry chunk with real code-splitting, not by raising the
   warning limit.
 - Fix or diagnose local Ollama prompt timeouts before relying on it for future
