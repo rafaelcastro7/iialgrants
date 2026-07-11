@@ -13,6 +13,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { PageContainer, PageHeader, StatCard, StatGrid, Section } from "@/components/PageLayout";
 import { toast } from "sonner";
 import { Search, Building2, MapPin, DollarSign, Globe, RefreshCw } from "lucide-react";
+import { CRA_CATEGORY_TOOLTIP } from "@/lib/cra-t3010-labels";
 
 const statsQO = queryOptions({
   queryKey: ["funders", "dashboard"],
@@ -127,7 +128,13 @@ function FundersPage() {
               sublabel="Registered charities tracked"
             />
             <DistributionCard label="Top provinces" icon={MapPin} rows={topProvinces} />
-            <DistributionCard label="Top types" icon={DollarSign} rows={topTypes} />
+            <DistributionCard
+              label="Top CRA categories"
+              icon={DollarSign}
+              rows={topTypes}
+              formatKey={(code) => `CRA ${code}`}
+              keyTitle={CRA_CATEGORY_TOOLTIP}
+            />
           </StatGrid>
 
           <Section title="Search funders">
@@ -202,10 +209,14 @@ function DistributionCard({
   label,
   icon: Icon,
   rows,
+  formatKey,
+  keyTitle,
 }: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   rows: [string, number][];
+  formatKey?: (key: string) => string;
+  keyTitle?: string;
 }) {
   return (
     <div className="rounded-xl border bg-card p-4 shadow-sm">
@@ -216,7 +227,9 @@ function DistributionCard({
       <div className="mt-2 space-y-1">
         {rows.map(([key, count]) => (
           <div key={key} className="flex items-center justify-between text-sm">
-            <span className="text-foreground/80">{key}</span>
+            <span className="text-foreground/80" title={keyTitle}>
+              {formatKey ? formatKey(key) : key}
+            </span>
             <span className="font-medium tabular-nums">{count.toLocaleString()}</span>
           </div>
         ))}
@@ -256,7 +269,11 @@ function FunderRow({
           {funder.name}
         </Link>
         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {funder.category && <Badge variant="secondary">{funder.category}</Badge>}
+          {funder.category && (
+            <Badge variant="secondary" title={CRA_CATEGORY_TOOLTIP}>
+              CRA {funder.category}
+            </Badge>
+          )}
           {funder.province && (
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
