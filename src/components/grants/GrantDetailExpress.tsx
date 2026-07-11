@@ -106,12 +106,15 @@ function formatCad(value: number): string {
   }).format(value);
 }
 
-function amountLabel(min: number | null, max: number | null): string {
+function amountLabel(min: number | null, max: number | null, everEnriched: boolean): string {
   if (min != null && max != null)
     return min === max ? formatCad(max) : `${formatCad(min)} to ${formatCad(max)}`;
   if (max != null) return `Up to ${formatCad(max)}`;
   if (min != null) return `From ${formatCad(min)}`;
-  return "Not published";
+  // Same ambiguity deadlineState() already hedges for "no fixed deadline"
+  // (funder genuinely didn't set one vs. we haven't looked yet) — a flat
+  // "Not published" read as a confirmed fact even for a never-enriched grant.
+  return everEnriched ? "Not published by funder" : "Not yet extracted";
 }
 
 function formatDate(value: string | null | undefined, withTime = false): string {
@@ -204,6 +207,15 @@ function eligibilityRows(eligibility: unknown): Array<[string, unknown]> {
     .filter(([, value]) => {
       if (value == null || value === "") return false;
       if (Array.isArray(value) && value.length === 0) return false;
+      // A zero-key object ({}) used to pass this filter as "present" and then
+      // render as a silently blank cell in ValueBlock — treat it the same as
+      // null/"" (genuinely no content) instead.
+      if (
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        Object.keys(value as object).length === 0
+      )
+        return false;
       return true;
     });
 }
@@ -453,7 +465,7 @@ export function GrantDetailExpress({
     completenessPct: completeness.pct,
     enrichmentFailed,
   });
-  const amount = amountLabel(amountMin, amountMax);
+  const amount = amountLabel(amountMin, amountMax, status !== "discovered");
   const statusLabel = STATUS_LABEL[status] ?? labelFromKey(status);
   const titleSignal = titleTokens(title).slice(0, 5);
   const timeline = [

@@ -320,6 +320,16 @@ function MatchCard({ g, mode }: { g: GrantRowData; mode: "progress" | "match" })
             </span>
           </div>
 
+          {/* eligibility_pass is a snapshot from the last fit-check; the
+              deadline is recomputed live on every render — so "You can apply"
+              can keep showing after the deadline has since elapsed, with
+              nothing else on the card flagging the contradiction. */}
+          {eligible === true && dl.label === "Deadline passed" && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Eligibility was last checked before this deadline passed — re-check before acting.
+            </p>
+          )}
+
           {/* tier (fit-score based) and eligible (a separate, independently-
               computed boolean gated on org rules + a configurable pass
               threshold) can legitimately disagree — e.g. a high fit score
