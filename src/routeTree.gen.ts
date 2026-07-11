@@ -27,6 +27,7 @@ import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedFinancialRouteImport } from './routes/_authenticated.financial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedComplianceCalendarRouteImport } from './routes/_authenticated.compliance-calendar'
+import { Route as AuthenticatedAutonomyRouteImport } from './routes/_authenticated.autonomy'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedProposalsIndexRouteImport } from './routes/_authenticated.proposals.index'
 import { Route as AuthenticatedGrantsIndexRouteImport } from './routes/_authenticated.grants.index'
@@ -148,6 +149,11 @@ const AuthenticatedComplianceCalendarRoute =
     path: '/compliance-calendar',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAutonomyRoute = AuthenticatedAutonomyRouteImport.update({
+  id: '/autonomy',
+  path: '/autonomy',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -320,6 +326,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/autonomy': typeof AuthenticatedAutonomyRoute
   '/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financial': typeof AuthenticatedFinancialRoute
@@ -367,6 +374,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
+  '/autonomy': typeof AuthenticatedAutonomyRoute
   '/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/financial': typeof AuthenticatedFinancialRoute
@@ -417,6 +425,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/autonomy': typeof AuthenticatedAutonomyRoute
   '/_authenticated/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/financial': typeof AuthenticatedFinancialRoute
@@ -467,6 +476,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compliance'
     | '/admin'
+    | '/autonomy'
     | '/compliance-calendar'
     | '/dashboard'
     | '/financial'
@@ -514,6 +524,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/compliance'
+    | '/autonomy'
     | '/compliance-calendar'
     | '/dashboard'
     | '/financial'
@@ -563,6 +574,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compliance'
     | '/_authenticated/admin'
+    | '/_authenticated/autonomy'
     | '/_authenticated/compliance-calendar'
     | '/_authenticated/dashboard'
     | '/_authenticated/financial'
@@ -748,6 +760,13 @@ declare module '@tanstack/react-router' {
       path: '/compliance-calendar'
       fullPath: '/compliance-calendar'
       preLoaderRoute: typeof AuthenticatedComplianceCalendarRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/autonomy': {
+      id: '/_authenticated/autonomy'
+      path: '/autonomy'
+      fullPath: '/autonomy'
+      preLoaderRoute: typeof AuthenticatedAutonomyRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin': {
@@ -1000,6 +1019,7 @@ const AuthenticatedGrantsIdRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedAutonomyRoute: typeof AuthenticatedAutonomyRoute
   AuthenticatedComplianceCalendarRoute: typeof AuthenticatedComplianceCalendarRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFinancialRoute: typeof AuthenticatedFinancialRoute
@@ -1027,6 +1047,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedAutonomyRoute: AuthenticatedAutonomyRoute,
   AuthenticatedComplianceCalendarRoute: AuthenticatedComplianceCalendarRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFinancialRoute: AuthenticatedFinancialRoute,
