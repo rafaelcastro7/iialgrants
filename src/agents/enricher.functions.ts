@@ -440,19 +440,33 @@ export async function enrichGrantImpl(
       );
     }
     if (deepPages.length > 0) {
-      pages.push(...deepPages);
-      await trace("deep_crawl", `Fetched ${deepPages.length} official detail page(s)`, "done", {
-        pages: deepPages.map((page) => page.url),
-      });
+      const relevantDeepPages: typeof deepPages = [];
       for (const page of deepPages) {
-        if (missingFields().length === 0) break;
-        if (!pageLooksRelevantToGrant(page)) {
+        if (pageLooksRelevantToGrant(page)) {
+          relevantDeepPages.push(page);
+        } else {
           await trace("deep_crawl_filter", "Skipped low-relevance detail page", "warn", {
             page: page.url,
             grant_title: g.title,
           });
-          continue;
         }
+      }
+      // Only relevant pages are kept in `pages` (which later feeds the LLM
+      // gap-fill prompt below) — previously ALL deepPages were pushed here
+      // regardless of relevance, and only the extraction loop skipped
+      // irrelevant ones. Raising max 3→6 roughly doubled how much irrelevant
+      // page content could ride along into the prompt, which is what turned
+      // the enricher's 4096-token context budget from marginal into
+      // consistently blown (see llm-timeouts.server.ts's header comment).
+      pages.push(...relevantDeepPages);
+      await trace(
+        "deep_crawl",
+        `Fetched ${deepPages.length} official detail page(s), ${relevantDeepPages.length} relevant`,
+        "done",
+        { pages: deepPages.map((page) => page.url) },
+      );
+      for (const page of relevantDeepPages) {
+        if (missingFields().length === 0) break;
         await runExtractorsOnPage(page, "deep");
       }
     } else {
@@ -476,8 +490,23 @@ export async function enrichGrantImpl(
   const { sanitizeMarkdown, validateTotalMarkdownSize } =
     await import("@/lib/prompt-safety.server");
   const sanitizedPages = pages.map((p) => ({ ...p, markdown: sanitizeMarkdown(p.markdown) }));
+  // Global budget across ALL pages, not per-page: the enricher's local model
+  // runs with num_ctx=4096 (llm-free.server.ts) — a per-page 6000-char slice
+  // was fine at max:3 deep pages (~18KB) but at max:6 (~36-42KB) regularly
+  // overshot the model's real context window, which is what caused every
+  // enricher call to run to the timeout floor regardless of retries (the
+  // 100KB DOS gate below never caught it — 100KB is sized for abuse
+  // prevention, not for what a 4096-token local model can actually chew).
+  const ENRICHER_LLM_MARKDOWN_BUDGET = 10_000;
+  let remainingMarkdownBudget = ENRICHER_LLM_MARKDOWN_BUDGET;
   const combinedMarkdown = sanitizedPages
-    .map((page, index) => `Source ${index + 1}: ${page.url}\n${page.markdown.slice(0, 6000)}`)
+    .map((page, index) => {
+      if (remainingMarkdownBudget <= 0) return null;
+      const slice = page.markdown.slice(0, Math.min(6000, remainingMarkdownBudget));
+      remainingMarkdownBudget -= slice.length;
+      return `Source ${index + 1}: ${page.url}\n${slice}`;
+    })
+    .filter((entry): entry is string => entry !== null)
     .join("\n\n");
 
   const sizeCheck = validateTotalMarkdownSize(combinedMarkdown.length);
@@ -565,10 +594,12 @@ export async function enrichGrantImpl(
                 needs: stillMissing,
                 source_language: language,
                 source_url: g.url,
-                source_pages: pages.map((page) => ({
-                  url: page.url,
-                  markdown: page.markdown.slice(0, 6000),
-                })),
+                // source_pages (a second, per-page-only-capped, unsanitized
+                // copy of the same content) used to be sent alongside this —
+                // removed: it duplicated combined_markdown's information
+                // while bypassing both the shared budget and sanitizeMarkdown,
+                // which is exactly how the num_ctx=4096 overflow this budget
+                // exists to prevent was still fully reproducible after Change B.
                 combined_markdown: combinedMarkdown,
               }),
             },
@@ -666,10 +697,6 @@ export async function enrichGrantImpl(
                 needs: stillMissing,
                 source_language: language,
                 source_url: g.url,
-                source_pages: pages.map((page) => ({
-                  url: page.url,
-                  markdown: page.markdown.slice(0, 6000),
-                })),
                 combined_markdown: combinedMarkdown,
               }),
             },

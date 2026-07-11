@@ -92,8 +92,11 @@ function Dashboard() {
     ["shortlisted", "in_proposal", "submitted", "won"].includes(g.status),
   ).length;
 
+  // Excludes submitted/won: those already have a decision in flight or made —
+  // "review your top match" should point at something still worth acting on,
+  // not a grant that's already past the point topMatches is nudging toward.
   const topMatches = [...grants]
-    .filter((g) => g.evaluation)
+    .filter((g) => g.evaluation && g.status !== "submitted" && g.status !== "won")
     .sort(
       (a, b) =>
         (b.evaluation!.eligibility_pass ? 1 : 0) - (a.evaluation!.eligibility_pass ? 1 : 0) ||

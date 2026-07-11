@@ -23,7 +23,7 @@ import {
   Target,
   XCircle,
 } from "lucide-react";
-import { MAX_ENRICH_ATTEMPTS } from "@/agents/pipeline-stages.shared";
+import { MAX_ENRICH_ATTEMPTS, isTerminalGrantStatus } from "@/agents/pipeline-stages.shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -267,10 +267,28 @@ function verdictFor({
   completenessPct: number;
   enrichmentFailed: boolean;
 }): { label: string; detail: string; tone: "good" | "warning" | "danger" | "neutral" } {
-  if (
-    ["archived", "expired", "lost"].includes(status) ||
-    (deadline.days != null && deadline.days < 0)
-  ) {
+  // submitted/won grants will almost always have a past deadline (you submit
+  // before the deadline; the funder decides after it closes) — that's the
+  // expected, common-case state, not a reason to brand them "closed / no
+  // longer actionable" alongside genuinely dead archived/expired/lost records.
+  if (status === "won") {
+    return {
+      label: "Awarded",
+      detail: "The opportunity was awarded. No further pursuit action is needed.",
+      tone: "good",
+    };
+  }
+  if (status === "submitted" || status === "in_proposal") {
+    return {
+      label: status === "submitted" ? "Awaiting funder decision" : "In proposal",
+      detail:
+        status === "submitted"
+          ? "A proposal has been submitted. No further pursuit action is needed until the funder responds."
+          : "A proposal is being drafted for this opportunity.",
+      tone: "neutral",
+    };
+  }
+  if (isTerminalGrantStatus(status) || (deadline.days != null && deadline.days < 0)) {
     return {
       label: "Do not prioritize",
       detail: "This record is closed, archived, or no longer actionable.",
@@ -985,7 +1003,7 @@ function EligibilityLine({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-function ValueBlock({ value }: { value: unknown }) {
+export function ValueBlock({ value }: { value: unknown }) {
   if (value == null || value === "")
     return <span className="text-sm text-muted-foreground">Not specified</span>;
   if (Array.isArray(value)) {

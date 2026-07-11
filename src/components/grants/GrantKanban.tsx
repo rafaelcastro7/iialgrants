@@ -490,11 +490,22 @@ function KanbanCard({
             <ShieldCheck className="h-3 w-3" /> Evidence cited
           </span>
         )}
-        {g.amount_cad_max && (
-          <span className="rounded border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[9px] tabular-nums text-muted-foreground">
-            up to ${Math.round(g.amount_cad_max / 1000)}K
-          </span>
-        )}
+        {/* Was inline Math.round(.../1000)+"K" with no scale switch or sanity
+            bound: $10 rendered as "up to $0K" and $336,000,000 as an unscaled
+            six-digit "up to $336000K" — both observed on real duplicate-grant
+            data. Reuse fmtCad for correct K/M scaling and flag implausible
+            values (a program of this type is never genuinely <$1K or >$50M)
+            as unverified instead of printing them as fact. */}
+        {g.amount_cad_max != null &&
+          (g.amount_cad_max < 1_000 || g.amount_cad_max > 50_000_000 ? (
+            <span className="rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[9px] tabular-nums text-warning">
+              Unverified amount
+            </span>
+          ) : (
+            <span className="rounded border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[9px] tabular-nums text-muted-foreground">
+              up to {fmtCad(g.amount_cad_max)}
+            </span>
+          ))}
       </div>
       <div className="flex items-center gap-1.5">
         {cta}
