@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { assertAdmin } from "./admin-guard";
 import type { Json } from "@/integrations/supabase/types";
 
 export const logAuditEvent = createServerFn({ method: "POST" })
@@ -33,6 +34,7 @@ export const logAuditEvent = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     try {
+      await assertAdmin(context.userId);
       const supabase = await createSupabaseAdmin();
 
       const { data: event, error } = await supabase
@@ -64,8 +66,9 @@ export const getAuditHistory = createServerFn({ method: "GET" })
       limit: z.number().min(1).max(500).default(50),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
+      await assertAdmin(context.userId);
       const supabase = await createSupabaseAdmin();
 
       let query = supabase
@@ -92,8 +95,9 @@ export const getEntityAuditSummary = createServerFn({ method: "GET" })
       entityId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
+      await assertAdmin(context.userId);
       const supabase = await createSupabaseAdmin();
 
       const { data: events, error } = await supabase

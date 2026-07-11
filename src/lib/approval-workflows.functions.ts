@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { assertAdmin } from "./admin-guard";
 
 export const getApprovalWorkflows = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -18,13 +19,17 @@ export const getApprovalWorkflows = createServerFn({ method: "GET" })
       entityType: z.enum(["grant", "proposal"]).optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
+      await assertAdmin(context.userId);
       const supabase = await createSupabaseAdmin();
 
+      // Embed steps + instances — the workflows.tsx admin page reads
+      // wf.instances to render the Active Instances / Approve-Reject panel,
+      // which was always empty because this query never fetched them.
       let query = supabase
         .from("approval_workflows")
-        .select("*")
+        .select("*, steps:approval_steps(*), instances:approval_instances(*)")
         .order("created_at", { ascending: false });
 
       if (data.entityType) query = query.eq("entity_type", data.entityType);
@@ -40,8 +45,9 @@ export const getApprovalWorkflows = createServerFn({ method: "GET" })
 export const getApprovalSteps = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ workflowId: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
+      await assertAdmin(context.userId);
       const supabase = await createSupabaseAdmin();
 
       const { data: steps, error } = await supabase
@@ -72,8 +78,9 @@ export const createApprovalWorkflow = createServerFn({ method: "POST" })
       ),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
+      await assertAdmin(context.userId);
       const supabase = await createSupabaseAdmin();
 
       const { data: workflow, error: wfError } = await supabase
@@ -110,8 +117,9 @@ export const submitForApproval = createServerFn({ method: "POST" })
       workflowId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
+      await assertAdmin(context.userId);
       const supabase = await createSupabaseAdmin();
 
       const { data: instance, error } = await supabase
@@ -143,8 +151,9 @@ export const approveStep = createServerFn({ method: "POST" })
       comments: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
+      await assertAdmin(context.userId);
       const supabase = await createSupabaseAdmin();
 
       const { error: stepError } = await supabase
