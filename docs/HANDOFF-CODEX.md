@@ -98,12 +98,14 @@ Known follow-up debt:
 - This continuation rebuilt Grants Index as a V2-native grant radar in
   `src/components/v2/V2GrantsWorkspace.tsx`, wired from
   `src/routes/_authenticated.grants.index.tsx` only for V2. V1 still keeps the
-  old Express/Advanced grants workspace. New V2 grants index includes decision
-  hero, operations console, metrics, filter bar, ranked decision queue,
-  lifecycle board, exception queue, discovery progress/messages, admin funder
-  selection, NotebookLM bridge, and event log. Browser-verified `/grants` at
-  desktop and 390px mobile: no console/page errors, no Express/Advanced text in
-  V2, no `.v1-app-topbar`, and no horizontal overflow. Screenshots:
+  old Express/Advanced grants workspace. Commit: `0cf10dd`
+  (`redesign(frontend): rebuild grants radar for V2`). New V2 grants index
+  includes decision hero, operations console, metrics, filter bar, ranked
+  decision queue, lifecycle board, exception queue, discovery progress/messages,
+  admin funder selection, NotebookLM bridge, and event log. Browser-verified
+  `/grants` at desktop and 390px mobile: no console/page errors, no
+  Express/Advanced text in V2, no `.v1-app-topbar`, and no horizontal overflow.
+  Screenshots:
   `test-results/v2-grants-index.png`,
   `test-results/v2-grants-lifecycle.png`, and
   `test-results/v2-grants-index-mobile.png`.
