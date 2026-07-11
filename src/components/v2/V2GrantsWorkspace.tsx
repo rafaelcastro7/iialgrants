@@ -451,6 +451,7 @@ export function V2GrantsWorkspace({
             grants={riskItems}
             isAdmin={isAdmin}
             pending={pending}
+            onDraft={onDraft}
             onEnrich={onEnrich}
             onEvaluate={onEvaluate}
           />
@@ -914,6 +915,7 @@ function ExceptionQueue({
   grants,
   isAdmin,
   pending,
+  onDraft,
   onEnrich,
   onEvaluate,
 }: {
@@ -921,6 +923,7 @@ function ExceptionQueue({
   grants: GrantRowData[];
   isAdmin: boolean;
   pending: string | null;
+  onDraft: (grantId: string) => void;
   onEnrich: (grantId: string) => void;
   onEvaluate: (grantId: string) => void;
 }) {
@@ -943,6 +946,7 @@ function ExceptionQueue({
           isAdmin={isAdmin}
           pending={pending}
           evaluating={evaluatingIds.has(grant.id)}
+          onDraft={onDraft}
           onEnrich={onEnrich}
           onEvaluate={onEvaluate}
         />
@@ -956,6 +960,7 @@ function RiskCard({
   grant,
   isAdmin,
   pending,
+  onDraft,
   onEnrich,
   onEvaluate,
 }: {
@@ -963,6 +968,7 @@ function RiskCard({
   grant: GrantRowData;
   isAdmin: boolean;
   pending: string | null;
+  onDraft: (grantId: string) => void;
   onEnrich: (grantId: string) => void;
   onEvaluate: (grantId: string) => void;
 }) {
@@ -1001,7 +1007,7 @@ function RiskCard({
           isAdmin={isAdmin}
           pending={pending}
           compact
-          onDraft={() => undefined}
+          onDraft={onDraft}
           onEnrich={onEnrich}
           onEvaluate={onEvaluate}
         />
