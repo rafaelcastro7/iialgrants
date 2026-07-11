@@ -92,12 +92,17 @@ function formatMoney(n: number): string {
 }
 
 function getGivingTrend(grants: Pick<FunderGrant, "amount_cad_max">[]) {
-  if (grants.length < 2) return "stable";
-  const recent = grants.slice(0, Math.ceil(grants.length / 2));
-  const older = grants.slice(Math.ceil(grants.length / 2));
+  const withAmounts = grants.filter((g) => (g.amount_cad_max ?? 0) > 0);
+  // "stable" is a claim about real trend data — with fewer than 2 priced
+  // grants there's nothing to compare, so say so instead of implying a flat
+  // trend was actually measured (was returning "stable" here, indistinguishable
+  // from a genuinely flat trend on the card).
+  if (withAmounts.length < 2) return "insufficient";
+  const recent = withAmounts.slice(0, Math.ceil(withAmounts.length / 2));
+  const older = withAmounts.slice(Math.ceil(withAmounts.length / 2));
   const recentAvg = recent.reduce((s, g) => s + (g.amount_cad_max || 0), 0) / (recent.length || 1);
   const olderAvg = older.reduce((s, g) => s + (g.amount_cad_max || 0), 0) / (older.length || 1);
-  if (olderAvg === 0) return "stable";
+  if (olderAvg === 0) return "insufficient";
   const change = (recentAvg - olderAvg) / olderAvg;
   if (change > 0.15) return "increasing";
   if (change < -0.15) return "decreasing";
@@ -361,7 +366,9 @@ function FunderProfilePage() {
                     {trend === "decreasing" && <TrendingDown className="h-3 w-3 text-red-500" />}
                     {trend === "stable" && <Minus className="h-3 w-3 text-muted-foreground" />}
                   </div>
-                  <p className="mt-1 text-lg font-semibold capitalize">{trend}</p>
+                  <p className="mt-1 text-lg font-semibold capitalize">
+                    {trend === "insufficient" ? "Not enough data" : trend}
+                  </p>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Grants Tracked</p>

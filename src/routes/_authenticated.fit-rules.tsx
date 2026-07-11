@@ -161,7 +161,13 @@ function FitRulesPage() {
 
   const stats = useMemo(() => {
     const items = prev.data?.items ?? [];
-    const pass = items.filter((i) => !i.hard_fail && i.rule_score >= r.threshold_fit_pass).length;
+    // combined_score (rules + AI, weighted by weight_llm) — matches what the
+    // threshold's own copy promises and what evaluator.impl.server.ts
+    // actually gates on. Was rule_score alone, which meant dragging the
+    // "Trust the AI vs. the rules" slider changed nothing in this preview.
+    const pass = items.filter(
+      (i) => !i.hard_fail && i.combined_score >= r.threshold_fit_pass,
+    ).length;
     const block = items.filter((i) => i.hard_fail).length;
     const review = items.length - pass - block;
     return { pass, block, review, total: items.length };
@@ -671,6 +677,12 @@ function FitRulesPage() {
                   <StatPill label="Review" value={stats.review} tone="warn" />
                   <StatPill label="Blocked" value={stats.block} tone="fail" />
                 </div>
+                {prev.data && prev.data.items.some((i) => !i.has_llm_score) && (
+                  <p className="text-[11px] text-muted-foreground">
+                    * grants with no AI evaluation yet — score assumes AI fit = 0, so the AI-trust
+                    slider can only lower them, not raise them.
+                  </p>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -709,13 +721,19 @@ function FitRulesPage() {
                           variant={
                             it.hard_fail
                               ? "destructive"
-                              : it.rule_score >= r.threshold_fit_pass
+                              : it.combined_score >= r.threshold_fit_pass
                                 ? "default"
                                 : "secondary"
                           }
                           className="shrink-0 font-mono text-[10px]"
+                          title={
+                            it.has_llm_score
+                              ? `Combined score (rules ${it.rule_score} + AI, weighted)`
+                              : "No AI evaluation yet — this combined score assumes AI fit = 0"
+                          }
                         >
-                          {it.rule_score}
+                          {it.combined_score}
+                          {!it.has_llm_score && "*"}
                         </Badge>
                       </div>
                       {it.checks.length > 0 && (
