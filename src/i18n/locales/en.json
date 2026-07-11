@@ -1,6 +1,6 @@
 {
   "app": { "name": "IIAL", "tagline": "AI-native grant intelligence for Canadian organizations", "loading": "Loading…", "error": "Something went wrong" },
-  "nav": { "dashboard": "Dashboard", "grants": "Grants", "funders": "Funders", "proposals": "Proposals", "submissions": "Submissions", "quality": "Quality", "tasks": "Tasks", "complianceCalendar": "Compliance Calendar", "postAward": "Post-Award", "financial": "Financial", "impact": "Impact", "renewal": "Renewal", "competitive": "Competitive", "fitRules": "Fit Rules", "auditTrail": "Audit Trail", "workflows": "Workflows", "settings": "Settings", "signOut": "Sign out" },
+  "nav": { "dashboard": "Dashboard", "grants": "Grants", "funders": "Funders", "proposals": "Proposals", "submissions": "Submissions", "quality": "Quality", "tasks": "Tasks", "complianceCalendar": "Compliance Calendar", "postAward": "Post-Award", "financial": "Financial", "impact": "Impact", "renewal": "Renewal", "competitive": "Competitive", "fitRules": "Fit Rules", "auditTrail": "Audit Trail", "workflows": "Workflows", "autonomy": "Autonomy", "settings": "Settings", "signOut": "Sign out" },
   "auth": { "signIn": "Sign in", "signUp": "Sign up", "email": "Email", "password": "Password", "continueWithGoogle": "Continue with Google" },
   "lang": { "switch": "Language", "en": "English", "fr": "Français" },
   "home": { "title": "IIAL — Grant Intelligence", "subtitle": "Discover, evaluate, and win Canadian grants with AI agents.", "cta": "Get started" },

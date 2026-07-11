@@ -24,6 +24,7 @@ import {
   ListTodo,
   GitBranch,
   History,
+  BrainCircuit,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -124,6 +125,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Admin",
     items: [
+      { to: "/autonomy", labelKey: "nav.autonomy", icon: BrainCircuit, adminOnly: true },
       { to: "/ops", labelKey: "ops.title", icon: Activity, adminOnly: true },
       { to: "/admin/audit-trail", labelKey: "nav.auditTrail", icon: History, adminOnly: true },
       { to: "/admin/workflows", labelKey: "nav.workflows", icon: GitBranch, adminOnly: true },
