@@ -47,6 +47,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppTopBar } from "@/components/AppSidebar";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
+import { CRA_CATEGORY_TOOLTIP, CRA_DESIGNATION_TOOLTIP } from "@/lib/cra-t3010-labels";
 
 type FunderRow = Database["public"]["Tables"]["funders"]["Row"];
 type GrantInsert = Database["public"]["Tables"]["grants"]["Insert"];
@@ -299,10 +300,22 @@ function FunderProfilePage() {
             <CardContent className="space-y-4">
               <div>
                 <h3 className="text-xl font-semibold">{funder.name}</h3>
-                {funder.category && <Badge variant="secondary">{funder.category}</Badge>}
+                {funder.category && (
+                  <Badge variant="secondary" title={CRA_CATEGORY_TOOLTIP}>
+                    CRA {funder.category}
+                  </Badge>
+                )}
               </div>
+              {/* Was a bare single letter ("C") with zero context — CRA's raw
+                  T3010 Designation code (Charitable Organization / Public
+                  Foundation / Private Foundation), not decoded to a specific
+                  label here because the exact letter-to-label mapping isn't
+                  independently verifiable from CRA's published docs, and a
+                  wrong guess would misrepresent a real legal designation. */}
               {funder.designation && (
-                <p className="text-sm text-muted-foreground">{funder.designation}</p>
+                <p className="text-sm text-muted-foreground" title={CRA_DESIGNATION_TOOLTIP}>
+                  CRA designation: {funder.designation}
+                </p>
               )}
               <div className="space-y-2 text-sm">
                 {location && (
