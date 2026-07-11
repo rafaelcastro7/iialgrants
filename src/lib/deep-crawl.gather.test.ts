@@ -79,4 +79,32 @@ describe("gatherDeepMarkdown", () => {
     expect(searchErrors).toEqual(["jina_search_401"]);
     expect(mocks.scrapeWithFallback).not.toHaveBeenCalled();
   });
+
+  it("re-fetches pinned URLs directly and skips discovery entirely (determinism fix)", async () => {
+    const { gatherDeepMarkdown } = await import("@/lib/deep-crawl.server");
+    const pinnedMarkdown =
+      "Confirmed eligibility page, re-fetched fresh. ".repeat(6) +
+      "Content must clear the 200-char minimum the scraper enforces before accepting a page.";
+    mocks.scrapeWithFallback.mockResolvedValue({
+      ok: true,
+      url: INLINE_DETAIL,
+      markdown: pinnedMarkdown,
+      via: "scrape_engine",
+      attempts: [],
+    });
+
+    const pages = await gatherDeepMarkdown(BASE, "irrelevant markdown, ignored on pinned path", {
+      max: 2,
+      title: "Example Program",
+      pinnedUrls: [INLINE_DETAIL],
+    });
+
+    expect(pages).toEqual([{ url: INLINE_DETAIL, markdown: pinnedMarkdown }]);
+    expect(mocks.scrapeWithFallback).toHaveBeenCalledTimes(1);
+    expect(mocks.scrapeWithFallback).toHaveBeenCalledWith(INLINE_DETAIL, expect.any(Object));
+    // Discovery tiers must never run on the pinned path.
+    expect(mocks.fetchCandidateLinksFromPage).not.toHaveBeenCalled();
+    expect(mocks.fetchCandidateLinksFromSitemaps).not.toHaveBeenCalled();
+    expect(mocks.searchWeb).not.toHaveBeenCalled();
+  });
 });
