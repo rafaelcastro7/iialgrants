@@ -38,5 +38,7 @@ test-results/
 grants-*.jpeg
 grants-dom.md
 
-# live-audit-daemon runtime state (regenerated on every cycle)
+# self-improvement daemon runtime state/output (regenerated on every cycle)
 scripts/.live-audit-state.json
+scripts/self-eval-metrics.jsonl
+scripts/improvement-queue.md
