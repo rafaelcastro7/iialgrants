@@ -34,6 +34,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -62,27 +63,71 @@ type NavItem = {
   adminOnly?: boolean;
 };
 
-const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
-  { to: "/grants", labelKey: "nav.grants", icon: Search },
-  { to: "/funders", labelKey: "nav.funders", icon: Building2 },
-  { to: "/proposals", labelKey: "nav.proposals", icon: FileText },
-  { to: "/quality", labelKey: "nav.quality", icon: BarChart3 },
-  { to: "/submissions", labelKey: "nav.submissions", icon: Send },
-  { to: "/tasks", labelKey: "nav.tasks", icon: ListTodo },
-  { to: "/compliance-calendar", labelKey: "nav.complianceCalendar", icon: Calendar },
-  { to: "/post-award", labelKey: "nav.postAward", icon: Trophy },
-  { to: "/financial", labelKey: "nav.financial", icon: DollarSign },
-  { to: "/impact", labelKey: "nav.impact", icon: Target },
-  { to: "/renewal", labelKey: "nav.renewal", icon: RefreshCw },
-  { to: "/competitive", labelKey: "nav.competitive", icon: BarChart3 },
-  { to: "/org", labelKey: "org.title", icon: Building2 },
-  { to: "/fit-rules", labelKey: "nav.fitRules", icon: Sliders },
-  { to: "/ops", labelKey: "ops.title", icon: Activity, adminOnly: true },
-  { to: "/admin/audit-trail", labelKey: "nav.auditTrail", icon: History, adminOnly: true },
-  { to: "/admin/workflows", labelKey: "nav.workflows", icon: GitBranch, adminOnly: true },
-  { to: "/privacy", labelKey: "privacy.link", icon: ShieldCheck },
-  { to: "/compliance", labelKey: "compliance.link", icon: Shield },
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+// Groups mirror the `eyebrow` category each destination page already
+// declares on itself (PageHeader eyebrow="Pipeline"/"Post-award"/"Operations"/
+// "Market intelligence"/"Admin"/etc.) — the sidebar used to be one flat list
+// of 19 items with no relationship to that taxonomy, so arriving on a page
+// gave no sense of where it sat relative to anything else. Grouping by the
+// same categories the pages already use makes "what section am I in" and
+// "how do I get to related things" the same mental model.
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Discover",
+    items: [
+      { to: "/grants", labelKey: "nav.grants", icon: Search },
+      { to: "/funders", labelKey: "nav.funders", icon: Building2 },
+      { to: "/fit-rules", labelKey: "nav.fitRules", icon: Sliders },
+    ],
+  },
+  {
+    label: "Pipeline",
+    items: [
+      { to: "/proposals", labelKey: "nav.proposals", icon: FileText },
+      { to: "/quality", labelKey: "nav.quality", icon: BarChart3 },
+      { to: "/submissions", labelKey: "nav.submissions", icon: Send },
+    ],
+  },
+  {
+    label: "Post-award",
+    items: [
+      { to: "/post-award", labelKey: "nav.postAward", icon: Trophy },
+      { to: "/financial", labelKey: "nav.financial", icon: DollarSign },
+      { to: "/impact", labelKey: "nav.impact", icon: Target },
+      { to: "/renewal", labelKey: "nav.renewal", icon: RefreshCw },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { to: "/tasks", labelKey: "nav.tasks", icon: ListTodo },
+      { to: "/compliance-calendar", labelKey: "nav.complianceCalendar", icon: Calendar },
+    ],
+  },
+  {
+    label: "Market intelligence",
+    items: [{ to: "/competitive", labelKey: "nav.competitive", icon: BarChart3 }],
+  },
+  {
+    label: "Workspace",
+    items: [
+      { to: "/org", labelKey: "org.title", icon: Building2 },
+      { to: "/compliance", labelKey: "compliance.link", icon: Shield },
+      { to: "/privacy", labelKey: "privacy.link", icon: ShieldCheck },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { to: "/ops", labelKey: "ops.title", icon: Activity, adminOnly: true },
+      { to: "/admin/audit-trail", labelKey: "nav.auditTrail", icon: History, adminOnly: true },
+      { to: "/admin/workflows", labelKey: "nav.workflows", icon: GitBranch, adminOnly: true },
+    ],
+  },
 ];
 
 export function AppSidebar() {
@@ -95,7 +140,13 @@ export function AppSidebar() {
   const isActive = (path: string) =>
     path === "/dashboard" ? currentPath === "/dashboard" : currentPath.startsWith(path);
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  // Drop a group entirely once every item in it is admin-only and the
+  // viewer isn't an admin, instead of leaving a labeled section with zero
+  // items under it.
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.adminOnly || isAdmin),
+  })).filter((group) => group.items.length > 0);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -119,43 +170,64 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(item.to)}
-                      tooltip={t(item.labelKey)}
-                    >
-                      <Link to={item.to} className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
-                        <span>{t(item.labelKey)}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Admin Console">
-                  <Link to="/admin" className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    <span>Admin Console</span>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/dashboard")}
+                  tooltip={t("nav.dashboard")}
+                >
+                  <Link to="/dashboard" className="flex items-center gap-2">
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>{t("nav.dashboard")}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {visibleGroups.map((group) => (
+          <SidebarGroup key={group.label}>
+            {/* Mirrors each destination page's own eyebrow tick+label so the
+                sidebar section a link lives in visually rhymes with the
+                heading the page shows once you're there. */}
+            <SidebarGroupLabel className="gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/60">
+              <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-[2px] bg-brand" />
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive(item.to)}
+                        tooltip={t(item.labelKey)}
+                      >
+                        <Link to={item.to} className="flex items-center gap-2">
+                          <Icon className="h-4 w-4" />
+                          <span>{t(item.labelKey)}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+                {group.label === "Admin" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Admin Console">
+                      <Link to="/admin" className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        <span>Admin Console</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border/50 p-2">
