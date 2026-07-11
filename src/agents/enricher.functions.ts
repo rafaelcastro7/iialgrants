@@ -62,7 +62,7 @@ export async function enrichGrantImpl(
   const { data: g, error } = await db
     .from("grants")
     .select(
-      "id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, enrich_attempts",
+      "id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, enrich_attempts, confirmed_source_urls",
     )
     .eq("id", data.grantId)
     .maybeSingle();
@@ -416,6 +416,9 @@ export async function enrichGrantImpl(
       "start",
       { missing: missingAfterMain },
     );
+    const pinnedUrls = Array.isArray(g.confirmed_source_urls)
+      ? (g.confirmed_source_urls as unknown[]).filter((u): u is string => typeof u === "string")
+      : [];
     let deepPages: Awaited<ReturnType<typeof gatherDeepMarkdown>> = [];
     try {
       deepPages = await gatherDeepMarkdown(g.url, scraped.markdown, {
@@ -426,6 +429,7 @@ export async function enrichGrantImpl(
         // the honest final answer.
         max: 6,
         title: g.title,
+        pinnedUrls: pinnedUrls.length > 0 ? pinnedUrls : undefined,
         onSearchError: (query, searchError) =>
           trace("deep_crawl_search", `Official site search failed: ${searchError}`, "warn", {
             query,
@@ -465,6 +469,16 @@ export async function enrichGrantImpl(
         "done",
         { pages: deepPages.map((page) => page.url) },
       );
+      // Pin these URLs so a future retry re-fetches the SAME pages instead of
+      // re-running the (partly live-search-dependent, non-reproducible)
+      // discovery cascade. Only pin on a fresh discovery, not when we already
+      // fetched via pinnedUrls (nothing new was discovered in that case).
+      if (pinnedUrls.length === 0 && relevantDeepPages.length > 0) {
+        await db
+          .from("grants")
+          .update({ confirmed_source_urls: relevantDeepPages.map((page) => page.url) })
+          .eq("id", g.id);
+      }
       for (const page of relevantDeepPages) {
         if (missingFields().length === 0) break;
         await runExtractorsOnPage(page, "deep");

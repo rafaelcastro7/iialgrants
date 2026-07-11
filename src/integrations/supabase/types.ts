@@ -1387,6 +1387,7 @@ export type Database = {
           amount_cad_max: number | null;
           amount_cad_min: number | null;
           canonical_key: string | null;
+          confirmed_source_urls: Json | null;
           country: string;
           created_at: string;
           currency: string;
@@ -1420,6 +1421,7 @@ export type Database = {
           amount_cad_max?: number | null;
           amount_cad_min?: number | null;
           canonical_key?: string | null;
+          confirmed_source_urls?: Json | null;
           country?: string;
           created_at?: string;
           currency?: string;
@@ -1453,6 +1455,7 @@ export type Database = {
           amount_cad_max?: number | null;
           amount_cad_min?: number | null;
           canonical_key?: string | null;
+          confirmed_source_urls?: Json | null;
           country?: string;
           created_at?: string;
           currency?: string;

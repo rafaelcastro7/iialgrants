@@ -144,9 +144,20 @@ export async function gatherDeepMarkdown(
     max?: number;
     title?: string;
     onSearchError?: (query: string, error: string) => void | Promise<void>;
+    // URLs a PRIOR attempt already confirmed relevant for this exact grant.
+    // Discovery (inline-links -> HTML -> sitemap -> live web search) is not
+    // run-to-run stable — a live uncached search can surface different pages
+    // on different attempts, which is why the same grant URL could
+    // legitimately extract different real numbers across retries even though
+    // no step invents anything. When present, skip discovery entirely and
+    // re-fetch these same URLs (content itself is still fetched fresh).
+    pinnedUrls?: string[];
   } = {},
 ): Promise<DeepPage[]> {
   const max = opts.max ?? 3;
+  if (opts.pinnedUrls && opts.pinnedUrls.length > 0) {
+    return scrapeCandidateUrls(opts.pinnedUrls.slice(0, max), max);
+  }
   const inlineUrls = pickDeepLinks(mainMarkdown, baseUrl, max);
   const inlinePages = await scrapeCandidateUrls(inlineUrls, max);
   if (inlinePages.length >= max) return inlinePages;
