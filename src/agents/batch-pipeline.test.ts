@@ -10,7 +10,15 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 // Real admin user from demo seed
 const ADMIN_USER_ID = "90240636-06d4-4c75-9f33-fbb3e60bf54a";
 
-describe("batch pipeline", () => {
+// This is a real, live, side-effecting verification tool (real Ollama calls,
+// real enrich_attempts/evaluations written to the local DB) — NOT a unit
+// test. It used to run unconditionally on every plain `vitest run`, meaning
+// every "verify no regressions" check during this session was silently
+// burning real enrichment attempts and Ollama capacity as a side effect.
+// Gated the same way live-pipeline.test.ts is: opt-in only, explicit env var.
+const RUN = !!process.env.RUN_BATCH_PIPELINE;
+
+describe.skipIf(!RUN)("batch pipeline", () => {
   it("enriches remaining discovered grants", async () => {
     const results = await batchEnrichDiscovered(ADMIN_USER_ID, 99);
     printReport("ENRICHMENT", results);

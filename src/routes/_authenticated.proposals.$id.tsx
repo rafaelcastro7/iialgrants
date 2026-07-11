@@ -282,6 +282,10 @@ function ProposalDetailPage() {
     sections: data.sections,
     requirements: (grant?.requirements ?? []) as ProposalRequirement[],
   });
+  // Same definition submitProposal's server-side gate uses (submissions.functions.ts).
+  const draftedSections = data.sections.filter(
+    (s) => (s.content_en ?? "").trim().length > 0,
+  ).length;
   const meta = (proposal.metadata ?? {}) as {
     critic_summary_en?: string;
     critic_summary_fr?: string;
@@ -338,6 +342,8 @@ function ProposalDetailPage() {
           <ProposalDetailExpress
             title={proposal.title}
             readiness={readiness}
+            criticScore={proposal.critic_score != null ? Number(proposal.critic_score) : null}
+            draftedSections={draftedSections}
             pending={pending}
             onDraftSection={onDraft}
             onCritic={onCritic}
