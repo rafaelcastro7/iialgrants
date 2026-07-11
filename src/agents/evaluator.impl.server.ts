@@ -3,6 +3,7 @@
 // without going through the TanStack server-fn resolver.
 
 import { EvaluatorOutput, PROMPTS } from "@/agents/schemas";
+import { canTransition, type GrantStatus } from "@/agents/pipeline-stages.shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function evaluateGrantImpl(opts: {
@@ -275,21 +276,28 @@ export async function evaluateGrantImpl(opts: {
   }
 
   if (!parsed.eligibility_pass) {
-    if (rules.auto_archive_on_fail) {
-      await trace("gate", "Not eligible -> archiving grant (auto_archive_on_fail=true)", "warn");
-      if (g.status === "discovered" || g.status === "enriched" || g.status === "scored") {
-        await userSupabase
-          .from("grants")
-          .update({ status: "archived", fit_score: parsed.fit_score } as never)
-          .eq("id", g.id);
-      }
-    } else {
-      await trace("gate", "Not eligible - keeping current status", "warn");
-      await userSupabase
-        .from("grants")
-        .update({ fit_score: parsed.fit_score } as never)
-        .eq("id", g.id);
-    }
+    // fit_score must always be persisted here regardless of whether an
+    // archive transition also applies — it used to be nested inside the
+    // archive branch's status check, so a re-evaluation of a shortlisted/
+    // in_proposal grant (both valid archive targets, just missing from the
+    // old hardcoded list) silently dropped the fresh score entirely, leaving
+    // grants.fit_score stale while grant_evaluations already had the new one.
+    const canArchive =
+      rules.auto_archive_on_fail && canTransition(g.status as GrantStatus, "archived");
+    await trace(
+      "gate",
+      canArchive
+        ? "Not eligible -> archiving grant (auto_archive_on_fail=true)"
+        : "Not eligible - keeping current status",
+      "warn",
+    );
+    await userSupabase
+      .from("grants")
+      .update({
+        fit_score: parsed.fit_score,
+        ...(canArchive ? { status: "archived" } : {}),
+      } as never)
+      .eq("id", g.id);
   } else if (g.status === "discovered" || g.status === "enriched") {
     await trace("commit", `Eligible -> status=scored, fit=${parsed.fit_score}`, "ok");
     await userSupabase

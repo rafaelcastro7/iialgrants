@@ -20,14 +20,24 @@ export const getGrantAudit = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!grant) throw new Error("Grant not found");
 
-    const { data: rulesRow } = await context.supabase
-      .from("fit_rules")
-      .select("*")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+    const [{ data: rulesRow }, { data: org }] = await Promise.all([
+      context.supabase.from("fit_rules").select("*").eq("user_id", context.userId).maybeSingle(),
+      context.supabase
+        .from("org_profiles")
+        .select("org_name, sectors, jurisdictions, stage, annual_budget_cad, focus_areas")
+        .eq("user_id", context.userId)
+        .maybeSingle(),
+    ]);
 
-    const { DEFAULT_RULES, evaluateRules } = await import("@/agents/fit-rules.server");
-    const rules = { ...DEFAULT_RULES, ...(rulesRow ?? {}) };
+    const { DEFAULT_RULES, evaluateRules, deriveRulesFromOrg } =
+      await import("@/agents/fit-rules.server");
+    // Must mirror evaluator.impl.server.ts's rule resolution exactly — this
+    // page's entire purpose is to honestly explain why a grant was accepted/
+    // archived, so it has to evaluate against the SAME effective rules that
+    // actually produced that decision, not the generic CA-only defaults.
+    const rules =
+      (rulesRow as Parameters<typeof evaluateRules>[0] | null) ??
+      deriveRulesFromOrg(org as Parameters<typeof deriveRulesFromOrg>[0], DEFAULT_RULES);
     const ruleResult = evaluateRules(rules, {
       eligibility: grant.eligibility,
       deadline: grant.deadline,

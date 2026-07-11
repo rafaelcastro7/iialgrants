@@ -402,6 +402,7 @@ export async function discoverFunderImpl(
     let foundTotal = 0;
     let inputTokens = 0;
     let outputTokens = 0;
+    const insertErrors: Array<{ title: string; error: string }> = [];
     const viaCounts = { firecrawl_json: 0, firecrawl: 0, jina_reader: 0, raw_html: 0 } as Record<
       string,
       number
@@ -530,9 +531,16 @@ export async function discoverFunderImpl(
           title_fr: g.title_fr ?? null,
           summary: g.summary ?? null,
           summary_fr: g.summary_fr ?? null,
-          amount_cad_min: g.amount_cad_min ?? null,
-          amount_cad_max: g.amount_cad_max ?? null,
-          deadline: g.deadline ?? null,
+          // Discovery's LLM extraction has NO grounding check (unlike
+          // enricher-steps.server.ts's snippetIsGrounded gate) — a
+          // hallucinated dollar amount or deadline inserted here would
+          // become a permanent "fact" the enricher's gap-fill never
+          // revisits, since it only fills fields that are still null.
+          // Always null here so enrichGrantImpl's grounded extraction is
+          // the one and only source of truth for these two fields.
+          amount_cad_min: null,
+          amount_cad_max: null,
+          deadline: null,
           eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
           sectors: g.sectors ?? [],
           language: g.language,
@@ -541,7 +549,16 @@ export async function discoverFunderImpl(
           canonical_key: ck,
           status: "discovered",
         });
-        if (!ierr) inserted++;
+        if (!ierr) {
+          inserted++;
+        } else if (/duplicate key/i.test(ierr.message)) {
+          // Concurrent processOne calls (SCRAPE_CONCURRENCY) can both read
+          // existing=null for the same program before either inserts —
+          // that's a benign dedup race, not a real failure.
+          seenAgain++;
+        } else {
+          insertErrors.push({ title: g.title, error: ierr.message });
+        }
       }
     }
 
@@ -574,6 +591,7 @@ export async function discoverFunderImpl(
         found: foundTotal,
         inserted,
         seen_again: seenAgain,
+        insert_errors: insertErrors.slice(0, 5),
         seed_sitemap_used: sitemapSeedUsed,
         via_counts: viaCounts,
         per_page: perPageStats.slice(0, 12),
@@ -935,9 +953,13 @@ export async function discoverFunderImpl(
         title_fr: g.title_fr ?? null,
         summary: g.summary ?? null,
         summary_fr: g.summary_fr ?? null,
-        amount_cad_min: g.amount_cad_min ?? null,
-        amount_cad_max: g.amount_cad_max ?? null,
-        deadline: g.deadline ?? null,
+        // See Path A's identical comment: no grounding check exists at
+        // discovery time, so amount/deadline must always come from the
+        // enricher's grounded extraction, never from Discovery's raw LLM
+        // guess.
+        amount_cad_min: null,
+        amount_cad_max: null,
+        deadline: null,
         eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
         sectors: g.sectors ?? [],
         language: g.language,

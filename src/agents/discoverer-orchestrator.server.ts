@@ -74,6 +74,8 @@ export async function runDiscoveryJob(
   triggeringUserId: string,
   funderIds?: string[],
 ): Promise<DiscoveryJobResult> {
+  const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+  await assertModuleEnabled("grants_discovery");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   // Job started marker (status='running' so UI knows it's in flight).
@@ -161,8 +163,13 @@ export async function runDiscoveryJob(
     await Promise.allSettled(batch.map(runOne));
   }
 
-  // Auto-evaluate fit for the triggering user (best effort).
+  // Auto-evaluate fit for the triggering user (best effort). Grants this same
+  // job just discovered are still "discovered" (no enrichment step runs in
+  // this job) and evaluateGrantImpl unconditionally rejects that status —
+  // this instead clears any of the user's backlog that's already enriched
+  // but never got scored, so a discovery run also nudges that queue forward.
   let evaluated = 0;
+  const evalErrors: Array<{ grantId: string; error: string }> = [];
   try {
     const { data: org } = await supabaseAdmin
       .from("org_profiles")
@@ -174,7 +181,7 @@ export async function runDiscoveryJob(
       const { data: pending } = await supabaseAdmin
         .from("grants")
         .select("id")
-        .eq("status", "discovered")
+        .eq("status", "enriched")
         .limit(15);
       // Build a user-scoped client (RLS as the triggering user).
       const { createClient } = await import("@supabase/supabase-js");
@@ -187,13 +194,13 @@ export async function runDiscoveryJob(
         try {
           await evaluateGrantImpl({ grantId: g.id, userId: triggeringUserId, userSupabase });
           evaluated++;
-        } catch {
-          /* keep going */
+        } catch (e) {
+          evalErrors.push({ grantId: g.id, error: e instanceof Error ? e.message : String(e) });
         }
       }
     }
-  } catch {
-    /* evaluator disabled */
+  } catch (e) {
+    evalErrors.push({ grantId: "(setup)", error: e instanceof Error ? e.message : String(e) });
   }
 
   // Job completed marker — final aggregate metrics.
@@ -209,6 +216,7 @@ export async function runDiscoveryJob(
       totalSeenAgain,
       totalProcessed,
       evaluated,
+      eval_errors: evalErrors.slice(0, 5),
       funders_queued: funders?.length ?? 0,
     },
   });
