@@ -4,6 +4,37 @@ Living handoff so another agent can continue safely. Read this plus
 `docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-11
 America/Toronto.
 
+## Local self-improvement daemons - 2026-07-11 (commit `2399c6b`)
+
+Three always-local, zero-cloud-token background daemons now run continuously
+(see `scripts/DAEMONS.md`). All are read-only w.r.t. app code/data — they
+detect/measure/propose, never mutate. Before deciding what to work on, skim
+their outputs:
+
+- `scripts/live-audit-report.log` — process health + code audit + DB anomaly
+  classes (incl. a canary for the fabricated-requirements class cleaned this
+  session).
+- `scripts/self-eval-report.log` + `scripts/self-eval-metrics.jsonl` — product
+  quality scorecard trend + regression flags (grounding %, completeness %, fit
+  distribution, stuck grants, etc.).
+- `scripts/improvement-queue.md` — a prioritized improvement backlog the
+  improvement daemon regenerates each cycle from the other two daemons' signal.
+
+They coordinate through the Ollama proxy `loadTier` (`:11435/proxy-health`):
+heavy LLM calls self-suppress when the GPU is busy and retry next cycle, so a
+foreground batch pipeline never contends with them. Local-runtime notes:
+`qwen2.5-coder:7b` was not returning within budget on this GPU (use
+`qwen2.5:7b` for synthesis); LLM calls are capped with `num_predict` to stop a
+small model running away on structured-output prompts. Launch with
+`node scripts/<name>.mjs [intervalMinutes]`. Runtime output files are
+gitignored.
+
+Also this session: reconciled Codex's V2 redesign (clean stack, tsc/eslint/
+build green) and cleaned 24 grants whose stored `requirements` jsonb still
+carried the fabricated critical requirements removed from the analyzer in
+`decf550` (35 removed, 0 remaining — code fix stops new ones, this was the
+retroactive data cleanup).
+
 ## Frontend V2 Redesign - 2026-07-11
 
 User request: "realiza un rediseno completo del front... no quiero ver nada
