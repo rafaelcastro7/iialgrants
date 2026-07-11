@@ -208,11 +208,30 @@ async function runDataAudit() {
       log("data-audit", `IMPLAUSIBLE AMOUNTS: ${JSON.stringify(implausible.rows)}`);
     }
 
+    // 5. Fabricated ungrounded requirements: the two low-precision detectors
+    // removed in commit decf550 ("Must be registered as: X" / "Financial
+    // documentation required") wrote isCritical requirements from bare
+    // keyword co-occurrence with no snippet grounding, wrongly blocking
+    // submission. Removed from code + 24 stored records cleaned on
+    // 2026-07-11; this catches a regression if either resurfaces.
+    const fabricated = await client.query(`
+      select id, title from grants
+      where requirements::text ilike '%Must be registered as:%'
+         or requirements::text ilike '%Financial documentation required%'
+    `);
+    if (fabricated.rows.length > 0) {
+      log(
+        "data-audit",
+        `FABRICATED REQUIREMENTS RESURFACED (${fabricated.rows.length}): ${fabricated.rows.map((r) => r.title).join(", ")}`,
+      );
+    }
+
     if (
       dupes.rows.length === 0 &&
       stuck.rows.length === 0 &&
       Number(fakeUsers.rows[0].count) === 0 &&
-      implausible.rows.length === 0
+      implausible.rows.length === 0 &&
+      fabricated.rows.length === 0
     ) {
       log("data-audit", "clean — no new anomalies of the known classes");
     }
