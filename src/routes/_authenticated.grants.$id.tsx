@@ -346,6 +346,7 @@ function GrantDetailPage() {
             enrichLastError={g.enrich_last_error}
             busy={busy}
             existingProposalId={data.existingProposal?.id ?? null}
+            duplicateGroupSize={data.duplicateGroupSize}
             onFetchDetails={() =>
               run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))
             }

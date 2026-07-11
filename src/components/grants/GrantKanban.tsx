@@ -6,7 +6,7 @@
 // DB trigger.
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, ExternalLink, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, ExternalLink, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { canTransition, isGrantStatus, type GrantStatus } from "@/agents/pipeline-stages.shared";
@@ -488,6 +488,14 @@ function KanbanCard({
         {hasCitations && (
           <span className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[9px] text-muted-foreground">
             <ShieldCheck className="h-3 w-3" /> Evidence cited
+          </span>
+        )}
+        {(g.duplicateGroupSize ?? 1) > 1 && (
+          <span
+            className="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[9px] text-warning"
+            title="Other active records share this funder and a near-identical title — figures may be inconsistent between them."
+          >
+            <AlertTriangle className="h-3 w-3" /> {g.duplicateGroupSize} similar
           </span>
         )}
         {/* Was inline Math.round(.../1000)+"K" with no scale switch or sanity

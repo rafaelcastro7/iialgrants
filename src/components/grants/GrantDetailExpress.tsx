@@ -388,6 +388,7 @@ export function GrantDetailExpress({
   enrichLastError,
   busy,
   existingProposalId,
+  duplicateGroupSize,
   onFetchDetails,
   onEvaluate,
   onDraft,
@@ -419,6 +420,7 @@ export function GrantDetailExpress({
   enrichLastError?: string | null;
   busy: string | null;
   existingProposalId?: string | null;
+  duplicateGroupSize?: number;
   onFetchDetails: () => void;
   onEvaluate: () => void;
   onDraft: () => void;
@@ -468,6 +470,16 @@ export function GrantDetailExpress({
 
   return (
     <div className="space-y-5">
+      {(duplicateGroupSize ?? 1) > 1 && (
+        <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            {duplicateGroupSize} records share this funder and a near-identical title — this may be
+            a duplicate discovery. Figures (amount, deadline) can differ between them; verify
+            against the official page before relying on this one.
+          </p>
+        </div>
+      )}
       <section className="rounded-lg border bg-card">
         <div className="border-b p-5">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
