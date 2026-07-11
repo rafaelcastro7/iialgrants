@@ -27,6 +27,8 @@ import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
 import { SelfCheckBanner } from "@/components/grants/SelfCheckBanner";
+import { V2GrantDetail } from "@/components/v2/V2GrantDetail";
+import { useUiVersion } from "@/components/v2/ui-version";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +76,7 @@ function GrantDetailPage() {
   const { id } = Route.useParams();
   const search = Route.useSearch();
   const { t } = useTranslation();
+  const { version } = useUiVersion();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isAdmin = useIsAdmin();
@@ -260,6 +263,48 @@ function GrantDetailPage() {
 
   if (isAuditRoute) {
     return <Outlet />;
+  }
+
+  if (version === "v2") {
+    return (
+      <>
+        <V2GrantDetail
+          busy={busy}
+          duplicateGroupSize={data.duplicateGroupSize}
+          err={err}
+          evaluation={data.evaluation}
+          events={data.events}
+          existingProposalId={data.existingProposal?.id ?? null}
+          grant={g}
+          isAdmin={isAdmin}
+          shareUrl={shareUrl}
+          traceRun={traceRun}
+          onDraft={onDraft}
+          onEvaluate={() => run("eval", "evaluator", () => evaluate({ data: { grantId: id } }))}
+          onFetchDetails={() =>
+            run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))
+          }
+          onOpenEvidence={openEvidence}
+          onShare={onShare}
+          onShortlist={onShortlist}
+        />
+        <EvidencePanel
+          grantId={id}
+          field={evField}
+          open={!!evField}
+          onOpenChange={(o) => !o && closeEvidence()}
+        />
+        <AgentTracePanel
+          runId={traceRun?.runId ?? null}
+          agentLabel={traceRun?.agent ?? ""}
+          open={!!traceRun}
+          onOpenChange={(o) => !o && closeTrace()}
+          fr={false}
+          focusStep={search.step ?? null}
+          onFocusStep={(step) => patchSearch({ step: step ?? undefined })}
+        />
+      </>
+    );
   }
 
   return (
