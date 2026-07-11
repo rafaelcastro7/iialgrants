@@ -18,7 +18,7 @@ import {
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
 import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
-import { GrantDetailExpress } from "@/components/grants/GrantDetailExpress";
+import { GrantDetailExpress, ValueBlock } from "@/components/grants/GrantDetailExpress";
 import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
 import { EvidenceChip, EvidencePanel } from "@/components/grants/EvidencePanel";
 import { FetchTrailPanel } from "@/components/grants/FetchTrailPanel";
@@ -761,26 +761,15 @@ function EligibilityValue({ value }: { value: unknown }) {
   if (typeof value === "boolean") {
     return <span>{value ? "Yes" : "No"}</span>;
   }
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return <span className="text-muted-foreground">-</span>;
-    }
-    return (
-      <div className="flex flex-wrap gap-1">
-        {value.map((v, i) => (
-          <Badge key={i} variant="outline" className="text-xs font-normal">
-            {typeof v === "object" ? JSON.stringify(v) : String(v)}
-          </Badge>
-        ))}
-      </div>
-    );
+  if (Array.isArray(value) && value.length === 0) {
+    return <span className="text-muted-foreground">-</span>;
   }
-  if (typeof value === "object") {
-    return (
-      <pre className="rounded bg-muted/40 p-2 font-mono text-xs whitespace-pre-wrap">
-        {JSON.stringify(value, null, 2)}
-      </pre>
-    );
+  if (Array.isArray(value) || typeof value === "object") {
+    // Was a raw JSON.stringify dump here (badges showing literal
+    // {"sector":["..."],"territory":["Canada"]}) — the same bug already fixed
+    // in GrantDetailExpress.tsx's ValueBlock but never propagated to this
+    // sibling Advanced-view formatter. Reuse it instead of a second formatter.
+    return <ValueBlock value={value} />;
   }
   return <span>{String(value)}</span>;
 }

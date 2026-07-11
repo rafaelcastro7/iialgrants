@@ -311,6 +311,21 @@ function MatchCard({ g, mode }: { g: GrantRowData; mode: "progress" | "match" })
             </span>
           </div>
 
+          {/* tier (fit-score based) and eligible (a separate, independently-
+              computed boolean gated on org rules + a configurable pass
+              threshold) can legitimately disagree — e.g. a high fit score
+              blocked by a hard eligibility rule, or a low fit score that still
+              clears a relaxed org threshold. Without this, the card can show
+              a bold "Strong"/green rail directly beside "Likely not eligible"
+              with nothing explaining why. */}
+          {eligible != null && tier && (eligible ? tier.word === "Weak" : tier.word !== "Weak") && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {eligible
+                ? "Eligible, but a weak strategic fit for your organization."
+                : "Fit score reflects program alignment only — eligibility failed on an organizational rule."}
+            </p>
+          )}
+
           {g.evaluation?.rationale_en && (
             <p className="mt-2 line-clamp-2 max-w-3xl text-xs leading-6 text-muted-foreground">
               {g.evaluation.rationale_en}
