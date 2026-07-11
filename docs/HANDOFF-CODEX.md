@@ -13,6 +13,7 @@ documenta todo."
 
 What shipped:
 
+- Commit: `e5d980f` (`redesign(frontend): introduce V2 app shell`).
 - Added a persistent V1/V2 UI switch. V2 is the default; V1 remains available
   through `localStorage["iial.ui.version"]` and the visible V1/V2 toggle.
 - Added the new authenticated V2 shell:
@@ -97,6 +98,7 @@ Known follow-up debt:
 
 Current HEAD after this update should be on top of (newest first):
 
+- `e5d980f` redesign(frontend): introduce V2 app shell
 - `98ca0db` feat(ops): add local-only live audit daemon
 - `ad1be3c` fix(fit-rules): screening simulation reflects the AI-trust weight; honest funder trend
 - `b2bc907` fix(admin): surface hidden errors, timestamps, and identity across admin pages
