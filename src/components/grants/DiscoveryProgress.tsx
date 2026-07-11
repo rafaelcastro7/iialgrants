@@ -374,7 +374,11 @@ export function DiscoveryProgress({
             )}
             {f.status === "failed" && f.lastError && (
               <span className="text-destructive truncate max-w-[40%]" title={f.lastError}>
-                · {f.lastError}
+                ·{" "}
+                {(() => {
+                  const c = categorizeError(f.lastError);
+                  return fr ? c.hintFr : c.hint;
+                })()}
               </span>
             )}
           </li>

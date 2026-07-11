@@ -387,6 +387,7 @@ export function GrantDetailExpress({
   enrichAttempts,
   enrichLastError,
   busy,
+  existingProposalId,
   onFetchDetails,
   onEvaluate,
   onDraft,
@@ -417,6 +418,7 @@ export function GrantDetailExpress({
   enrichAttempts?: number | null;
   enrichLastError?: string | null;
   busy: string | null;
+  existingProposalId?: string | null;
   onFetchDetails: () => void;
   onEvaluate: () => void;
   onDraft: () => void;
@@ -536,6 +538,13 @@ export function GrantDetailExpress({
                       Check fit
                     </>
                   )}
+                </Button>
+              ) : canDraft && existingProposalId ? (
+                <Button asChild>
+                  <Link to="/proposals/$id" params={{ id: existingProposalId }}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    View proposal
+                  </Link>
                 </Button>
               ) : canDraft ? (
                 <Button disabled={busy === "draft"} onClick={onDraft}>

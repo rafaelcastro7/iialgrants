@@ -234,7 +234,7 @@ function GrantDetailPage() {
     setErr(null);
     try {
       const r = await strategize({ data: { grantId: id } });
-      if (r.runId) setTraceRun({ runId: r.runId, agent: "strategist" });
+      if (r.runId && !r.reused) setTraceRun({ runId: r.runId, agent: "strategist" });
       await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -345,6 +345,7 @@ function GrantDetailPage() {
             enrichAttempts={g.enrich_attempts}
             enrichLastError={g.enrich_last_error}
             busy={busy}
+            existingProposalId={data.existingProposal?.id ?? null}
             onFetchDetails={() =>
               run("enrich", "enricher", () => enrichOne({ data: { grantId: id } }))
             }
@@ -699,11 +700,18 @@ function GrantDetailPage() {
                 )}
                 {(g.status === "scored" ||
                   g.status === "shortlisted" ||
-                  g.status === "in_proposal") && (
-                  <Button size="sm" disabled={busy === "draft"} onClick={onDraft}>
-                    {busy === "draft" ? t("app.loading") : t("grants.draftProposal")}
-                  </Button>
-                )}
+                  g.status === "in_proposal") &&
+                  (data.existingProposal ? (
+                    <Button size="sm" asChild>
+                      <Link to="/proposals/$id" params={{ id: data.existingProposal.id }}>
+                        View proposal
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button size="sm" disabled={busy === "draft"} onClick={onDraft}>
+                      {busy === "draft" ? t("app.loading") : t("grants.draftProposal")}
+                    </Button>
+                  ))}
               </div>
               {g.status !== "discovered" && <OpportunityBriefPanel grantId={id} />}
             </div>

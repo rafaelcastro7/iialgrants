@@ -33,5 +33,17 @@ export const getGrantDetail = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(25);
 
-    return { grant, evaluation, events: events ?? [] };
+    // Lets the "Draft proposal" CTA become "View proposal" instead of
+    // silently creating a duplicate proposal row on a second click.
+    const { data: existingProposal } = await context.supabase
+      .from("proposals")
+      .select("id, status")
+      .eq("grant_id", data.id)
+      .eq("user_id", context.userId)
+      .not("status", "in", "(rejected,withdrawn)")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return { grant, evaluation, events: events ?? [], existingProposal: existingProposal ?? null };
   });
