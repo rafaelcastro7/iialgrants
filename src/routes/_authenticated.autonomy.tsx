@@ -113,6 +113,16 @@ function AutonomyPage() {
         </div>
       )}
 
+      {data.repairs.length > 0 && (
+        <FeedCard
+          icon={Wrench}
+          title="Self-healing actions"
+          subtitle="Watchdog restarts, kills, and degraded-daemon flags"
+          empty="No repairs needed."
+          lines={data.repairs}
+        />
+      )}
+
       <div className="grid min-w-0 gap-6 lg:grid-cols-2">
         <FeedCard
           icon={RadioTower}

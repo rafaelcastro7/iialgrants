@@ -84,6 +84,7 @@ export type AutonomyIntel = {
   trend: TrendPoint[];
   regressions: string[];
   auditFindings: string[];
+  repairs: string[];
   improvementQueue: string | null;
   lessons: string[];
   memory: {
@@ -142,8 +143,11 @@ function readDaemon(
     Date.now(),
   );
 
-  // Keep signal lines (findings/scorecards/narratives/proposals/regressions),
-  // drop pure heartbeat noise ("--- cycle done ---", "no new commits", "clean").
+  // Keep substantive cycle results (findings, scorecards, "clean" / "no
+  // regressions" verdicts, proposals, repairs). Drop only structural noise:
+  // the "--- cycle ---" separators, the startup banner, and the "no new
+  // commits" filler. A clean-but-working daemon still keeps its "clean" line so
+  // it reads as healthy, not silent.
   const recent = parsed
     .filter(
       (p) =>
@@ -151,8 +155,7 @@ function readDaemon(
         !/^---/.test(p.message) &&
         !/^no new commits/i.test(p.message) &&
         !/started, polling/i.test(p.message) &&
-        !/^clean (?:\u2014|-)/i.test(p.message) &&
-        !/^no regressions/i.test(p.message),
+        !/started, checking/i.test(p.message),
     )
     .slice(-10)
     .map((p) => `${p.ts ? p.ts.slice(11, 19) + " " : ""}[${p.section}] ${p.message}`.slice(0, 300));
@@ -189,6 +192,21 @@ function readScorecardTrend(): {
     previous: rows.length > 1 ? rows[rows.length - 2] : null,
     trend,
   };
+}
+
+// Watchdog repair actions (restarts, kills, degraded/give-up flags) — the
+// visible proof the system heals itself rather than silently rotting.
+function readRepairs(): string[] {
+  return tailLines(resolve(ROOT, "scripts/watchdog-report.log"), 200)
+    .map(parseDaemonLine)
+    .filter((p) => ["repair", "degraded", "giveup"].includes(p.section))
+    .slice(-10)
+    .map((p) =>
+      `${p.ts ? p.ts.slice(0, 19).replace("T", " ") : ""} [${p.section}] ${p.message}`.slice(
+        0,
+        300,
+      ),
+    );
 }
 
 function readAuditFindings(): string[] {
@@ -348,6 +366,13 @@ export async function readAutonomyIntel(): Promise<AutonomyIntel> {
       "scripts/improvement-report.log",
       45,
     ),
+    readDaemon(
+      "watchdog",
+      "Watchdog",
+      "Health-checks + restarts the other daemons",
+      "scripts/watchdog-report.log",
+      5,
+    ),
   ];
   const { scorecard, previous, trend } = readScorecardTrend();
 
@@ -374,6 +399,7 @@ export async function readAutonomyIntel(): Promise<AutonomyIntel> {
     trend,
     regressions,
     auditFindings: readAuditFindings(),
+    repairs: readRepairs(),
     improvementQueue: safeRead(resolve(ROOT, "scripts/improvement-queue.md"), 20000),
     lessons: readLessons(),
     memory: readMemory(),

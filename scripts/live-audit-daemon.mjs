@@ -20,7 +20,7 @@
 import { execSync, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync, appendFileSync, rmSync } from "node:fs";
 import { Client } from "pg";
-import { getLoadTier, loadTierAllowsHeavyWork } from "./daemon-shared.mjs";
+import { getLoadTier, loadTierAllowsHeavyWork, registerDaemon } from "./daemon-shared.mjs";
 
 const INTERVAL_MIN = Number(process.argv[2]) || 10;
 const STATE_FILE = "scripts/.live-audit-state.json";
@@ -305,6 +305,7 @@ async function cycle() {
 }
 
 async function main() {
+  await registerDaemon("audit");
   log("daemon", `live-audit-daemon started, polling every ${INTERVAL_MIN} minutes`);
   while (true) {
     await cycle().catch((e) => log("cycle", `FATAL (continuing): ${e.message}`));

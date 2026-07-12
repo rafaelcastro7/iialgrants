@@ -14,7 +14,7 @@
 
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { logTo, ollamaChatWhenIdle, stamp } from "./daemon-shared.mjs";
+import { logTo, ollamaChatWhenIdle, stamp, registerDaemon } from "./daemon-shared.mjs";
 
 const INTERVAL_MIN = Number(process.argv[2]) || 45;
 const LOG_FILE = "scripts/improvement-report.log";
@@ -114,9 +114,10 @@ async function cycle() {
       },
       { role: "user", content: JSON.stringify(signal) },
     ],
-    // Warm qwen2.5:7b answers in well under 2 min; 240s covers a cold load.
-    // num_predict bounds the backlog to a handful of lines (no runaway output).
-    { timeoutMs: 240000, numCtx: 4096, numPredict: 600 },
+    // The GPU lock now serializes daemons, and keep_alive keeps qwen2.5:7b
+    // warm — but a cold load is still ~77s on this Pascal GPU, so give 320s of
+    // headroom. num_predict bounds output so it can't run away to the timeout.
+    { timeoutMs: 320000, numCtx: 4096, numPredict: 600, holder: "improvement" },
   );
 
   if (result.skipped) {
@@ -138,6 +139,7 @@ async function cycle() {
 }
 
 async function main() {
+  await registerDaemon("improvement");
   log("daemon", `improvement-daemon started, polling every ${INTERVAL_MIN} minutes`);
   while (true) {
     await cycle().catch((e) => log("cycle", `FATAL (continuing): ${e.message}`));
