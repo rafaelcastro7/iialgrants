@@ -66,8 +66,11 @@ it does not copy proprietary visuals, assets, or page layouts.
   `iial.ui.version` is `v2`, while keeping the old Express/Advanced grant
   detail flow for V1.
 - `src/styles.css`: V2-only tokens, radius, typography, shadows, and canvas.
-- `vite.config.ts`: replaced deprecated `vite-tsconfig-paths` plugin usage with
-  Vite 8 native `resolve.tsconfigPaths`.
+- `vite.config.ts`: uses Vite 8 native `resolve.tsconfigPaths`, splits heavy
+  vendors into cacheable chunks, and keeps an explicit 550 kB post-split entry
+  budget.
+- `vitest.config.ts`: uses native `resolve.tsconfigPaths`; the deprecated
+  `vite-tsconfig-paths` dependency was removed.
 
 ## Local Model Attempt
 
@@ -85,8 +88,8 @@ Ollama interactive CLI/runtime health separately.
 ## Verification
 
 - `bun run lint`: passed with no warnings.
-- `bun run build`: passed. Remaining output is non-blocking TanStack plugin
-  timing info plus the existing large client entry chunk warning.
+- `bun run build`: passed. The previous large client entry chunk warning is
+  closed; entry is about 523 kB raw / 155 kB gzip after vendor splitting.
 - Playwright desktop demo Admin verification:
   `test-results/v2-dashboard-loaded.png`.
 - Playwright mobile verification:
@@ -108,7 +111,5 @@ Ollama interactive CLI/runtime health separately.
 
 - Rebuild remaining deep route interiors as V2-native work surfaces: Grants
   Index is now covered; next are Proposal Detail and Admin pages.
-- Address the large entry chunk with real code-splitting, not by raising the
-  warning limit.
 - Fix or diagnose local Ollama prompt timeouts before relying on it for future
   UI design audits.

@@ -37,6 +37,9 @@ playwright-report/
 test-results/
 grants-*.jpeg
 grants-dom.md
+admin-modules*.png
+audit-report/
+synthetixvideo-audit-report.md
 
 # self-improvement daemon runtime state/output (regenerated on every cycle)
 scripts/.live-audit-state.json

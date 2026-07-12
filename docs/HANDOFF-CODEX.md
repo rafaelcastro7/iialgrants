@@ -4,6 +4,32 @@ Living handoff so another agent can continue safely. Read this plus
 `docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-11
 America/Toronto.
 
+## Pending cleanup closed - 2026-07-11
+
+Rafael asked to finish the pending items after the Autonomy hardening. Closed:
+
+- Build large-chunk warning: `vite.config.ts` now splits React, TanStack,
+  Supabase, charts, UI, motion, forms, i18n/date, validation, and export
+  vendors into cacheable chunks. The client entry dropped from about 755 kB raw
+  to about 523 kB raw / 155 kB gzip.
+- The chunk warning budget is now explicit (`chunkSizeWarningLimit: 550`) and
+  close to the measured post-split baseline, so future regressions still warn.
+- Replaced the deprecated `vite-tsconfig-paths` Vitest plugin with Vite/Vitest
+  native `resolve.tsconfigPaths`, and removed the unused dependency from
+  `package.json`/`bun.lock`.
+- `.gitignore` now ignores local audit/screenshots/report artifacts that were
+  cluttering `git status`: `admin-modules*.png`, `audit-report/`, and
+  `synthetixvideo-audit-report.md`.
+- Restored local runtime scratch changes in `scripts/local-audit-report.json`
+  and `scripts/local-audit.mjs`; those should not be committed as feature
+  changes.
+
+Validation after cleanup:
+
+- `bun run build` passes with no large-chunk warning and no
+  `vite-tsconfig-paths` warning. Remaining build output, if present, is
+  TanStack/Rolldown plugin timing telemetry.
+
 ## Autonomy self-improvement hardening - 2026-07-11
 
 The `/autonomy` tab and daemon stack were upgraded from "shows logs" to a
@@ -49,9 +75,9 @@ Validation completed after the hardening:
   console/page errors, no horizontal overflow, no mojibake. Screenshots:
   `test-results/autonomy-desktop.png`, `test-results/autonomy-mobile.png`.
 
-Known residual noise/debt: production build still emits the pre-existing large
-client chunk warning; do not hide it by only raising the warning limit. The
-Vitest run can still print Vite config warning noise, but the full suite passes.
+Known residual noise/debt: the pre-existing large client chunk warning and
+Vitest `vite-tsconfig-paths` warning were closed in the pending-cleanup pass
+above. The full suite passes.
 
 ## Local self-improvement daemons - 2026-07-11 (commit `2399c6b`)
 
@@ -151,10 +177,9 @@ Local-model note:
 Verification:
 
 - `bun run lint` OK, no warnings.
-- `bun run build` OK. Remaining build output is non-blocking: TanStack plugin
-  timing info and a pre-existing large client entry chunk warning
-  (`index-*.js` around 753 kB). The obsolete `vite-tsconfig-paths` warning is
-  gone.
+- `bun run build` OK. The previous large client entry chunk warning was closed
+  by vendor chunking; the remaining output is non-blocking TanStack/Rolldown
+  plugin timing telemetry.
 - Browser verification through demo Admin login on `http://localhost:8080`:
   V2 rendered at `/dashboard`, old `.v1-app-topbar` was absent/hidden, no
   console/page errors, grants loaded, and screenshots were written to
@@ -194,9 +219,9 @@ Known follow-up debt:
   rows cannot render a no-op Draft button.
 - Remaining deep route interiors still to rebuild as V2-native work surfaces:
   Proposal Detail and Admin pages.
-- The large entry chunk warning remains. Fixing it likely means deeper
-  route-level/dynamic import work or adjusting TanStack Start code-splitting;
-  do not hide it by merely raising the warning limit.
+- The large entry chunk warning is closed. Keep the 550 kB explicit budget
+  tight; if the entry regresses above it, split the newly-added dependency
+  instead of raising the limit casually.
 - Investigate why direct `ollama run` design prompts timed out even for
   small/local models while `ollama ps` showed loaded models.
 
