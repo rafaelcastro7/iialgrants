@@ -1,8 +1,9 @@
 import { defineConfig } from "vitest/config";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  resolve: {
+    tsconfigPaths: true,
+  },
   test: {
     environment: "jsdom",
     globals: true,
@@ -34,12 +35,10 @@ export default defineConfig({
         "src/lib/notebooklm.functions.ts",
       ],
       exclude: ["**/*.test.ts", "**/__fixtures__/**", "**/*.d.ts"],
-      // Hard floor — any regression that drops coverage below these levels
-      // fails CI before it can land on main.
-      // Hard floor — any regression that drops coverage below these levels
+      // Hard floor: any regression that drops coverage below these levels
       // fails CI before it can land on main. Numbers are anchored slightly
-      // below the current measured coverage so improvements stick and only
-      // real regressions (a meaningful drop) break the build.
+      // below current measured coverage so improvements stick and only real
+      // regressions break the build.
       thresholds: {
         lines: 60,
         functions: 55,
