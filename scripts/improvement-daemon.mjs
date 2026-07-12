@@ -13,7 +13,8 @@
 // Usage: node scripts/improvement-daemon.mjs [intervalMinutes=45]
 
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { logTo, ollamaChatWhenIdle, stamp, registerDaemon } from "./daemon-shared.mjs";
 
 const INTERVAL_MIN = Number(process.argv[2]) || 45;
@@ -22,6 +23,11 @@ const QUEUE_FILE = "scripts/improvement-queue.md";
 const AUDIT_LOG = "scripts/live-audit-report.log";
 const SELF_EVAL_LOG = "scripts/self-eval-report.log";
 const METRICS_FILE = "scripts/self-eval-metrics.jsonl";
+const TECHNIQUES_FILE = "docs/TECHNIQUES.md";
+const MEMORY_DIR =
+  process.env.CLAUDE_MEMORY_DIR ||
+  "C:/Users/rafae/.claude/projects/e--Documents-PROYECTOS-IialGrants/memory";
+const REMEMBER_DIR = ".remember";
 
 const log = (section, message) => logTo(LOG_FILE, section, message);
 
@@ -73,6 +79,54 @@ function latestScorecard() {
   }
 }
 
+// Proven engineering techniques from docs/TECHNIQUES.md. The LLM prefers these
+// over inventing new approaches, improving consistency and reuse.
+function readTechniques() {
+  try {
+    if (!existsSync(TECHNIQUES_FILE)) return [];
+    const content = readFileSync(TECHNIQUES_FILE, "utf8");
+    const bullets = content
+      .split("\n")
+      .filter((l) => /^[-*]\s+/.test(l.trim()))
+      .map((l) => l.trim().replace(/^[-*]\s+/, ""))
+      .filter((l) => l.length > 10);
+    return bullets;
+  } catch {
+    return [];
+  }
+}
+
+// Lessons learned from memory and .remember logs. Extracted LECCIÓN/LESSON lines
+// inform what succeeded/failed before, avoiding repeated mistakes.
+function readLessons() {
+  const sources = [];
+  const dirs = [REMEMBER_DIR, MEMORY_DIR];
+  const re = /(?:^|\n)[^\n]*\b(LECCIÓN|LESSON|LECCION)\b[:\s][^\n]*/gi;
+  for (const dir of dirs) {
+    try {
+      if (!existsSync(dir)) continue;
+      const files = readdirSync(dir);
+      for (const f of files) {
+        if (!f.endsWith(".md")) continue;
+        const path = join(dir, f);
+        const text = readFileSync(path, "utf8");
+        sources.push(text);
+      }
+    } catch {
+      // ignore
+    }
+  }
+  const lessons = new Set();
+  for (const src of sources) {
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const line = m[0].replace(/\s+/g, " ").trim();
+      if (line.length > 20) lessons.add(line.slice(0, 300));
+    }
+  }
+  return [...lessons];
+}
+
 async function cycle() {
   log("cycle", "--- gathering improvement signal ---");
 
@@ -81,6 +135,8 @@ async function cycle() {
     recent_commits: recentCommits(),
     audit_findings: auditSignal(),
     self_eval_tail: tail(SELF_EVAL_LOG, 12),
+    proven_techniques: readTechniques(),
+    lessons_learned: readLessons(),
   };
 
   const hasSignal =
@@ -103,13 +159,15 @@ async function cycle() {
         role: "system",
         content:
           "You are a senior engineer triaging a grant-intelligence codebase (TanStack Start + Supabase + local Ollama). " +
-          "You are given: latest_scorecard (real product metrics), recent_commits (already-done work), live audit findings, and self-eval output. " +
+          "You are given: latest_scorecard (real product metrics), recent_commits (already-done work), live audit findings, self-eval output, proven_techniques (engineering patterns that work here), and lessons_learned (what succeeded/failed before). " +
           "Propose the TOP 3-5 concrete, high-value improvements. STRICT rules: " +
           "(1) Every item MUST cite a specific number from latest_scorecard OR a specific line from audit_findings/self_eval_tail as its justification - no item without evidence. " +
           "(2) Do NOT propose anything already addressed in recent_commits. " +
           "(3) Do NOT propose generic advice (no 'improve performance', 'add tests', 'optimize' without a concrete, evidenced target). " +
-          "(4) Prefer correctness and information-completeness over cosmetics. " +
-          "Format: a markdown list, ONE line per item, prefixed [P1]/[P2]/[P3], each ending with '(evidence: <the number or log line>)'. No preamble, no closing remarks. " +
+          "(4) PREFER proven_techniques over inventing new approaches. If a technique from the list applies, cite it by name. " +
+          "(5) AVOID patterns mentioned in lessons_learned that failed before; if you see a risk, flag it. " +
+          "(6) Prefer correctness and information-completeness over cosmetics. " +
+          "Format: a markdown list, ONE line per item, prefixed [P1]/[P2]/[P3], each ending with '(evidence: <the number or log line>)'. Add [technique: <name>] if you are applying a proven technique. No preamble, no closing remarks. " +
           "If the signal genuinely supports no new work, reply with exactly: [none] system is healthy; no evidenced improvements.",
       },
       { role: "user", content: JSON.stringify(signal) },
