@@ -46,3 +46,6 @@ scripts/.live-audit-state.json
 scripts/.local-audit-report.json
 scripts/self-eval-metrics.jsonl
 scripts/improvement-queue.md
+scripts/.gpu.lock
+scripts/.pids/
+scripts/.watchdog-state.json

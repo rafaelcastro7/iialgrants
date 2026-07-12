@@ -10,7 +10,7 @@
 // Usage: node scripts/self-eval-daemon.mjs [intervalMinutes=30]
 
 import { appendFileSync, readFileSync, existsSync } from "node:fs";
-import { logTo, withPg, ollamaChatWhenIdle, pct, stamp } from "./daemon-shared.mjs";
+import { logTo, withPg, ollamaChatWhenIdle, pct, stamp, registerDaemon } from "./daemon-shared.mjs";
 
 const INTERVAL_MIN = Number(process.argv[2]) || 30;
 const LOG_FILE = "scripts/self-eval-report.log";
@@ -191,6 +191,7 @@ async function cycle() {
 }
 
 async function main() {
+  await registerDaemon("self-eval");
   log("daemon", `self-eval-daemon started, polling every ${INTERVAL_MIN} minutes`);
   while (true) {
     await cycle().catch((e) => log("cycle", `FATAL (continuing): ${e.message}`));
