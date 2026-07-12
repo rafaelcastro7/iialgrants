@@ -23,9 +23,9 @@ Rafael asked to finish the pending items after the Autonomy hardening. Closed:
 - `.gitignore` now ignores local audit/screenshots/report artifacts that were
   cluttering `git status`: `admin-modules*.png`, `audit-report/`, and
   `synthetixvideo-audit-report.md`.
-- Restored local runtime scratch changes in `scripts/local-audit-report.json`
-  and `scripts/local-audit.mjs`; those should not be committed as feature
-  changes.
+- Restored then-current local runtime scratch changes in
+  `scripts/local-audit-report.json` and `scripts/local-audit.mjs`; the
+  follow-up below moves future audit runtime output to a gitignored path.
 
 Validation after cleanup:
 
@@ -37,10 +37,39 @@ Validation after cleanup:
   plugin timing telemetry.
 - `bunx vitest run --exclude "**/live-*" --reporter=verbose` passed:
   278 passed, 3 skipped.
-- Final `git status --short` was clean after the push. If
-  `scripts/local-audit-report.json` changes later, treat it as regenerated
-  local audit scratch and restore/ignore it unless explicitly updating a
-  fixture.
+- Final `git status --short` was clean after the push. The follow-up below
+  prevents future local-audit runs from dirtying the tracked report snapshot.
+
+## Local audit scratch isolation - 2026-07-11
+
+Follow-up from the adversarial self-improvement review: the self-check system
+was working, but `scripts/local-audit.mjs` still wrote every run into the
+tracked `scripts/local-audit-report.json`, which made the working tree dirty
+after daemon/audit cycles. Fixed:
+
+- `scripts/local-audit.mjs` now writes to
+  `scripts/.local-audit-report.json` by default.
+- Callers can override with `LOCAL_AUDIT_REPORT=path` when they intentionally
+  need a custom artifact.
+- `scripts/live-audit-daemon.mjs` passes that ignored runtime path to the
+  auditor, removes stale reports before each file, and reads only the fresh
+  per-file result.
+- `.gitignore` includes `scripts/.local-audit-report.json`.
+- `scripts/local-audit-report.json` remains a tracked historical sample, not
+  daemon runtime output.
+
+Validation:
+
+- `node --check scripts/local-audit.mjs`
+- `node --check scripts/live-audit-daemon.mjs`
+- `node --check scripts/improvement-daemon.mjs`
+- `bun x eslint scripts/local-audit.mjs scripts/live-audit-daemon.mjs scripts/improvement-daemon.mjs`
+- `bunx vitest run src/lib/autonomy-logic.test.ts --reporter=verbose` -> 16
+  passed
+- `node scripts/local-audit.mjs qwen2.5-coder:7b scripts/does-not-exist.ts`
+  wrote `scripts/.local-audit-report.json` and did not dirty Git beyond the
+  intended code/docs changes.
+- `bun run lint` passed.
 
 ## Autonomy self-improvement hardening - 2026-07-11
 
@@ -646,11 +675,13 @@ Use local Ollama before spending cloud tokens:
 node scripts/local-audit.mjs qwen2.5-coder:7b [relative/file.ts]
 ```
 
-It writes `scripts/local-audit-report.json`; revert this scratch churn after
-reading. The 7B model over-reports race/null issues. Triage every finding
-against real code before acting. During S3c, it found one real-ish edge
-(`bumpProposalVersion` empty RPC result), now fixed and tested; subsequent
-null-result finding was a false positive because the typed error is intentional.
+It writes runtime output to `scripts/.local-audit-report.json` by default,
+which is gitignored. Override with `LOCAL_AUDIT_REPORT=path` only when you
+intentionally need a custom artifact. The 7B model over-reports race/null
+issues. Triage every finding against real code before acting. During S3c, it
+found one real-ish edge (`bumpProposalVersion` empty RPC result), now fixed and
+tested; subsequent null-result finding was a false positive because the typed
+error is intentional.
 
 ## Hard Rules
 
@@ -665,4 +696,4 @@ null-result finding was a false positive because the typed error is intentional.
 - `MAX_ENRICH_ATTEMPTS` lives in `pipeline-stages.shared.ts` (client-safe), not
   `enricher.functions.ts`.
 - Keep scratch artifacts out of git (`.playwright-mcp/`, screenshots,
-  `test-results/`, `scripts/local-audit-report.json` churn).
+  `test-results/`, `scripts/.local-audit-report.json` churn).

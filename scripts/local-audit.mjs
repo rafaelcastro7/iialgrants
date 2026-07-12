@@ -1,12 +1,13 @@
-// Local code auditor — runs entirely on Ollama (localhost:11434), zero cloud tokens.
+// Local code auditor: runs entirely on Ollama (localhost:11434), zero cloud tokens.
 // Usage: node scripts/local-audit.mjs [model]
-// Writes findings to scripts/local-audit-report.json
+// Writes findings to scripts/.local-audit-report.json by default. Override
+// with LOCAL_AUDIT_REPORT=path when a caller needs a specific artifact.
 import { readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { resolve } from "node:path";
 
-// Plain node:http POST — avoids undici's 5-minute headers timeout, which a
-// slow local generation can exceed.
+// Plain node:http POST avoids undici's 5-minute headers timeout, which a slow
+// local generation can exceed.
 function postJson(url, payload, timeoutMs = 900_000) {
   return new Promise((resolveP, rejectP) => {
     const body = JSON.stringify(payload);
@@ -35,9 +36,11 @@ function postJson(url, payload, timeoutMs = 900_000) {
   });
 }
 
-const MODEL = process.argv[2] ?? "qwen2.5-coder:7b";
+const MODEL = process.env.LOCAL_AUDIT_MODEL || process.argv[2] || "qwen2.5-coder:7b";
 const OLLAMA = "http://localhost:11434/v1/chat/completions";
 const ROOT = resolve(import.meta.dirname, "..");
+const OUT_RELATIVE = process.env.LOCAL_AUDIT_REPORT || "scripts/.local-audit-report.json";
+const OUT = resolve(ROOT, OUT_RELATIVE);
 
 // Optional single-file mode: node scripts/local-audit.mjs <model> <file>
 const SINGLE = process.argv[3];
@@ -74,7 +77,7 @@ async function auditFile(rel) {
   } catch {
     return { file: rel, error: "unreadable" };
   }
-  // Cap to keep local context manageable (qwen2.5-coder 32k ctx).
+
   const body = {
     model: MODEL,
     temperature: 0,
@@ -87,6 +90,7 @@ async function auditFile(rel) {
       { role: "user", content: `File: ${rel}\n\n\`\`\`ts\n${code.slice(0, 16000)}\n\`\`\`` },
     ],
   };
+
   const t0 = Date.now();
   let res;
   try {
@@ -95,6 +99,7 @@ async function auditFile(rel) {
     return { file: rel, error: `fetch_failed: ${e.message}` };
   }
   if (res.status !== 200) return { file: rel, error: `ollama_${res.status}` };
+
   const data = JSON.parse(res.text);
   const text = data?.choices?.[0]?.message?.content ?? "{}";
   let findings = [];
@@ -107,7 +112,6 @@ async function auditFile(rel) {
 }
 
 const report = { model: MODEL, startedAt: new Date().toISOString(), results: [] };
-const OUT = resolve(ROOT, "scripts", "local-audit-report.json");
 for (const f of TARGETS) {
   process.stdout.write(`auditing ${f} ... `);
   const r = await auditFile(f);
@@ -115,7 +119,8 @@ for (const f of TARGETS) {
   writeFileSync(OUT, JSON.stringify(report, null, 2)); // incremental save
   console.log(r.error ? `ERROR ${r.error}` : `${r.findings.length} finding(s) in ${r.ms}ms`);
 }
+
 report.finishedAt = new Date().toISOString();
-writeFileSync(resolve(ROOT, "scripts", "local-audit-report.json"), JSON.stringify(report, null, 2));
+writeFileSync(OUT, JSON.stringify(report, null, 2));
 const total = report.results.reduce((a, r) => a + (r.findings?.length ?? 0), 0);
-console.log(`\nDone. ${total} raw finding(s) → scripts/local-audit-report.json`);
+console.log(`\nDone. ${total} raw finding(s) -> ${OUT_RELATIVE}`);
