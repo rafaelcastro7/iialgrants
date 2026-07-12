@@ -45,9 +45,9 @@ node scripts/improvement-daemon.mjs     # default 45-minute cycle
 # each takes an optional [intervalMinutes] arg
 ```
 
-Runtime state/output files (`*.log`, `self-eval-metrics.jsonl`,
-`improvement-queue.md`, `.live-audit-state.json`) are gitignored and
-regenerated every cycle.
+Runtime state/output files (`*.log`, `.local-audit-report.json`,
+`self-eval-metrics.jsonl`, `improvement-queue.md`, `.live-audit-state.json`)
+are gitignored and regenerated every cycle.
 
 ## Code-audit checkpoint rules
 
@@ -64,6 +64,10 @@ commit.
 
 Local 7B audit findings are heuristic and unverified. Treat them as triage
 input only; re-read the current source before acting.
+`scripts/local-audit.mjs` writes its scratch report to
+`scripts/.local-audit-report.json` by default, so daemon cycles do not dirty the
+tracked historical `scripts/local-audit-report.json` snapshot. Override with
+`LOCAL_AUDIT_REPORT=path` only when you intentionally need a custom artifact.
 
 ## Improvement proposal rules
 

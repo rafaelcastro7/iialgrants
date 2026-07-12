@@ -18,13 +18,14 @@
 // Usage: node scripts/live-audit-daemon.mjs [intervalMinutes=10]
 
 import { execSync, spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync, existsSync, appendFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, appendFileSync, rmSync } from "node:fs";
 import { Client } from "pg";
 import { getLoadTier, loadTierAllowsHeavyWork } from "./daemon-shared.mjs";
 
 const INTERVAL_MIN = Number(process.argv[2]) || 10;
 const STATE_FILE = "scripts/.live-audit-state.json";
 const LOG_FILE = "scripts/live-audit-report.log";
+const LOCAL_AUDIT_REPORT = "scripts/.local-audit-report.json";
 const DB_URL =
   "postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:15432/postgres";
 
@@ -118,16 +119,18 @@ async function runCodeAudit(state) {
     `auditing ${batch.length}/${remaining.length} remaining changed file(s): ${batch.join(", ")}`,
   );
   for (const file of batch) {
+    rmSync(LOCAL_AUDIT_REPORT, { force: true });
     const res = spawnSync("node", ["scripts/local-audit.mjs", "qwen2.5-coder:7b", file], {
       encoding: "utf8",
       timeout: 4 * 60 * 1000,
+      env: { ...process.env, LOCAL_AUDIT_REPORT },
     });
     if (res.error) {
       log("code-audit", `${file} -> auditor error: ${res.error.message}`);
       continue;
     }
     try {
-      const report = JSON.parse(readFileSync("scripts/local-audit-report.json", "utf8"));
+      const report = JSON.parse(readFileSync(LOCAL_AUDIT_REPORT, "utf8"));
       const real = (report.results || []).filter((r) => !r.error && (r.findings || []).length > 0);
       const findingCount = real.reduce((n, r) => n + (r.findings || []).length, 0);
       log(
