@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Live parallel audit daemon — runs continuously alongside normal work,
+// Live parallel audit daemon - runs continuously alongside normal work,
 // using ONLY local resources (Ollama via local-audit.mjs + direct Postgres
 // queries + plain HTTP/docker checks), zero cloud tokens. Three things per
 // cycle:
 //   1. Process health audit: is Ollama/dev-server/docker actually up and
-//      responsive right now — catches a crashed/hung local process between
+//      responsive right now - catches a crashed/hung local process between
 //      manual checks, not just code or data problems.
 //   2. Code audit: any file touched by a commit since the last checkpoint
 //      gets run through the local Ollama code-auditor (scripts/local-audit.mjs).
@@ -12,7 +12,7 @@
 //      classes found manually this session (duplicate grant clusters,
 //      stuck/never-pinned enrichments, orphaned test accounts, null-heavy
 //      "enriched" rows) so drift gets caught between manual passes.
-// Findings are appended to scripts/live-audit-report.log with a timestamp —
+// Findings are appended to scripts/live-audit-report.log with a timestamp -
 // check that file periodically; this script never modifies app code or data.
 //
 // Usage: node scripts/live-audit-daemon.mjs [intervalMinutes=10]
@@ -20,6 +20,7 @@
 import { execSync, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from "node:fs";
 import { Client } from "pg";
+import { getLoadTier, loadTierAllowsHeavyWork } from "./daemon-shared.mjs";
 
 const INTERVAL_MIN = Number(process.argv[2]) || 10;
 const STATE_FILE = "scripts/.live-audit-state.json";
@@ -76,32 +77,80 @@ async function runCodeAudit(state) {
   if (files.length === 0) {
     log("code-audit", `commit advanced (${head.slice(0, 8)}) but no auditable .ts/.tsx changes`);
     state.lastCommit = head;
+    delete state.pendingAuditCommit;
+    delete state.auditedFilesForCommit;
     return;
   }
+
+  // Heavy GPU work: skip (don't advance the checkpoint) if the GPU is busy or
+  // the circuit is open, so a foreground pipeline run isn't starved. Earlier
+  // this ran ungated and spent ~248s/file fighting for the GPU.
+  const tier = await getLoadTier();
+  if (tier.circuitOpen || !loadTierAllowsHeavyWork(tier.loadTier)) {
+    log(
+      "code-audit",
+      `deferring ${files.length} changed file(s) - GPU busy (loadTier=${tier.loadTier}${tier.circuitOpen ? ", circuit open" : ""}); will retry next cycle`,
+    );
+    return; // leave state.lastCommit unchanged so we re-attempt when idle
+  }
+
+  // Cap 3/cycle with a 4-min/file ceiling so one cycle can't balloon past the
+  // poll interval. Findings are an UNVERIFIED local-7B heuristic (it over-
+  // reports races/nulls) - logged for triage, never treated as ground truth,
+  // and excluded from the Autonomy tab's feed + improvement signal.
+  if (state.pendingAuditCommit !== head) {
+    state.pendingAuditCommit = head;
+    state.auditedFilesForCommit = [];
+  }
+  const alreadyAudited = new Set(state.auditedFilesForCommit || []);
+  const remaining = files.filter((file) => !alreadyAudited.has(file));
+  if (remaining.length === 0) {
+    log("code-audit", `completed audit for ${head.slice(0, 8)} (${files.length} file(s))`);
+    state.lastCommit = head;
+    delete state.pendingAuditCommit;
+    delete state.auditedFilesForCommit;
+    return;
+  }
+
+  const batch = remaining.slice(0, 3);
   log(
     "code-audit",
-    `auditing ${files.length} file(s) changed since last cycle: ${files.join(", ")}`,
+    `auditing ${batch.length}/${remaining.length} remaining changed file(s): ${batch.join(", ")}`,
   );
-  for (const file of files.slice(0, 5)) {
-    // Cap 5/cycle — local-audit.mjs is slow (minutes/file); don't let one
-    // cycle balloon past the poll interval.
+  for (const file of batch) {
     const res = spawnSync("node", ["scripts/local-audit.mjs", "qwen2.5-coder:7b", file], {
       encoding: "utf8",
-      timeout: 8 * 60 * 1000,
+      timeout: 4 * 60 * 1000,
     });
-    const out = (res.stdout || "") + (res.stderr || "");
-    log("code-audit", `${file} -> ${out.trim().split("\n").pop()}`);
+    if (res.error) {
+      log("code-audit", `${file} -> auditor error: ${res.error.message}`);
+      continue;
+    }
     try {
       const report = JSON.parse(readFileSync("scripts/local-audit-report.json", "utf8"));
-      const real = (report.results || []).filter((r) => !r.error);
-      if (real.length > 0) {
-        log("code-audit", `  findings for ${file}: ${JSON.stringify(real).slice(0, 500)}`);
-      }
+      const real = (report.results || []).filter((r) => !r.error && (r.findings || []).length > 0);
+      const findingCount = real.reduce((n, r) => n + (r.findings || []).length, 0);
+      log(
+        "code-audit",
+        findingCount > 0
+          ? `${file} -> ${findingCount} unverified heuristic finding(s) (triage before acting)`
+          : `${file} -> no heuristic findings`,
+      );
     } catch {
-      // no report or unparsable — already logged the raw tail above
+      log("code-audit", `${file} -> auditor produced no parseable report`);
     }
   }
-  state.lastCommit = head;
+  state.auditedFilesForCommit = [...new Set([...(state.auditedFilesForCommit || []), ...batch])];
+  if (state.auditedFilesForCommit.length >= files.length) {
+    state.lastCommit = head;
+    delete state.pendingAuditCommit;
+    delete state.auditedFilesForCommit;
+  } else {
+    log(
+      "code-audit",
+      `checkpoint retained; ${files.length - state.auditedFilesForCommit.length} file(s) remain for ${head.slice(0, 8)}`,
+    );
+  }
 }
 
 async function checkHttp(name, url, timeoutMs = 4000) {
@@ -119,7 +168,7 @@ async function checkHttp(name, url, timeoutMs = 4000) {
     }
     return res.ok;
   } catch (e) {
-    log("process-health", `DOWN: ${name} (${url}) unreachable — ${e.message}`);
+    log("process-health", `DOWN: ${name} (${url}) unreachable - ${e.message}`);
     return false;
   }
 }
@@ -192,12 +241,12 @@ async function runDataAudit() {
     if (Number(fakeUsers.rows[0].count) > 0) {
       log(
         "data-audit",
-        `WARNING: ${fakeUsers.rows[0].count} fresh "live-pilot-*" test account(s) detected again — seed-live-grant.mjs idempotency fix may have regressed, or a different path is creating them.`,
+        `WARNING: ${fakeUsers.rows[0].count} fresh "live-pilot-*" test account(s) detected again - seed-live-grant.mjs idempotency fix may have regressed, or a different path is creating them.`,
       );
     }
 
     // 4. "Enriched"/"scored" grants with implausible amounts (same sanity
-    // bound used in the Kanban badge fix) — a canary for extraction drift.
+    // bound used in the Kanban badge fix) - a canary for extraction drift.
     const implausible = await client.query(`
       select id, title, amount_cad_max
       from grants
@@ -233,7 +282,7 @@ async function runDataAudit() {
       implausible.rows.length === 0 &&
       fabricated.rows.length === 0
     ) {
-      log("data-audit", "clean — no new anomalies of the known classes");
+      log("data-audit", "clean - no new anomalies of the known classes");
     }
   } catch (e) {
     log("data-audit", `ERROR: ${e.message}`);
