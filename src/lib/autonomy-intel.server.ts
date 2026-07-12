@@ -86,6 +86,7 @@ export type AutonomyIntel = {
   auditFindings: string[];
   repairs: string[];
   improvementQueue: string | null;
+  criticisms: string | null;
   lessons: string[];
   memory: {
     index: string | null;
@@ -343,6 +344,10 @@ function readTechniques(): string[] {
     .slice(0, 60);
 }
 
+function readCriticisms(): string | null {
+  return safeRead(resolve(ROOT, "scripts/self-criticism-findings.md"), 30000);
+}
+
 export async function readAutonomyIntel(): Promise<AutonomyIntel> {
   const daemons = [
     readDaemon(
@@ -365,6 +370,13 @@ export async function readAutonomyIntel(): Promise<AutonomyIntel> {
       "Prioritized backlog synthesis (local LLM)",
       "scripts/improvement-report.log",
       45,
+    ),
+    readDaemon(
+      "self-criticism",
+      "Self-criticism",
+      "Analyzes & criticizes detection/extraction pipelines",
+      "scripts/self-criticism-report.log",
+      60,
     ),
     readDaemon(
       "watchdog",
@@ -401,6 +413,7 @@ export async function readAutonomyIntel(): Promise<AutonomyIntel> {
     auditFindings: readAuditFindings(),
     repairs: readRepairs(),
     improvementQueue: safeRead(resolve(ROOT, "scripts/improvement-queue.md"), 20000),
+    criticisms: readCriticisms(),
     lessons: readLessons(),
     memory: readMemory(),
     obsidian: readObsidian(),

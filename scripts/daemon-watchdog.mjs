@@ -41,6 +41,12 @@ const MANAGED = [
     interval: 45,
     log: "scripts/improvement-report.log",
   },
+  {
+    key: "self-criticism",
+    script: "scripts/self-criticism-daemon.mjs",
+    interval: 60,
+    log: "scripts/self-criticism-report.log",
+  },
 ];
 
 function log(section, message) {
