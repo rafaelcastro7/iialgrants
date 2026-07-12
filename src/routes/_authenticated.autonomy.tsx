@@ -134,6 +134,8 @@ function AutonomyPage() {
         <BacklogCard queue={data.improvementQueue} />
       </div>
 
+      {data.criticisms && <CriticismsCard criticisms={data.criticisms} />}
+
       <div className="grid min-w-0 gap-6 lg:grid-cols-2">
         <ListCard
           icon={Lightbulb}
@@ -483,6 +485,56 @@ function BacklogCard({ queue }: { queue: string | null }) {
                   </Badge>
                 )}
                 <span className="leading-6">{text}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function CriticismsCard({ criticisms }: { criticisms: string | null }) {
+  // The self-criticism daemon writes markdown; extract [WEAKNESS], [METRIC], [ROOT], [FIX] lines.
+  const blocks = (criticisms ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => /^\[WEAKNESS\]|^\[METRIC\]|^\[ROOT\]|^\[FIX\]|^\[NONE\]/.test(l));
+
+  return (
+    <div className="min-w-0 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-sm">
+      <SectionTitle
+        icon={AlertTriangle}
+        title="System self-criticism"
+        subtitle="Pipeline analysis: detection & extraction weaknesses"
+      />
+      {blocks.length === 0 ? (
+        <p className="mt-3 rounded-md border border-dashed bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+          The self-criticism daemon has not analyzed pipelines yet (it runs every 60 minutes).
+        </p>
+      ) : blocks.some((l) => l.includes("[NONE]")) ? (
+        <p className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-4 text-center text-sm text-emerald-700">
+          ✓ No actionable weaknesses detected — pipelines are sound.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {blocks.map((line, i) => {
+            const tag = line.match(/^\[([A-Z]+)\]/)?.[1];
+            const text = line.replace(/^\[[A-Z]+\]\s*/, "").replace(/\*\*/g, "");
+            const tagColor: Record<string, string> = {
+              WEAKNESS: "bg-destructive/10 text-destructive",
+              METRIC: "bg-amber-500/10 text-amber-700",
+              ROOT: "bg-purple-500/10 text-purple-700",
+              FIX: "bg-emerald-500/10 text-emerald-700",
+            };
+            return (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                {tag && (
+                  <Badge variant="outline" className={cn("mt-0.5 shrink-0 text-[10px]", tagColor[tag])}>
+                    {tag}
+                  </Badge>
+                )}
+                <span className="leading-6 text-muted-foreground">{text}</span>
               </li>
             );
           })}
