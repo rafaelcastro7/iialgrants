@@ -97,10 +97,40 @@ Each `/loop` iteration should skim:
 The daemons continuously turn "what is the state of the product" into a
 concrete, triaged worklist; the loop consumes it.
 
+## Watchdog (self-healing)
+
+`daemon-watchdog.mjs` (5-min cycle) supervises the three construction daemons
+and repairs them so "it keeps working" is enforced, not hoped for:
+
+- Liveness = PID file (`registerDaemon` writes `scripts/.pids/<key>.pid`)
+  cross-checked with log freshness.
+- A **dead** process (PID gone) is restarted immediately, even if its last log
+  line is recent — a just-killed daemon would otherwise go unnoticed until 3x
+  its interval elapsed.
+- A **hung** process (alive but log stale past 3x interval) is killed and
+  restarted.
+- A **degraded** daemon (cycling but its last ≥3 results failed) is flagged
+  loudly, NOT restart-looped — restarting an LLM timeout would just loop; the
+  underlying cause needs a real fix.
+- Restarts are rate-limited to 4/hour per daemon; past that it logs `giveup`
+  (needs manual intervention). Actions land in `scripts/watchdog-report.log`
+  and surface in the Autonomy tab's "Self-healing actions" card.
+
+Run it alongside the others: `node scripts/daemon-watchdog.mjs [minutes]`.
+
 ## Local-runtime notes
 
-- Heavy LLM calls self-suppress (`skipped: load_tier_high` / `circuit_open`)
-  when the proxy reports a busy GPU, and retry next cycle.
+- Ollama calls **stream** (`stream: true`). A non-streaming call only returns
+  headers when the whole generation finishes, so a >5-min cold-load+generation
+  trips undici's 300s `headersTimeout` ("fetch failed") regardless of our own
+  AbortController. Streaming was the fix for the improvement daemon's repeated
+  aborts.
+- The daemons call Ollama directly, so the proxy `loadTier` cannot see their
+  mutual load — they coordinate via a cooperative GPU file-lock
+  (`scripts/.gpu.lock`, stale-stolen after 6 min) so they never thrash the GPU
+  loading multiple models at once. `keep_alive` avoids needless cold reloads.
+- Heavy LLM calls also self-suppress (`skipped: load_tier_high` /
+  `circuit_open` / `gpu_lock_busy`) and retry next cycle.
 - `qwen2.5:7b` is used for synthesis/narrative; the `qwen2.5-coder:7b`
   variant can be too slow on this GPU and is used only by code audit.
 - LLM output is capped with `num_predict`; without it a small model can run
