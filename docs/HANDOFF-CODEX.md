@@ -8,6 +8,9 @@ America/Toronto.
 
 Rafael asked to finish the pending items after the Autonomy hardening. Closed:
 
+- Commit pushed to `origin/main`: `d21565b`
+  (`chore(build): close pending tooling debt`). This follows `2302473`
+  (`feat(autonomy): harden self-improvement checks`).
 - Build large-chunk warning: `vite.config.ts` now splits React, TanStack,
   Supabase, charts, UI, motion, forms, i18n/date, validation, and export
   vendors into cacheable chunks. The client entry dropped from about 755 kB raw
@@ -26,9 +29,18 @@ Rafael asked to finish the pending items after the Autonomy hardening. Closed:
 
 Validation after cleanup:
 
+- `bun run lint` passed.
+- `bunx tsc --noEmit --pretty false` passed.
 - `bun run build` passes with no large-chunk warning and no
-  `vite-tsconfig-paths` warning. Remaining build output, if present, is
-  TanStack/Rolldown plugin timing telemetry.
+  `vite-tsconfig-paths` warning. Client entry measured at 522.88 kB raw /
+  154.72 kB gzip. Remaining build output, if present, is TanStack/Rolldown
+  plugin timing telemetry.
+- `bunx vitest run --exclude "**/live-*" --reporter=verbose` passed:
+  278 passed, 3 skipped.
+- Final `git status --short` was clean after the push. If
+  `scripts/local-audit-report.json` changes later, treat it as regenerated
+  local audit scratch and restore/ignore it unless explicitly updating a
+  fixture.
 
 ## Autonomy self-improvement hardening - 2026-07-11
 
@@ -229,6 +241,12 @@ Known follow-up debt:
 
 Recent relevant commits (newest first, not exhaustive):
 
+- `d21565b` chore(build): close pending tooling debt
+- `2302473` feat(autonomy): harden self-improvement checks
+- `44bdfc9` chore(router): regenerate route tree for /autonomy
+- `d634bfa` feat(autonomy): real-time Autonomy command center tab
+- `496961c` docs: note local self-improvement daemon stack in Codex handoff
+- `2399c6b` feat(ops): local self-evaluation + continuous-improvement daemons
 - `e5d980f` redesign(frontend): introduce V2 app shell
 - `98ca0db` feat(ops): add local-only live audit daemon
 - `ad1be3c` fix(fit-rules): screening simulation reflects the AI-trust weight; honest funder trend
