@@ -65,24 +65,24 @@ function AutonomyPage() {
     refetchOnWindowFocus: true,
   });
 
-  const anyAlive = data.daemons.some((d) => d.alive);
+  const selfCheckOk = data.selfCheck.ok;
 
   return (
     <PageContainer size="wide">
       <PageHeader
         eyebrow="Autonomy"
         title="Mission control"
-        description="Live view of the local self-improvement daemons and everything they learn — memory, lessons, self-improvement backlog, techniques, and skills. Read-only, on-device, zero cloud tokens."
+        description="Live view of the local self-improvement daemons and everything they learn: memory, lessons, self-improvement backlog, techniques, and skills. Read-only, on-device, zero cloud tokens."
         actions={
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="gap-1.5">
               <span
                 className={cn(
                   "h-2 w-2 rounded-full",
-                  anyAlive ? "animate-pulse bg-emerald-500" : "bg-muted-foreground/40",
+                  selfCheckOk ? "animate-pulse bg-emerald-500" : "bg-amber-500",
                 )}
               />
-              {anyAlive ? "Live" : "Idle"}
+              {selfCheckOk ? "Operational" : "Needs review"}
             </Badge>
             <Badge variant="outline" className="gap-1.5">
               <Cpu className="h-3.5 w-3.5" /> 0 cloud tokens
@@ -93,6 +93,8 @@ function AutonomyPage() {
           </div>
         }
       />
+
+      <SelfCheckPanel selfCheck={data.selfCheck} regressions={data.regressions} />
 
       <DaemonStrip daemons={data.daemons} />
 
@@ -140,6 +142,77 @@ function AutonomyPage() {
         <ObsidianCard obsidian={data.obsidian} />
       </div>
     </PageContainer>
+  );
+}
+
+function SelfCheckPanel({
+  regressions,
+  selfCheck,
+}: {
+  regressions: string[];
+  selfCheck: AutonomyIntel["selfCheck"];
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-xl border p-4 shadow-sm",
+        selfCheck.ok
+          ? "border-emerald-500/30 bg-emerald-500/5"
+          : "border-amber-500/35 bg-amber-500/5",
+      )}
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div
+            className={cn(
+              "flex items-center gap-2 text-sm font-semibold",
+              selfCheck.ok ? "text-emerald-700" : "text-amber-700",
+            )}
+          >
+            {selfCheck.ok ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <AlertTriangle className="h-4 w-4" />
+            )}
+            Self-improvement self-check: {selfCheck.label}
+          </div>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            This is computed from unit-tested logic, not log copy: daemon liveness, silent/stale
+            detection, and scorecard regression checks are deterministic and covered by Vitest.
+          </p>
+          {regressions.length > 0 && (
+            <ul className="mt-3 space-y-1 text-sm text-destructive">
+              {regressions.map((regression) => (
+                <li key={regression} className="flex gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{regression}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="grid min-w-0 gap-2 sm:grid-cols-3 lg:min-w-[460px]">
+          {selfCheck.daemons.map((daemon) => (
+            <div key={daemon.key} className="rounded-md border bg-card/80 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-semibold">{daemon.name}</span>
+                <Badge
+                  variant={daemon.status === "healthy" ? "default" : "secondary"}
+                  className={cn(
+                    "shrink-0 text-[10px]",
+                    daemon.status === "healthy" && "bg-emerald-600 hover:bg-emerald-600",
+                    daemon.status === "stale" && "bg-amber-500 text-white hover:bg-amber-500",
+                  )}
+                >
+                  {daemon.status}
+                </Badge>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{daemon.detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -232,7 +305,7 @@ function Scorecard({ intel }: { intel: AutonomyIntel }) {
         <StatCard
           label="Fit median"
           value={s.fit_median.toFixed(2)}
-          sublabel={`range ${s.fit_range[0].toFixed(2)}–${s.fit_range[1].toFixed(2)}`}
+          sublabel={`range ${s.fit_range[0].toFixed(2)}-${s.fit_range[1].toFixed(2)}`}
           icon={BrainCircuit}
         />
         <StatCard
@@ -512,7 +585,7 @@ function MemoryCard({ memory }: { memory: AutonomyIntel["memory"] }) {
           {memory.files.map((f) => (
             <li key={f.name} className="text-sm leading-5">
               <span className="font-mono text-xs font-semibold text-primary">{f.name}</span>
-              {f.description && <span className="text-muted-foreground"> — {f.description}</span>}
+              {f.description && <span className="text-muted-foreground"> - {f.description}</span>}
             </li>
           ))}
         </ul>

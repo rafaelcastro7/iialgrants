@@ -1,13 +1,21 @@
 // Server-only reader for the Autonomy command center. Aggregates everything
 // the local self-improvement daemons produce (see scripts/DAEMONS.md) plus the
 // project's memory, Obsidian vault, lessons, techniques, and available skills,
-// straight from the local filesystem. Node-only (fs/path) — imported lazily by
+// straight from the local filesystem. Node-only (fs/path) - imported lazily by
 // autonomy-intel.functions.ts inside the server handler so it never reaches the
 // client bundle. Every read is defensive: a missing file/dir degrades to an
 // empty section, never an error.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, join } from "node:path";
+import {
+  daemonHealth,
+  detectRegressions,
+  isDaemonAlive,
+  parseDaemonLine,
+  systemVerdict,
+  type DaemonHealth,
+} from "@/lib/autonomy-logic";
 
 const ROOT = process.cwd();
 // Cross-session memory + Obsidian + skills live outside the repo; paths are
@@ -58,8 +66,19 @@ export type TrendPoint = {
   stuck: number;
 };
 
+export type DaemonHealthRow = DaemonHealth & { key: string; name: string };
+
+export type SelfCheck = {
+  ok: boolean;
+  label: string;
+  healthy: number;
+  total: number;
+  daemons: DaemonHealthRow[];
+};
+
 export type AutonomyIntel = {
   generatedAt: string;
+  selfCheck: SelfCheck;
   daemons: DaemonStatus[];
   scorecard: Scorecard | null;
   trend: TrendPoint[];
@@ -94,13 +113,6 @@ function tailLines(path: string, n: number): string[] {
   return text.trim().split("\n").filter(Boolean).slice(-n);
 }
 
-// "[2026-07-11T22:43:39.560Z] [section] message" -> {ts, section, message}
-function parseLogLine(line: string) {
-  const m = line.match(/^\[([^\]]+)\]\s*\[([^\]]+)\]\s*(.*)$/);
-  if (!m) return { ts: null, section: "", message: line };
-  return { ts: m[1], section: m[2], message: m[3] };
-}
-
 function readDaemon(
   key: string,
   name: string,
@@ -110,7 +122,7 @@ function readDaemon(
 ): DaemonStatus {
   const path = resolve(ROOT, logFile);
   const lines = tailLines(path, 60);
-  const parsed = lines.map(parseLogLine);
+  const parsed = lines.map(parseDaemonLine);
 
   // Interval from the "started, polling every N minutes" line if present.
   let intervalMin = defaultInterval;
@@ -123,15 +135,12 @@ function readDaemon(
   }
 
   const withTs = parsed.filter((p) => p.ts);
-  const lastCycleAt = withTs.length ? withTs[withTs.length - 1].ts : null;
-
-  // Alive if the last log line is newer than 2.5x the poll interval (allows one
-  // slow cycle before we call it stale).
-  let alive = false;
-  if (lastCycleAt) {
-    const ageMs = Date.now() - new Date(lastCycleAt).getTime();
-    alive = ageMs < intervalMin * 2.5 * 60_000;
-  }
+  const lastCycleAt = withTs.length ? withTs[withTs.length - 1].ts! : null;
+  const alive = isDaemonAlive(
+    lastCycleAt ? new Date(lastCycleAt).getTime() : null,
+    intervalMin,
+    Date.now(),
+  );
 
   // Keep signal lines (findings/scorecards/narratives/proposals/regressions),
   // drop pure heartbeat noise ("--- cycle done ---", "no new commits", "clean").
@@ -142,7 +151,7 @@ function readDaemon(
         !/^---/.test(p.message) &&
         !/^no new commits/i.test(p.message) &&
         !/started, polling/i.test(p.message) &&
-        !/^clean —/i.test(p.message) &&
+        !/^clean (?:\u2014|-)/i.test(p.message) &&
         !/^no regressions/i.test(p.message),
     )
     .slice(-10)
@@ -151,9 +160,13 @@ function readDaemon(
   return { key, name, description, intervalMin, alive, lastCycleAt, recent };
 }
 
-function readScorecardTrend(): { scorecard: Scorecard | null; trend: TrendPoint[] } {
+function readScorecardTrend(): {
+  scorecard: Scorecard | null;
+  previous: Scorecard | null;
+  trend: TrendPoint[];
+} {
   const text = safeRead(resolve(ROOT, "scripts/self-eval-metrics.jsonl"), 200000);
-  if (!text) return { scorecard: null, trend: [] };
+  if (!text) return { scorecard: null, previous: null, trend: [] };
   const rows: Scorecard[] = [];
   for (const line of text.trim().split("\n").filter(Boolean)) {
     try {
@@ -162,7 +175,7 @@ function readScorecardTrend(): { scorecard: Scorecard | null; trend: TrendPoint[
       // skip malformed row
     }
   }
-  if (rows.length === 0) return { scorecard: null, trend: [] };
+  if (rows.length === 0) return { scorecard: null, previous: null, trend: [] };
   const trend = rows.slice(-40).map((r) => ({
     ts: r.ts,
     grounding: r.grounding_coverage_pct,
@@ -171,20 +184,16 @@ function readScorecardTrend(): { scorecard: Scorecard | null; trend: TrendPoint[
     active: r.active,
     stuck: r.stuck_at_max_attempts,
   }));
-  return { scorecard: rows[rows.length - 1], trend };
-}
-
-function readRegressions(): string[] {
-  return tailLines(resolve(ROOT, "scripts/self-eval-report.log"), 200)
-    .map(parseLogLine)
-    .filter((p) => p.section === "REGRESSION")
-    .slice(-8)
-    .map((p) => `${p.ts ? p.ts.slice(0, 19).replace("T", " ") : ""} — ${p.message}`);
+  return {
+    scorecard: rows[rows.length - 1],
+    previous: rows.length > 1 ? rows[rows.length - 2] : null,
+    trend,
+  };
 }
 
 function readAuditFindings(): string[] {
   return tailLines(resolve(ROOT, "scripts/live-audit-report.log"), 300)
-    .map(parseLogLine)
+    .map(parseDaemonLine)
     .filter(
       (p) =>
         /(DOWN|SLOW|UNHEALTHY|DUPLICATE|WARNING|IMPLAUSIBLE|FABRICATED|stuck at max)/i.test(
@@ -201,7 +210,7 @@ function readAuditFindings(): string[] {
 }
 
 // Pull "LESSON"/"LECCIÓN" lines from the cross-session memory + in-repo remember
-// logs — the real, accumulated "what we learned the hard way".
+// logs - the real, accumulated "what we learned the hard way".
 function readLessons(): string[] {
   const sources: string[] = [];
   const remember = resolve(ROOT, ".remember");
@@ -340,13 +349,30 @@ export async function readAutonomyIntel(): Promise<AutonomyIntel> {
       45,
     ),
   ];
-  const { scorecard, trend } = readScorecardTrend();
+  const { scorecard, previous, trend } = readScorecardTrend();
+
+  // Per-daemon health + one honest system verdict, using the unit-tested
+  // logic in autonomy-logic.ts - this is the anti-smoke check surfaced in the
+  // tab: a daemon that's "running" but never logs a cycle reads as silent, not
+  // green.
+  const healthRows: DaemonHealthRow[] = daemons.map((d) => ({
+    key: d.key,
+    name: d.name,
+    ...daemonHealth({ alive: d.alive, lastCycleAt: d.lastCycleAt, recentCount: d.recent.length }),
+  }));
+  const verdict = systemVerdict(healthRows);
+
+  // Regressions computed from the metric series with the tested detector
+  // (previous vs current scorecard), not scraped from log text.
+  const regressions = scorecard ? detectRegressions(scorecard, previous) : [];
+
   return {
     generatedAt: new Date().toISOString(),
+    selfCheck: { ...verdict, daemons: healthRows },
     daemons,
     scorecard,
     trend,
-    regressions: readRegressions(),
+    regressions,
     auditFindings: readAuditFindings(),
     improvementQueue: safeRead(resolve(ROOT, "scripts/improvement-queue.md"), 20000),
     lessons: readLessons(),

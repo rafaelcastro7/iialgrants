@@ -4,6 +4,55 @@ Living handoff so another agent can continue safely. Read this plus
 `docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-11
 America/Toronto.
 
+## Autonomy self-improvement hardening - 2026-07-11
+
+The `/autonomy` tab and daemon stack were upgraded from "shows logs" to a
+tested self-check surface. Important files:
+
+- `src/lib/autonomy-logic.ts`: pure, unit-tested logic for daemon log parsing,
+  liveness windows, daemon health, system verdict, and scorecard regression
+  detection.
+- `src/lib/autonomy-logic.test.ts`: 16 focused tests covering absolute
+  regression red lines, threshold deltas, duplicate/stuck grant increases,
+  false-positive avoidance, stale/silent/healthy daemon states, and overall
+  verdicts.
+- `src/lib/autonomy-intel.server.ts`: now imports the tested logic and computes
+  `selfCheck` plus regressions from the JSONL metric series, not by trusting
+  loose log text.
+- `src/routes/_authenticated.autonomy.tsx`: adds the "Self-improvement
+  self-check" panel. The header badge now says `Operational` only when the
+  deterministic verdict passes; a daemon with a heartbeat but no signal is
+  `silent`, not green.
+- `scripts/live-audit-daemon.mjs`: code-audit work is gated by Ollama proxy
+  `loadTier`; when the GPU is busy it defers without advancing the checkpoint.
+  Batched auditing now tracks `pendingAuditCommit` and `auditedFilesForCommit`,
+  so the daemon cannot skip the remainder of a changed commit after auditing
+  only the first few files.
+- `scripts/improvement-daemon.mjs`: every proposed improvement must cite a
+  concrete scorecard number or log line. It is allowed to output
+  `[none] system is healthy; no evidenced improvements.` Generic backlog filler
+  is explicitly disallowed.
+
+Validation completed after the hardening:
+
+- `node --check scripts/live-audit-daemon.mjs`
+- `node --check scripts/improvement-daemon.mjs`
+- `node --check scripts/self-eval-daemon.mjs`
+- `bunx vitest run src/lib/autonomy-logic.test.ts --reporter=verbose`
+- `bunx tsc --noEmit`
+- `bun run lint`
+- `bun run build`
+- `bunx vitest run --exclude "**/live-*" --reporter=verbose` -> 278 passed, 3
+  skipped
+- Playwright on `http://localhost:8080/autonomy` through demo Admin login at
+  1440px and 390px: self-check rendered as `all systems operational`, no
+  console/page errors, no horizontal overflow, no mojibake. Screenshots:
+  `test-results/autonomy-desktop.png`, `test-results/autonomy-mobile.png`.
+
+Known residual noise/debt: production build still emits the pre-existing large
+client chunk warning; do not hide it by only raising the warning limit. The
+Vitest run can still print Vite config warning noise, but the full suite passes.
+
 ## Local self-improvement daemons - 2026-07-11 (commit `2399c6b`)
 
 Three always-local, zero-cloud-token background daemons now run continuously
@@ -272,7 +321,7 @@ Validation for this loop:
   `submit-gate.test.ts` cases for the `low_readiness` reason.
 - Two new migrations applied locally via
   `DATABASE_URL=postgresql://postgres:...@localhost:15432/postgres node
-  scripts/apply-local-migrations.mjs`, then `NOTIFY pgrst, 'reload schema'`.
+scripts/apply-local-migrations.mjs`, then `NOTIFY pgrst, 'reload schema'`.
 
 Working-tree notes (still true):
 
@@ -393,7 +442,7 @@ Important working-tree notes:
 
 - `scripts/local-audit.mjs` may appear as modified on Windows because of
   autocrlf/EOL metadata. It has no real diff: `git diff --quiet --
-  scripts/local-audit.mjs` returned `0`, and its working hash matched
+scripts/local-audit.mjs` returned `0`, and its working hash matched
   `HEAD:scripts/local-audit.mjs`. Do not include it unless there is a real diff.
 - Pre-existing untracked artifacts are intentionally outside scope:
   `admin-modules.png`, `admin-modules-2.png`, `audit-report/`,
@@ -520,7 +569,7 @@ Highest-value next work:
 - Source ingester audit: `funder-scout`, `gc-proactive`, `t3010`, `otf`,
   `alberta-ckan`, and high-volume dedup/quality edge cases. (Not yet
   covered by the 2026-07-11 pass — that pass covered `discoverer.impl.
-  server.ts`/`discoverer-orchestrator.server.ts` directly but not the
+server.ts`/`discoverer-orchestrator.server.ts` directly but not the
   individual source-curator ingesters under `src/lib/source-curator/`.)
 - UX/i18n follow-up: wire a real proposal detail FR mode/toggle so FR export
   paths are user-reachable.
