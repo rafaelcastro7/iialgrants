@@ -1,20 +1,27 @@
-# Install daemon supervisor as Windows Task Scheduler job
-# This ensures daemons restart automatically after machine reboot
-# Usage: powershell -ExecutionPolicy Bypass -File install-autostart-windows.ps1
+# Install daemon supervisor as a Windows Task Scheduler job.
+# Usage:
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-autostart-windows.ps1
 
+$IialHome = "E:\Documents\PROYECTOS\IialGrants"
 $TaskName = "IIAL-Daemons-Supervisor"
-$ScriptPath = "E:\Documents\PROYECTOS\IialGrants\scripts\daemon-supervisor.mjs"
-$LogPath = "E:\Documents\PROYECTOS\IialGrants\scripts\daemon-supervisor.log"
+$ScriptPath = Join-Path $IialHome "scripts\daemon-supervisor.mjs"
+$LogPath = Join-Path $IialHome "scripts\daemon-supervisor.log"
 $User = $env:USERNAME
 $Domain = $env:USERDOMAIN
 
-Write-Host "Installing daemon supervisor as Windows Task..."
+try {
+  $NodePath = (Get-Command node -ErrorAction Stop).Source
+} catch {
+  throw "node.exe was not found in PATH. Install Node.js or add it to PATH before installing the supervisor."
+}
+
+Write-Host "Installing daemon supervisor as a Windows task..."
 Write-Host "Task Name: $TaskName"
 Write-Host "User: $Domain\$User"
+Write-Host "Node: $NodePath"
 Write-Host "Script: $ScriptPath"
 Write-Host ""
 
-# Remove existing task if it exists
 try {
   $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
   if ($existing) {
@@ -23,14 +30,13 @@ try {
     Start-Sleep -Seconds 1
   }
 } catch {
-  # Task doesn't exist, that's fine
+  # Task does not exist.
 }
 
-# Create new task
 $Action = New-ScheduledTaskAction `
-  -Execute "node" `
-  -Argument $ScriptPath `
-  -WorkingDirectory "E:\Documents\PROYECTOS\IialGrants"
+  -Execute $NodePath `
+  -Argument "`"$ScriptPath`"" `
+  -WorkingDirectory $IialHome
 
 $Trigger = New-ScheduledTaskTrigger `
   -AtStartup `
@@ -46,7 +52,7 @@ $Settings = New-ScheduledTaskSettingsSet `
   -DontStopIfGoingOnBatteries `
   -StartWhenAvailable `
   -MultipleInstances IgnoreNew `
-  -ExecutionTimeLimit (New-TimeSpan -Hours 24)
+  -ExecutionTimeLimit (New-TimeSpan -Seconds 0)
 
 Register-ScheduledTask `
   -TaskName $TaskName `
@@ -56,13 +62,13 @@ Register-ScheduledTask `
   -Settings $Settings `
   -Description "IIAL Grants daemon supervisor - keeps daemons alive 24/7" | Out-Null
 
-Write-Host "✓ Task registered successfully"
+Write-Host "Task registered successfully" -ForegroundColor Green
 Write-Host ""
 Write-Host "Verify installation:"
 Write-Host "  Get-ScheduledTask -TaskName '$TaskName' | Format-List"
 Write-Host ""
 Write-Host "View logs:"
-Write-Host "  tail -f '$LogPath'"
+Write-Host "  Get-Content -Path '$LogPath' -Tail 80 -Wait"
 Write-Host ""
 Write-Host "Manual start:"
 Write-Host "  Start-ScheduledTask -TaskName '$TaskName'"

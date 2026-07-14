@@ -1,120 +1,100 @@
-# Improvement Plan — Data Completeness 64% → 85%
+# Improvement Plan - Data Completeness 64% to 85%
 
 **Date**: 2026-07-13  
-**Status**: In progress  
-**Owner**: Autonomous daemon system + manual review
+**Reviewed/corrected**: 2026-07-14
+**Status**: in progress
 
 ## Current State
 
-- **Overall completeness**: 64% (measured)
-- **Grants analyzed**: 16 scored/active
-- **Biggest gaps**:
-  - Amount (CAD): 6% coverage (15/16 missing)
-  - Deadline: 13% coverage (14/16 missing)
-  - Summary: 100% ✓
-  - Eligibility: 100% ✓
-  - Sectors: 100% ✓
+Claude's data-quality pass found that completeness is lower than the optimistic
+dashboard number suggested. The main missing facts are:
 
-## Root Causes (per self-criticism daemon)
+- latest corrected analyzer snapshot after Codex repair: 66% overall
+  completeness in the active/scored sample
+- amount coverage: very low in the analyzed scored/active set
+- deadline coverage: very low in the analyzed scored/active set
+- summary, eligibility, and sectors: comparatively strong
+- pipeline integrity is clean after repair:
+  `scored_missing_eval=0`, `scored_missing_scored_at=0`,
+  `legacy_partial_notes=0`
 
-1. **Validation Flaws**: No regex patterns for currency/amount variations
-2. **Edge Cases Unhandled**: Date formats, relative dates not parsed
-3. **Design Flaw**: All-or-nothing enrichment (missing one field = stuck)
+Treat the exact percentages as local snapshot metrics; re-measure with
+`self-eval-daemon.mjs` after each extraction change.
+
+## Corrected Pipeline Rule
+
+Partial enrichment is allowed, but it must stay honest:
+
+- A grant with useful partial data can move from `discovered` to `enriched`.
+- Add a `partial_enrichment_review` requirement note with missing fields.
+- Do not mark it `scored` from a rescue script.
+- Only `evaluateGrantImpl` should produce true scoring because it writes
+  `grant_evaluations`, `fit_score`, and `scored_at`.
+
+`scripts/rescue-stuck-grants.mjs` is now dry-run by default and requires
+`--apply`.
 
 ## Target Improvements
 
-### 1. Amount Extraction (6% → 90%)
-**File**: `src/lib/grant-extraction.ts` → `parseAmount()`
+### 1. Amount Extraction
 
-**Patterns to add**:
-```
-- $500,000 CAD
-- 500000 CAD
-- $500K, $5M, $5.5B
-- from $X to $Y range
-- "up to $500,000"
-- "minimum $50K, maximum $500K"
-```
+**Files**:
 
-**Validation**:
-- Must be numeric > 0
-- Reasonable range: < $1B
-- Normalize to CAD amount (number only)
+- `src/agents/extractors/amounts.server.ts`
+- `src/agents/extractors/amounts.test.ts`
 
-**Test cases**:
-```
-"up to $500,000 CAD" → 500000
-"from $50K to $250K" → 50000 (min) / 250000 (max)
-"Funding: $1.5M" → 1500000
-```
+Patterns to keep strong:
 
-### 2. Deadline Extraction (13% → 90%)
-**File**: `src/lib/grant-extraction.ts` → `parseDeadline()`
+- `$500,000 CAD`
+- `$500K`, `$5M`, `$5.5M`
+- `from $X to $Y`
+- `up to $500,000`
+- `minimum $50K, maximum $500K`
+- French forms such as `1 M$`, `50 000 $`, `jusqu'a 250 000 $`
 
-**Patterns to add**:
-```
-- "Deadline: January 15, 2027"
-- "by 2027-01-15"
-- "closes 15/01/2027"
-- "applications open until March 31"
-- "end of Q2 2027"
-- "30 days from application date"
-```
+Validation:
 
-**Validation**:
-- Must be valid future date
-- Normalize to ISO format: YYYY-MM-DD
-- Reject dates in the past
+- numeric, positive amounts
+- min <= max
+- reject unrelated annual-budget/news figures when not anchored to funding
+  language
+- prefer anchored grant/funding snippets over largest-number fallback
 
-**Test cases**:
-```
-"Deadline: January 15, 2027" → 2027-01-15
-"by 2027-12-31" → 2027-12-31
-"closes on March 15, 2027" → 2027-03-15
-```
+### 2. Deadline Extraction
 
-### 3. Fallback Strategy
-**File**: `src/server/grant-enrichment.ts`
+**Files**:
 
-**Current behavior**: All-or-nothing (missing field = stuck)  
-**New behavior**: Partial enrichment allowed
+- `src/agents/extractors/deadlines.server.ts`
+- `src/agents/extractors/extractors.test.ts`
 
-```typescript
-// If we have summary + eligibility but missing amount/deadline:
-// Mark as "enriched_partial" with note about what's missing
-// Allow it to be scored even if incomplete
-```
+Patterns to keep strong:
+
+- `Application deadline: January 15, 2027`
+- `by 2027-01-15`
+- French `date limite` and month names
+- `rolling intake` / `continuous intake`
+- recent-past deadlines for just-closed programs
+
+Validation:
+
+- normalize fixed dates to `YYYY-MM-DD`
+- allow rolling/continuous intake when explicit
+- reject generic date mentions with no deadline/application hint
 
 ## Implementation Order
 
-1. ✓ **Analyzed** — data-quality-analyzer.mjs reveals exact gaps
-2. ✓ **Validated patterns** — extraction-validator.mjs tests regex
-3. **TODO** — Update parseAmount() in grant-extraction.ts
-4. **TODO** — Update parseDeadline() in grant-extraction.ts
-5. **TODO** — Add unit tests for both functions
-6. **TODO** — Run rescue-stuck-grants.mjs again
-7. **TODO** — Measure new scorecard (self-eval daemon)
-
-## Expected Impact
-
-- **Amount extraction**: 6% → 90% → +1.5% overall
-- **Deadline extraction**: 13% → 90% → +1.5% overall
-- **Subtotal**: 64% → 67%
-
-**To reach 85%**: Combine with eligibility inference (infer from sector/title if missing) → +18%
-
-## Daemon Support
-
-- **Self-criticism daemon**: Identified validation flaws ✓
-- **Self-eval daemon**: Will measure new scorecard
-- **Improvement daemon**: Will propose next actions
-- **Audit daemon**: Will detect remaining gaps
-- **Watchdog**: Will supervise all activities
+1. Re-run the data-quality analyzer and self-eval scorecard.
+2. Add/adjust extractor tests for the top real failures.
+3. Patch amount/deadline extractors only where tests prove a gap.
+4. Run focused tests plus typecheck.
+5. Run one real positive enrichment and one honest blocked/acquisition failure.
+6. Update `grant-scraping-improvement/references/heuristics.md` if a new
+   durable scraping lesson survives validation.
 
 ## Success Criteria
 
-- [ ] Amount extraction tested on 10+ real grant URLs
-- [ ] Deadline extraction handles 5+ date format variations
-- [ ] New tests added to src/lib/grant-extraction.test.ts
-- [ ] Scorecard measure after improvement: ≥85% completeness
-- [ ] Zero regressions in existing extractions
+- Amount extractor gains coverage without picking unrelated numbers.
+- Deadline extractor gains coverage without accepting generic page dates.
+- Partial grants are visible as enriched-with-review, not fake-scored.
+- `self-eval-daemon.mjs` records a measurable completeness improvement.
+- No regression in `src/agents/pipeline.e2e.test.ts` or extractor tests.

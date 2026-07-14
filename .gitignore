@@ -49,4 +49,5 @@ scripts/improvement-queue.md
 scripts/self-criticism-findings.md
 scripts/.gpu.lock
 scripts/.pids/
+scripts/.supervisor.pid
 scripts/.watchdog-state.json

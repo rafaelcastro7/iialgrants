@@ -44,7 +44,7 @@ export async function evaluateGrantImpl(opts: {
     userSupabase
       .from("grants")
       .select(
-        "id, title, summary, url, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, status, funder:funders(name, jurisdiction)",
+        "id, title, summary, url, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, status, scored_at, funder:funders(name, jurisdiction)",
       )
       .eq("id", grantId)
       .maybeSingle(),
@@ -310,9 +310,14 @@ export async function evaluateGrantImpl(opts: {
       .eq("id", g.id);
   } else {
     await trace("commit", `Updated fit_score=${parsed.fit_score}`, "ok");
+    const shouldBackfillScoredAt =
+      (g.status as GrantStatus) === "scored" && !(g as { scored_at?: string | null }).scored_at;
     await userSupabase
       .from("grants")
-      .update({ fit_score: parsed.fit_score } as never)
+      .update({
+        fit_score: parsed.fit_score,
+        ...(shouldBackfillScoredAt ? { scored_at: new Date().toISOString() } : {}),
+      } as never)
       .eq("id", g.id);
   }
 

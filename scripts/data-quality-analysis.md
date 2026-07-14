@@ -1,60 +1,65 @@
 # Data Quality Analysis
 
-_Generated: 2026-07-13T01:14:21.815Z_
+_Generated: 2026-07-14T15:17:13.853Z_
 
-## Coverage Analysis (16 grants)
+## Coverage Analysis (10 grants)
 
-| Field | ✓ Present | ✗ Missing | Coverage |
-|-------|-----------|-----------|----------|
-| Summary | 16 | 0 | 100% |
-| Amount (min) | 1 | 15 | 6% |
-| Deadline | 2 | 14 | 13% |
-| Eligibility | 16 | 0 | 100% |
-| Sectors | 16 | 0 | 100% |
+| Field        | Present | Missing | Coverage |
+| ------------ | ------- | ------- | -------- |
+| Summary      | 10      | 0       | 100%     |
+| Amount (min) | 1       | 9       | 10%      |
+| Deadline     | 2       | 8       | 20%      |
+| Eligibility  | 10      | 0       | 100%     |
+| Sectors      | 10      | 0       | 100%     |
 
-**Overall Completeness: 64%** (target: 85%)
+**Overall Completeness: 66%** (target: 85%)
+
+## Pipeline Integrity
+
+- Scored grants missing evaluation: 0
+- Scored grants missing scored_at: 0
+- Partial review notes: 10
+- Legacy partial notes: 0
 
 ## Top Missing Fields
 
 ### Grants missing DEADLINE (highest impact)
 
-  - AI Assist Program
-  - Business Strategy Internship (BSI)
-  - Capital de Risque
-  - Capital of Development
-  - Collaborative Science, Technology and Innovation Program
-  - Grants to International Affiliations (GIA) Program
-  - Innovation Research Program (IRAP)
-  - Investissement Québec
-  - NRC IRAP International Collaboration
-  - Personalized Assistance for Business Development
+- AI Assist Program
+- Business Strategy Internship (BSI)
+- Capital of Development
+- Collaborative Science, Technology and Innovation Program
+- Grants to International Affiliations (GIA) Program
+- Personalized Assistance for Business Development
+- PSCE Volet II - Support for Commercialization and Exportation
+- Talent Acquisition Strategies
 
 ### Grants missing AMOUNT
 
-  - AI Assist Program
-  - Business Strategy Internship (BSI)
-  - Capital de Risque
-  - Capital of Development
-  - Collaborative Science, Technology and Innovation Program
-  - Grants to International Affiliations (GIA) Program
-  - Innovation Research Program (IRAP)
-  - Investissement Québec
-  - NRC IRAP International Collaboration
-  - NRC IRAP support for clean technology
+- AI Assist Program
+- Business Strategy Internship (BSI)
+- Capital of Development
+- Collaborative Science, Technology and Innovation Program
+- Grants to International Affiliations (GIA) Program
+- NRC IRAP support for clean technology
+- Outreach Initiative of the NRC
+- Personalized Assistance for Business Development
+- Talent Acquisition Strategies
 
 ## Validation Rules Needed
 
-- **Amount validation**: Must be numeric, > 0, reasonable range (< $100M)
-- **Deadline validation**: Must be future date, YYYY-MM-DD format
-- **Eligibility validation**: Must be object with known keys (age, sector, location, etc)
-- **Summary validation**: Min 20 chars, max 500 chars, no HTML tags
+- Amount validation: must be numeric, positive, and below a reasonable ceiling.
+- Deadline validation: must be a future date or explicit rolling/no-deadline signal.
+- Eligibility validation: must be a structured object with known applicant constraints.
+- Summary validation: 20-500 chars, no HTML tags, grounded in source text.
 
 ## Extraction Improvements
 
-1. **Date parsing**: Handle 'January 15, 2027', '15-01-2027', 'End of Q3 2027', etc.
-2. **Amount parsing**: Handle '$1.5M', '1,500,000 CAD', 'up to $2M', ranges, etc.
-3. **Eligibility extraction**: Parse eligibility text into structured fields
-4. **Sector inference**: If missing, infer from URL/title/summary keywords
+1. Date parsing: handle English/French long dates, ranges, rolling calls, and fiscal periods.
+2. Amount parsing: handle CAD formats, shorthand amounts, ranges, and maximum contribution caps.
+3. Eligibility extraction: parse applicant type, location, sector, stage, and exclusions.
+4. Sector inference: infer from URL/title/summary when funder pages omit structured sectors.
 
 ---
+
 Analysis complete.

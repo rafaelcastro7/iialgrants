@@ -530,7 +530,10 @@ function CriticismsCard({ criticisms }: { criticisms: string | null }) {
             return (
               <li key={i} className="flex items-start gap-2 text-sm">
                 {tag && (
-                  <Badge variant="outline" className={cn("mt-0.5 shrink-0 text-[10px]", tagColor[tag])}>
+                  <Badge
+                    variant="outline"
+                    className={cn("mt-0.5 shrink-0 text-[10px]", tagColor[tag])}
+                  >
                     {tag}
                   </Badge>
                 )}

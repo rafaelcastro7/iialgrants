@@ -157,7 +157,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
 
   // Resolve model: explicit > agent-optimized > env default
   const agentModel = opts.model ? toLocalModel(opts.model) : resolveModel(opts.agent);
-  const fallback = resolveFallback(opts.agent);
+  let fallback = resolveFallback(opts.agent);
 
   let usedModel = agentModel;
   let resolvedTemp = opts.temperature ?? 0.2;
@@ -169,6 +169,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     const { resolveAgentConfig } = await import("@/lib/agent-config.server");
     const cfg = await resolveAgentConfig(opts.agent);
     if (!opts.model) usedModel = cfg.model ? toLocalModel(cfg.model) : agentModel;
+    fallback = cfg.fallback_model ? toLocalModel(cfg.fallback_model) : fallback;
     resolvedTemp = cfg.temperature;
     resolvedMax = opts.maxOutputTokens ?? cfg.max_output_tokens;
     resolvedJson = cfg.json_mode || resolvedJson;
@@ -197,7 +198,24 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       // 180s) PLUS the main call (up to callTimeoutMs, e.g. 600s for writer)
       // — up to 780s, not just callTimeoutMs alone. Any watchdog/reverse-proxy
       // timeout wrapping draftSection or similar must account for both.
-      await prewarmModel(usedModel, AbortSignal.timeout(180_000));
+      try {
+        await prewarmModel(usedModel, AbortSignal.timeout(180_000));
+      } catch (prewarmErr) {
+        if (!fallbackModel || fallbackModel === usedModel) throw prewarmErr;
+        const failedModel = usedModel;
+        usedModel = fallbackModel;
+        logGenAI({
+          "gen_ai.system": "ollama",
+          "gen_ai.request.model": failedModel,
+          "gen_ai.operation.name": "chat",
+          latency_ms: Date.now() - t0,
+          agent: opts.agent,
+          run_id: runId,
+          ok: false,
+          error: prewarmErr instanceof Error ? prewarmErr.message : String(prewarmErr),
+        });
+        await prewarmModel(usedModel, AbortSignal.timeout(180_000));
+      }
     }
 
     let res = await doOllamaCall(
