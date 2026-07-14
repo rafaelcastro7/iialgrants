@@ -4,6 +4,7 @@ import {
   BarChart3,
   Bot,
   BrainCircuit,
+  BookOpen,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -157,6 +158,7 @@ const NAV_GROUPS: NavGroup[] = [
     accent: "teal",
     items: [
       { to: "/org", label: "Organization", description: "Profile and criteria", icon: Building2 },
+      { to: "/manual", label: "User manual", description: "System guide", icon: BookOpen },
       { to: "/compliance", label: "Governance", description: "Policy and assurance", icon: Shield },
       { to: "/privacy", label: "Privacy", description: "Local-first posture", icon: Scale },
     ],

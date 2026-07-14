@@ -1,31 +1,100 @@
 {
-  "app": { "name": "IIAL", "tagline": "AI-native grant intelligence for Canadian organizations", "loading": "Loading…", "error": "Something went wrong" },
-  "nav": { "dashboard": "Dashboard", "grants": "Grants", "funders": "Funders", "proposals": "Proposals", "submissions": "Submissions", "quality": "Quality", "tasks": "Tasks", "complianceCalendar": "Compliance Calendar", "postAward": "Post-Award", "financial": "Financial", "impact": "Impact", "renewal": "Renewal", "competitive": "Competitive", "fitRules": "Fit Rules", "auditTrail": "Audit Trail", "workflows": "Workflows", "autonomy": "Autonomy", "settings": "Settings", "signOut": "Sign out" },
-  "auth": { "signIn": "Sign in", "signUp": "Sign up", "email": "Email", "password": "Password", "continueWithGoogle": "Continue with Google" },
+  "app": {
+    "name": "IIAL",
+    "tagline": "AI-native grant intelligence for Canadian organizations",
+    "loading": "Loading…",
+    "error": "Something went wrong"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "grants": "Grants",
+    "funders": "Funders",
+    "proposals": "Proposals",
+    "submissions": "Submissions",
+    "quality": "Quality",
+    "tasks": "Tasks",
+    "complianceCalendar": "Compliance Calendar",
+    "postAward": "Post-Award",
+    "financial": "Financial",
+    "impact": "Impact",
+    "renewal": "Renewal",
+    "competitive": "Competitive",
+    "fitRules": "Fit Rules",
+    "manual": "User Manual",
+    "auditTrail": "Audit Trail",
+    "workflows": "Workflows",
+    "autonomy": "Autonomy",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "continueWithGoogle": "Continue with Google"
+  },
   "lang": { "switch": "Language", "en": "English", "fr": "Français" },
-  "home": { "title": "IIAL — Grant Intelligence", "subtitle": "Discover, evaluate, and win Canadian grants with AI agents.", "cta": "Get started" },
+  "home": {
+    "title": "IIAL — Grant Intelligence",
+    "subtitle": "Discover, evaluate, and win Canadian grants with AI agents.",
+    "cta": "Get started"
+  },
   "grants": {
     "empty": "No grants discovered yet. The Discoverer agent runs hourly.",
-    "amount": "Amount", "deadline": "Deadline", "fit": "Fit", "source": "Open source",
-    "evaluate": "Evaluate fit", "draftProposal": "Draft proposal",
+    "amount": "Amount",
+    "deadline": "Deadline",
+    "fit": "Fit",
+    "source": "Open source",
+    "evaluate": "Evaluate fit",
+    "draftProposal": "Draft proposal",
     "status": {
-      "discovered": "Discovered", "enriched": "Enriched", "scored": "Scored", "shortlisted": "Shortlisted",
-      "in_proposal": "In proposal", "submitted": "Submitted", "won": "Won", "lost": "Lost", "expired": "Expired", "archived": "Archived"
+      "discovered": "Discovered",
+      "enriched": "Enriched",
+      "scored": "Scored",
+      "shortlisted": "Shortlisted",
+      "in_proposal": "In proposal",
+      "submitted": "Submitted",
+      "won": "Won",
+      "lost": "Lost",
+      "expired": "Expired",
+      "archived": "Archived"
     }
   },
   "org": {
-    "title": "Organization profile", "name": "Organization name",
-    "sectors": "Sectors (comma-separated)", "jurisdictions": "Jurisdictions (comma-separated, e.g. CA, ON)",
-    "stage": "Stage", "budget": "Annual budget (CAD)", "focus": "Focus areas",
-    "save": "Save profile", "saved": "Saved.",
-    "stages": { "startup": "Startup", "sme": "SME", "nonprofit": "Non-profit", "research": "Research / academia", "public_sector": "Public sector" }
+    "title": "Organization profile",
+    "name": "Organization name",
+    "sectors": "Sectors (comma-separated)",
+    "jurisdictions": "Jurisdictions (comma-separated, e.g. CA, ON)",
+    "stage": "Stage",
+    "budget": "Annual budget (CAD)",
+    "focus": "Focus areas",
+    "save": "Save profile",
+    "saved": "Saved.",
+    "stages": {
+      "startup": "Startup",
+      "sme": "SME",
+      "nonprofit": "Non-profit",
+      "research": "Research / academia",
+      "public_sector": "Public sector"
+    }
   },
   "proposals": {
     "title": "Proposals",
     "empty": "No proposals yet. Draft one from a scored grant.",
-    "status": { "draft": "Draft", "in_review": "In review", "submitted": "Submitted", "accepted": "Accepted", "rejected": "Rejected", "withdrawn": "Withdrawn" },
-    "version": "Version", "score": "Critic score",
-    "open": "Open", "draftSection": "Draft section", "runCritic": "Run critic",
+    "status": {
+      "draft": "Draft",
+      "in_review": "In review",
+      "submitted": "Submitted",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn"
+    },
+    "version": "Version",
+    "score": "Critic score",
+    "open": "Open",
+    "draftSection": "Draft section",
+    "runCritic": "Run critic",
     "ingestKnowledge": "Sync org profile to RAG",
     "noKnowledge": "Sync your organization profile to the RAG corpus before drafting.",
     "citations": "Citations",
@@ -48,7 +117,12 @@
     "save": "Save outcome",
     "cancel": "Cancel",
     "recordOutcome": "Record outcome",
-    "results": { "won": "Won", "lost": "Lost", "withdrawn": "Withdrawn", "no_response": "No response" }
+    "results": {
+      "won": "Won",
+      "lost": "Lost",
+      "withdrawn": "Withdrawn",
+      "no_response": "No response"
+    }
   },
   "ops": {
     "title": "Operations",
