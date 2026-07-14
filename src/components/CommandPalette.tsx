@@ -14,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   ArrowRight,
+  BookOpen,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -90,6 +91,7 @@ export function CommandPalette() {
     { id: "proposals", label: t("nav.proposals"), icon: FileText, to: "/proposals" },
     { id: "submissions", label: t("nav.submissions"), icon: Send, to: "/submissions" },
     { id: "org", label: t("org.title"), icon: Building2, to: "/org" },
+    { id: "manual", label: t("nav.manual"), icon: BookOpen, to: "/manual" },
     { id: "fit-rules", label: t("nav.fitRules"), icon: Sliders, to: "/fit-rules" },
     { id: "ops", label: t("ops.title"), icon: Activity, to: "/ops" },
     { id: "admin", label: "Admin Console", icon: Settings, to: "/admin" },

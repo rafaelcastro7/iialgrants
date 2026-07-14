@@ -25,6 +25,7 @@ import {
   GitBranch,
   History,
   BrainCircuit,
+  BookOpen,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -118,6 +119,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Workspace",
     items: [
       { to: "/org", labelKey: "org.title", icon: Building2 },
+      { to: "/manual", labelKey: "nav.manual", icon: BookOpen },
       { to: "/compliance", labelKey: "compliance.link", icon: Shield },
       { to: "/privacy", labelKey: "privacy.link", icon: ShieldCheck },
     ],

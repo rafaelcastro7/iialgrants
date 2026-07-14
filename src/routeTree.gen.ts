@@ -22,6 +22,7 @@ import { Route as AuthenticatedPrivacyRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPostAwardRouteImport } from './routes/_authenticated.post-award'
 import { Route as AuthenticatedOrgRouteImport } from './routes/_authenticated.org'
 import { Route as AuthenticatedOpsRouteImport } from './routes/_authenticated.ops'
+import { Route as AuthenticatedManualRouteImport } from './routes/_authenticated.manual'
 import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated.impact'
 import { Route as AuthenticatedFitRulesRouteImport } from './routes/_authenticated.fit-rules'
 import { Route as AuthenticatedFinancialRouteImport } from './routes/_authenticated.financial'
@@ -121,6 +122,11 @@ const AuthenticatedOrgRoute = AuthenticatedOrgRouteImport.update({
 const AuthenticatedOpsRoute = AuthenticatedOpsRouteImport.update({
   id: '/ops',
   path: '/ops',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedManualRoute = AuthenticatedManualRouteImport.update({
+  id: '/manual',
+  path: '/manual',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedImpactRoute = AuthenticatedImpactRouteImport.update({
@@ -332,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/impact': typeof AuthenticatedImpactRoute
+  '/manual': typeof AuthenticatedManualRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/post-award': typeof AuthenticatedPostAwardRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/financial': typeof AuthenticatedFinancialRoute
   '/fit-rules': typeof AuthenticatedFitRulesRoute
   '/impact': typeof AuthenticatedImpactRoute
+  '/manual': typeof AuthenticatedManualRoute
   '/ops': typeof AuthenticatedOpsRoute
   '/org': typeof AuthenticatedOrgRoute
   '/post-award': typeof AuthenticatedPostAwardRoute
@@ -431,6 +439,7 @@ export interface FileRoutesById {
   '/_authenticated/financial': typeof AuthenticatedFinancialRoute
   '/_authenticated/fit-rules': typeof AuthenticatedFitRulesRoute
   '/_authenticated/impact': typeof AuthenticatedImpactRoute
+  '/_authenticated/manual': typeof AuthenticatedManualRoute
   '/_authenticated/ops': typeof AuthenticatedOpsRoute
   '/_authenticated/org': typeof AuthenticatedOrgRoute
   '/_authenticated/post-award': typeof AuthenticatedPostAwardRoute
@@ -482,6 +491,7 @@ export interface FileRouteTypes {
     | '/financial'
     | '/fit-rules'
     | '/impact'
+    | '/manual'
     | '/ops'
     | '/org'
     | '/post-award'
@@ -530,6 +540,7 @@ export interface FileRouteTypes {
     | '/financial'
     | '/fit-rules'
     | '/impact'
+    | '/manual'
     | '/ops'
     | '/org'
     | '/post-award'
@@ -580,6 +591,7 @@ export interface FileRouteTypes {
     | '/_authenticated/financial'
     | '/_authenticated/fit-rules'
     | '/_authenticated/impact'
+    | '/_authenticated/manual'
     | '/_authenticated/ops'
     | '/_authenticated/org'
     | '/_authenticated/post-award'
@@ -725,6 +737,13 @@ declare module '@tanstack/react-router' {
       path: '/ops'
       fullPath: '/ops'
       preLoaderRoute: typeof AuthenticatedOpsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/manual': {
+      id: '/_authenticated/manual'
+      path: '/manual'
+      fullPath: '/manual'
+      preLoaderRoute: typeof AuthenticatedManualRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/impact': {
@@ -1025,6 +1044,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedFinancialRoute: typeof AuthenticatedFinancialRoute
   AuthenticatedFitRulesRoute: typeof AuthenticatedFitRulesRoute
   AuthenticatedImpactRoute: typeof AuthenticatedImpactRoute
+  AuthenticatedManualRoute: typeof AuthenticatedManualRoute
   AuthenticatedOpsRoute: typeof AuthenticatedOpsRoute
   AuthenticatedOrgRoute: typeof AuthenticatedOrgRoute
   AuthenticatedPostAwardRoute: typeof AuthenticatedPostAwardRoute
@@ -1053,6 +1073,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedFinancialRoute: AuthenticatedFinancialRoute,
   AuthenticatedFitRulesRoute: AuthenticatedFitRulesRoute,
   AuthenticatedImpactRoute: AuthenticatedImpactRoute,
+  AuthenticatedManualRoute: AuthenticatedManualRoute,
   AuthenticatedOpsRoute: AuthenticatedOpsRoute,
   AuthenticatedOrgRoute: AuthenticatedOrgRoute,
   AuthenticatedPostAwardRoute: AuthenticatedPostAwardRoute,
