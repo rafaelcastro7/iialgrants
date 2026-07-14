@@ -2,7 +2,10 @@
 
 Technical "about" guide for understanding and extending the system quickly.
 
-Related product context: `docs/PRODUCT-DIFFERENTIATION.md`.
+Related docs:
+
+- User manual: `docs/USER-MANUAL.md`
+- Product context: `docs/PRODUCT-DIFFERENTIATION.md`
 
 ## What This System Does
 
@@ -277,7 +280,7 @@ logic bugs across scoring, enrichment, and the state machine:
 - `GRANT_TRANSITIONS` (pipeline-stages.shared.ts) had drifted from the LIVE
   `validate_grant_transition()` trigger — always check the live function body
   with `docker exec docker-db-1 psql -U postgres -d postgres -c "\sf
-  validate_grant_transition"` before editing this file; migrations get
+validate_grant_transition"` before editing this file; migrations get
   superseded by later `CREATE OR REPLACE` statements.
 - `detectCostShare()` inverted org-share language the same way as
   funder-coverage language (opposite semantics).
