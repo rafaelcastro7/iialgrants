@@ -97,6 +97,39 @@ describe("local-only LLM cascade", () => {
     expect(calls.some((c) => c.startsWith(OLLAMA_URL))).toBe(true);
   }, 15000);
 
+  it("callLlm falls back when streaming prewarm model is missing", async () => {
+    const models: string[] = [];
+    const calls: string[] = [];
+    const spy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      calls.push(url);
+      if (url.endsWith("/api/ps")) return new Response(JSON.stringify({ models: [] }));
+      if (url.endsWith("/api/chat")) {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { model?: string };
+        models.push(body.model ?? "");
+        if (body.model === "dolphin3:latest") {
+          return new Response(JSON.stringify({ error: "model not found" }), { status: 404 });
+        }
+        return okBody("from-fallback");
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    (globalThis as unknown as { fetch: unknown }).fetch = spy;
+
+    const { callLlm } = await import("@/agents/llm.server");
+    const r = await callLlm({
+      agent: "evaluator",
+      messages: [{ role: "user", content: "hi" }],
+    });
+
+    expect(r.text).toBe("from-fallback");
+    expect(r.model).toBe("phi4-mini:latest");
+    expect(models).toContain("dolphin3:latest");
+    expect(models.filter((m) => m === "phi4-mini:latest").length).toBeGreaterThanOrEqual(1);
+    expect(calls.some((c) => c.startsWith(OLLAMA_URL))).toBe(true);
+    expect(calls.every((c) => c.startsWith("http://localhost:"))).toBe(true);
+  }, 15000);
+
   it("no cloud providers are ever contacted", async () => {
     const calls: string[] = [];
     mockFetch((url) => {

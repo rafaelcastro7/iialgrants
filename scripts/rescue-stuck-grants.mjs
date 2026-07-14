@@ -1,72 +1,136 @@
 #!/usr/bin/env node
-// Rescue stuck grants — when enrichment finds SOME data but not all critical
-// fields, mark it as "enriched_partial" instead of stuck. This prevents the
-// all-or-nothing logic from blocking grants that have useful information.
+// Safely rescue discovered grants that have useful partial enrichment data but
+// exhausted retries. Default is dry-run. Use --apply to write changes.
 //
-// Usage: node scripts/rescue-stuck-grants.mjs
+// Contract:
+// - Do not mark a grant "scored"; only the evaluator should do that because it
+//   writes grant_evaluations, fit_score, and scored_at.
+// - Move a grant to "enriched" only when it has at least summary or eligibility.
+// - Preserve a machine-readable requirement note so the UI/humans can see which
+//   fields are still missing.
+//
+// Usage:
+//   node scripts/rescue-stuck-grants.mjs
+//   node scripts/rescue-stuck-grants.mjs --apply
 
 import { Client } from "pg";
-import { readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync } from "node:fs";
 
-const client = new Client({
-  connectionString:
-    process.env.DATABASE_URL ||
-    "postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:15432/postgres",
-});
-
+const APPLY = process.argv.includes("--apply");
+const LIMIT = Number(process.env.RESCUE_LIMIT || 50);
 const LOG_FILE = "scripts/rescue-stuck-grants.log";
+const DB_URL =
+  process.env.DATABASE_URL ||
+  "postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:15432/postgres";
+
+const client = new Client({ connectionString: DB_URL });
+
 function log(msg) {
   console.log(msg);
-  writeFileSync(LOG_FILE, `${msg}\n`, { flag: "a" });
+  appendFileSync(LOG_FILE, `${msg}\n`);
 }
 
-log(`[${new Date().toISOString()}] Starting rescue operation...`);
+function asRequirementArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function hasObject(value) {
+  return !!value && typeof value === "object" && Object.keys(value).length > 0;
+}
+
+function missingFields(grant) {
+  const missing = [];
+  if (grant.amount_cad_min == null) missing.push("amount_cad_min");
+  if (grant.amount_cad_max == null) missing.push("amount_cad_max");
+  if (!grant.deadline) missing.push("deadline");
+  if (!hasObject(grant.eligibility)) missing.push("eligibility");
+  return missing;
+}
+
+function buildRequirementNote(grant) {
+  const missing = missingFields(grant);
+  return {
+    type: "partial_enrichment_review",
+    status: "needs_human_review",
+    note: `Partial enrichment rescued after retry exhaustion. Missing: ${missing.join(", ") || "none"}.`,
+    missing_fields: missing,
+    created_at: new Date().toISOString(),
+  };
+}
+
+log(
+  `[${new Date().toISOString()}] Starting partial-enrichment rescue (${APPLY ? "APPLY" : "DRY-RUN"})`,
+);
 
 await client.connect();
 try {
-  // Find grants stuck due to missing non-critical fields
-  // Rule: if it has ANY of {summary, description, eligibility}, and >0 enrich attempts,
-  // mark it as "enriched_partial" instead of "discovered"
-  const stuck = await client.query(`
-    SELECT id, title, summary, eligibility, requirements, enrich_attempts
-    FROM grants
-    WHERE status = 'discovered'
-      AND enrich_attempts > 0
-      AND (summary IS NOT NULL OR eligibility IS NOT NULL)
-    LIMIT 20
-  `);
+  const stuck = await client.query(
+    `
+      SELECT
+        id,
+        title,
+        summary,
+        eligibility,
+        requirements,
+        enrich_attempts,
+        amount_cad_min,
+        amount_cad_max,
+        deadline
+      FROM grants
+      WHERE status = 'discovered'
+        AND enrich_attempts > 0
+        AND (summary IS NOT NULL OR eligibility IS NOT NULL)
+      ORDER BY enrich_last_attempt_at NULLS LAST, created_at
+      LIMIT $1
+    `,
+    [LIMIT],
+  );
 
-  log(`Found ${stuck.rows.length} grants with partial data\n`);
+  log(`Found ${stuck.rows.length} discovered grant(s) with partial data.\n`);
 
+  let applied = 0;
   for (const grant of stuck.rows) {
-    const hasData = {
-      summary: !!grant.summary,
-      eligibility: grant.eligibility && Object.keys(grant.eligibility).length > 0,
-      requirements: grant.requirements && grant.requirements.length > 0,
-    };
-
+    const hasSummary = !!grant.summary;
+    const hasEligibility = hasObject(grant.eligibility);
+    const missing = missingFields(grant);
     log(
-      `[${grant.title}] summary=${hasData.summary} eligibility=${hasData.eligibility} requirements=${hasData.requirements}`,
+      `[${grant.title}] summary=${hasSummary} eligibility=${hasEligibility} missing=${missing.join(", ") || "none"}`,
     );
 
-    if (hasData.summary || hasData.eligibility) {
-      // Rescue this grant: mark as enriched_partial
-      const reqsNow = grant.requirements || [];
-      reqsNow.push({
-        type: "extracted_partial",
-        note: "System has partial data (summary/eligibility but missing amount/deadline). Human review recommended.",
-      });
-
-      await client.query(
-        `UPDATE grants SET status = 'scored', requirements = $1, enrich_last_error = NULL WHERE id = $2`,
-        [JSON.stringify(reqsNow), grant.id],
-      );
-
-      log(`  ✓ Rescued: marked as 'scored' with partial data\n`);
+    if (!hasSummary && !hasEligibility) {
+      log("  skip: no useful partial data\n");
+      continue;
     }
+
+    const requirements = asRequirementArray(grant.requirements);
+    const alreadyNoted = requirements.some((r) => r?.type === "partial_enrichment_review");
+    const nextRequirements = alreadyNoted
+      ? requirements
+      : [...requirements, buildRequirementNote(grant)];
+
+    if (!APPLY) {
+      log("  dry-run: would set status='enriched', clear enrich_last_error, and add review note\n");
+      continue;
+    }
+
+    await client.query(
+      `
+        UPDATE grants
+        SET status = 'enriched',
+            enriched_at = COALESCE(enriched_at, now()),
+            requirements = $1::jsonb,
+            enrich_last_error = NULL,
+            enrich_last_attempt_at = now()
+        WHERE id = $2
+          AND status = 'discovered'
+      `,
+      [JSON.stringify(nextRequirements), grant.id],
+    );
+    applied++;
+    log("  applied: marked enriched with partial-enrichment review note\n");
   }
 
-  log(`Operation complete.`);
+  log(`Operation complete. Applied ${applied}/${stuck.rows.length}.`);
 } finally {
   await client.end();
 }

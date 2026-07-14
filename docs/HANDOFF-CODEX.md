@@ -1,8 +1,79 @@
 # Handoff for Codex / Claude - IIAL Grants
 
 Living handoff so another agent can continue safely. Read this plus
-`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-11
+`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-14
 America/Toronto.
+
+## Claude autonomy + stuck-grant review - 2026-07-14
+
+Rafael asked Codex to review what Claude did and continue. Local `main` had 10
+unpushed commits on top of `2708ad4`:
+
+- `13fbd71` watchdog daemon + improvement daemon streaming/GPU-lock fixes
+- `51f5b3b` memory integration in improvement daemon
+- `857cf47` self-criticism daemon
+- `21b9c19` autonomy UI display of self-criticism findings
+- `7996ae2` initial stuck-grant rescue scripts
+- `ca7f800` data quality audit + extraction validator
+- `a9adbf5` data-completeness improvement roadmap
+- `2c6c43c` session summary
+- `cc60984` initial 24/7 operations/supervisor scripts
+
+Codex review found useful work plus several issues that needed correction
+before push:
+
+- Launcher/autostart scripts used stale `5173/app` URLs. Correct local app URL
+  is `http://localhost:8080`, with `/grants` and `/autonomy` routes.
+- Windows scheduled task had a 24-hour execution limit despite the 24/7
+  requirement. It is now unlimited.
+- `daemon-supervisor.mjs` spawned daemons unconditionally, did not pass the
+  documented intervals, and had a nonfunctional restart cap. It now reuses live
+  PID files, passes intervals, and uses a sliding restart window.
+- `rescue-stuck-grants.mjs` originally marked partial grants as `scored`
+  without evaluator output. Future runs are now dry-run by default; `--apply`
+  moves useful partials only to `enriched` and adds a
+  `partial_enrichment_review` note. True `scored` remains the evaluator's job
+  because it writes `grant_evaluations`, `fit_score`, and `scored_at`.
+- `docs/OPERATIONS-24-7.md`, `docs/SESSION-SUMMARY-2026-07-13.md`, and
+  `docs/IMPROVEMENT-PLAN-2026-07-13.md` were corrected to avoid inheriting the
+  inflated "rescued == scored" interpretation.
+
+DB note: Claude already ran the earlier rescue once against local Postgres and
+moved 10 grants, including "Capital of Development". Treat that as an
+operational data rescue, not proof those grants have been evaluated. The next
+safe continuation is to run/trigger evaluator for any `scored` grants missing a
+`grant_evaluations` row, then re-run self-eval metrics.
+
+Follow-up completed in this Codex pass:
+
+- Found 1 local `scored` grant missing a `grant_evaluations` row:
+  `Investissement Québec` (`f7617fbf-1bc6-4d13-a080-b2d08f39bd55`).
+- Attempting evaluation exposed an LLM routing bug: `dolphin3:latest` is not
+  installed locally, and `callLlm` threw during streaming prewarm before trying
+  the configured fallback.
+- Fixed `src/agents/llm.server.ts` so a failed streaming prewarm switches to
+  fallback, and so DB `fallback_model` is respected.
+- Added regression coverage in `src/agents/llm-cascade.e2e.test.ts`.
+- Re-ran evaluation. It fell back to `phi4-mini:latest`, produced
+  `fit_score=0.52`, `eligibility_pass=false`, and archived the grant through
+  existing fit-rule behavior.
+- Rechecked local DB: `scored_missing_eval = 0`.
+- Found a second historical artifact from Claude's original rescue: 4 grants
+  had `status='scored'` and a `grant_evaluations` row, but `scored_at` was
+  still null because they were already marked `scored` before evaluator ran.
+- Added `scripts/repair-partial-scored-grants.mjs` and ran it with `--apply`.
+  Local DB repair normalized all 10 legacy `extracted_partial` notes to
+  `partial_enrichment_review` and backfilled those 4 missing `scored_at`
+  values from the latest evaluation timestamp.
+- Hardened `evaluateGrantImpl` so future re-evaluations of an already-`scored`
+  grant also backfill `scored_at` if it is missing.
+- Updated `scripts/data-quality-analyzer.mjs` to report pipeline integrity
+  counters. Latest local snapshot: `scored_missing_eval=0`,
+  `scored_missing_scored_at=0`, `legacy_partial_notes=0`,
+  `partial_review_notes=10`.
+- Current product-quality gap is extraction completeness, not scoring
+  integrity: latest active/scored analysis shows overall completeness 66%,
+  with amount coverage 10% and deadline coverage 20% in the analyzed set.
 
 ## Pending cleanup closed - 2026-07-11
 
@@ -270,6 +341,17 @@ Known follow-up debt:
 
 Recent relevant commits (newest first, not exhaustive):
 
+- `cc60984` feat: 24/7 autonomous system with auto-recovery on machine restart
+- `2c6c43c` docs: session summary - full autonomy deployment complete
+- `a9adbf5` plan: data completeness improvement roadmap 64% -> 85%
+- `ca7f800` analysis: data quality audit + extraction validator
+- `7996ae2` fix(enrichment): rescue 10 stuck grants with partial data
+- `21b9c19` feat(autonomy/ui): display self-criticism findings in tab
+- `857cf47` feat(autonomy): self-criticism daemon for continuous improvement
+- `51f5b3b` feat(autonomy): memory integration in improvement daemon
+- `13fbd71` feat(ops): watchdog daemon + fix improvement daemon silent failures
+- `2708ad4` fix(ops): isolate local audit scratch output
+- `0524a4e` docs: update Claude handoff context
 - `d21565b` chore(build): close pending tooling debt
 - `2302473` feat(autonomy): harden self-improvement checks
 - `44bdfc9` chore(router): regenerate route tree for /autonomy
