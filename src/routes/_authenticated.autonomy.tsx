@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { formatDistanceToNow } from "date-fns";
 import {
   Activity,
   AlertTriangle,
@@ -88,7 +87,7 @@ function AutonomyPage() {
               <Cpu className="h-3.5 w-3.5" /> 0 cloud tokens
             </Badge>
             <span className="text-xs text-muted-foreground">
-              refreshed {formatDistanceToNow(new Date(data.generatedAt), { addSuffix: true })}
+              server local time {data.serverClock.generatedAtLocal}
             </span>
           </div>
         }
@@ -266,9 +265,7 @@ function DaemonStrip({ daemons }: { daemons: AutonomyIntel["daemons"] }) {
             <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
               <span>every {d.intervalMin ?? "?"}m</span>
               <span>
-                {d.lastCycleAt
-                  ? `last cycle ${formatDistanceToNow(new Date(d.lastCycleAt), { addSuffix: true })}`
-                  : "no cycles logged"}
+                {d.lastCycleAtLocal ? `last cycle ${d.lastCycleAtLocal}` : "no cycles logged"}
               </span>
             </div>
             {d.recent.length > 0 && (
@@ -296,7 +293,7 @@ function Scorecard({ intel }: { intel: AutonomyIntel }) {
       <SectionTitle
         icon={Activity}
         title="Product self-evaluation"
-        subtitle={`Scorecard updated ${formatDistanceToNow(new Date(s.ts), { addSuffix: true })}`}
+        subtitle={`Scorecard updated ${formatServerTimestamp(s.ts, intel.serverClock.timeZone)}`}
       />
       <StatGrid columns={4}>
         <StatCard label="Grants" value={s.total} sublabel={`${s.active} active`} icon={Database} />
@@ -354,7 +351,8 @@ function Scorecard({ intel }: { intel: AutonomyIntel }) {
 
 function TrendChart({ trend }: { trend: AutonomyIntel["trend"] }) {
   const data = trend.map((p) => ({
-    t: new Date(p.ts).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "2-digit" }),
+    t: p.chartLabel,
+    localTime: p.tsLocal,
     Grounding: p.grounding,
     Completeness: p.completeness,
   }));
@@ -389,6 +387,7 @@ function TrendChart({ trend }: { trend: AutonomyIntel["trend"] }) {
                 background: "var(--card)",
                 fontSize: 12,
               }}
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.localTime ?? ""}
             />
             <Area
               type="monotone"
@@ -409,6 +408,23 @@ function TrendChart({ trend }: { trend: AutonomyIntel["trend"] }) {
       </div>
     </div>
   );
+}
+
+function formatServerTimestamp(iso: string | null, timeZone: string): string {
+  if (!iso) return "not logged";
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+    timeZoneName: "short",
+  }).format(date);
 }
 
 function FeedCard({

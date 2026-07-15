@@ -27,6 +27,7 @@ const MEMORY_DIR =
 const OBSIDIAN_VAULT =
   process.env.OBSIDIAN_VAULT_DIR || "C:/Users/rafae/Documents/ClaudeMemoryVault";
 const SKILLS_DIR = process.env.CLAUDE_SKILLS_DIR || "C:/Users/rafae/.claude/skills";
+const SERVER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 export type DaemonStatus = {
   key: string;
@@ -35,6 +36,7 @@ export type DaemonStatus = {
   intervalMin: number | null;
   alive: boolean;
   lastCycleAt: string | null;
+  lastCycleAtLocal: string | null;
   recent: string[];
 };
 
@@ -59,6 +61,8 @@ export type Scorecard = {
 
 export type TrendPoint = {
   ts: string;
+  tsLocal: string;
+  chartLabel: string;
   grounding: number;
   completeness: number;
   fitMedian: number;
@@ -78,6 +82,10 @@ export type SelfCheck = {
 
 export type AutonomyIntel = {
   generatedAt: string;
+  serverClock: {
+    timeZone: string;
+    generatedAtLocal: string;
+  };
   selfCheck: SelfCheck;
   daemons: DaemonStatus[];
   scorecard: Scorecard | null;
@@ -98,6 +106,46 @@ export type AutonomyIntel = {
   skills: { name: string; description: string }[];
   techniques: string[];
 };
+
+function formatServerLocalTime(
+  iso: string | null,
+  opts: "dateTime" | "chart" | "time" = "dateTime",
+): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return iso;
+  const options: Intl.DateTimeFormatOptions =
+    opts === "time"
+      ? {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hourCycle: "h23",
+          timeZone: SERVER_TIME_ZONE,
+          timeZoneName: "short",
+        }
+      : opts === "chart"
+        ? {
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+            timeZone: SERVER_TIME_ZONE,
+          }
+        : {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hourCycle: "h23",
+            timeZone: SERVER_TIME_ZONE,
+            timeZoneName: "short",
+          };
+  return new Intl.DateTimeFormat("en-CA", options).format(date);
+}
 
 function safeRead(path: string, maxChars = 40000): string | null {
   try {
@@ -159,9 +207,23 @@ function readDaemon(
         !/started, checking/i.test(p.message),
     )
     .slice(-10)
-    .map((p) => `${p.ts ? p.ts.slice(11, 19) + " " : ""}[${p.section}] ${p.message}`.slice(0, 300));
+    .map((p) =>
+      `${p.ts ? formatServerLocalTime(p.ts, "time") + " " : ""}[${p.section}] ${p.message}`.slice(
+        0,
+        300,
+      ),
+    );
 
-  return { key, name, description, intervalMin, alive, lastCycleAt, recent };
+  return {
+    key,
+    name,
+    description,
+    intervalMin,
+    alive,
+    lastCycleAt,
+    lastCycleAtLocal: formatServerLocalTime(lastCycleAt),
+    recent,
+  };
 }
 
 function readScorecardTrend(): {
@@ -182,6 +244,8 @@ function readScorecardTrend(): {
   if (rows.length === 0) return { scorecard: null, previous: null, trend: [] };
   const trend = rows.slice(-40).map((r) => ({
     ts: r.ts,
+    tsLocal: formatServerLocalTime(r.ts) ?? r.ts,
+    chartLabel: formatServerLocalTime(r.ts, "chart") ?? r.ts,
     grounding: r.grounding_coverage_pct,
     completeness: r.data_completeness_pct,
     fitMedian: r.fit_median,
@@ -203,10 +267,7 @@ function readRepairs(): string[] {
     .filter((p) => ["repair", "degraded", "giveup"].includes(p.section))
     .slice(-10)
     .map((p) =>
-      `${p.ts ? p.ts.slice(0, 19).replace("T", " ") : ""} [${p.section}] ${p.message}`.slice(
-        0,
-        300,
-      ),
+      `${p.ts ? formatServerLocalTime(p.ts) : ""} [${p.section}] ${p.message}`.slice(0, 300),
     );
 }
 
@@ -221,10 +282,7 @@ function readAuditFindings(): string[] {
     )
     .slice(-12)
     .map((p) =>
-      `${p.ts ? p.ts.slice(0, 19).replace("T", " ") : ""} [${p.section}] ${p.message}`.slice(
-        0,
-        280,
-      ),
+      `${p.ts ? formatServerLocalTime(p.ts) : ""} [${p.section}] ${p.message}`.slice(0, 280),
     );
 }
 
@@ -349,6 +407,7 @@ function readCriticisms(): string | null {
 }
 
 export async function readAutonomyIntel(): Promise<AutonomyIntel> {
+  const generatedAt = new Date().toISOString();
   const daemons = [
     readDaemon(
       "audit",
@@ -404,7 +463,11 @@ export async function readAutonomyIntel(): Promise<AutonomyIntel> {
   const regressions = scorecard ? detectRegressions(scorecard, previous) : [];
 
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
+    serverClock: {
+      timeZone: SERVER_TIME_ZONE,
+      generatedAtLocal: formatServerLocalTime(generatedAt) ?? generatedAt,
+    },
     selfCheck: { ...verdict, daemons: healthRows },
     daemons,
     scorecard,
