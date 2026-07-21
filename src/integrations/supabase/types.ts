@@ -1400,6 +1400,156 @@ export type Database = {
           },
         ];
       };
+      grant_search_profiles: {
+        Row: {
+          active: boolean;
+          activities: string[];
+          amount_max_cad: number | null;
+          amount_min_cad: number | null;
+          applicant_types: string[];
+          created_at: string;
+          excluded_terms: string[];
+          funding_uses: string[];
+          id: string;
+          jurisdictions: string[];
+          mission: string;
+          name: string;
+          org_id: string | null;
+          populations_served: string[];
+          project_end: string | null;
+          project_start: string | null;
+          required_terms: string[];
+          role: string;
+          sectors: string[];
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          active?: boolean;
+          activities?: string[];
+          amount_max_cad?: number | null;
+          amount_min_cad?: number | null;
+          applicant_types?: string[];
+          created_at?: string;
+          excluded_terms?: string[];
+          funding_uses?: string[];
+          id?: string;
+          jurisdictions?: string[];
+          mission?: string;
+          name: string;
+          org_id?: string | null;
+          populations_served?: string[];
+          project_end?: string | null;
+          project_start?: string | null;
+          required_terms?: string[];
+          role?: string;
+          sectors?: string[];
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["grant_search_profiles"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "grant_search_profiles_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      grant_search_feedback: {
+        Row: {
+          action: string;
+          created_at: string;
+          grant_id: string;
+          id: string;
+          note: string | null;
+          profile_id: string;
+          query_text: string | null;
+          rank_position: number | null;
+          reason: string | null;
+          score_snapshot: Json;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          action: string;
+          created_at?: string;
+          grant_id: string;
+          id?: string;
+          note?: string | null;
+          profile_id: string;
+          query_text?: string | null;
+          rank_position?: number | null;
+          reason?: string | null;
+          score_snapshot?: Json;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["grant_search_feedback"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "grant_search_feedback_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "grant_search_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "grant_search_feedback_grant_id_fkey";
+            columns: ["grant_id"];
+            isOneToOne: false;
+            referencedRelation: "grants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      grant_search_feedback_events: {
+        Row: {
+          action: string;
+          created_at: string;
+          grant_id: string;
+          id: string;
+          note: string | null;
+          profile_id: string;
+          query_text: string | null;
+          rank_position: number | null;
+          reason: string | null;
+          score_snapshot: Json;
+          user_id: string;
+        };
+        Insert: {
+          action: string;
+          created_at?: string;
+          grant_id: string;
+          id?: string;
+          note?: string | null;
+          profile_id: string;
+          query_text?: string | null;
+          rank_position?: number | null;
+          reason?: string | null;
+          score_snapshot?: Json;
+          user_id: string;
+        };
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "grant_search_feedback_events_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "grant_search_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "grant_search_feedback_events_grant_id_fkey";
+            columns: ["grant_id"];
+            isOneToOne: false;
+            referencedRelation: "grants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       grants: {
         Row: {
           amount_cad_max: number | null;
@@ -2487,6 +2637,19 @@ export type Database = {
           matched_on: string;
           relevance: number;
         }[];
+      };
+      record_grant_search_feedback: {
+        Args: {
+          p_action: string;
+          p_grant_id: string;
+          p_note?: string | null;
+          p_profile_id: string;
+          p_query_text?: string | null;
+          p_rank_position?: number | null;
+          p_reason?: string | null;
+          p_score_snapshot?: Json;
+        };
+        Returns: Database["public"]["Tables"]["grant_search_feedback"]["Row"];
       };
       search_funder_catalog: {
         Args: { result_limit?: number; search_query: string };

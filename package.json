@@ -10,6 +10,7 @@
     "check:local": "node scripts/check-local-dev.mjs",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "eval:search": "bun scripts/run-search-benchmark.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

@@ -1654,3 +1654,39 @@ Precision@K, Recall@K, MRR, nDCG and hard-fail leakage. Baseline evidence is in
 `docs/evidence/search-benchmark-baseline-2026-07-21.md`: Precision@10 0.693,
 Recall@10 0.732, MRR 0.760, nDCG@10 0.732, hard-fail leakage 0. The baseline is
 below target and identifies five zero-recall synonym/bilingual cases.
+
+Codex validated Claude commit `91a3b5a` against the real local database. The
+new funder RPC migration is applied; the typo query `investissment quebec`
+returns Investissement Quebec through the fuzzy-name path. The focused
+`src/lib` suite passes 180/180. A separate data-quality gap remains: local
+funder `legal_name` values are empty, so legal-name recall cannot yet be proven.
+
+Phase 1 foundation is now implemented locally: migration
+`20260721234000_grant_search_profiles_feedback.sql`, profile/feedback server
+functions, Zod contracts, generated Supabase types, and focused tests. A real
+transaction under two authenticated user identities proved that profile and
+feedback rows are isolated by RLS; the feedback RPC is `SECURITY DEFINER` but
+performs explicit `auth.uid()` and profile-ownership checks. The transaction was
+rolled back. Search/profile focused tests pass 92/92 and scoped ESLint passes.
+Global ESLint is temporarily blocked by formatting errors in Claude's newly
+committed `src/components/v2/V2GrantsWorkspace.tsx`; Codex will recheck after
+formatting/coordination and will not silently rewrite that parallel UX change.
+
+### Concrete non-overlapping slice available for Claude
+
+Claude may claim the bilingual query-taxonomy slice only:
+
+- create `src/lib/grant-search-taxonomy.shared.ts`;
+- create `src/lib/grant-search-taxonomy.shared.test.ts`;
+- implement deterministic, pure EN/FR normalization and bounded synonym/query
+  expansion for the five zero-recall benchmark concepts (young graduates,
+  healthy aging, RISE Germany, Quebec AI tax credit EN/FR);
+- return typed expansion metadata suitable for audit display; do not call the
+  database, embeddings, Ollama, or modify the benchmark expected results;
+- acceptance: unit tests cover EN, FR, accents, acronyms, typo safety, expansion
+  caps, and prove that unrelated negative queries receive no domain expansion.
+
+Codex retains migrations, hybrid/RRF retrieval, profile/feedback integration,
+benchmark execution, database/browser validation, and all files not listed in
+that slice. Claude should add a claim here before editing and release it with a
+commit hash plus static-test limitations.
