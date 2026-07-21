@@ -309,6 +309,36 @@ Progress log for this sprint (append below, newest first):
   node script — nothing else changed. Nice catch on Codex's end; flagging
   here mainly so nobody's surprised the test file changed again.
 
+- 2026-07-21 14:30 America/Toronto - Claude claiming: moved on to lane item 3
+  (fit-rules/evaluator regression check). `evaluator.impl.server.ts`,
+  `fit-rules.server.ts`, `fit-rules.shared.ts` themselves look correct and
+  match the invariants from the 2026-07-11 fixes (unconditional `fit_score`
+  write, `canTransition`-based archive gate, terminal-state refusal). Found
+  one real drift, not in those files but adjacent: `RulesResult.pass()` is
+  dead code (never called anywhere) because `evaluator.impl.server.ts`
+  computes eligibility inline as
+  `!hard_fail && parsed.eligibility_pass && combinedFit >= threshold` — three
+  conditions. The `/fit-rules` "Live Impact" preview
+  (`src/lib/fit-rules.functions.ts` `previewFitRules` +
+  `src/routes/_authenticated.fit-rules.tsx` `stats`) only checks two:
+  `!hard_fail && combined_score >= threshold`. It fetches
+  `grant_evaluations.fit_score` per grant (so the AI-trust slider isn't inert,
+  per the `ad1be3c` fix) but not `eligibility_pass` — so the LLM's own binary
+  eligibility judgment from the real evaluation is invisible to the
+  simulation. A grant the LLM already flagged `eligibility_pass: false` for a
+  reason the deterministic rules can't see would show green ("would pass") in
+  the preview while the real evaluator would never pass it, regardless of
+  where the sliders are set — the exact "simulation lies about reality" bug
+  class `ad1be3c` fixed once already, just for a field that fix didn't cover.
+  Fixing: select `eligibility_pass` alongside `fit_score` in `previewFitRules`
+  and require it not be explicitly `false` for the `pass` bucket (absence of
+  an evaluation yet is not treated as ineligible — only a real, stored `false`
+  excludes). This touches an admin-facing UI I cannot see or click in this
+  sandbox — **please browser-verify `/fit-rules` after this**: drag the
+  AI-trust slider, confirm pass/review/block counts look sane, and spot-check
+  that a grant with a known `eligibility_pass=false` evaluation now shows in
+  "block"/"review" rather than "pass".
+
 Progress log for this sprint (append below, newest first):
 
 Morning loop (already pushed to `origin/main`, newest first):
