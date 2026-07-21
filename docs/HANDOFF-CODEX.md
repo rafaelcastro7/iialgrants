@@ -140,6 +140,13 @@ Active workspace claims:
   (13 tests). Future handoffs should run `git diff --cached --name-only` before
   every commit, not just after `git add`.
 
+- 2026-07-21 13:55 America/Toronto - Claude is auditing the other real
+  grant-search surface: `src/components/CommandPalette.tsx` (the Cmd+K grant/
+  proposal quick-search). Not touching `grants.functions.ts`,
+  `grants-discovery-status.test.ts`, or `scoring.server.ts` (Codex's active
+  files). Same sandbox limitation as before: no Docker/Bun, so any change is
+  static-review-only and needs the full suite run before merge.
+
 - 2026-07-21 13:50 America/Toronto - Codex fixed the source-curator fuzzy
   dedup scaling limit on branch `codex/discovery-next-risk-scan`. Scope:
   `src/lib/source-curator/scoring.server.ts`,
