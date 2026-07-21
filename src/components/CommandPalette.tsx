@@ -27,7 +27,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
-import { listGrants } from "@/lib/grants.functions";
+import { searchCommandGrants } from "@/lib/grants.functions";
 import { sanitizePgrstTerm } from "@/lib/search-sanitize";
 import "@/i18n";
 
@@ -39,12 +39,23 @@ type CommandAction = {
   onSelect?: () => void;
 };
 
+function grantFunderName(grant: { funder?: unknown }): string {
+  const funder = grant.funder;
+  if (!funder) return "";
+  if (typeof funder === "string") return funder;
+  if (typeof funder === "object" && "name" in funder) {
+    const name = (funder as { name?: unknown }).name;
+    return typeof name === "string" ? name : "";
+  }
+  return "";
+}
+
 export function CommandPalette() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const fetchGrantRows = useServerFn(listGrants);
+  const searchGrantRows = useServerFn(searchCommandGrants);
   // The input stays instant (bound to `search`), but the DB queries below
   // only fire against `debouncedSearch`, ~250ms after typing pauses. Without
   // this, every single keystroke fired a fresh "grants" + "proposals" query
@@ -78,15 +89,8 @@ export function CommandPalette() {
     queryKey: ["cmd-grants", searchTerm],
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) return [];
-      const lower = searchTerm.toLowerCase();
-      const { grants: rows } = await fetchGrantRows({ data: { limit: 100 } });
-      return rows
-        .filter((grant) =>
-          [grant.title, grant.funder, grant.status, grant.summary]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(lower)),
-        )
-        .slice(0, 5);
+      const { grants: rows } = await searchGrantRows({ data: { term: searchTerm, limit: 5 } });
+      return rows;
     },
     enabled: open && searchTerm.length >= 2,
   });
@@ -162,7 +166,7 @@ export function CommandPalette() {
                     <div className="flex flex-col">
                       <span>{grant.title}</span>
                       <span className="text-xs text-muted-foreground">
-                        {grant.funder ? `${grant.funder} · ` : ""}
+                        {grantFunderName(grant) ? `${grantFunderName(grant)} · ` : ""}
                         {grant.status} {grant.deadline ? `· Due ${grant.deadline}` : ""}
                       </span>
                     </div>
