@@ -31,10 +31,19 @@ describe("normalizeName", () => {
     );
   });
 
-  it("strips punctuation/accents to plain ascii and collapses whitespace", () => {
-    // "Fondation" (singular) is stripped; the "é" in "André" isn't in the
-    // [a-z0-9] keep-set so it's dropped, splitting the word.
-    expect(normalizeName("Fondation  Lucie & André Chagnon")).toBe("lucie andr chagnon");
+  it("folds accents to their base letter (NFD strip) instead of dropping them", () => {
+    // "Fondation" (singular) is stripped. "André" is NFD-decomposed to
+    // "e" + a combining acute accent, and the accent is stripped, so this
+    // keeps "andre" as one word instead of mangling it to "andr" (an earlier
+    // version of this function just deleted any non-ASCII byte, which broke
+    // French/accented org names into split fragments -- fixed by Codex).
+    expect(normalizeName("Fondation  Lucie & André Chagnon")).toBe("lucie andre chagnon");
+  });
+  it("normalizes accented French names without dropping letters", () => {
+    expect(normalizeName("Fondation  Lucie & André Chagnon")).toBe("lucie andre chagnon");
+    expect(normalizeName("Société d'aide communautaire de Montréal")).toBe(
+      "d aide communautaire de montreal",
+    );
   });
 });
 
