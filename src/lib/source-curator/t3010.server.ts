@@ -25,7 +25,9 @@ export async function fetchT3010Foundations(limit = 500): Promise<Row[]> {
     City?: string;
     Province?: string;
   };
-  type Financial = { BN?: string; "5100"?: string | number };
+  // CRA line 5050 is gifts to qualified donees. Line 5100 is total
+  // expenditures and must never be used as a proxy for grantmaking.
+  type Financial = { BN?: string; "5050"?: string | number };
 
   const [publicFoundations, privateFoundations, financialRows] = await Promise.all([
     fetchCkanRecords<Identification>({
@@ -42,12 +44,12 @@ export async function fetchT3010Foundations(limit = 500): Promise<Row[]> {
     }),
     fetchCkanRecords<Financial>({
       resourceId: FINANCIAL_RESOURCE_ID,
-      fields: ["BN", "5100"],
+      fields: ["BN", "5050"],
       maxRows: 100_000,
     }),
   ]);
   const expenditures = new Map(
-    financialRows.map((row) => [String(row.BN ?? "").replace(/\D/g, ""), Number(row["5100"] ?? 0)]),
+    financialRows.map((row) => [String(row.BN ?? "").replace(/\D/g, ""), Number(row["5050"] ?? 0)]),
   );
   return [...publicFoundations, ...privateFoundations]
     .map(
@@ -80,7 +82,11 @@ export function extractT3010Candidates(rows: Row[]): RawCandidate[] {
         website: row.website?.startsWith("http") ? row.website : null,
         source_signals: ["t3010_charities"],
         disbursed_annual: row.total_expenditures ?? null,
-        raw_metadata: { city: row.city, raw_category: row.category_description },
+        raw_metadata: {
+          city: row.city,
+          raw_category: row.category_description,
+          financial_metric: "T3010_line_5050_gifts_to_qualified_donees",
+        },
       },
     ];
   });

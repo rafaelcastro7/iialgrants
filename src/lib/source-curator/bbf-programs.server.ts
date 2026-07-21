@@ -1,101 +1,112 @@
-// Business Benefits Finder (Innovation Canada) ingester.
-// Open data dataset publishes an XLSX export of 1500+ live federal & provincial
-// programs. To stay Worker-friendly (no XLSX libs) we use the CKAN package
-// metadata to locate the latest CSV alternate, then parse line-by-line.
+// Business Benefits Finder (Innovation Canada). The official package currently
+// publishes XLSX only, so parse the newest workbook instead of silently looking
+// for a CSV resource that does not exist.
 
+import ExcelJS from "exceljs";
 import type { RawCandidate } from "./scoring.server";
 
-const PKG_URL =
+const PACKAGE_URL =
   "https://open.canada.ca/data/api/3/action/package_show?id=4e75337e-70d0-4ed7-92d1-3b85192ec6b1";
 
-type CkanResource = { url: string; format?: string; name?: string };
+type CkanResource = { url?: string; format?: string; name?: string; last_modified?: string | null };
 
-async function findCsvResource(): Promise<string | null> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 25_000);
-  try {
-    const res = await fetch(PKG_URL, { signal: ctrl.signal });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { result?: { resources?: CkanResource[] } };
-    const resources = json.result?.resources ?? [];
-    // Prefer CSV, then JSON, then XLSX (which we'll fall back to skipping).
-    const csv = resources.find((r) => /csv/i.test(r.format ?? "") && /eng|en/i.test(r.name ?? ""));
-    return csv?.url ?? null;
-  } finally {
-    clearTimeout(t);
-  }
+async function findLatestWorkbook(): Promise<string> {
+  const response = await fetch(PACKAGE_URL);
+  if (!response.ok) throw new Error(`bbf_package_http_${response.status}`);
+  const payload = (await response.json()) as {
+    success?: boolean;
+    result?: { resources?: CkanResource[] };
+  };
+  if (payload.success !== true) throw new Error("bbf_package_invalid_response");
+  const workbooks = (payload.result?.resources ?? []).filter(
+    (resource) => resource.url && /xlsx/i.test(resource.format ?? ""),
+  );
+  const latest = workbooks
+    .sort((a, b) =>
+      String(a.last_modified ?? a.name ?? "").localeCompare(
+        String(b.last_modified ?? b.name ?? ""),
+      ),
+    )
+    .at(-1);
+  if (!latest?.url) throw new Error("bbf_xlsx_resource_missing");
+  return latest.url;
 }
 
-function parseCsvLine(line: string): string[] {
-  const out: string[] = [];
-  let cur = "",
-    inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"' && line[i + 1] === '"') {
-      cur += '"';
-      i++;
-      continue;
-    }
-    if (c === '"') {
-      inQ = !inQ;
-      continue;
-    }
-    if (c === "," && !inQ) {
-      out.push(cur);
-      cur = "";
-      continue;
-    }
-    cur += c;
-  }
-  out.push(cur);
-  return out;
+function cellText(value: ExcelJS.CellValue): string {
+  if (value == null) return "";
+  if (typeof value === "object" && "text" in value) return String(value.text ?? "").trim();
+  return String(value).trim();
+}
+
+function specificOrganization(value: string): string {
+  return value
+    .trim()
+    .replace(
+      /^(?:government of (?:canada|alberta|british columbia|manitoba|new brunswick|newfoundland and labrador|nova scotia|ontario|prince edward island|quebec|saskatchewan)|gouvernement du canada|gouvernement de l['’]ontario|gouvernement du québec),\s*/i,
+      "",
+    );
 }
 
 export async function fetchBbfPrograms(): Promise<RawCandidate[]> {
-  const csvUrl = await findCsvResource();
-  if (!csvUrl) return [];
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 30_000);
-  let text = "";
-  try {
-    const res = await fetch(csvUrl, { signal: ctrl.signal });
-    if (!res.ok) return [];
-    text = await res.text();
-  } finally {
-    clearTimeout(t);
-  }
-  const lines = text.split(/\r?\n/);
-  if (lines.length < 2) return [];
-  const header = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
-  const idx = {
-    title: header.findIndex((h) => h.includes("title") || h.includes("name")),
-    org: header.findIndex(
-      (h) => h.includes("organization") || h.includes("department") || h.includes("ministry"),
-    ),
-    url: header.findIndex((h) => h === "url" || h.includes("link") || h.includes("more info")),
-    province: header.findIndex((h) => h === "province" || h.includes("jurisdiction")),
+  const workbookUrl = await findLatestWorkbook();
+  const response = await fetch(workbookUrl);
+  if (!response.ok) throw new Error(`bbf_xlsx_http_${response.status}`);
+  const bytes = await response.arrayBuffer();
+  if (bytes.byteLength < 1_000) throw new Error("bbf_xlsx_too_short");
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(bytes);
+  const sheet = workbook.worksheets[0];
+  if (!sheet || sheet.rowCount < 3) throw new Error("bbf_xlsx_invalid_sheet");
+
+  const header = (sheet.getRow(1).values as ExcelJS.CellValue[]).map((value) =>
+    cellText(value).toLowerCase(),
+  );
+  const indexOf = (pattern: RegExp) =>
+    header.findIndex((value) => pattern.test(String(value ?? "")));
+  const columns = {
+    title: indexOf(/^title\s*-\s*english$/),
+    org: indexOf(/^organization\s*-\s*english$/),
+    orgFr: indexOf(/^organization\s*-\s*french$/),
+    url: indexOf(/^organization url\s*-\s*english$/),
   };
-  const seen = new Map<string, RawCandidate>();
-  for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const row = parseCsvLine(lines[i]);
-    const org = (idx.org >= 0 ? row[idx.org] : "").trim();
-    const url = (idx.url >= 0 ? row[idx.url] : "").trim();
-    if (!org || org.length < 3) continue;
-    const key = org.toLowerCase();
-    if (seen.has(key)) {
-      seen.get(key)!.source_signals.push(`bbf:${(row[idx.title] ?? "").slice(0, 40)}`);
+  if (columns.title < 1 || columns.org < 1 || columns.url < 1) {
+    throw new Error("bbf_xlsx_required_columns_missing");
+  }
+
+  const candidates = new Map<string, RawCandidate>();
+  for (let rowNumber = 3; rowNumber <= sheet.rowCount; rowNumber++) {
+    const values = sheet.getRow(rowNumber).values as ExcelJS.CellValue[];
+    const organization = specificOrganization(cellText(values[columns.org]));
+    if (organization.length < 3) continue;
+    const key = organization.toLowerCase();
+    const title = cellText(values[columns.title]);
+    const existing = candidates.get(key);
+    if (existing) {
+      const metadata = existing.raw_metadata as {
+        sample_programs?: string[];
+        program_count?: number;
+      };
+      metadata.program_count = (metadata.program_count ?? 1) + 1;
+      if (title) {
+        metadata.sample_programs = [...(metadata.sample_programs ?? []), title].slice(0, 5);
+      }
       continue;
     }
-    seen.set(key, {
-      name: org,
-      province: idx.province >= 0 ? row[idx.province]?.trim() || null : null,
+    const organizationFr = specificOrganization(cellText(values[columns.orgFr]));
+    const url = cellText(values[columns.url]);
+    candidates.set(key, {
+      name: organization,
+      name_fr: organizationFr && organizationFr !== organization ? organizationFr : null,
       funder_type: "Government program",
       website: url.startsWith("http") ? url : null,
       source_signals: ["bbf_programs"],
-      raw_metadata: { sample_program: row[idx.title] ?? "" },
+      raw_metadata: {
+        sample_programs: title ? [title] : [],
+        program_count: 1,
+        workbook_url: workbookUrl,
+      },
     });
   }
-  return Array.from(seen.values()).slice(0, 800);
+  return [...candidates.values()].slice(0, 800);
 }

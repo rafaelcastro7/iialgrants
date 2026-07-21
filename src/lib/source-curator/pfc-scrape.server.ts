@@ -1,6 +1,6 @@
 // Philanthropic Foundations Canada — member list scraper.
 // Uses Firecrawl JSON extraction (LLM-on-server) to pull a structured list.
-// Falls back to empty array if Firecrawl is unavailable.
+// Configuration and extraction failures are surfaced to source telemetry.
 
 import type { RawCandidate } from "./scoring.server";
 
@@ -30,18 +30,18 @@ const PFC_SCHEMA = {
 
 export async function scrapePfcMembers(): Promise<RawCandidate[]> {
   const { firecrawlAvailable, firecrawlScrape } = await import("@/lib/firecrawl.server");
-  if (!firecrawlAvailable()) return [];
+  if (!firecrawlAvailable()) throw new Error("pfc_firecrawl_unavailable");
   const r = await firecrawlScrape(PFC_URL, {
     jsonSchema: PFC_SCHEMA,
     jsonPrompt:
       "Extract every grantmaking foundation listed as a Philanthropic Foundations Canada member. " +
       "Return name, website URL if linked, and the Canadian province code if visible.",
   });
-  if (!r.ok) return [];
+  if (!r.ok) throw new Error(`pfc_scrape_failed:${r.error ?? "unknown"}`);
   const members = (r.json as { members?: unknown })?.members as
     | Array<{ name?: string; website?: string | null; province?: string | null }>
     | undefined;
-  if (!Array.isArray(members)) return [];
+  if (!Array.isArray(members)) throw new Error("pfc_members_invalid_response");
   const tag = "pfc_members:" + new Date().toISOString().slice(0, 7);
   return members
     .filter((m) => typeof m.name === "string" && m.name.trim().length > 2)

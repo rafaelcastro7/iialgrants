@@ -72,7 +72,7 @@ export function extractGcCandidates(rows: GcRow[]): RawCandidate[] {
     bn_number: value.bn ?? null,
     province: value.province ?? null,
     funder_type: value.type ?? "regrantor",
-    source_signals: [`tbs_gc:${new Date().toISOString().slice(0, 7)}`],
+    source_signals: ["tbs_gc"],
     raw_metadata: { gc_grants_received: value.count, gc_total_received: value.total },
     disbursed_annual: null,
   }));

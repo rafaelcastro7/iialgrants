@@ -35,7 +35,9 @@ function CandidatesPage() {
   const reject = useServerFn(rejectFunderCandidate);
   const runNow = useServerFn(runSourceCuratorNow);
   const runs = useServerFn(listSourceIngestRuns);
-  const [tab, setTab] = useState<"pending_review" | "approved" | "rejected">("pending_review");
+  const [tab, setTab] = useState<"candidate" | "pending_review" | "approved" | "rejected">(
+    "pending_review",
+  );
   const [busy, setBusy] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectId, setRejectId] = useState<string | null>(null);
@@ -85,7 +87,7 @@ function CandidatesPage() {
       const r = await runNow();
       toast.success(
         `Curator: ${r.totals.new} new, ${r.totals.auto} auto-seeded, ${r.totals.dup} dup, ` +
-          `${r.totals.rejected} low-signal`,
+          `${r.totals.held} held for more evidence`,
       );
       router.invalidate();
     } catch (e) {
@@ -110,6 +112,7 @@ function CandidatesPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
+          <TabsTrigger value="candidate">Building evidence</TabsTrigger>
           <TabsTrigger value="pending_review">Pending review</TabsTrigger>
           <TabsTrigger value="approved">Approved</TabsTrigger>
           <TabsTrigger value="rejected">Rejected</TabsTrigger>
@@ -207,7 +210,15 @@ function CandidatesPage() {
                   <span>auto={r.auto_approved as number}</span>
                   <span>dup={r.duplicates as number}</span>
                   <span>err={r.errors as number}</span>
-                  <span className={r.status === "succeeded" ? "text-emerald-600" : "text-red-600"}>
+                  <span
+                    className={
+                      r.status === "succeeded"
+                        ? "text-emerald-600"
+                        : r.status === "degraded"
+                          ? "text-amber-600"
+                          : "text-red-600"
+                    }
+                  >
                     {r.status as string}
                   </span>
                 </div>

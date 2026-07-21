@@ -81,7 +81,7 @@ export async function fetchTriCouncilFunders(): Promise<RawCandidate[]> {
     province: null, // federal
     funder_type: "Federal research funder",
     website: f.website,
-    source_signals: ["tri_council", "federal_research"],
+    source_signals: ["tri_council"],
     disbursed_annual: f.disbursed_annual,
     raw_metadata: { tier: "B", curated: true },
   }));
