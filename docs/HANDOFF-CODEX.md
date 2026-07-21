@@ -1513,3 +1513,20 @@ because structured `for_profit` eligibility is incompatible with the nonprofit
 profile. Full Vitest, TypeScript, ESLint, and production build gates passed.
 The ownership claim is released. The two untracked SOP Word files remain
 excluded from staging.
+
+## 2026-07-21 Codex grant-catalog roast (complete)
+
+Live catalog review found 31/54 active rows were not actionable grants: first-
+party advice, loans/equity, training services, adjudication criteria, corporate
+policy, or historical evaluation pages. The fallback discovery path also
+omitted the `isNonGrantUrl` gate that the Firecrawl path already enforced.
+
+The fallback path now applies the same gate, with host-scoped classification for
+Investissement Quebec and Mitacs resource sections. Migration
+`20260721222500_archive_non_grant_source_sections.sql` archives only untouched
+`discovered` rows, preserving history and every evaluated/human workflow state.
+Browser proof: the active radar moved from 54 to 23; a known advice clone is no
+longer visible while Governmental Financing Programs remains active, with no
+browser-console errors. Focused discovery tests pass 40/40; full gates pass at
+348 tests / 4 skipped, TypeScript, ESLint, and production build. The ownership
+claim is released; untracked SOP Word files remain excluded.
