@@ -170,7 +170,59 @@ Active workspace claims:
   or start a new claim above before touching `src/lib/source-curator/*` or
   `src/components/CommandPalette.tsx` again.
 
-## DRP runbook + user manual + two schema-drift fixes - 2026-07-21
+## Joint QA sprint (target: sustained ~2h) - 2026-07-21 14:05 America/Toronto
+
+Rafael's ask: coordinate explicitly, split the remaining audit surface, audit
+each other's work (not just trust "tests passed"), and keep going — goal is a
+bug-free, fully-working product, not one more isolated fix. Claude is writing
+this plan; Codex should treat it as a standing work order and update it
+in-place (strike through / mark done, don't delete) rather than waiting for a
+reply, same as the workspace-claims section above.
+
+**Split rationale:** Codex has Docker/Bun/Ollama/live Postgres and can push to
+`origin/main`. Claude (this Cowork sandbox) has neither Docker nor Bun nor
+push credentials — only file read/write and local git in the same shared
+checkout. So: Claude takes areas answerable by static/logic review + pure-unit
+tests; Codex takes anything that needs a live DB, the real build/test
+pipeline, or a push. Both sides audit the other's actual diffs, not just the
+reported test counts.
+
+**Claude's lane (this pass):**
+1. Mutual audit — read the real diffs of `47f6fab`, `c248fec`, `353e712`
+   line-by-line, not just trust the reported pass counts.
+2. Deeper pass on the 9 source-curator ingesters scoped out of the first
+   audit (funder-scout, rss-grants, gc-proactive, t3010, otf, alberta-ckan,
+   bbf-programs, eu-ft, pfc-scrape) — edge cases in parsing/aggregation.
+3. Re-check `fit-rules.server.ts` / `fit-rules.shared.ts` /
+   `evaluator.impl.server.ts` against the invariants fixed on 2026-07-11
+   (grounding, auto-archive transitions, unconditional `fit_score` write) —
+   confirm nothing regressed given how much has shipped since (V2 redesign,
+   autonomy stack, DRP fixes).
+4. Full RLS sweep: every `CREATE TABLE` across `supabase/migrations/*` vs
+   `ENABLE ROW LEVEL SECURITY` + policies, looking for the same bug class as
+   the `cdc1cb2` audit-trail/approval-workflows auth bypass (service-role
+   client gated by `requireSupabaseAuth` alone, no `assertAdmin`/role check).
+5. i18n/FR completeness spot-check on grant search + proposal flows, following
+   up the already-flagged unwired FR toggle.
+
+**Codex's lane (suggested, adjust freely):**
+- Live-verify + push Claude's two pending local commits (`cb53652`, `a04d852`)
+  per the 14:00 note above.
+- Anything Claude's static review flags as "needs live DB to confirm" below.
+- Continue whatever Codex judges highest-value from its own vantage point
+  (full test suite, live pipeline runs, browser checks) — this plan is a
+  starting split, not an exclusive lock. Claim overlaps here as always.
+
+**Ground rules (same as before, restated because this is a longer session):**
+- Explicit files only when staging/committing.
+- Claim before touching a new area; mark done (don't delete) when finished.
+- No live-DB-dependent claim from Claude without saying so — every Claude
+  finding below is static-review-only unless stated otherwise, and needs the
+  full Verification Protocol run by Codex/Rafael before merge.
+- If a finding needs a real fix but Claude can't safely verify it without a
+  live DB/build, the default is: document precisely, do NOT guess-fix it.
+
+Progress log for this sprint (append below, newest first):
 
 Morning loop (already pushed to `origin/main`, newest first):
 
