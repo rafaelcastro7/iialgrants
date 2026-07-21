@@ -11,6 +11,27 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { getTenantPrincipal, type TenantPrincipal } from "./tenant-access.server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/**
+ * Returns the submission IDs the caller is allowed to see: their own
+ * submissions, plus org-mates' submissions if org-scoped. Used to filter
+ * `outcomes` queries, since that table carries no owner column of its own.
+ */
+async function allowedSubmissionIds(
+  supabase: SupabaseClient<Database>,
+  principal: TenantPrincipal,
+): Promise<string[]> {
+  let query = supabase.from("submissions").select("id, user_id, org_id");
+  query = principal.orgId
+    ? query.or(`user_id.eq.${principal.userId},org_id.eq.${principal.orgId}`)
+    : query.eq("user_id", principal.userId);
+  const { data, error } = await query;
+  if (error) throw new Error(`Failed to scope submissions: ${error.message}`);
+  return (data || []).map((s) => s.id);
+}
 
 /**
  * Get submission outcomes
@@ -23,9 +44,15 @@ export const getSubmissionOutcomes = createServerFn({ method: "GET" })
       limit: z.number().min(1).max(100).default(50),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const principal = await getTenantPrincipal(supabase, context.userId);
+      const allowedIds = await allowedSubmissionIds(supabase, principal);
+      if (data.submissionId && !allowedIds.includes(data.submissionId)) {
+        throw new Error("Forbidden: submission belongs to another organization");
+      }
+      if (allowedIds.length === 0) return [];
 
       let query = supabase
         .from("outcomes")
@@ -41,7 +68,9 @@ export const getSubmissionOutcomes = createServerFn({ method: "GET" })
         )
         .order("decision_date", { ascending: false });
 
-      if (data.submissionId) query = query.eq("submission_id", data.submissionId);
+      query = data.submissionId
+        ? query.eq("submission_id", data.submissionId)
+        : query.in("submission_id", allowedIds);
 
       const { data: outcomes, error } = await query.limit(data.limit);
       if (error) throw new Error(`Failed to fetch outcomes: ${error.message}`);
@@ -61,13 +90,19 @@ export const getAwardMetrics = createServerFn({ method: "GET" })
       period: z.enum(["month", "quarter", "year", "all"]).default("year"),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const principal = await getTenantPrincipal(supabase, context.userId);
+      const allowedIds = await allowedSubmissionIds(supabase, principal);
 
-      const { data: outcomes } = await supabase
-        .from("outcomes")
-        .select("result, amount_awarded_cad, decision_date");
+      const { data: outcomes } =
+        allowedIds.length === 0
+          ? { data: [] }
+          : await supabase
+              .from("outcomes")
+              .select("result, amount_awarded_cad, decision_date")
+              .in("submission_id", allowedIds);
 
       const total = outcomes?.length || 0;
       const won = outcomes?.filter((o) => o.result === "won").length || 0;
@@ -105,9 +140,15 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
       submissionId: z.string().uuid().optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const principal = await getTenantPrincipal(supabase, context.userId);
+      const allowedIds = await allowedSubmissionIds(supabase, principal);
+      if (data.submissionId && !allowedIds.includes(data.submissionId)) {
+        throw new Error("Forbidden: submission belongs to another organization");
+      }
+      if (allowedIds.length === 0) return [];
 
       let query = supabase
         .from("outcomes")
@@ -123,7 +164,9 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
         )
         .eq("result", "won");
 
-      if (data.submissionId) query = query.eq("submission_id", data.submissionId);
+      query = data.submissionId
+        ? query.eq("submission_id", data.submissionId)
+        : query.in("submission_id", allowedIds);
 
       const { data: outcomes, error } = await query;
       if (error) throw new Error(`Failed to fetch deadlines: ${error.message}`);

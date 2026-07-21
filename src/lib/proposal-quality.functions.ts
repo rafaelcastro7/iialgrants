@@ -11,22 +11,29 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { getTenantPrincipal } from "./tenant-access.server";
 
 /**
- * Get quality metrics for all proposals
+ * Get quality metrics for the caller's own org/proposals
  */
 export const getProposalQualityMetrics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const principal = await getTenantPrincipal(supabase, context.userId);
 
-      // Get all proposals with scores
-      const { data: proposals, error } = await supabase
+      // Scope to the caller's own proposals (plus org-mates' if org-scoped).
+      let query = supabase
         .from("proposals")
-        .select("id, title, status, version, critic_score, created_at, updated_at")
+        .select("id, title, status, version, critic_score, created_at, updated_at, user_id, org_id")
         .order("updated_at", { ascending: false });
+      query = principal.orgId
+        ? query.or(`user_id.eq.${principal.userId},org_id.eq.${principal.orgId}`)
+        : query.eq("user_id", principal.userId);
+
+      const { data: proposals, error } = await query;
 
       if (error) throw new Error(`Failed to fetch proposals: ${error.message}`);
 
@@ -85,19 +92,25 @@ export const getQualityTrends = createServerFn({ method: "GET" })
       days: z.number().min(7).max(365).default(30),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const principal = await getTenantPrincipal(supabase, context.userId);
 
       const since = new Date();
       since.setDate(since.getDate() - data.days);
 
-      const { data: proposals, error } = await supabase
+      let query = supabase
         .from("proposals")
-        .select("critic_score, created_at")
+        .select("critic_score, created_at, user_id, org_id")
         .gte("created_at", since.toISOString())
         .not("critic_score", "is", null)
         .order("created_at", { ascending: true });
+      query = principal.orgId
+        ? query.or(`user_id.eq.${principal.userId},org_id.eq.${principal.orgId}`)
+        : query.eq("user_id", principal.userId);
+
+      const { data: proposals, error } = await query;
 
       if (error) throw new Error(`Failed to fetch trends: ${error.message}`);
 
