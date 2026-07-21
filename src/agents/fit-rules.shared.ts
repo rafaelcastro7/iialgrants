@@ -305,8 +305,9 @@ export function deriveRulesFromOrg(
     ? org.focus_areas
     : org.focus_areas
       ? String(org.focus_areas)
+          .replace(/^\{(.*)\}$/, "$1")
           .split(/[,;]+/)
-          .map((s) => s.trim())
+          .map((s) => s.trim().replace(/^"|"$/g, ""))
       : [];
   const sectors = [...(org.sectors ?? []), ...focus].map((s) => String(s).trim()).filter(Boolean);
   if (sectors.length > 0) rules.required_sectors = Array.from(new Set(sectors));

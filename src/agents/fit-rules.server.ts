@@ -49,21 +49,48 @@ export type RulesResult = {
 };
 
 const norm = (s: string) => s.trim().toLowerCase();
+const SECTOR_ALIASES: Record<string, string> = {
+  tech: "technology",
+  technology: "technology",
+  "information technology": "technology",
+  ai: "ai",
+  "artificial intelligence": "ai",
+  "machine learning": "ai",
+  "ai ml": "ai",
+  cleantech: "clean technology",
+  "clean tech": "clean technology",
+  "clean technology": "clean technology",
+  "r d": "research",
+  research: "research",
+  "research and development": "research",
+  "workforce training": "workforce development",
+  "skills training": "workforce development",
+  "professional development": "workforce development",
+};
+const normalizeSector = (value: string) => {
+  const cleaned = norm(value)
+    .replace(/[{}_[\]/&-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return SECTOR_ALIASES[cleaned] ?? cleaned;
+};
 const overlap = (a: string[], b: string[]) => {
-  const set = new Set(a.map(norm));
-  return b.some((x) => set.has(norm(x)));
+  const set = new Set(a.map(normalizeSector));
+  return b.some((x) => set.has(normalizeSector(x)));
 };
 // Word-boundary matching to avoid false positives (e.g. "art" in "chart", "start").
 const containsAny = (hay: string, kws: string[]) =>
   kws.some((k) =>
     new RegExp(
-      `(?:^|[\\s,;:.()\\-])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[\\s,;:.()\\-])`,
+      `(?:^|[^\\p{L}\\p{N}])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[^\\p{L}\\p{N}])`,
+      "u",
     ).test(hay),
   );
 const containsAll = (hay: string, kws: string[]) =>
   kws.every((k) =>
     new RegExp(
-      `(?:^|[\\s,;:.()\\-])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[\\s,;:.()\\-])`,
+      `(?:^|[^\\p{L}\\p{N}])${norm(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[^\\p{L}\\p{N}])`,
+      "u",
     ).test(hay),
   );
 
@@ -110,6 +137,33 @@ function normalizeJurisdiction(raw: string): string {
   return JURISDICTION_ALIASES[n] ?? n;
 }
 
+const CANADIAN_SUBJURISDICTIONS = new Set([
+  "on",
+  "qc",
+  "bc",
+  "ab",
+  "mb",
+  "sk",
+  "ns",
+  "nb",
+  "nl",
+  "pe",
+  "yt",
+  "nt",
+  "nu",
+]);
+
+function jurisdictionMatches(requiredRaw: string, grantRaw: string): boolean {
+  const required = normalizeJurisdiction(requiredRaw);
+  const grant = normalizeJurisdiction(grantRaw);
+  if (required === grant) return true;
+  // A national opportunity is available to a province-based organization;
+  // an organization operating Canada-wide can also pursue a provincial call.
+  if (grant === "ca" && CANADIAN_SUBJURISDICTIONS.has(required)) return true;
+  if (required === "ca" && CANADIAN_SUBJURISDICTIONS.has(grant)) return true;
+  return false;
+}
+
 function buildHaystack(g: GrantForRules): string {
   return norm(
     [
@@ -121,7 +175,7 @@ function buildHaystack(g: GrantForRules): string {
       g.summary ?? "",
       g.title ?? "",
     ].join(" "),
-  );
+  ).replace(/[_/]+/g, " ");
 }
 
 function detectRole(hay: string): "lead" | "partner" | "unknown" {
@@ -185,22 +239,16 @@ function isRollingIntake(hay: string, deadline?: string | null): boolean {
 
 function detectExcludedApplicantTypes(hay: string): string[] {
   const out: string[] = [];
-  if (
-    /\b(?:only|must be|restricted to|eligible (?:are |applicants? (?:are |include )))[^.]{0,80}\b(registered )?charit(y|ies)\b/.test(
-      hay,
-    )
-  ) {
+  if (/\b(?:only|must be|restricted to)[^.]{0,80}\b(registered )?charit(y|ies)\b/.test(hay)) {
     out.push("charity_only");
   }
   if (
-    /\b(?:only|must be|restricted to|eligible (?:are |applicants? (?:are |include )))[^.]{0,80}\b(municipalit(y|ies)|local government)\b/.test(
-      hay,
-    )
+    /\b(?:only|must be|restricted to)[^.]{0,80}\b(municipalit(y|ies)|local government)\b/.test(hay)
   ) {
     out.push("municipality_only");
   }
   if (
-    /\b(?:only|must be|restricted to|eligible (?:are |applicants? (?:are |include )))[^.]{0,80}\b(universit(y|ies)|colleges?|post[- ]secondary)\b/.test(
+    /\b(?:only|must be|restricted to)[^.]{0,80}\b(universit(y|ies)|colleges?|post[- ]secondary)\b/.test(
       hay,
     )
   ) {
@@ -215,7 +263,63 @@ function detectExcludedApplicantTypes(hay: string): string[] {
   return out;
 }
 
-export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
+type ApplicantCategory =
+  | "nonprofit"
+  | "charity"
+  | "municipality"
+  | "university"
+  | "individual"
+  | "for_profit"
+  | "indigenous"
+  | "government";
+
+function applicantCategories(text: string): ApplicantCategory[] {
+  text = text.replace(/[_/]+/g, " ");
+  const categories = new Set<ApplicantCategory>();
+  if (/\b(non[- ]?profit|not[- ]for[- ]profit|npo)\b/.test(text)) categories.add("nonprofit");
+  if (/\b(charit(?:y|ies)|charitable organization)\b/.test(text)) categories.add("charity");
+  if (/\b(municipalit(?:y|ies)|local government|cities|towns)\b/.test(text)) {
+    categories.add("municipality");
+  }
+  if (/\b(universit(?:y|ies)|colleges?|post[- ]secondary)\b/.test(text)) {
+    categories.add("university");
+  }
+  if (/\b(individuals?|private citizens?)\b/.test(text)) categories.add("individual");
+  if (/(?:^|[\s,;(])(for[- ]profit|commercial|business(?:es)?|smes?|enterprises?)\b/.test(text)) {
+    categories.add("for_profit");
+  }
+  if (/\b(indigenous|first nations?|m[ée]tis|inuit)\b/.test(text)) {
+    categories.add("indigenous");
+  }
+  if (/\b(provincial government|federal government|government agenc(?:y|ies))\b/.test(text)) {
+    categories.add("government");
+  }
+  return [...categories];
+}
+
+function configuredApplicantCategories(values: string[]): ApplicantCategory[] {
+  return [...new Set(values.flatMap((value) => applicantCategories(norm(value))))];
+}
+
+function detectExplicitEligibleApplicantTypes(g: GrantForRules): ApplicantCategory[] {
+  const eligibility = g.eligibility;
+  const structured: ApplicantCategory[] = [];
+  if (eligibility && typeof eligibility === "object" && !Array.isArray(eligibility)) {
+    for (const [key, value] of Object.entries(eligibility as Record<string, unknown>)) {
+      if (value === true || (typeof value === "string" && /^(true|yes|eligible)$/i.test(value))) {
+        structured.push(...applicantCategories(norm(key)));
+      }
+    }
+  }
+  const text = typeof eligibility === "string" ? norm(eligibility) : "";
+  const clauses =
+    text.match(
+      /(?:eligible applicants?(?: are| include)?|open to|who can apply|applicants? must be)[^.\n]{0,240}/g,
+    ) ?? [];
+  return [...new Set([...structured, ...clauses.flatMap(applicantCategories)])];
+}
+
+export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date()): RulesResult {
   const checks: RuleCheck[] = [];
   const grantSectors = (g.sectors ?? []).filter(Boolean);
   const grantCountry = (g.country ?? "").trim();
@@ -224,36 +328,62 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
   const cost_share_pct = detectCostShare(hay);
   const rolling_intake = isRollingIntake(hay, g.deadline);
 
-  if (rules.applicant_types_excluded.length > 0) {
-    const detected = detectExcludedApplicantTypes(hay);
-    const bad = detected.filter((d) => rules.applicant_types_excluded.includes(d));
-    if (detected.length > 0) {
-      checks.push({
-        id: "sop_filter_1_legal",
-        label: "SOP F1 - Legal eligibility",
-        status: bad.length > 0 ? "fail" : "pass",
-        hard: rules.hard_fail_on_applicant_type,
-        detail:
-          bad.length > 0
-            ? `Program is restricted to: ${bad.join(", ")}`
-            : `Restrictions detected (${detected.join(", ")}) but none are excluded`,
-      });
-    }
+  if (rules.applicant_types_excluded.length > 0 || rules.applicant_types_allowed.length > 0) {
+    const restrictions = detectExcludedApplicantTypes(hay);
+    const excluded = restrictions.filter((value) => rules.applicant_types_excluded.includes(value));
+    const eligible = detectExplicitEligibleApplicantTypes(g);
+    const allowed = configuredApplicantCategories(rules.applicant_types_allowed);
+    const eligibleMatch = eligible.filter((value) => allowed.includes(value));
+    const restrictionCategories = restrictions.map((value) =>
+      value.replace(/_only$/, ""),
+    ) as ApplicantCategory[];
+    const restrictionMatchesAllowed = restrictionCategories.some((value) =>
+      allowed.includes(value),
+    );
+    const failedRestriction =
+      restrictions.length > 0 && (excluded.length > 0 || !restrictionMatchesAllowed);
+    const hasExplicitEligibility = eligible.length > 0;
+    const status: RuleCheck["status"] = failedRestriction
+      ? "fail"
+      : restrictions.length > 0
+        ? "pass"
+        : hasExplicitEligibility
+          ? eligibleMatch.length > 0
+            ? "pass"
+            : "fail"
+          : "skip";
+    checks.push({
+      id: "sop_filter_1_legal",
+      label: "SOP F1 - Legal eligibility",
+      status,
+      hard: rules.hard_fail_on_applicant_type,
+      detail: failedRestriction
+        ? `Program is restricted to ${restrictions.join(", ")}; allowed profile: ${allowed.join(", ") || "none"}`
+        : restrictions.length > 0
+          ? `Exclusive applicant restriction matches allowed profile: ${restrictionCategories.join(", ")}`
+          : hasExplicitEligibility
+            ? eligibleMatch.length > 0
+              ? `Eligible applicant types include: ${eligibleMatch.join(", ")}`
+              : `Detected eligible types (${eligible.join(", ")}) do not include allowed profile (${allowed.join(", ") || "none"})`
+            : "Applicant type not stated clearly enough to evaluate",
+    });
   }
 
   if (rules.required_jurisdictions.length > 0) {
     const normGrant = grantCountry ? normalizeJurisdiction(grantCountry) : "";
     const ok = normGrant
-      ? rules.required_jurisdictions.map(normalizeJurisdiction).includes(normGrant)
+      ? rules.required_jurisdictions.some((required) => jurisdictionMatches(required, grantCountry))
       : false;
     checks.push({
       id: "jurisdiction_required",
       label: "Required jurisdiction",
-      status: ok ? "pass" : "fail",
+      status: !normGrant ? "skip" : ok ? "pass" : "fail",
       hard: rules.hard_fail_on_jurisdiction,
       detail: ok
         ? `${grantCountry} is in {${rules.required_jurisdictions.join(", ")}}`
-        : `${grantCountry || "(no country)"} is not in {${rules.required_jurisdictions.join(", ")}}`,
+        : !normGrant
+          ? "Grant jurisdiction is unknown"
+          : `${grantCountry} is incompatible with {${rules.required_jurisdictions.join(", ")}}`,
     });
   }
 
@@ -294,16 +424,24 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
   }
 
   if (rules.iial_capabilities.length > 0) {
-    const hits = rules.iial_capabilities.filter((c) => hay.includes(norm(c)));
+    const hits = rules.iial_capabilities.filter((capability) => containsAny(hay, [capability]));
     const ok = hits.length > 0;
+    const hasStrategicEvidence = Boolean(
+      (g.summary ?? "").trim() ||
+      (typeof g.eligibility === "string"
+        ? g.eligibility.trim()
+        : g.eligibility && Object.keys(g.eligibility as object).length > 0),
+    );
     checks.push({
       id: "sop_filter_4_strategic",
       label: "SOP F4 - Strategic fit (IIAL capabilities)",
-      status: ok ? "pass" : "fail",
+      status: !hasStrategicEvidence ? "skip" : ok ? "pass" : "fail",
       hard: rules.hard_fail_on_capability,
-      detail: ok
-        ? `Matched capabilities: ${hits.join(", ")}`
-        : "No IIAL capability detected in eligibility or summary",
+      detail: !hasStrategicEvidence
+        ? "No summary or eligibility evidence available"
+        : ok
+          ? `Matched capabilities: ${hits.join(", ")}`
+          : "No IIAL capability detected in eligibility or summary",
     });
   }
 
@@ -357,7 +495,7 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
       id: "sop_filter_3_costshare",
       label: `SOP F3 - Org cost share <= ${rules.max_cost_share_pct_org_carries}%`,
       status: ok ? "pass" : "fail",
-      hard: false,
+      hard: rules.hard_fail_on_amount,
       detail: `Organization carries about ${cost_share_pct}%`,
     });
   }
@@ -397,7 +535,7 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
         detail: "No deadline available",
       });
     } else {
-      const days = Math.floor((new Date(g.deadline).getTime() - Date.now()) / 86400000);
+      const days = Math.floor((new Date(g.deadline).getTime() - now.getTime()) / 86400000);
       const weeks = Math.floor(days / 7);
       const ok = weeks >= wantWeeks;
       checks.push({
@@ -410,7 +548,9 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
     }
   }
 
-  if (rules.min_days_to_deadline !== null) {
+  // F5 is the authoritative runway rule. The generic deadline rule is only a
+  // fallback when lead/partner runway is not configured.
+  if (rules.min_days_to_deadline !== null && (wantWeeks === null || wantWeeks === undefined)) {
     if (!g.deadline || Number.isNaN(new Date(g.deadline).getTime())) {
       checks.push({
         id: "deadline",
@@ -420,7 +560,7 @@ export function evaluateRules(rules: FitRules, g: GrantForRules): RulesResult {
         detail: "No deadline available",
       });
     } else {
-      const days = Math.floor((new Date(g.deadline).getTime() - Date.now()) / 86400000);
+      const days = Math.floor((new Date(g.deadline).getTime() - now.getTime()) / 86400000);
       const ok = days >= rules.min_days_to_deadline;
       checks.push({
         id: "deadline",

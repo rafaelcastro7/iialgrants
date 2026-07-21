@@ -51,7 +51,9 @@ export const getGrantAudit = createServerFn({ method: "GET" })
 
     const { data: evaluation } = await context.supabase
       .from("grant_evaluations")
-      .select("fit_score, eligibility_pass, rationale_en, model, axis_breakdown, created_at")
+      .select(
+        "fit_score,llm_fit_score,eligibility_pass,rationale_en,model,axis_breakdown,rule_snapshot,evaluated_at,created_at",
+      )
       .eq("user_id", context.userId)
       .eq("grant_id", data.id)
       .maybeSingle();
@@ -70,8 +72,9 @@ export const getGrantAudit = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true })
       .limit(200);
 
-    // Strip non-serializable closures from evaluateRules result before returning.
-    const ruleSummary = {
+    // Prefer the immutable snapshot that produced the stored score. Legacy
+    // evaluations fall back to a transparent recalculation with current rules.
+    const currentRuleSummary = {
       checks: ruleResult.checks,
       hard_fail: ruleResult.hard_fail,
       rule_score: ruleResult.rule_score,
@@ -81,13 +84,19 @@ export const getGrantAudit = createServerFn({ method: "GET" })
       threshold_fit_pass: rules.threshold_fit_pass,
       weight_llm: rules.weight_llm,
     };
+    const snapshot = evaluation?.rule_snapshot;
+    const ruleSummary =
+      snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+        ? (snapshot as typeof currentRuleSummary)
+        : currentRuleSummary;
 
-    const verdict: "accepted" | "rejected" | "pending" = ruleResult.hard_fail
+    const verdict: "accepted" | "rejected" | "pending" = ruleSummary.hard_fail
       ? "rejected"
       : grant.status === "archived"
         ? "rejected"
         : evaluation && evaluation.fit_score != null
-          ? evaluation.fit_score * 100 >= rules.threshold_fit_pass
+          ? evaluation.eligibility_pass &&
+            evaluation.fit_score * 100 >= ruleSummary.threshold_fit_pass
             ? "accepted"
             : "rejected"
           : "pending";
@@ -99,5 +108,9 @@ export const getGrantAudit = createServerFn({ method: "GET" })
       evidence: evidence ?? [],
       trace: trace ?? [],
       verdict,
+      rule_provenance:
+        snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+          ? "evaluation_snapshot"
+          : "current_rules_legacy",
     };
   });
