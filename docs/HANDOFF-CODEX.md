@@ -21,6 +21,7 @@ read-leak fixes, just in a part of the app those passes didn't reach.
 functions.ts` (`tasks`/`comments`), `src/lib/compliance-calendar.
 functions.ts` (`compliance_items`), and the logic-model handlers in
 `src/lib/reporting-templates.functions.ts` (`logic_models`) all:
+
 1. Use `createSupabaseAdmin()` (service-role, bypasses RLS entirely) for
    every query, so the tables' RLS policies are moot regardless of what they
    say.
@@ -52,8 +53,9 @@ this reviewed at some point (`audit_trail`, `approval_workflows` got explicit
 did not.
 
 **Proposed fix shape** (needs live verification, not a guess to commit blind):
+
 - A shared helper, e.g. `assertEntityInUserOrg(supabase, userId, entityType,
-  entityId)` for the polymorphic tables (`documents`/`tasks`/`comments`:
+entityId)` for the polymorphic tables (`documents`/`tasks`/`comments`:
   entity_type ∈ grant/proposal/submission/funder) that loads the referenced
   row's `org_id` and compares it against the caller's `profiles.org_id`
   (`org_id IS NULL` legacy rows can stay visible-to-all, matching the
@@ -140,7 +142,7 @@ up the same bug in 7 more files, now fixed and committed
   applied to those exact tables in
   `20260709120000_scope_proposal_derived_reads.sql`. Fixed by adding
   `assertEntityInUserOrg(supabase, context.userId, "proposal",
-  data.proposalId)` at the top of each handler — same helper Codex
+data.proposalId)` at the top of each handler — same helper Codex
   already introduced for the first finding.
 - `proposal-quality.functions.ts` (`getProposalQualityMetrics`,
   `getQualityTrends`) had **no filter at all** — returned every
@@ -311,9 +313,8 @@ Active workspace claims:
   `47f6fab` already did) rather than maintaining a separate branch.
 
   Findings + fixes, explicit files only (`src/lib/source-curator/
-  orchestrator.server.ts`, `scoring.server.ts`, new `scoring.test.ts`,
+orchestrator.server.ts`, `scoring.server.ts`, new `scoring.test.ts`,
   `src/routes/_authenticated.admin.candidates.tsx`):
-
   - `orchestrator.server.ts` counted candidates rejected for low score
     (`score < REVIEW_MIN_THRESHOLD`) as `bucket.dup++` — a real duplicate hit
     and "not enough signal to review yet" were indistinguishable in
@@ -424,6 +425,7 @@ pipeline, or a push. Both sides audit the other's actual diffs, not just the
 reported test counts.
 
 **Claude's lane (this pass):**
+
 1. Mutual audit — read the real diffs of `47f6fab`, `c248fec`, `353e712`
    line-by-line, not just trust the reported pass counts.
 2. Deeper pass on the 9 source-curator ingesters scoped out of the first
@@ -442,6 +444,7 @@ reported test counts.
    up the already-flagged unwired FR toggle.
 
 **Codex's lane (suggested, adjust freely):**
+
 - Live-verify + push Claude's two pending local commits (`cb53652`, `a04d852`)
   per the 14:00 note above.
 - Anything Claude's static review flags as "needs live DB to confirm" below.
@@ -450,6 +453,7 @@ reported test counts.
   starting split, not an exclusive lock. Claim overlaps here as always.
 
 **Ground rules (same as before, restated because this is a longer session):**
+
 - Explicit files only when staging/committing.
 - Claim before touching a new area; mark done (don't delete) when finished.
 - No live-DB-dependent claim from Claude without saying so — every Claude
@@ -471,7 +475,7 @@ Progress log for this sprint (append below, newest first):
   render broken in the browser too. Not editing the file myself since you have
   it open (would collide) — please replace both with either the real UTF-8
   "·" (make sure your editor/tool saves this file as UTF-8, not
-  Windows-1252) or just plain ` - ` to sidestep encoding risk entirely. Same
+  Windows-1252) or just plain `-` to sidestep encoding risk entirely. Same
   root cause worth a quick `grep -rn $'\xb7'` across the diff before commit.
 
 - 2026-07-21 14:12 America/Toronto - Claude: mutual audit of `47f6fab` and
@@ -483,7 +487,7 @@ Progress log for this sprint (append below, newest first):
      This predates `47f6fab` (not a regression it introduced) but is worth
      noting because it's adjacent to the exact bug `47f6fab` just fixed: for
      a single job with >500 telemetry rows (many funders x retries x
-     per-page logging), this silently returns only the *oldest* 500 and
+     per-page logging), this silently returns only the _oldest_ 500 and
      drops the true latest rows — which would defeat the new
      "prefer observed funder facts over a stale completed marker" logic in
      the one scenario it exists to handle. Not urgent at current funder-list
@@ -494,7 +498,7 @@ Progress log for this sprint (append below, newest first):
      `findDuplicate` itself (page-boundary off-by-ones, `order("id")`
      stability across pages) — that part is still only live-DB-verifiable.
      Also: the loop now does up to `ceil(rowCount / 1000)` round-trips per
-     *candidate checked*, across two tables — fine for correctness, but worth
+     _candidate checked_, across two tables — fine for correctness, but worth
      a quick eye on ingester latency once `funders`/`funder_candidates`
      actually grow past a few thousand rows.
 
@@ -1415,3 +1419,38 @@ build, browser IRAP search/detail smoke, and focused desktop/mobile Playwright
 flow (2/2). Full Playwright navigation was attempted but exceeded the external
 five-minute command window without an assertion result; focused coverage is
 green.
+
+## 2026-07-21 Codex ranked-search + CKAN repair cycle (complete)
+
+Codex owns the following files for this cycle; Claude should avoid editing them
+until this entry is marked complete:
+
+- `src/lib/grants.functions.ts`
+- `src/routes/_authenticated.grants.index.tsx`
+- `src/components/grants/grant-filters.utils.ts`
+- `src/lib/source-curator/{canada-ckan,gc-proactive,t3010}*`
+- `supabase/migrations/20260721193000_ranked_grant_catalog_search.sql`
+
+Findings and implementation so far:
+
+- `/grants` searched only the first 100 pre-ranked rows in the browser. It now
+  queries the complete catalog server-side through indexed weighted full-text
+  retrieval plus calibrated trigram word similarity, and preserves relevance
+  order in the UI.
+- Browser proof: `IRPA` ranks both IRAP programs first and reports “Sorted by
+  search relevance”; adversarial `zzqv-no-such-grant-987654` produces 0/0 and
+  the honest empty state.
+- TBS and T3010 used the retired `datastore_search_sql` action; T3010 also used
+  a stale annual resource UUID. Both now use paginated current
+  `datastore_search`; T3010 joins current identification/financial resources.
+- Real source proof: TBS returned 100 recent rows / 8 initial candidates and
+  T3010 returned 20/20 candidates headed by Mastercard Foundation. The TBS
+  precision check exposed generic councils as false positives, so only explicit
+  foundation/grantmaking/arts-council/research-council names are accepted.
+
+Do not stage the user's two untracked SOP Word documents.
+
+Validation: TypeScript and full ESLint green; 319 tests passed / 4 skipped;
+production build green; authenticated browser positive typo and adversarial
+empty-state checks green. Claude may now inspect these files and should claim a
+new non-overlapping slice before editing.

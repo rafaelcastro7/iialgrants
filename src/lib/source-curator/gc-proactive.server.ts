@@ -1,19 +1,13 @@
 // TBS Proactive Disclosure — Grants & Contributions ingester.
-// Strategy (Worker-friendly): query the CKAN datastore API with a date filter
-// for the last 35 days so we always get the most recent month even if the
-// pipeline missed a run. Extract unique (recipient_legal_name, owner_org)
-// combinations and propose recipients as funder candidates ONLY when their
-// org type suggests they are themselves grantmakers (foundations, councils).
+// Reads the current datastore API and proposes recipients only when their
+// legal name is strong evidence that they are themselves grantmakers.
 
+import { fetchCkanRecords } from "./canada-ckan.server";
 import type { RawCandidate } from "./scoring.server";
 
-// Datastore resource for the "grants" CSV (updated daily).
-// Verified June 2026: https://open.canada.ca/data/en/dataset/432527ab-7aac-45b5-81d6-7597107a7013
-const GC_DATASTORE_URL = "https://open.canada.ca/data/api/3/action/datastore_search_sql";
 const GC_RESOURCE_ID = "1d15a62f-5656-49ad-8c88-f40ce689d831";
-
 const REGRANT_KEYWORDS =
-  /(foundation|fondation|community|trust|society|société|council|conseil|association)/i;
+  /(foundation|fondation|charitable trust|grant[- ]?making|arts council|council for the arts|research council|conseil des arts|conseil de recherches)/i;
 
 type GcRow = {
   recipient_legal_name?: string | null;
@@ -27,75 +21,59 @@ type GcRow = {
 };
 
 export async function fetchRecentGcRows(daysBack = 35, limit = 5000): Promise<GcRow[]> {
-  const since = new Date(Date.now() - daysBack * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  // Use SQL endpoint — CKAN allows safe parameterized SELECTs.
-  const sql =
-    `SELECT recipient_legal_name, recipient_business_number, recipient_country, ` +
-    `recipient_province, recipient_type, owner_org, agreement_value, agreement_start_date ` +
-    `FROM "${GC_RESOURCE_ID}" ` +
-    `WHERE recipient_country = 'Canada' ` +
-    `AND agreement_start_date >= '${since}' ` +
-    `LIMIT ${limit}`;
-  const url = `${GC_DATASTORE_URL}?sql=${encodeURIComponent(sql)}`;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 25_000);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`gc_datastore_${res.status}`);
-    const json = (await res.json()) as { result?: { records?: GcRow[] } };
-    return json.result?.records ?? [];
-  } finally {
-    clearTimeout(t);
-  }
+  const since = new Date(Date.now() - daysBack * 86_400_000).toISOString().slice(0, 10);
+  return fetchCkanRecords<GcRow>({
+    resourceId: GC_RESOURCE_ID,
+    fields: [
+      "recipient_legal_name",
+      "recipient_business_number",
+      "recipient_country",
+      "recipient_province",
+      "recipient_type",
+      "owner_org",
+      "agreement_value",
+      "agreement_start_date",
+    ],
+    sort: "agreement_start_date desc",
+    maxRows: limit,
+    accept: (row) =>
+      (row.recipient_country === "CA" || row.recipient_country === "Canada") &&
+      Boolean(row.agreement_start_date && row.agreement_start_date >= since),
+    stopAfterPage: (rows) =>
+      rows.some((row) => Boolean(row.agreement_start_date && row.agreement_start_date < since)),
+  });
 }
 
 /** Aggregate rows into funder candidates (one per unique BN/name). */
 export function extractGcCandidates(rows: GcRow[]): RawCandidate[] {
-  const agg = new Map<
+  const aggregate = new Map<
     string,
-    {
-      name: string;
-      bn?: string;
-      province?: string;
-      type?: string;
-      total: number;
-      count: number;
-    }
+    { name: string; bn?: string; province?: string; type?: string; total: number; count: number }
   >();
-  for (const r of rows) {
-    const name = (r.recipient_legal_name ?? "").trim();
-    if (!name) continue;
-    // Only recipients that look like re-granting entities are useful as funders.
-    if (
-      !REGRANT_KEYWORDS.test(name) &&
-      !(r.recipient_type && /foundation|trust/i.test(r.recipient_type))
-    )
-      continue;
-    const bn = (r.recipient_business_number ?? "").replace(/\s/g, "").slice(0, 9) || undefined;
+  for (const row of rows) {
+    const name = (row.recipient_legal_name ?? "").trim();
+    if (!name || !REGRANT_KEYWORDS.test(name)) continue;
+    const bn = (row.recipient_business_number ?? "").replace(/\s/g, "").slice(0, 9) || undefined;
     const key = bn ?? name.toLowerCase();
-    const cur = agg.get(key) ?? {
+    const current = aggregate.get(key) ?? {
       name,
       bn,
-      province: r.recipient_province ?? undefined,
-      type: r.recipient_type ?? undefined,
+      province: row.recipient_province ?? undefined,
+      type: row.recipient_type ?? undefined,
       total: 0,
       count: 0,
     };
-    cur.total += Number(r.agreement_value ?? 0) || 0;
-    cur.count += 1;
-    agg.set(key, cur);
+    current.total += Number(row.agreement_value ?? 0) || 0;
+    current.count += 1;
+    aggregate.set(key, current);
   }
-  const out: RawCandidate[] = [];
-  for (const v of agg.values()) {
-    out.push({
-      name: v.name,
-      bn_number: v.bn ?? null,
-      province: v.province ?? null,
-      funder_type: v.type ?? "regrantor",
-      source_signals: ["tbs_gc:" + new Date().toISOString().slice(0, 7)],
-      raw_metadata: { gc_grants_received: v.count, gc_total_received: v.total },
-      disbursed_annual: null,
-    });
-  }
-  return out;
+  return [...aggregate.values()].map((value) => ({
+    name: value.name,
+    bn_number: value.bn ?? null,
+    province: value.province ?? null,
+    funder_type: value.type ?? "regrantor",
+    source_signals: [`tbs_gc:${new Date().toISOString().slice(0, 7)}`],
+    raw_metadata: { gc_grants_received: value.count, gc_total_received: value.total },
+    disbursed_annual: null,
+  }));
 }
