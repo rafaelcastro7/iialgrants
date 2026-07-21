@@ -1,0 +1,212 @@
+[
+  {
+    "id": "irap-acronym",
+    "query": "IRAP",
+    "language": "en",
+    "relevance": { "5630d71b-373a-411e-a69e-92a19dc2a6b1": 3 },
+    "tags": ["acronym"]
+  },
+  {
+    "id": "irap-typo",
+    "query": "industrial reserch assistance",
+    "language": "en",
+    "relevance": { "5630d71b-373a-411e-a69e-92a19dc2a6b1": 3 },
+    "tags": ["typo"]
+  },
+  {
+    "id": "youth-employment",
+    "query": "hire young graduates",
+    "language": "en",
+    "relevance": { "e32f366b-9823-497b-b46b-8be6b4d10e52": 3 },
+    "tags": ["synonym"]
+  },
+  {
+    "id": "indigenous-outreach",
+    "query": "Indigenous science outreach",
+    "language": "en",
+    "relevance": {
+      "d65f9fd5-5cbe-41e8-8cdd-7751531d4412": 3,
+      "7d68693b-e5b8-4ba3-a81e-22ce86bf6687": 3,
+      "2bc8bca3-0b98-48d3-a977-76d8743874c6": 1,
+      "0c02f878-f23e-4773-9226-526a4681f3a1": 1
+    },
+    "tags": ["population"]
+  },
+  {
+    "id": "rayonnement-autochtone",
+    "query": "rayonnement autochtone innovation",
+    "language": "fr",
+    "relevance": {
+      "d65f9fd5-5cbe-41e8-8cdd-7751531d4412": 3,
+      "7d68693b-e5b8-4ba3-a81e-22ce86bf6687": 3
+    },
+    "tags": ["fr", "population"]
+  },
+  {
+    "id": "healthy-aging",
+    "query": "healthy aging community technology",
+    "language": "en",
+    "relevance": { "fff3d427-5781-4798-90ed-b18822cb7c34": 3 },
+    "tags": ["population"]
+  },
+  {
+    "id": "vieillissement-sante",
+    "query": "vieillissement en santé communauté",
+    "language": "fr",
+    "relevance": { "fff3d427-5781-4798-90ed-b18822cb7c34": 3 },
+    "tags": ["fr"]
+  },
+  {
+    "id": "collaborative-science",
+    "query": "collaborative science technology innovation",
+    "language": "en",
+    "relevance": { "62090a56-c1e9-4c59-8c5a-0b8929db9072": 3 },
+    "tags": ["exact"]
+  },
+  {
+    "id": "mitacs-accelerate",
+    "query": "Mitacs Accelerate",
+    "language": "en",
+    "relevance": {
+      "3981d4a8-131d-4a51-9cf9-8d20035996e0": 3,
+      "f1eff9ae-5df6-4a5e-8dfa-9e17853a4487": 2,
+      "3ada4e71-f04a-403f-b966-72f98e753ac2": 2,
+      "21b87449-036e-4c97-a4eb-6aa9f68801dc": 2
+    },
+    "tags": ["family"]
+  },
+  {
+    "id": "defence-security",
+    "query": "defence security applied research",
+    "language": "en",
+    "relevance": { "f1eff9ae-5df6-4a5e-8dfa-9e17853a4487": 3 },
+    "tags": ["sector"]
+  },
+  {
+    "id": "entrepreneur-commercialization",
+    "query": "student entrepreneur commercialization",
+    "language": "en",
+    "relevance": { "3ada4e71-f04a-403f-b966-72f98e753ac2": 3 },
+    "tags": ["funding-use"]
+  },
+  {
+    "id": "international-collaboration",
+    "query": "international research collaboration",
+    "language": "en",
+    "relevance": {
+      "21b87449-036e-4c97-a4eb-6aa9f68801dc": 3,
+      "fb21494e-8853-4071-a919-f2cd271628e9": 2,
+      "96eef917-7f2a-4282-b7e6-809f7277be90": 1,
+      "f5f45961-6422-4ac1-b010-08d6ca635d00": 1,
+      "f3166bb4-de2e-4727-adfc-4a0200849c37": 1
+    },
+    "tags": ["semantic"]
+  },
+  {
+    "id": "globalink-award",
+    "query": "Globalink Research Award",
+    "language": "en",
+    "relevance": {
+      "fb21494e-8853-4071-a919-f2cd271628e9": 3,
+      "bd1eb532-0354-443a-8203-8029da031055": 2
+    },
+    "tags": ["exact"]
+  },
+  {
+    "id": "globalink-internship",
+    "query": "Globalink research internship",
+    "language": "en",
+    "relevance": {
+      "f5f45961-6422-4ac1-b010-08d6ca635d00": 3,
+      "96eef917-7f2a-4282-b7e6-809f7277be90": 2,
+      "f3166bb4-de2e-4727-adfc-4a0200849c37": 2
+    },
+    "tags": ["family"]
+  },
+  {
+    "id": "quantum-research",
+    "query": "quantum research mobility",
+    "language": "en",
+    "relevance": { "fb21494e-8853-4071-a919-f2cd271628e9": 3 },
+    "tags": ["sector"]
+  },
+  {
+    "id": "business-strategy",
+    "query": "business strategy internship innovation",
+    "language": "en",
+    "relevance": { "696fbe8f-d804-4f24-9820-a24338a7fde8": 3 },
+    "tags": ["exact"]
+  },
+  {
+    "id": "social-innovation",
+    "query": "social environmental innovation research",
+    "language": "en",
+    "relevance": { "e072fdbb-12bc-4d72-8faf-a21edfe8b0ba": 3 },
+    "tags": ["semantic"]
+  },
+  {
+    "id": "professional-training",
+    "query": "professional skills training",
+    "language": "en",
+    "relevance": { "7e7b0289-41c5-4b12-9368-03043ae3a904": 3 },
+    "tags": ["funding-use"]
+  },
+  {
+    "id": "research-faculty",
+    "query": "faculty host international undergraduate researcher",
+    "language": "en",
+    "relevance": {
+      "96eef917-7f2a-4282-b7e6-809f7277be90": 3,
+      "f5f45961-6422-4ac1-b010-08d6ca635d00": 2
+    },
+    "tags": ["semantic"]
+  },
+  {
+    "id": "rise-germany",
+    "query": "Germany science internship RISE",
+    "language": "en",
+    "relevance": { "f3166bb4-de2e-4727-adfc-4a0200849c37": 3 },
+    "tags": ["acronym"]
+  },
+  {
+    "id": "quebec-ai-tax-credit",
+    "query": "Quebec AI tax credit",
+    "language": "en",
+    "relevance": { "d001e11c-84d0-4d33-97b6-6ac9e0522281": 3 },
+    "tags": ["jurisdiction", "semantic"]
+  },
+  {
+    "id": "credit-impot-ia",
+    "query": "crédit d'impôt intelligence artificielle Québec",
+    "language": "fr",
+    "relevance": { "d001e11c-84d0-4d33-97b6-6ac9e0522281": 3 },
+    "tags": ["fr", "jurisdiction"]
+  },
+  {
+    "id": "forestry-financing",
+    "query": "Quebec forestry financing",
+    "language": "en",
+    "relevance": { "d001e11c-84d0-4d33-97b6-6ac9e0522281": 3 },
+    "tags": ["sector"]
+  },
+  {
+    "id": "nonprofit-stem-outreach",
+    "query": "nonprofit STEM outreach",
+    "language": "en",
+    "relevance": {
+      "2bc8bca3-0b98-48d3-a977-76d8743874c6": 3,
+      "0c02f878-f23e-4773-9226-526a4681f3a1": 3,
+      "d65f9fd5-5cbe-41e8-8cdd-7751531d4412": 2,
+      "7d68693b-e5b8-4ba3-a81e-22ce86bf6687": 2
+    },
+    "hardBlocked": ["5630d71b-373a-411e-a69e-92a19dc2a6b1"],
+    "tags": ["eligibility"]
+  },
+  {
+    "id": "no-grant-policy",
+    "query": "employee conflict of interest policy",
+    "language": "en",
+    "relevance": {},
+    "tags": ["negative", "non-grant"]
+  }
+]
