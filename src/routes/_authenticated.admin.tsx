@@ -1,7 +1,6 @@
 import { Outlet, createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { Button } from "@/components/ui/button";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
@@ -60,25 +59,22 @@ function AdminLayout() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AdminSidebar />
-        <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-20 flex items-center gap-2.5 border-b border-border/60 bg-background/75 px-3 py-3 backdrop-blur-xl md:px-4">
-            <SidebarTrigger />
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-primary-foreground">
-              II
-            </div>
-            <span aria-hidden className="text-muted-foreground/40">
-              /
-            </span>
-            <span className="text-sm font-medium text-foreground/80">Admin console</span>
-          </header>
-          <main className="flex-1">
-            <Outlet />
-          </main>
-        </div>
+    <div className="flex min-h-screen w-full">
+      <AdminSidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex items-center gap-2.5 border-b border-border/60 bg-background/75 px-3 py-3 backdrop-blur-xl md:px-4">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-primary-foreground">
+            II
+          </div>
+          <span aria-hidden className="text-muted-foreground/40">
+            /
+          </span>
+          <span className="text-sm font-medium text-foreground/80">Admin console</span>
+        </header>
+        <main className="flex-1">
+          <Outlet />
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

@@ -17,26 +17,28 @@ async function basicUserFlow(page: Page) {
 
   await page.getByRole("button", { name: DEMO_MEMBER }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole("heading", { name: /dashboard/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /browse grants/i })).toBeVisible();
-  await expect(page.getByText(/next best step/i)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /run the grant operation from one place/i }),
+  ).toBeVisible();
+  await expect(page.getByText(/next best action/i)).toBeVisible();
+  await expect(page.getByRole("link", { name: /open radar/i })).toBeVisible();
 
-  // Desktop-only: sidebar avatar triggers a dropdown with Sign out
+  // Desktop-only: the full sidebar exposes sign-out directly in the V2 shell.
   const isDesktop = page.viewportSize()?.width && page.viewportSize()!.width >= 768;
   if (isDesktop) {
-    await page.getByRole("button", { name: "IIAL User" }).click();
-    await expect(page.getByText(/sign out/i)).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
   }
 
-  await page.getByRole("link", { name: /browse grants/i }).click();
+  await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
-  await expect(page.getByRole("tab", { name: "Express" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Advanced" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /prioritize every opportunity/i })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /industrial research assistance program/i }),
+  ).toBeVisible();
 
-  await page.getByRole("tab", { name: "Advanced" }).click();
-  await expect(page.getByLabel("Search grants")).toBeVisible();
-  await expect(page.getByText(/workflow/i)).toBeVisible();
+  await page.getByRole("searchbox", { name: /search grants/i }).fill("IRAP");
+  await expect(page.getByText(/showing 1 of 1 active records/i)).toBeVisible();
 
   expect(consoleErrors).toEqual([]);
 }

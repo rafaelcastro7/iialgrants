@@ -163,7 +163,7 @@ export async function closeBrowserRenderer(): Promise<void> {
   if (!browserPromise) return;
   try {
     const b = await browserPromise;
-    await b.close();
+    await Promise.race([b.close(), new Promise<void>((resolve) => setTimeout(resolve, 5_000))]);
   } catch {
     /* already closed/crashed */
   } finally {
