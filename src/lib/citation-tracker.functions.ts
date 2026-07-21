@@ -11,6 +11,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { assertEntityInUserOrg } from "./tenant-access.server";
 
 export const extractCitations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -26,9 +27,10 @@ export const extractCitations = createServerFn({ method: "POST" })
       ),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
       const allCitations: Array<{
         id: string;
@@ -144,9 +146,10 @@ export const getCitationSummary = createServerFn({ method: "GET" })
       proposalId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
       const { data: record, error } = await supabase
         .from("proposal_citation_reports")

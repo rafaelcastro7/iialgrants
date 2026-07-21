@@ -11,6 +11,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { assertEntityInUserOrg } from "./tenant-access.server";
 
 const SEVERITY_ORDER = { critical: 0, major: 1, minor: 2, suggestion: 3 } as const;
 
@@ -21,9 +22,10 @@ export const getRevisionPlan = createServerFn({ method: "GET" })
       proposalId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
       const { data: reviews, error } = await supabase
         .from("proposal_reviews")

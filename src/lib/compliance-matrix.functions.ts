@@ -11,6 +11,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { assertEntityInUserOrg } from "./tenant-access.server";
 
 const REQUIREMENT_TEMPLATES: Record<string, Array<{ category: string; requirement: string }>> = {
   nrc_irap: [
@@ -64,9 +65,10 @@ export const generateComplianceMatrix = createServerFn({ method: "POST" })
       attachments: z.array(z.string()).optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
       const template = REQUIREMENT_TEMPLATES[data.funderType] || REQUIREMENT_TEMPLATES.general;
       const fullContent = data.sections

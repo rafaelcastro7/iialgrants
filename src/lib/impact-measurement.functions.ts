@@ -10,17 +10,44 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { getTenantPrincipal, type TenantPrincipal } from "./tenant-access.server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/**
+ * Returns the submission IDs the caller is allowed to see: their own
+ * submissions, plus org-mates' submissions if org-scoped. Used to filter
+ * `outcomes` queries, since that table carries no owner column of its own.
+ */
+async function allowedSubmissionIds(
+  supabase: SupabaseClient<Database>,
+  principal: TenantPrincipal,
+): Promise<string[]> {
+  let query = supabase.from("submissions").select("id, user_id, org_id");
+  query = principal.orgId
+    ? query.or(`user_id.eq.${principal.userId},org_id.eq.${principal.orgId}`)
+    : query.eq("user_id", principal.userId);
+  const { data, error } = await query;
+  if (error) throw new Error(`Failed to scope submissions: ${error.message}`);
+  return (data || []).map((s) => s.id);
+}
 
 export const getImpactMetrics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const principal = await getTenantPrincipal(supabase, context.userId);
+      const allowedIds = await allowedSubmissionIds(supabase, principal);
 
-      const { data: outcomes } = await supabase
-        .from("outcomes")
-        .select("result, amount_awarded_cad, decision_date, impact_description");
+      const { data: outcomes } =
+        allowedIds.length === 0
+          ? { data: [] }
+          : await supabase
+              .from("outcomes")
+              .select("result, amount_awarded_cad, decision_date, impact_description")
+              .in("submission_id", allowedIds);
 
       const won = outcomes?.filter((o) => o.result === "won") || [];
       const totalAwarded = won.reduce((s, o) => s + (o.amount_awarded_cad || 0), 0);
@@ -52,9 +79,12 @@ export const getImpactMetrics = createServerFn({ method: "GET" })
 export const getOutcomeDetails = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ limit: z.number().min(1).max(100).default(20) }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const principal = await getTenantPrincipal(supabase, context.userId);
+      const allowedIds = await allowedSubmissionIds(supabase, principal);
+      if (allowedIds.length === 0) return [];
 
       const { data: rows, error } = await supabase
         .from("outcomes")
@@ -68,6 +98,7 @@ export const getOutcomeDetails = createServerFn({ method: "GET" })
           )
         `,
         )
+        .in("submission_id", allowedIds)
         .order("decision_date", { ascending: false })
         .limit(data.limit);
 
