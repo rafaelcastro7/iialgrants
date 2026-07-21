@@ -183,6 +183,128 @@ export const listActiveFunders = createServerFn({ method: "GET" })
 
 // Aggregated status of a discovery job, computed from agent_runs rows tagged
 // with metadata.job_id. Used by the UI progress panel.
+type DiscoveryRunRow = {
+  run_id: string;
+  status: string;
+  error: string | null;
+  latency_ms: number | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+};
+
+type DiscoveryFunderState = {
+  funder_id: string;
+  funder_name: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "degraded";
+  attempts: number;
+  inserted: number;
+  seenAgain: number;
+  engine?: string;
+  lastError?: string;
+  latency_ms?: number;
+};
+
+export function summarizeDiscoveryJobRows(jobId: string, all: DiscoveryRunRow[]) {
+  let started_at: string | null = null;
+  let completed_at: string | null = null;
+  let status: "queued" | "running" | "completed" | "failed" = "queued";
+  let totalInserted = 0;
+  let totalSeenAgain = 0;
+  let totalProcessed = 0;
+  let totalDegraded = 0;
+  let totalFailed = 0;
+  let evaluated = 0;
+  let fundersQueued = 0;
+  let completedMarkerAt: string | null = null;
+  let latestFunderRowAt: string | null = null;
+
+  const byFunder = new Map<string, DiscoveryFunderState>();
+
+  for (const r of all) {
+    const m = (r.metadata ?? {}) as Record<string, unknown>;
+    const stage = typeof m.stage === "string" ? m.stage : undefined;
+    if (stage === "orchestrator_started") {
+      started_at = r.created_at;
+      if (status === "queued") status = "running";
+      continue;
+    }
+    if (stage === "orchestrator_completed") {
+      completed_at = r.created_at;
+      completedMarkerAt = r.created_at;
+      status = "completed";
+      totalInserted = Number(m.totalInserted ?? 0);
+      totalSeenAgain = Number(m.totalSeenAgain ?? 0);
+      totalProcessed = Number(m.totalProcessed ?? 0);
+      evaluated = Number(m.evaluated ?? 0);
+      totalDegraded = Number(m.totalDegraded ?? 0);
+      totalFailed = Number(m.totalFailed ?? 0);
+      fundersQueued = Number(m.funders_queued ?? 0);
+      continue;
+    }
+    const fid = typeof m.funder_id === "string" ? m.funder_id : null;
+    if (!fid) continue;
+    latestFunderRowAt = r.created_at;
+    const fname = typeof m.funder_name === "string" ? m.funder_name : fid.slice(0, 8);
+    const prev = byFunder.get(fid) ?? {
+      funder_id: fid,
+      funder_name: fname,
+      status: "running" as const,
+      attempts: 0,
+      inserted: 0,
+      seenAgain: 0,
+    };
+    prev.attempts = Math.max(prev.attempts, Number(m.attempt ?? 1));
+    if (r.status === "succeeded") {
+      prev.status = "succeeded";
+      prev.inserted = Number(m.inserted ?? 0);
+      prev.seenAgain = Number(m.seen_again ?? 0);
+      prev.engine = typeof m.engine === "string" ? m.engine : prev.engine;
+      prev.latency_ms = r.latency_ms ?? prev.latency_ms;
+    } else if (r.status === "failed") {
+      prev.status = "failed";
+      prev.lastError = r.error ?? prev.lastError;
+    } else if (r.status === "degraded") {
+      prev.lastError = r.error ?? prev.lastError;
+      if (prev.status !== "succeeded") prev.status = "degraded";
+    }
+    byFunder.set(fid, prev);
+  }
+
+  const perFunder = [...byFunder.values()];
+  const completedBeforeLatestFunder =
+    completedMarkerAt != null && latestFunderRowAt != null && completedMarkerAt < latestFunderRowAt;
+
+  // Discovery can be interrupted by local runner shutdowns or timeout races.
+  // In that case the database may contain a terminal marker followed by late
+  // per-funder rows. The UI should prefer the observed funder facts over a
+  // stale aggregate marker, otherwise it shows "completed" with impossible
+  // totals (for example 0 inserted while a later funder row inserted grants).
+  if (completedBeforeLatestFunder || (status !== "completed" && perFunder.length > 0)) {
+    totalInserted = perFunder.reduce((sum, f) => sum + f.inserted, 0);
+    totalSeenAgain = perFunder.reduce((sum, f) => sum + f.seenAgain, 0);
+    totalProcessed = perFunder.filter((f) =>
+      ["succeeded", "degraded", "failed"].includes(f.status),
+    ).length;
+    totalDegraded = perFunder.filter((f) => f.status === "degraded").length;
+    totalFailed = perFunder.filter((f) => f.status === "failed").length;
+  }
+
+  return {
+    jobId,
+    status,
+    started_at,
+    completed_at,
+    fundersQueued,
+    totalInserted,
+    totalSeenAgain,
+    totalProcessed,
+    totalDegraded,
+    totalFailed,
+    evaluated,
+    perFunder,
+  };
+}
+
 export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ jobId: z.string().uuid() }).parse(i))
@@ -199,102 +321,7 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
       .limit(500);
     if (error) throw new Error(error.message);
 
-    type Row = {
-      run_id: string;
-      status: string;
-      error: string | null;
-      latency_ms: number | null;
-      metadata: Record<string, unknown> | null;
-      created_at: string;
-    };
-    const all = (rows ?? []) as unknown as Row[];
-
-    let started_at: string | null = null;
-    let completed_at: string | null = null;
-    let status: "queued" | "running" | "completed" | "failed" = "queued";
-    let totalInserted = 0;
-    let totalSeenAgain = 0;
-    let totalProcessed = 0;
-    let totalDegraded = 0;
-    let totalFailed = 0;
-    let evaluated = 0;
-    let fundersQueued = 0;
-
-    type FunderState = {
-      funder_id: string;
-      funder_name: string;
-      status: "queued" | "running" | "succeeded" | "failed" | "degraded";
-      attempts: number;
-      inserted: number;
-      seenAgain: number;
-      engine?: string;
-      lastError?: string;
-      latency_ms?: number;
-    };
-    const byFunder = new Map<string, FunderState>();
-
-    for (const r of all) {
-      const m = (r.metadata ?? {}) as Record<string, unknown>;
-      const stage = typeof m.stage === "string" ? m.stage : undefined;
-      if (stage === "orchestrator_started") {
-        started_at = r.created_at;
-        if (status === "queued") status = "running";
-        continue;
-      }
-      if (stage === "orchestrator_completed") {
-        completed_at = r.created_at;
-        status = "completed";
-        totalInserted = Number(m.totalInserted ?? 0);
-        totalSeenAgain = Number(m.totalSeenAgain ?? 0);
-        totalProcessed = Number(m.totalProcessed ?? 0);
-        evaluated = Number(m.evaluated ?? 0);
-        totalDegraded = Number(m.totalDegraded ?? 0);
-        totalFailed = Number(m.totalFailed ?? 0);
-        fundersQueued = Number(m.funders_queued ?? 0);
-        continue;
-      }
-      const fid = typeof m.funder_id === "string" ? m.funder_id : null;
-      if (!fid) continue;
-      const fname = typeof m.funder_name === "string" ? m.funder_name : fid.slice(0, 8);
-      const prev = byFunder.get(fid) ?? {
-        funder_id: fid,
-        funder_name: fname,
-        status: "running" as const,
-        attempts: 0,
-        inserted: 0,
-        seenAgain: 0,
-      };
-      prev.attempts = Math.max(prev.attempts, Number(m.attempt ?? 1));
-      if (r.status === "succeeded") {
-        prev.status = "succeeded";
-        prev.inserted = Number(m.inserted ?? 0);
-        prev.seenAgain = Number(m.seen_again ?? 0);
-        prev.engine = typeof m.engine === "string" ? m.engine : prev.engine;
-        prev.latency_ms = r.latency_ms ?? prev.latency_ms;
-      } else if (r.status === "failed") {
-        prev.status = "failed";
-        prev.lastError = r.error ?? prev.lastError;
-      } else if (r.status === "degraded") {
-        prev.lastError = r.error ?? prev.lastError;
-        if (prev.status !== "succeeded") prev.status = "degraded";
-      }
-      byFunder.set(fid, prev);
-    }
-
-    return {
-      jobId: data.jobId,
-      status,
-      started_at,
-      completed_at,
-      fundersQueued,
-      totalInserted,
-      totalSeenAgain,
-      totalProcessed,
-      totalDegraded,
-      totalFailed,
-      evaluated,
-      perFunder: [...byFunder.values()],
-    };
+    return summarizeDiscoveryJobRows(data.jobId, (rows ?? []) as unknown as DiscoveryRunRow[]);
   });
 
 // On-demand enrichment of a single grant. Available to any authenticated user
