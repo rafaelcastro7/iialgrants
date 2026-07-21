@@ -498,6 +498,14 @@ function KanbanCard({
             <AlertTriangle className="h-3 w-3" /> {g.duplicateGroupSize} similar
           </span>
         )}
+        {g.searchMatch && (
+          <span
+            className="rounded border border-sky-500/35 bg-sky-500/10 px-1.5 py-0.5 text-[9px] text-sky-700"
+            title="Why this result matched your search. This is retrieval evidence, not a fit score."
+          >
+            Match: {g.searchMatch.matched_on}
+          </span>
+        )}
         {/* Was inline Math.round(.../1000)+"K" with no scale switch or sanity
             bound: $10 rendered as "up to $0K" and $336,000,000 as an unscaled
             six-digit "up to $336000K" — both observed on real duplicate-grant
