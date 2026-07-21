@@ -257,8 +257,20 @@ export function isNonGrantUrl(url: string): boolean {
   try {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
+    const path = u.pathname.toLowerCase();
     if (NON_GRANT_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) return true;
-    return NON_GRANT_URL_PATTERNS.some((re) => re.test(u.pathname.toLowerCase()));
+    // These first-party sections sell advice, loans, equity, training, or
+    // explain adjudication. They are useful resources, but they are not grant
+    // opportunities and must not enter the grant decision queue.
+    if (host.endsWith("investquebec.com")) {
+      if (/^\/fr\/accompagnement\//.test(path)) return true;
+      if (/^\/fr\/financement\/(?:investissement|prets?)(?:\/|$)/.test(path)) return true;
+    }
+    if (host.endsWith("mitacs.ca")) {
+      if (/^\/services\//.test(path)) return true;
+      if (/eligible-research.*adjudication.*criteria/.test(path)) return true;
+    }
+    return NON_GRANT_URL_PATTERNS.some((re) => re.test(path));
   } catch {
     return false;
   }
@@ -995,10 +1007,11 @@ export async function discoverFunderImpl(
       }
       // Force page URL when the LLM omits it or returns the index URL.
       const effectiveUrl = g.url && g.url !== F.source_url ? g.url : doc.url;
-      if (isRootIndex(effectiveUrl)) {
-        skipReasons.root_index = (skipReasons.root_index ?? 0) + 1;
+      if (isRootIndex(effectiveUrl) || isNonGrantUrl(effectiveUrl)) {
+        const reason = isNonGrantUrl(effectiveUrl) ? "non_grant_url" : "root_index";
+        skipReasons[reason] = (skipReasons[reason] ?? 0) + 1;
         if (skippedSamples.length < 5)
-          skippedSamples.push({ title: g.title, url: effectiveUrl, reason: "root_index" });
+          skippedSamples.push({ title: g.title, url: effectiveUrl, reason });
         continue;
       }
       const ck = canonicalKey(F.id, g.title, F.name);

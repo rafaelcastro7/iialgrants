@@ -115,6 +115,11 @@ describe("isNonGrantUrl blocks corporate/policy pages by path", () => {
     "https://nrc.canada.ca/en/corporate/transparency/national-inventory-asbestos",
     "https://nrc.canada.ca/en/certifications-evaluations-standards/codes-canada",
     "https://nrc.canada.ca/fr/organisation/planification-rapports/evaluation-programme",
+    "https://www.investquebec.com/fr/accompagnement/conseil-daffaires",
+    "https://www.investquebec.com/fr/financement/investissement/capital-de-developpement",
+    "https://www.investquebec.com/fr/financement/prets",
+    "https://www.mitacs.ca/services/managing-innovation/small-business-enterprise",
+    "https://www.mitacs.ca/mitacs-supported-eligible-research-and-adjudication-criteria",
     "https://en.wikipedia.org/wiki/Industrial_Research_Assistance_Program",
     "https://www.linkedin.com/company/nrc-irap",
   ];
@@ -127,9 +132,8 @@ describe("isNonGrantUrl blocks corporate/policy pages by path", () => {
   const realPrograms = [
     "https://nrc.canada.ca/en/support-technology-innovation/nrc-irap-funding",
     "https://nrc.canada.ca/en/support-technology-innovation/nrc-irap-international",
-    "https://www.investquebec.com/fr/financement/investissement/capital-de-developpement",
-    "https://www.investquebec.com/fr/accompagnement/conseil-daffaires",
-    "https://www.mitacs.ca/mitacs-supported-eligible-research-and-adjudication",
+    "https://www.investquebec.com/fr/financement/programmes-gouvernementaux/credits-impot",
+    "https://www.mitacs.ca/our-programs/accelerate",
   ];
   for (const url of realPrograms) {
     it(`allows: ${url.slice(30, 80)}`, () => {
