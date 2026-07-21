@@ -1,8 +1,107 @@
 # Handoff for Codex / Claude - IIAL Grants
 
 Living handoff so another agent can continue safely. Read this plus
-`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-14
+`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-21
 America/Toronto.
+
+## Coordination protocol for Codex + Claude - 2026-07-21
+
+Rafael confirmed Claude is also working on this repository. Treat this file as
+the shared "air traffic control" surface. The goal is simple: both agents can
+move fast, but neither should overwrite the other's active work.
+
+Current authoritative baseline:
+
+- `origin/main` includes `b606c2b` (`Stabilize local agents and grant
+  discovery`), pushed by Codex after green validation.
+- Validation for `b606c2b`: `bun run lint`, `bun run build`, `bunx vitest run`
+  (283 passed / 4 skipped), `bun run test:e2e -- --reporter=list` (36 passed).
+- Live local discovery proof: job `3426ed3a-70ec-4914-b319-f6d217c3ac59`
+  against Mitacs scraped 12 pages, found 19 candidate programs, inserted 5,
+  saw 14 existing records again, and finished with 0 failed / 0 degraded.
+- Browser proof: clean in-app browser tab at `http://localhost:8080/grants`
+  loaded successfully, showed Mitacs and Discovery controls, and had no console
+  errors.
+
+Agent coordination rules:
+
+1. Pull/rebase-free sync before work: use normal `git pull --ff-only` or fetch
+   + inspect. Do not rewrite published history; Lovable is connected to this
+   branch.
+2. If the change is larger than a tiny doc edit, use an agent branch:
+   `codex/<short-task>` or `claude/<short-task>`. Merge/push only after
+   validation.
+3. Before editing overlapping areas, add a short note here under "Active
+   workspace claims" with agent, scope, files/areas, start time, and intended
+   validation.
+4. Never stage broad globs while another agent may be active. Stage explicit
+   files only.
+5. Treat untracked reference docs as user-owned unless Rafael explicitly asks
+   to version them. Current user-owned untracked docs:
+   `docs/SOP Grant Finding v.2.docx`, `docs/SOP_GR_1.DOC`.
+6. If a discovery job is manually started from browser/UI, wait for its
+   `orchestrator_completed` marker or add a recovery note if the local runner
+   exits early. Do not leave "running forever" jobs unexplained in demo state.
+7. Each commit should leave a one-paragraph handoff entry here with:
+   commit id, what changed, local DB/manual side effects, and exact validation.
+
+Active workspace claims:
+
+- 2026-07-21 13:20 America/Toronto - Codex inspected the post-`b606c2b`
+  workspace and added this coordination protocol. No app code changes in this
+  mini-pass; only this handoff is intended to be committed if validation is
+  clean.
+
+## DRP runbook + user manual + two schema-drift fixes - 2026-07-21
+
+Morning loop (already pushed to `origin/main`, newest first):
+
+- `b606c2b` fix: stabilize local model routing, strategist/writer model
+  logging, discovery force-refresh/degraded telemetry, `budget_total_cad`
+  migration, and `grants_discovery` module-flag restoration. Validation:
+  `lint`, `build`, full Vitest, full Playwright E2E all green.
+- `d9a7f29` docs: add visual grant search rule validation guide (User Manual +
+  in-app `/manual` route content only).
+- `3080bb8` feat: render full user manual hierarchy in app (`/manual` now
+  shows the complete nested manual, incl. `####` subheadings).
+- `aa153ce` docs: add `docs/DRP-MIGRATION-RUNBOOK.md` (fresh-machine rebuild,
+  ports, backup/restore via `pg_dump`/`pg_restore`, container-loss repair,
+  Git/Lovable safety) and expand `docs/USER-MANUAL.md` with the detailed grant
+  search workflow, requested after Rafael deleted local Docker containers and
+  the stack had to be rebuilt from migrations + seeds.
+- `4b3f579` fix: full local-stack repair after container deletion (Supabase
+  Docker back up, migrations reapplied, demo users + IRAP grant reseeded,
+  `env.local` pointed at `localhost:15435`, admin sidebar fix, tests updated
+  to current V2 UI). Validation green: `check:local`, `lint`, `build`,
+  `vitest` (279 passed/4 skipped), `test:e2e` (36 passed).
+- `221e49f` fix: browser-render test cleanup timeout (Chromium `afterAll` in
+  `src/lib/browser-render.test.ts` needed more margin to close; this is what
+  was actually breaking `vitest`, not a build failure).
+
+Found and fixed in the later Codex pass committed as `b606c2b`:
+
+- `supabase/migrations/20260721162000_add_proposal_budget_total_cad.sql` —
+  `proposals.budget_total_cad` was referenced by
+  `src/integrations/supabase/types.ts` and
+  `src/lib/financial-tracking.functions.ts` but no migration ever created the
+  column. Adds it as nullable `numeric`.
+- `supabase/migrations/20260721164000_restore_grants_discovery_module_flag.sql`
+  — `src/agents/discoverer-orchestrator.server.ts` calls
+  `assertModuleEnabled("grants_discovery")`, but the `grants_discovery` row in
+  `module_flags` was deleted by the older module-normalization migration
+  `20260620025728_64656cba-3cca-4291-bfab-e6a5029dc555.sql` (it deletes
+  `evaluator`/`strategist`/`writer`/`critic`/`grants_discovery`/
+  `rag_org_profile` together) and never reinserted. Without this row,
+  discovery is blocked. Re-inserts it with `enabled = true` via
+  `on conflict (module) do update`.
+- Both migrations were applied/validated in the local Supabase environment
+  during the `b606c2b` pass. PostgREST schema visibility was confirmed by
+  querying `proposals.id,budget_total_cad`; discovery was unblocked and tested
+  with real funder pages.
+
+Working-tree notes: `docs/SOP Grant Finding v.2.docx` and `docs/SOP_GR_1.DOC`
+are Rafael's own untracked reference documents — intentionally left alone,
+not part of the app.
 
 ## Claude autonomy + stuck-grant review - 2026-07-14
 
