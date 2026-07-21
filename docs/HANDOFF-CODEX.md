@@ -75,6 +75,21 @@ did not.
   logic models via each of the endpoints named above, and that legitimate
   same-org access still works.
 
+One more thing worth deciding explicitly rather than copying blind:
+`20260709120000_scope_proposal_derived_reads.sql` (the closest prior fix for
+this exact bug class) scoped `compliance_matrices`/`proposal_reviews`/
+`proposal_citation_reports` by `proposal_id in (select id from proposals
+where user_id = auth.uid())` — single-user ownership, NOT
+`org_id`/`profiles.org_id` team-membership like
+`20260705200000_multi_tenant_org_id.sql` uses for
+`grants`/`proposals`/`submissions` themselves. Those two scoping bases will
+give different results whenever a proposal's org has more than one member
+(team collaboration — the exact feature `tasks`/`comments` exist for —
+implies they should be org-scoped, not creator-only, or a teammate couldn't
+see their own team's tasks/comments). Pick org-scoping deliberately for
+these 5 tables and confirm against real seeded multi-member-org data, rather
+than copying whichever pattern is closer.
+
 ## Coordination protocol for Codex + Claude - 2026-07-21
 
 Rafael confirmed Claude is also working on this repository. Treat this file as
