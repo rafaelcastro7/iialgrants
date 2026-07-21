@@ -1,17 +1,11 @@
-// CRA T3010 charity-registry ingester. Surfaces Canadian public + private
-// foundations large enough to be grant-makers. Uses the Open Government
-// CKAN datastore SQL endpoint over the T3010 quick-view dataset.
-//
-// Filter strategy (cheap, no full CSV download):
-//   - charity category in foundation list
-//   - total expenditures > $500k
-//   - returns up to 500 rows; orchestrator de-dupes.
+// CRA T3010 ingester. Joins the current annual identification and financial
+// datastore resources by business number and surfaces substantial foundations.
 
+import { fetchCkanRecords } from "./canada-ckan.server";
 import type { RawCandidate } from "./scoring.server";
 
-const CKAN_SQL = "https://open.canada.ca/data/api/3/action/datastore_search_sql";
-// Resource id of the latest T3010 "quick view" annualized file. Verified June 2026.
-const RESOURCE_ID = "274b819a-9d24-4cf4-9c95-2e8b6dabec55";
+const IDENTIFICATION_RESOURCE_ID = "694fdc72-eae4-4ee0-83eb-832ab7b230e3";
+const FINANCIAL_RESOURCE_ID = "e545170c-3689-4833-b2a8-e9e83100ab59";
 
 type Row = {
   charity_name?: string | null;
@@ -24,43 +18,70 @@ type Row = {
 };
 
 export async function fetchT3010Foundations(limit = 500): Promise<Row[]> {
-  const sql =
-    `SELECT charity_name, bn_registration_number, category_description, ` +
-    `province, city, total_expenditures, website ` +
-    `FROM "${RESOURCE_ID}" ` +
-    `WHERE category_description ILIKE '%foundation%' ` +
-    `AND total_expenditures > 500000 ` +
-    `ORDER BY total_expenditures DESC NULLS LAST ` +
-    `LIMIT ${limit}`;
-  const url = `${CKAN_SQL}?sql=${encodeURIComponent(sql)}`;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 25_000);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`t3010_${res.status}`);
-    const json = (await res.json()) as { result?: { records?: Row[] } };
-    return json.result?.records ?? [];
-  } finally {
-    clearTimeout(t);
-  }
+  type Identification = {
+    BN?: string;
+    Designation?: string;
+    "Legal Name"?: string;
+    City?: string;
+    Province?: string;
+  };
+  type Financial = { BN?: string; "5100"?: string | number };
+
+  const [publicFoundations, privateFoundations, financialRows] = await Promise.all([
+    fetchCkanRecords<Identification>({
+      resourceId: IDENTIFICATION_RESOURCE_ID,
+      fields: ["BN", "Designation", "Legal Name", "City", "Province"],
+      filters: { Designation: "A" },
+      maxRows: 10_000,
+    }),
+    fetchCkanRecords<Identification>({
+      resourceId: IDENTIFICATION_RESOURCE_ID,
+      fields: ["BN", "Designation", "Legal Name", "City", "Province"],
+      filters: { Designation: "B" },
+      maxRows: 10_000,
+    }),
+    fetchCkanRecords<Financial>({
+      resourceId: FINANCIAL_RESOURCE_ID,
+      fields: ["BN", "5100"],
+      maxRows: 100_000,
+    }),
+  ]);
+  const expenditures = new Map(
+    financialRows.map((row) => [String(row.BN ?? "").replace(/\D/g, ""), Number(row["5100"] ?? 0)]),
+  );
+  return [...publicFoundations, ...privateFoundations]
+    .map(
+      (row): Row => ({
+        charity_name: row["Legal Name"] ?? null,
+        bn_registration_number: row.BN ?? null,
+        category_description: row.Designation === "A" ? "Public foundation" : "Private foundation",
+        province: row.Province ?? null,
+        city: row.City ?? null,
+        total_expenditures: expenditures.get(String(row.BN ?? "").replace(/\D/g, "")) ?? null,
+        website: null,
+      }),
+    )
+    .filter((row) => Number(row.total_expenditures ?? 0) > 500_000)
+    .sort((a, b) => Number(b.total_expenditures ?? 0) - Number(a.total_expenditures ?? 0))
+    .slice(0, limit);
 }
 
 export function extractT3010Candidates(rows: Row[]): RawCandidate[] {
-  const out: RawCandidate[] = [];
-  for (const r of rows) {
-    const name = (r.charity_name ?? "").trim();
-    if (!name || name.length < 3) continue;
-    const bn = (r.bn_registration_number ?? "").replace(/\D/g, "").slice(0, 9);
-    out.push({
-      name,
-      bn_number: bn || null,
-      province: r.province ?? null,
-      funder_type: r.category_description ?? "Foundation",
-      website: r.website?.startsWith("http") ? r.website : null,
-      source_signals: ["t3010_charities"],
-      disbursed_annual: r.total_expenditures ?? null,
-      raw_metadata: { city: r.city, raw_category: r.category_description },
-    });
-  }
-  return out;
+  return rows.flatMap((row) => {
+    const name = (row.charity_name ?? "").trim();
+    if (name.length < 3) return [];
+    const bn = (row.bn_registration_number ?? "").replace(/\D/g, "").slice(0, 9);
+    return [
+      {
+        name,
+        bn_number: bn || null,
+        province: row.province ?? null,
+        funder_type: row.category_description ?? "Foundation",
+        website: row.website?.startsWith("http") ? row.website : null,
+        source_signals: ["t3010_charities"],
+        disbursed_annual: row.total_expenditures ?? null,
+        raw_metadata: { city: row.city, raw_category: row.category_description },
+      },
+    ];
+  });
 }

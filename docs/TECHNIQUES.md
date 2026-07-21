@@ -23,3 +23,5 @@ one worth repeating.
 - Verify the live DB trigger before editing the pipeline state machine (`\sf validate_grant_transition`) because later migrations replace earlier ones with `CREATE OR REPLACE`.
 - Reload PostgREST after schema/RLS changes (`NOTIFY pgrst, 'reload schema'`) and add new columns to `types.ts` or `tsc` fails on `.select()`.
 - Screenshot-verify UI claims: a visual walkthrough finds fabricated, garbled, duplicated, or overflowing content that code review misses. Also confirm a "blank page" is not just the test's own screenshot timing before calling it a bug.
+- Search the complete corpus server-side before ranking; filtering a pre-limited UI page creates invisible false negatives even when the search box appears functional.
+- Calibrate fuzzy-search thresholds with one difficult positive typo and one adversarial nonsense query, then preserve and label relevance order in the UI.

@@ -2468,6 +2468,14 @@ export type Database = {
         }[];
       };
       normalize_title_v2: { Args: { t: string }; Returns: string };
+      search_grant_catalog: {
+        Args: { result_limit?: number; search_query: string };
+        Returns: {
+          grant_id: string;
+          matched_on: string;
+          relevance: number;
+        }[];
+      };
     };
     Enums: {
       agent_name: "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";

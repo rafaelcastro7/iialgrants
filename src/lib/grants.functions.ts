@@ -26,11 +26,25 @@ export const listGrants = createServerFn({ method: "GET" })
             "archived",
           ])
           .optional(),
+        search: z.string().trim().max(120).optional(),
         limit: z.number().int().min(1).max(100).default(50),
       })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
+    const rankById = new Map<string, { relevance: number; matched_on: string }>();
+    if (data.search && data.search.length >= 2) {
+      const { data: ranked, error: searchError } = await context.supabase.rpc(
+        "search_grant_catalog",
+        { search_query: data.search, result_limit: data.limit },
+      );
+      if (searchError) throw new Error(searchError.message);
+      for (const row of ranked ?? []) {
+        rankById.set(row.grant_id, { relevance: row.relevance, matched_on: row.matched_on });
+      }
+      if (rankById.size === 0) return { grants: [] };
+    }
+
     let q = context.supabase
       .from("grants")
       .select(
@@ -40,9 +54,15 @@ export const listGrants = createServerFn({ method: "GET" })
       .order("deadline", { ascending: true, nullsFirst: false })
       .limit(data.limit);
     if (data.status) q = q.eq("status", data.status);
+    if (rankById.size > 0) q = q.in("id", [...rankById.keys()]);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     const grants = rows ?? [];
+    if (rankById.size > 0) {
+      grants.sort(
+        (a, b) => (rankById.get(b.id)?.relevance ?? 0) - (rankById.get(a.id)?.relevance ?? 0),
+      );
+    }
 
     const ids = grants.map((g) => g.id);
     const evalsByGrant = new Map<
@@ -95,6 +115,7 @@ export const listGrants = createServerFn({ method: "GET" })
     return {
       grants: grants.map((g) => ({
         ...g,
+        searchMatch: rankById.get(g.id) ?? null,
         evaluation: evalsByGrant.get(g.id) ?? null,
         duplicateGroupSize:
           groupCounts.get(`${g.funder_id ?? "none"}|${normalizeTitle(g.title)}`) ?? 1,

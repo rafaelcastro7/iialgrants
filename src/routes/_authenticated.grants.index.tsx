@@ -40,10 +40,11 @@ import type { GrantRowData } from "@/components/grants/GrantRow";
 import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import "@/i18n";
 
-const grantsQueryOptions = queryOptions({
-  queryKey: ["grants", "all"],
-  queryFn: () => listGrants({ data: { limit: 100 } }),
-});
+const grantsQueryOptions = (search = "") =>
+  queryOptions({
+    queryKey: ["grants", "all", search],
+    queryFn: () => listGrants({ data: { limit: 100, search: search || undefined } }),
+  });
 
 // SSR-safe sessionStorage access (component renders on the server too).
 const ss = {
@@ -63,7 +64,7 @@ export const Route = createFileRoute("/_authenticated/grants/")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(grantsQueryOptions),
+  loader: ({ context }) => context.queryClient.ensureQueryData(grantsQueryOptions()),
   errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} reset={reset} />,
   pendingComponent: GrantsListSkeleton,
   component: GrantsPage,
@@ -89,6 +90,7 @@ function GrantsPage() {
   const [activeJob, setActiveJob] = useState<{ jobId: string; queued: number } | null>(null);
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
   const [search, setSearch] = useState<string>(() => ss.get("grants.search") ?? "");
+  const [serverSearch, setServerSearch] = useState(search.trim());
   const [jurisdiction, setJurisdiction] = useState<string>(
     () => ss.get("grants.jurisdiction") ?? "all",
   );
@@ -99,6 +101,7 @@ function GrantsPage() {
   const [onlyWithDeadline, setOnlyWithDeadline] = useState(
     () => ss.get("grants.onlyWithDeadline") === "1",
   );
+  const previouslySearching = useRef(search.trim().length >= 2);
   const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
   // Progressive disclosure: "express" is the simple default (prioritized list,
   // plain language, one action); "advanced" is the full Kanban + filters.
@@ -119,9 +122,25 @@ function GrantsPage() {
     ss.set("grants.onlyWithDeadline", onlyWithDeadline ? "1" : "0");
   }, [search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setServerSearch(search.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    const isSearching = search.trim().length >= 2;
+    if (isSearching !== previouslySearching.current) {
+      setSortKey(isSearching ? "relevance" : "fit");
+      previouslySearching.current = isSearching;
+    }
+  }, [search]);
+
   const { data } = useSuspenseQuery({
-    queryKey: ["grants", "all"],
-    queryFn: () => fetchGrants({ data: { limit: 100 } }),
+    queryKey: ["grants", "all", serverSearch],
+    queryFn: () =>
+      fetchGrants({
+        data: { limit: 100, search: serverSearch.length >= 2 ? serverSearch : undefined },
+      }),
   });
 
   // Optimistic board move: update the cache immediately, roll back on error,
@@ -131,9 +150,10 @@ function GrantsPage() {
   const moveMutation = useMutation({
     mutationFn: (vars: { grantIds: string[]; toStatus: GrantStatus }) => moveFn({ data: vars }),
     onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey: ["grants", "all"] });
-      const prev = qc.getQueryData<typeof data>(["grants", "all"]);
-      qc.setQueryData<typeof data>(["grants", "all"], (old) =>
+      const activeKey = ["grants", "all", serverSearch];
+      await qc.cancelQueries({ queryKey: activeKey });
+      const prev = qc.getQueryData<typeof data>(activeKey);
+      qc.setQueryData<typeof data>(activeKey, (old) =>
         old
           ? {
               ...old,
@@ -146,7 +166,7 @@ function GrantsPage() {
       return { prev };
     },
     onError: (e, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["grants", "all"], ctx.prev);
+      if (ctx?.prev) qc.setQueryData(["grants", "all", serverSearch], ctx.prev);
       setEvalError(e instanceof Error ? e.message : String(e));
     },
     onSuccess: (r) => {
@@ -269,10 +289,15 @@ function GrantsPage() {
   const filtered = useMemo(
     () =>
       sortGrants(
-        applyGrantFilters(data.grants, { search, jurisdiction, eligibleOnly, onlyWithDeadline }),
+        applyGrantFilters(data.grants, {
+          search: serverSearch.length >= 2 ? "" : search,
+          jurisdiction,
+          eligibleOnly,
+          onlyWithDeadline,
+        }),
         sortKey,
       ) as GrantRowData[],
-    [data.grants, search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline],
+    [data.grants, search, serverSearch, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline],
   );
 
   // Search/jurisdiction/eligibleOnly/onlyWithDeadline live in GrantFilters,

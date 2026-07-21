@@ -16,9 +16,10 @@ export type GrantLite = {
   evaluation?: { eligibility_pass: boolean; fit_score?: number } | null;
 };
 
-export type SortKey = "fit" | "deadline" | "amount" | "newest";
+export type SortKey = "relevance" | "fit" | "deadline" | "amount" | "newest";
 
 export const SORT_LABELS: Record<SortKey, string> = {
+  relevance: "Search relevance",
   fit: "Best fit",
   deadline: "Deadline",
   amount: "Amount",
@@ -62,6 +63,9 @@ function deadlineMs(d: string | null | undefined): number {
 export function sortGrants<T extends GrantLite>(grants: T[], sortKey: SortKey): T[] {
   const arr = [...grants];
   switch (sortKey) {
+    case "relevance":
+      // Server search already returns the complete catalog in relevance order.
+      return arr;
     case "deadline":
       return arr.sort((a, b) => deadlineMs(a.deadline) - deadlineMs(b.deadline));
     case "amount":
