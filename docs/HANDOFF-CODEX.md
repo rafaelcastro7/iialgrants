@@ -131,16 +131,22 @@ up the same bug in 7 more files, now fixed and committed
   submission IDs) in each file and filter every outcomes query through
   `.in("submission_id", allowedIds)`.
 
-**Not yet checked** (task #17 still open for these — triage flagged
-`createSupabaseAdmin` + zero scoping references, not yet manually read):
-`competitive-intel.functions.ts`, `funder-dashboard.functions.ts`,
-`funder-enrichment.functions.ts`, `funder-search.functions.ts`,
-`giving-history.functions.ts`, `recipient-profiling.functions.ts`,
-`renewal-intelligence.functions.ts`. My guess going in is most of these
-are legitimately shared/public catalog data (funders, competitive_grants)
-rather than tenant-owned, but that needs confirming per-file, not assuming
-— giving-history and renewal-intelligence in particular sound like they
-could be donor/org-specific data, worth reading first.
+**Update — task #17 fully closed.** Read the remaining 7 flagged files:
+
+- `renewal-intelligence.functions.ts` (`getRenewalCandidates`,
+  `getRenewalStats`) had the exact same unscoped-`outcomes` leak as
+  post-award/financial-tracking/impact-measurement. Fixed (commit
+  `1e9a283`) with the same `allowedSubmissionIds` pattern.
+- `competitive-intel.functions.ts`, `funder-dashboard.functions.ts`,
+  `funder-enrichment.functions.ts`, `funder-search.functions.ts`,
+  `giving-history.functions.ts`, `recipient-profiling.functions.ts` —
+  confirmed legitimately public/shared catalog data (`funders`,
+  `competitive_grants`, `grants`), no per-org ownership to check. No fix
+  needed.
+
+That's the full sweep: every `.functions.ts` file using
+`createSupabaseAdmin()` has now been read and is either correctly scoped
+or was fixed. 8 files fixed total across `3846665` and `1e9a283`.
 
 **Takeaway for both of us:** this is a systemic pattern, not 5 isolated
 tables — anywhere a handler uses `createSupabaseAdmin()` and a
