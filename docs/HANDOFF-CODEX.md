@@ -90,6 +90,77 @@ see their own team's tasks/comments). Pick org-scoping deliberately for
 these 5 tables and confirm against real seeded multi-member-org data, rather
 than copying whichever pattern is closer.
 
+## IDOR finding update - scope was bigger than the original 5 tables - 2026-07-21 ~16:30 America/Toronto
+
+Good news first: Codex already fixed the original finding above.
+`documents.functions.ts`, `team-collaboration.functions.ts`,
+`compliance-calendar.functions.ts`, and the logic-model handlers in
+`reporting-templates.functions.ts` now all call `assertEntityInUserOrg`
+(new `src/lib/tenant-access.server.ts` helper) or
+`assertComplianceItemInUserOrg` before touching data. Verified by grep,
+not just reading the doc — confirmed live in the current file contents.
+
+Task #17 (search every other `.functions.ts` for the same pattern) turned
+up the same bug in 7 more files, now fixed and committed
+(`3846665`, branch state as of this message — `git show 3846665 --stat`):
+
+- `compliance-matrix.functions.ts` (`generateComplianceMatrix`),
+  `citation-tracker.functions.ts` (`extractCitations`,
+  `getCitationSummary`), `revision-agent.functions.ts`
+  (`getRevisionPlan`) — all read/wrote `compliance_matrices` /
+  `proposal_citation_reports` / `proposal_reviews` via the admin client
+  with **zero ownership check**, silently bypassing the RLS fix already
+  applied to those exact tables in
+  `20260709120000_scope_proposal_derived_reads.sql`. Fixed by adding
+  `assertEntityInUserOrg(supabase, context.userId, "proposal",
+  data.proposalId)` at the top of each handler — same helper Codex
+  already introduced for the first finding.
+- `proposal-quality.functions.ts` (`getProposalQualityMetrics`,
+  `getQualityTrends`) had **no filter at all** — returned every
+  organization's proposal titles/scores/status platform-wide to any
+  logged-in user. Fixed by scoping the `proposals` query to
+  `user_id.eq.<caller> OR org_id.eq.<caller's org>`.
+- `post-award.functions.ts` (`getSubmissionOutcomes`, `getAwardMetrics`,
+  `getReportingDeadlines`, `generateOutcomeReport`),
+  `financial-tracking.functions.ts` (`getFinancialSummary`,
+  `getBudgetTracking`), `impact-measurement.functions.ts`
+  (`getImpactMetrics`, `getOutcomeDetails`) — all read the `outcomes`
+  table (award amounts, budgets, impact descriptions) with no scoping.
+  `outcomes` has no owner column of its own, so I added a small
+  `allowedSubmissionIds(supabase, principal)` helper (own + org-mates'
+  submission IDs) in each file and filter every outcomes query through
+  `.in("submission_id", allowedIds)`.
+
+**Not yet checked** (task #17 still open for these — triage flagged
+`createSupabaseAdmin` + zero scoping references, not yet manually read):
+`competitive-intel.functions.ts`, `funder-dashboard.functions.ts`,
+`funder-enrichment.functions.ts`, `funder-search.functions.ts`,
+`giving-history.functions.ts`, `recipient-profiling.functions.ts`,
+`renewal-intelligence.functions.ts`. My guess going in is most of these
+are legitimately shared/public catalog data (funders, competitive_grants)
+rather than tenant-owned, but that needs confirming per-file, not assuming
+— giving-history and renewal-intelligence in particular sound like they
+could be donor/org-specific data, worth reading first.
+
+**Takeaway for both of us:** this is a systemic pattern, not 5 isolated
+tables — anywhere a handler uses `createSupabaseAdmin()` and a
+proposal/submission/grant-derived ID (or no ID at all, for "all X"
+dashboards) is a candidate, whether or not the underlying table's RLS was
+already tightened, because the admin client bypasses RLS entirely. The
+`tenant-access.server.ts` helper set (`assertEntityInUserOrg`,
+`getTenantPrincipal`, `tenantOwnsResource`) is the established fix
+pattern now — reach for it (or the `allowedSubmissionIds` variant for
+tables with no direct owner column) rather than inventing a new shape
+per file.
+
+Static-checked with `ts.transpileModule` (no tsc in this sandbox) — 0
+diagnostics on all 7 files. Not yet live/browser-verified — same
+blocker as everything else in this session (no Chrome connection). If
+either of us gets DB/browser access before I do, please smoke-test:
+log in as two different-org users, confirm each only sees their own
+compliance matrices/citations/reviews/outcomes/proposal-quality
+numbers, not the other org's.
+
 ## Live daemon log check (Rafael asked to review current logs) - 2026-07-21 ~14:30
 
 Read the live `scripts/*.log` files directly (this Cowork sandbox has no
