@@ -36,8 +36,13 @@ const STATUS_ICON = {
 // the spans that actually drove a given rule when the user drills into it.
 const RULE_FIELD_MAP: Record<string, string[]> = {
   sop_filter_1_country: ["country", "jurisdiction", "eligibility"],
+  sop_filter_1_legal: ["eligibility", "applicant_type"],
+  jurisdiction_required: ["country", "jurisdiction", "eligibility"],
+  jurisdiction_excluded: ["country", "jurisdiction", "eligibility"],
   sop_filter_2_role: ["eligibility", "applicant_type"],
   sop_filter_3_money: ["amount_cad_min", "amount_cad_max", "amount", "funding"],
+  sop_filter_3_costshare: ["cost_share", "match", "contribution", "funding"],
+  sop_filter_3_match_verify: ["cost_share", "match", "contribution"],
   sop_filter_4_strategic: ["sectors", "themes", "summary"],
   sop_filter_5_runway: ["deadline", "intake", "rolling"],
   sop_filter_6_effort: ["cost_share", "match", "effort"],
@@ -74,10 +79,12 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
   }
   if (!data) return null;
 
-  const { rules, evaluation, evidence, verdict } = data;
+  const { rules, evaluation, evidence, verdict, rule_provenance } = data;
   const axes = (evaluation as { axis_breakdown?: AxisScore[] } | null)?.axis_breakdown ?? null;
   const blockingFail = rules.checks.find((c) => c.status === "fail" && c.hard);
-  const llmPct = evaluation?.fit_score != null ? Math.round(evaluation.fit_score * 100) : null;
+  const combinedPct = evaluation?.fit_score != null ? Math.round(evaluation.fit_score * 100) : null;
+  const llmPct =
+    evaluation?.llm_fit_score != null ? Math.round(evaluation.llm_fit_score * 100) : null;
   const passes = rules.checks.filter((c) => c.status === "pass").length;
   const fails = rules.checks.filter((c) => c.status === "fail").length;
   const skips = rules.checks.filter((c) => c.status === "skip").length;
@@ -111,7 +118,7 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
 
       <CardContent className="space-y-4">
         {/* Score breakdown */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
           <Stat
             icon={<Gauge className="h-3.5 w-3.5" />}
             label="Rule score"
@@ -119,8 +126,13 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
           />
           <Stat
             icon={<Brain className="h-3.5 w-3.5" />}
-            label="LLM fit"
+            label="AI fit (raw)"
             value={llmPct != null ? `${llmPct}/100` : "—"}
+          />
+          <Stat
+            icon={<Scale className="h-3.5 w-3.5" />}
+            label="Combined fit"
+            value={combinedPct != null ? `${combinedPct}/100` : "—"}
           />
           <Stat
             icon={<Scale className="h-3.5 w-3.5" />}
@@ -158,11 +170,11 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
               <span className="text-rose-600 font-semibold">Hard-fail</span> on{" "}
               <span className="font-medium">{blockingFail.label}</span> — {blockingFail.detail}.
             </p>
-          ) : evaluation && llmPct != null ? (
+          ) : evaluation && combinedPct != null ? (
             <p>
-              Combined fit <b>{llmPct}</b> vs threshold <b>{rules.threshold_fit_pass}</b>. Rule
-              score {Math.round(rules.rule_score)}, LLM weight {Math.round(rules.weight_llm * 100)}
-              %.
+              Combined fit <b>{combinedPct}</b> vs threshold <b>{rules.threshold_fit_pass}</b>. Rule
+              score {Math.round(rules.rule_score)}, raw AI {llmPct ?? "legacy / unavailable"}, AI
+              weight {Math.round(rules.weight_llm * 100)}%.
             </p>
           ) : (
             <p>
@@ -170,6 +182,14 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
             </p>
           )}
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
+            <span>
+              Decision evidence:{" "}
+              <b>
+                {rule_provenance === "evaluation_snapshot"
+                  ? "saved snapshot"
+                  : "current rules (legacy evaluation)"}
+              </b>
+            </span>
             <span>
               Detected role: <b>{rules.detected_role}</b>
             </span>
@@ -196,6 +216,7 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
                 ruleScore={rules.rule_score}
                 weightLlm={rules.weight_llm}
                 llmPct={llmPct}
+                combinedPct={combinedPct}
                 threshold={rules.threshold_fit_pass}
                 totalEvaluable={
                   rules.checks.filter((x) => x.status === "pass" || x.status === "fail").length
@@ -334,6 +355,7 @@ function RuleRow({
   ruleScore,
   weightLlm,
   llmPct,
+  combinedPct,
   threshold,
   totalEvaluable,
 }: {
@@ -348,6 +370,7 @@ function RuleRow({
   ruleScore: number;
   weightLlm: number;
   llmPct: number | null;
+  combinedPct: number | null;
   threshold: number;
   totalEvaluable: number;
 }) {
@@ -368,8 +391,7 @@ function RuleRow({
   const contributed = check.status === "pass" ? perRulePoints : 0;
   const ruleWeightPct = Math.round((1 - weightLlm) * 100);
   const llmWeightPct = Math.round(weightLlm * 100);
-  const combined =
-    llmPct != null ? Math.round(weightLlm * llmPct + (1 - weightLlm) * ruleScore) : null;
+  const combined = combinedPct;
 
   return (
     <li className="text-sm">

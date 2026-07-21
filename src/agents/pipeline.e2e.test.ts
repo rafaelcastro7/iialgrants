@@ -252,6 +252,14 @@ describe("enrich → evaluate → shortlist → NotebookLM", () => {
     expect(ev.user_id).toBe(USER_ID);
     expect(ev.grant_id).toBe(GRANT_ID);
     expect(ev.rationale_en).toContain("clean-tech");
+    expect(ev.llm_fit_score).toBe(1);
+    const snapshot = ev.rule_snapshot as Record<string, unknown>;
+    expect(snapshot).toMatchObject({
+      hard_fail: false,
+      threshold_fit_pass: 50,
+      weight_llm: 0.4,
+    });
+    expect(Array.isArray(snapshot.checks)).toBe(true);
 
     // Evaluator wrote its own evidence rows (fit_score, eligibility_pass)
     const evalEvidence = db.tables.evidence_spans.filter((s) => s.agent === "evaluator");

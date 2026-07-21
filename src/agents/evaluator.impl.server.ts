@@ -223,13 +223,25 @@ export async function evaluateGrantImpl(opts: {
       user_id: userId,
       grant_id: g.id,
       fit_score: parsed.fit_score,
+      llm_fit_score: llmFit,
       eligibility_pass: parsed.eligibility_pass,
+      evaluated_at: new Date().toISOString(),
       rationale_en: parsed.rationale_en,
       rationale_fr: parsed.rationale_fr,
       axis_breakdown: axisBreakdown,
       model: usedModel,
       prompt_version: PROMPTS.evaluator.version,
       run_id: runId,
+      rule_snapshot: {
+        checks: rulesResult.checks,
+        hard_fail: rulesResult.hard_fail,
+        rule_score: rulesResult.rule_score,
+        detected_role: rulesResult.detected_role,
+        cost_share_pct: rulesResult.cost_share_pct,
+        rolling_intake: rulesResult.rolling_intake,
+        threshold_fit_pass: rules.threshold_fit_pass,
+        weight_llm: rules.weight_llm,
+      },
     },
     { onConflict: "user_id,grant_id" },
   );
@@ -291,16 +303,20 @@ export async function evaluateGrantImpl(opts: {
         : "Not eligible - keeping current status",
       "warn",
     );
-    await userSupabase
+    const { error: grantUpdateError } = await userSupabase
       .from("grants")
       .update({
         fit_score: parsed.fit_score,
         ...(canArchive ? { status: "archived" } : {}),
       } as never)
       .eq("id", g.id);
+    if (grantUpdateError) {
+      await trace("commit", `Grant decision update failed: ${grantUpdateError.message}`, "error");
+      throw new Error(`grant_decision_update_failed:${grantUpdateError.message}`);
+    }
   } else if (g.status === "discovered" || g.status === "enriched") {
     await trace("commit", `Eligible -> status=scored, fit=${parsed.fit_score}`, "ok");
-    await userSupabase
+    const { error: grantUpdateError } = await userSupabase
       .from("grants")
       .update({
         status: "scored",
@@ -308,17 +324,25 @@ export async function evaluateGrantImpl(opts: {
         fit_score: parsed.fit_score,
       } as never)
       .eq("id", g.id);
+    if (grantUpdateError) {
+      await trace("commit", `Grant score update failed: ${grantUpdateError.message}`, "error");
+      throw new Error(`grant_score_update_failed:${grantUpdateError.message}`);
+    }
   } else {
     await trace("commit", `Updated fit_score=${parsed.fit_score}`, "ok");
     const shouldBackfillScoredAt =
       (g.status as GrantStatus) === "scored" && !(g as { scored_at?: string | null }).scored_at;
-    await userSupabase
+    const { error: grantUpdateError } = await userSupabase
       .from("grants")
       .update({
         fit_score: parsed.fit_score,
         ...(shouldBackfillScoredAt ? { scored_at: new Date().toISOString() } : {}),
       } as never)
       .eq("id", g.id);
+    if (grantUpdateError) {
+      await trace("commit", `Grant score update failed: ${grantUpdateError.message}`, "error");
+      throw new Error(`grant_score_update_failed:${grantUpdateError.message}`);
+    }
   }
 
   await trace("done", `Evaluation complete in ${Date.now() - t0}ms`, "done", {

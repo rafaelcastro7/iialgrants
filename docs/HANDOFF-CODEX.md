@@ -1495,3 +1495,21 @@ queues, recent run telemetry, and no console errors. Final gates: 330 tests
 passed / 4 skipped, full ESLint passed, production build passed. The source-
 curator ownership claim is released; Claude may work in this slice after
 reading this handoff and the final commit.
+## 2026-07-21 Codex fit-filter proof audit (complete)
+
+The F1/F3/F4/F5 audit repaired national/provincial jurisdiction matching,
+unknown-field handling, applicant-type restrictions, cost-share severity,
+deadline precedence, sector aliases, exact capability boundaries, and Postgres
+array parsing. Evaluations now persist the raw LLM score, exact deterministic
+rule snapshot, and evaluation time; preview and audit views no longer treat the
+combined score as raw AI or silently rewrite historical reasoning with current
+rules. Grant status/score persistence errors now fail the run honestly.
+
+Browser proof used real Investissement Quebec data. Run
+`7a968cfb-c422-4854-abf4-f3f9a930e910` succeeded on `d001e11c...`: rule score
+100, raw local-AI score 70, combined 88, accepted, with F4 evidence `Matched
+capabilities: ai`. The IRAP record `5630d71b...` visibly rejects on hard F1
+because structured `for_profit` eligibility is incompatible with the nonprofit
+profile. Full Vitest, TypeScript, ESLint, and production build gates passed.
+The ownership claim is released. The two untracked SOP Word files remain
+excluded from staging.

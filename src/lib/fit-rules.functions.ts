@@ -89,15 +89,17 @@ export const previewFitRules = createServerFn({ method: "POST" })
     // for a reason the deterministic rules can't see.
     const grantIds = (rows ?? []).map((g) => g.id as string);
     const llmScoreById = new Map<string, number>();
+    const storedCombinedById = new Map<string, number>();
     const llmEligibilityById = new Map<string, boolean>();
     if (grantIds.length > 0) {
       const { data: evals } = await context.supabase
         .from("grant_evaluations")
-        .select("grant_id, fit_score, eligibility_pass")
+        .select("grant_id, fit_score, llm_fit_score, eligibility_pass")
         .eq("user_id", context.userId)
         .in("grant_id", grantIds);
       for (const e of evals ?? []) {
-        llmScoreById.set(e.grant_id, e.fit_score);
+        storedCombinedById.set(e.grant_id, e.fit_score);
+        if (e.llm_fit_score != null) llmScoreById.set(e.grant_id, e.llm_fit_score);
         llmEligibilityById.set(e.grant_id, e.eligibility_pass);
       }
     }
@@ -105,14 +107,21 @@ export const previewFitRules = createServerFn({ method: "POST" })
     const out = (rows ?? []).map((g) => {
       const r = evaluateRules(data.rules as FitRules, g);
       const llmFit = llmScoreById.get(g.id as string);
+      const storedCombined = storedCombinedById.get(g.id as string);
       return {
         id: g.id as string,
         title: g.title as string,
         status: g.status as string,
         hard_fail: r.hard_fail,
         rule_score: r.rule_score,
-        combined_score: r.combined_score(llmFit ?? 0),
+        combined_score:
+          llmFit != null
+            ? r.combined_score(llmFit)
+            : storedCombined != null
+              ? Math.round(storedCombined * 100)
+              : null,
         has_llm_score: llmFit != null,
+        has_stored_combined_score: storedCombined != null,
         // null = no evaluation yet (don't penalize); true/false = the LLM's
         // own stored verdict from the last real evaluator run.
         llm_eligibility_pass: llmEligibilityById.get(g.id as string) ?? null,

@@ -173,6 +173,7 @@ function FitRulesPage() {
     const pass = items.filter(
       (i) =>
         !i.hard_fail &&
+        i.combined_score != null &&
         i.combined_score >= r.threshold_fit_pass &&
         i.llm_eligibility_pass !== false,
     ).length;
@@ -687,8 +688,8 @@ function FitRulesPage() {
                 </div>
                 {prev.data && prev.data.items.some((i) => !i.has_llm_score) && (
                   <p className="text-[11px] text-muted-foreground">
-                    * grants with no AI evaluation yet — score assumes AI fit = 0, so the AI-trust
-                    slider can only lower them, not raise them.
+                    * legacy combined scores cannot be reweighted until re-evaluation. Grants with
+                    no evaluation stay in Review instead of being scored as AI fit = 0.
                   </p>
                 )}
                 <Button
@@ -729,7 +730,8 @@ function FitRulesPage() {
                           variant={
                             it.hard_fail
                               ? "destructive"
-                              : it.combined_score >= r.threshold_fit_pass
+                              : it.combined_score != null &&
+                                  it.combined_score >= r.threshold_fit_pass
                                 ? "default"
                                 : "secondary"
                           }
@@ -737,11 +739,13 @@ function FitRulesPage() {
                           title={
                             it.has_llm_score
                               ? `Combined score (rules ${it.rule_score} + AI, weighted)`
-                              : "No AI evaluation yet — this combined score assumes AI fit = 0"
+                              : it.has_stored_combined_score
+                                ? "Legacy stored combined score; re-evaluate to simulate a new AI/rule weight"
+                                : "No AI evaluation yet — kept in review, not scored as zero"
                           }
                         >
-                          {it.combined_score}
-                          {!it.has_llm_score && "*"}
+                          {it.combined_score ?? "Review"}
+                          {!it.has_llm_score && it.has_stored_combined_score && "*"}
                         </Badge>
                       </div>
                       {it.checks.length > 0 && (
