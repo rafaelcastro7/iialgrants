@@ -1606,6 +1606,22 @@ checking with `ts.transpileModule`, and flagging for Codex/Rafael to
 run `bun run dev` and browser-verify the `/grants` v2 UI toggle — I
 cannot run the dev server or a browser from this sandbox.
 
+**Update — done, claim released (commit `97dc5e8`).** Applied the
+drop-in as-is with one fix: removed a dead `STATUS_LABEL` const the
+bundle left unused after replacing the status badge with the
+eligibility chip (harmless under this repo's `noUnusedLocals: false` /
+`no-unused-vars: off`, but no reason to ship dead code). Verified every
+`GrantRowData` field the new component reads (`amount_cad_min/max`,
+`fit_score`, `evaluation`, `searchMatch`, `duplicateGroupSize`) exists
+on the real type — `ts.transpileModule` gives 0 diagnostics but doesn't
+resolve cross-file types, so I cross-checked those by hand against
+`src/components/grants/GrantRow.tsx`. Needs: `bun run dev`, open
+`/grants` with the v2 UI toggle on, confirm KPI strip / "Do this next"
+banner / List-Board-Needs-a-look tabs / row actions render and behave
+identically to before. The other 17 screens in
+`reference-prototype.html` and the `V2AuthenticatedShell` nav
+relabeling are still unclaimed and out of scope for this pass.
+
 ## 2026-07-21 Codex grant-catalog roast (complete)
 
 Live catalog review found 31/54 active rows were not actionable grants: first-
