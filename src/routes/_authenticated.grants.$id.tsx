@@ -212,7 +212,7 @@ function GrantDetailPage() {
       await qc.invalidateQueries({ queryKey: ["grant-detail", id] });
       await qc.invalidateQueries({ queryKey: ["grants"] });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(toUserFacingActionError(e));
     } finally {
       setBusy(null);
     }
@@ -226,7 +226,7 @@ function GrantDetailPage() {
       await qc.invalidateQueries({ queryKey: ["grant-detail", id] });
       await qc.invalidateQueries({ queryKey: ["grants"] });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(toUserFacingActionError(e));
     } finally {
       setBusy(null);
     }
@@ -240,7 +240,7 @@ function GrantDetailPage() {
       if (r.runId && !r.reused) setTraceRun({ runId: r.runId, agent: "strategist" });
       await navigate({ to: "/proposals/$id", params: { id: r.proposalId } });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(toUserFacingActionError(e));
     } finally {
       setBusy(null);
     }
@@ -255,7 +255,7 @@ function GrantDetailPage() {
       await navigator.clipboard.writeText(url);
       setShareUrl(url);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(toUserFacingActionError(e));
     } finally {
       setBusy(null);
     }
@@ -782,6 +782,32 @@ function GrantDetailPage() {
       />
     </main>
   );
+}
+
+function toUserFacingActionError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const lower = raw.toLowerCase();
+
+  if (lower.includes("ollama") || lower.includes("model") || lower.includes("llm")) {
+    return "The local AI model could not complete this step. Open the reasoning trace or Admin > Agents to confirm Ollama is running and the configured model is installed, then retry.";
+  }
+  if (raw.includes("grant_not_enriched_yet")) {
+    return "Fetch details first. The evaluator needs the enriched grant facts before it can validate fit rules.";
+  }
+  if (raw.includes("org_profile_missing")) {
+    return "Complete the organization profile before evaluating grants. Fit rules depend on your sectors, jurisdictions, budget, and applicant profile.";
+  }
+  if (raw.includes("grant_in_terminal_state")) {
+    return "This grant is already in a terminal state, so the system will not spend a new AI evaluation on it.";
+  }
+  if (raw.includes("evaluator_schema_validation")) {
+    return "The evaluator responded in an unexpected format. The run was logged for audit; retry once, and check the agent trace if it repeats.";
+  }
+  if (raw.includes("agent_disabled")) {
+    return "This agent is disabled in Admin > Agents. Enable it before running this action.";
+  }
+
+  return raw;
 }
 
 function humanizeKey(k: string): string {
