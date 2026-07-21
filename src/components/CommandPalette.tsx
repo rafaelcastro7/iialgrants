@@ -85,7 +85,11 @@ export function CommandPalette() {
 
   const searchTerm = sanitizePgrstTerm(debouncedSearch);
 
-  const { data: grants } = useQuery({
+  const {
+    data: grants,
+    error: grantsError,
+    isFetching: grantsFetching,
+  } = useQuery({
     queryKey: ["cmd-grants", searchTerm],
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) return [];
@@ -95,7 +99,11 @@ export function CommandPalette() {
     enabled: open && searchTerm.length >= 2,
   });
 
-  const { data: proposals } = useQuery({
+  const {
+    data: proposals,
+    error: proposalsError,
+    isFetching: proposalsFetching,
+  } = useQuery({
     queryKey: ["cmd-proposals", searchTerm],
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) return [];
@@ -137,18 +145,36 @@ export function CommandPalette() {
 
   const showResults = search.length >= 2;
   const hasResults = (grants?.length || 0) + (proposals?.length || 0) > 0;
+  const normalizedInput = sanitizePgrstTerm(search);
+  const isSearching =
+    grantsFetching || proposalsFetching || (showResults && normalizedInput !== searchTerm);
+  const searchError = grantsError || proposalsError;
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={setOpen} commandProps={{ shouldFilter: false }}>
       <CommandInput
         placeholder="Search grants, proposals, or type a command..."
         value={search}
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>
-          {showResults ? "No results found." : "Type to search or navigate..."}
-        </CommandEmpty>
+        {!showResults && <CommandEmpty>Type to search or navigate...</CommandEmpty>}
+
+        {showResults && !hasResults && (
+          <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+            {isSearching
+              ? "Searching..."
+              : searchError
+                ? "Search is temporarily unavailable. Please try again."
+                : "No results found."}
+          </p>
+        )}
+
+        {showResults && searchError && !isSearching && (
+          <p className="px-3 py-2 text-xs text-destructive" role="alert">
+            {searchError instanceof Error ? searchError.message : String(searchError)}
+          </p>
+        )}
 
         {showResults && hasResults && (
           <>
@@ -200,31 +226,35 @@ export function CommandPalette() {
           </>
         )}
 
-        <CommandGroup heading="Quick Actions">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <CommandItem key={action.id} onSelect={() => handleSelect(action)}>
-                <Icon className="mr-2 h-4 w-4" />
-                <span>{action.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
+        {!showResults && (
+          <>
+            <CommandGroup heading="Quick Actions">
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <CommandItem key={action.id} onSelect={() => handleSelect(action)}>
+                    <Icon className="mr-2 h-4 w-4" />
+                    <span>{action.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
 
-        <CommandSeparator />
+            <CommandSeparator />
 
-        <CommandGroup heading="Navigation">
-          {navigationActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <CommandItem key={action.id} onSelect={() => handleSelect(action)}>
-                <Icon className="mr-2 h-4 w-4" />
-                <span>{action.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
+            <CommandGroup heading="Navigation">
+              {navigationActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <CommandItem key={action.id} onSelect={() => handleSelect(action)}>
+                    <Icon className="mr-2 h-4 w-4" />
+                    <span>{action.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </>
+        )}
       </CommandList>
     </CommandDialog>
   );

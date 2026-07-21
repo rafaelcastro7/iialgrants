@@ -9,6 +9,33 @@ const MAX_ATTEMPTS = 2;
 const BACKOFF_MS = [0, 1500]; // pre-attempt wait per attempt index
 const FUNDER_CONCURRENCY = 4; // run up to N funders in parallel
 
+export function shouldRetryDiscoveryError(error: string, attempt: number): boolean {
+  if (attempt >= MAX_ATTEMPTS) return false;
+  // withTimeout cannot cancel discoverFunderImpl yet. Retrying a timed-out
+  // crawl would overlap the still-running first attempt, duplicate fetch/LLM
+  // work, and create contradictory late agent_runs rows.
+  return !/^funder_run_timeout_\d+ms$/.test(error);
+}
+
+export async function runWithConcurrency<T>(
+  items: readonly T[],
+  concurrency: number,
+  task: (item: T, index: number) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const workerCount = Math.max(1, Math.min(Math.floor(concurrency), items.length));
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      await task(items[index], index);
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms);
@@ -167,7 +194,7 @@ export async function runDiscoveryJob(
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         lastError = msg;
-        const willRetry = attempt < MAX_ATTEMPTS;
+        const willRetry = shouldRetryDiscoveryError(msg, attempt);
         await logRetry({
           jobId,
           funderId: f.id,
@@ -176,7 +203,10 @@ export async function runDiscoveryJob(
           error: msg,
           willRetry,
         });
-        if (!willRetry) totalProcessed += 1;
+        if (!willRetry) {
+          totalProcessed += 1;
+          break;
+        }
       }
     }
     if (!success) {
@@ -187,10 +217,21 @@ export async function runDiscoveryJob(
 
   // Parallelize across funders so a single slow site can't starve the budget.
   const list = funders ?? [];
-  for (let i = 0; i < list.length; i += FUNDER_CONCURRENCY) {
-    const batch = list.slice(i, i + FUNDER_CONCURRENCY);
-    await Promise.allSettled(batch.map(runOne));
-  }
+  await runWithConcurrency(list, FUNDER_CONCURRENCY, async (f) => {
+    // runOne already converts every terminal failure into an auditable result,
+    // but keep the worker alive if an unexpected bookkeeping error escapes.
+    try {
+      await runOne(f);
+    } catch (e) {
+      totalProcessed += 1;
+      totalFailed += 1;
+      perFunder.push({
+        funder: f.name,
+        inserted: 0,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  });
 
   // Auto-evaluate fit for the triggering user (best effort). Grants this same
   // job just discovered are still "discovered" (no enrichment step runs in

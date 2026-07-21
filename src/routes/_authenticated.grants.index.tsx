@@ -219,7 +219,12 @@ function GrantsPage() {
   }
   async function onDiscoverAll() {
     setPending("__discover__");
-    setDiscoveryMsg(null);
+    const requestedCount = selectedFunders.size;
+    setDiscoveryMsg(
+      requestedCount > 0
+        ? `Discovery is running locally for ${requestedCount} selected funder(s). Keep this page open while official sources are checked.`
+        : "Discovery is running locally across all active funders. Keep this page open while official sources are checked.",
+    );
     setEvalError(null);
     try {
       const funderIds = selectedFunders.size > 0 ? [...selectedFunders] : undefined;
@@ -228,7 +233,7 @@ function GrantsPage() {
         setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
         const scope = funderIds ? ` (${funderIds.length} selected)` : "";
         setDiscoveryMsg(
-          `Job ${r.jobId.slice(0, 8)} queued - ${r.queued} funder(s)${scope}. Live progress below.`,
+          `Job ${r.jobId.slice(0, 8)} ${r.status === "failed" ? "finished with failures" : "completed"} - ${r.queued} funder(s)${scope}, ${r.totalInserted ?? 0} new and ${r.totalSeenAgain ?? 0} seen again. Details below.`,
         );
       } else setDiscoveryMsg("Discovery enqueued.");
       autoRan.current = false;
