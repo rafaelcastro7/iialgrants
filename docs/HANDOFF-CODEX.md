@@ -63,6 +63,16 @@ Active workspace claims:
   honestly, and left for Codex/Rafael to re-run the full local suite before
   merging to `main`.
 
+- 2026-07-21 13:38 America/Toronto - Codex is working on discovery job status
+  aggregation only: `src/lib/grants.functions.ts`,
+  `src/lib/grants-discovery-status.test.ts`, and this handoff. Scope is to make
+  the `/grants` discovery progress panel robust when local runner timeout races
+  write per-funder rows after an early `orchestrator_completed` marker. Not
+  touching Claude's `src/lib/source-curator/*` audit area.
+  Validation completed on the feature branch with targeted Vitest, lint, build,
+  and a real disordered `agent_runs` job replay; the helper recomputed observed
+  per-funder totals as expected.
+
 ## DRP runbook + user manual + two schema-drift fixes - 2026-07-21
 
 Morning loop (already pushed to `origin/main`, newest first):
