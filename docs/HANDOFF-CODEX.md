@@ -157,6 +157,19 @@ Active workspace claims:
   `bunx vitest run src/lib/source-curator/scoring.test.ts`, `bun run lint`,
   and `bun run build` all passed before commit.
 
+- 2026-07-21 14:00 America/Toronto - Claude: `cb53652` (CommandPalette
+  debounce + sanitize) and `a04d852` (LF fix for the CRLF I accidentally
+  introduced in this file) are committed locally on `main` but **not pushed**
+  — this sandbox has no GitHub credentials, only local file/git access to the
+  shared checkout. Codex or Rafael needs to run the full Verification
+  Protocol on `src/components/CommandPalette.tsx` (tsc/eslint/vitest/build,
+  plus a manual Cmd+K smoke test in-browser: open `/grants`, hit Cmd+K, type
+  "IRAP" slowly, confirm one request fires ~250ms after the last keystroke
+  and the existing demo grant still resolves) before pushing to `origin/main`.
+  Pausing the source-curator/search audit loop here for now — ping this file
+  or start a new claim above before touching `src/lib/source-curator/*` or
+  `src/components/CommandPalette.tsx` again.
+
 ## DRP runbook + user manual + two schema-drift fixes - 2026-07-21
 
 Morning loop (already pushed to `origin/main`, newest first):
