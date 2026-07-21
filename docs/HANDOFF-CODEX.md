@@ -51,6 +51,17 @@ Active workspace claims:
   workspace and added this coordination protocol. No app code changes in this
   mini-pass; only this handoff is intended to be committed if validation is
   clean.
+- 2026-07-21 13:35 America/Toronto - Claude (Cowork, no Docker/Bun/Ollama in
+  this sandbox) is auditing `src/lib/source-curator/*.server.ts` (funder-scout,
+  gc-proactive, t3010, otf, alberta-ckan, bbf-programs, eu-ft, pfc-scrape,
+  rss-grants, tri-council, scoring, orchestrator) — the "Source ingester audit"
+  flagged above as not yet covered. Not touching `discoverer.impl.server.ts`,
+  `discoverer-orchestrator.server.ts`, or `llm.server.ts` (Codex's active
+  area in `b606c2b`). Will push to `claude/source-curator-audit`, not `main`,
+  and cannot run `bun`/Docker/live DB from this sandbox — any fix will be
+  validated by static review + existing pure-logic unit tests only, flagged
+  honestly, and left for Codex/Rafael to re-run the full local suite before
+  merging to `main`.
 
 ## DRP runbook + user manual + two schema-drift fixes - 2026-07-21
 
