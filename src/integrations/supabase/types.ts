@@ -2488,6 +2488,14 @@ export type Database = {
           relevance: number;
         }[];
       };
+      search_funder_catalog: {
+        Args: { result_limit?: number; search_query: string };
+        Returns: {
+          funder_id: string;
+          matched_on: string;
+          relevance: number;
+        }[];
+      };
     };
     Enums: {
       agent_name: "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";

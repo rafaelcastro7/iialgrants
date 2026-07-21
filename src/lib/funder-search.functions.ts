@@ -32,12 +32,29 @@ export const searchFunders = createServerFn({ method: "GET" })
       const supabase = await createSupabaseAdmin();
       const term = sanitizePgrstTerm(data.query);
 
+      // Rank across the FULL matching set first (indexed FTS-style trigram +
+      // exact-match blend, same shape as search_grant_catalog), then apply
+      // filters and pagination on the ranked set. The previous version
+      // paginated an ilike-filtered, name-ordered query and only re-sorted
+      // within that one page — a highly relevant funder past the page
+      // window was silently dropped from results, not just ranked lower.
+      const { data: ranked, error: rankError } = await supabase.rpc("search_funder_catalog", {
+        search_query: term,
+        result_limit: 500,
+      });
+      if (rankError) throw new Error(`Search failed: ${rankError.message}`);
+      const rankById = new Map<string, { relevance: number; matched_on: string }>();
+      for (const row of ranked ?? []) {
+        rankById.set(row.funder_id, { relevance: row.relevance, matched_on: row.matched_on });
+      }
+      if (rankById.size === 0) return [];
+
       let query = supabase
         .from("funders")
         .select(
           `id, name, designation, category, province, city, charity_status, total_revenue, website`,
         )
-        .or(`name.ilike.%${term}%,legal_name.ilike.%${term}%,city.ilike.%${term}%`);
+        .in("id", [...rankById.keys()]);
 
       if (data.province) query = query.eq("province", data.province);
       if (data.type) query = query.eq("category", data.type);
@@ -45,24 +62,18 @@ export const searchFunders = createServerFn({ method: "GET" })
       if (data.minRevenue) query = query.gte("total_revenue", data.minRevenue);
       if (data.maxRevenue) query = query.lte("total_revenue", data.maxRevenue);
 
-      query = query
-        .order("name", { ascending: true })
-        .range(data.offset, data.offset + data.limit - 1);
-
       const { data: results, error } = await query;
       if (error) throw new Error(`Search failed: ${error.message}`);
 
-      const queryLower = data.query.toLowerCase();
-      const scoredResults = (results || []).map((r) => {
-        let relevance = 0;
-        if (r.name?.toLowerCase().includes(queryLower)) relevance += 10;
-        if (r.city?.toLowerCase().includes(queryLower)) relevance += 5;
-        if (r.category?.toLowerCase().includes(queryLower)) relevance += 3;
-        return { ...r, relevance };
-      });
+      const scoredResults = (results || [])
+        .map((r) => ({
+          ...r,
+          relevance: rankById.get(r.id)?.relevance ?? 0,
+          matchedOn: rankById.get(r.id)?.matched_on ?? null,
+        }))
+        .sort((a, b) => b.relevance - a.relevance);
 
-      scoredResults.sort((a, b) => b.relevance - a.relevance);
-      return scoredResults;
+      return scoredResults.slice(data.offset, data.offset + data.limit);
     } catch (e) {
       throw new Error(e instanceof Error ? e.message : String(e));
     }
