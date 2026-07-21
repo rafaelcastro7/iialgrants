@@ -59,83 +59,78 @@ type NavGroup = {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Command",
+    label: "Every day",
     accent: "teal",
     items: [
+      { to: "/dashboard", label: "Home", description: "Today, priorities, intelligence", icon: Home },
+      { to: "/grants", label: "Grant radar", description: "Discover and qualify", icon: Radar },
+      { to: "/funders", label: "Funders", description: "CRA, history, patterns", icon: Landmark },
+    ],
+  },
+  {
+    label: "Your applications",
+    accent: "violet",
+    items: [
+      { to: "/proposals", label: "Proposals", description: "Drafts and sections", icon: FileText },
+      { to: "/quality", label: "Quality check", description: "Scores and gaps", icon: BarChart3 },
+      { to: "/submissions", label: "Submissions", description: "Sent, won, waiting", icon: Send },
+    ],
+  },
+  {
+    label: "After you win",
+    accent: "green",
+    items: [
+      { to: "/post-award", label: "Awards", description: "Outcomes and reports", icon: Trophy },
+      { to: "/financial", label: "Money", description: "Budget vs actuals", icon: DollarSign },
+      { to: "/impact", label: "Impact", description: "Measures and evidence", icon: Target },
+      { to: "/renewal", label: "Renewals", description: "Next-cycle likelihood", icon: RefreshCw },
+    ],
+  },
+  {
+    label: "Stay on track",
+    accent: "rose",
+    items: [
+      { to: "/tasks", label: "Tasks", description: "Assignments and follow-up", icon: ListChecks },
       {
-        to: "/dashboard",
-        label: "Command center",
-        description: "Today, priorities, intelligence",
-        icon: Home,
+        to: "/compliance-calendar",
+        label: "Deadlines",
+        description: "Reports and reminders",
+        icon: CalendarDays,
       },
+      {
+        to: "/competitive",
+        label: "Market view",
+        description: "Recipients and programs",
+        icon: LayoutGrid,
+      },
+    ],
+  },
+  {
+    label: "Set up",
+    accent: "teal",
+    items: [
+      { to: "/org", label: "About us", description: "Profile and criteria", icon: Building2 },
+      {
+        to: "/fit-rules",
+        label: "What we show you",
+        description: "IIAL eligibility model",
+        icon: SlidersHorizontal,
+      },
+      { to: "/manual", label: "Guide", description: "System guide", icon: BookOpen },
+      { to: "/compliance", label: "Governance", description: "Policy and assurance", icon: Shield },
+      { to: "/privacy", label: "Privacy", description: "Local-first posture", icon: Scale },
+    ],
+  },
+  {
+    label: "Admin",
+    accent: "amber",
+    items: [
       {
         to: "/autonomy",
         label: "Autonomy",
         description: "Daemons, memory, lessons",
         icon: BrainCircuit,
         adminOnly: true,
-      },
-    ],
-  },
-  {
-    label: "Prospect intelligence",
-    accent: "amber",
-    items: [
-      { to: "/grants", label: "Grant radar", description: "Discover and qualify", icon: Radar },
-      {
-        to: "/funders",
-        label: "Funder atlas",
-        description: "CRA, history, patterns",
-        icon: Landmark,
-      },
-      {
-        to: "/fit-rules",
-        label: "Fit rules",
-        description: "IIAL eligibility model",
-        icon: SlidersHorizontal,
-      },
-    ],
-  },
-  {
-    label: "Pursuit pipeline",
-    accent: "violet",
-    items: [
-      {
-        to: "/proposals",
-        label: "Proposal studio",
-        description: "Drafts and sections",
-        icon: FileText,
-      },
-      { to: "/quality", label: "Quality board", description: "Scores and gaps", icon: BarChart3 },
-      { to: "/submissions", label: "Submissions", description: "Sent, won, waiting", icon: Send },
-    ],
-  },
-  {
-    label: "Award operations",
-    accent: "green",
-    items: [
-      { to: "/post-award", label: "Award desk", description: "Outcomes and reports", icon: Trophy },
-      { to: "/financial", label: "Financials", description: "Budget vs actuals", icon: DollarSign },
-      { to: "/impact", label: "Impact", description: "Measures and evidence", icon: Target },
-      { to: "/renewal", label: "Renewal", description: "Next-cycle likelihood", icon: RefreshCw },
-    ],
-  },
-  {
-    label: "Control room",
-    accent: "rose",
-    items: [
-      { to: "/tasks", label: "Tasks", description: "Assignments and follow-up", icon: ListChecks },
-      {
-        to: "/compliance-calendar",
-        label: "Compliance",
-        description: "Deadlines and reminders",
-        icon: CalendarDays,
-      },
-      {
-        to: "/competitive",
-        label: "Market intel",
-        description: "Recipients and programs",
-        icon: LayoutGrid,
       },
       {
         to: "/ops",
@@ -151,16 +146,6 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Settings,
         adminOnly: true,
       },
-    ],
-  },
-  {
-    label: "Workspace",
-    accent: "teal",
-    items: [
-      { to: "/org", label: "Organization", description: "Profile and criteria", icon: Building2 },
-      { to: "/manual", label: "User manual", description: "System guide", icon: BookOpen },
-      { to: "/compliance", label: "Governance", description: "Policy and assurance", icon: Shield },
-      { to: "/privacy", label: "Privacy", description: "Local-first posture", icon: Scale },
     ],
   },
 ];
