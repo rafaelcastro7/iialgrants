@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/manual")({
 
 type Block =
   | { type: "code"; code: string; language: string }
-  | { type: "heading"; depth: 1 | 2 | 3; text: string; id: string }
+  | { type: "heading"; depth: 1 | 2 | 3 | 4; text: string; id: string }
   | { type: "list"; ordered: boolean; items: string[] }
   | { type: "paragraph"; text: string }
   | { type: "table"; headers: string[]; rows: string[][] };
@@ -79,7 +79,7 @@ function UserManualRoute() {
                 </Badge>
                 <Badge variant="outline" className="rounded-md gap-1.5">
                   <CalendarDays className="h-3.5 w-3.5" />
-                  Updated July 14, 2026
+                  Updated July 21, 2026
                 </Badge>
               </div>
               <h1 className="mt-4 max-w-4xl font-display text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
@@ -113,8 +113,10 @@ function MarkdownBlock({ block }: { block: Block }) {
     const className =
       block.depth === 2
         ? "scroll-mt-24 border-t pt-8 first:border-t-0 first:pt-0 text-2xl font-semibold tracking-normal"
-        : "scroll-mt-24 pt-5 text-lg font-semibold tracking-normal";
-    const Tag = block.depth === 2 ? "h2" : "h3";
+        : block.depth === 3
+          ? "scroll-mt-24 pt-5 text-lg font-semibold tracking-normal"
+          : "scroll-mt-24 pt-4 text-base font-semibold tracking-normal";
+    const Tag = block.depth === 2 ? "h2" : block.depth === 3 ? "h3" : "h4";
     return (
       <Tag id={block.id} className={className}>
         {block.text}
@@ -245,9 +247,9 @@ function parseMarkdown(markdown: string): Block[] {
       continue;
     }
 
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    const heading = line.match(/^(#{1,4})\s+(.+)$/);
     if (heading) {
-      const depth = heading[1].length as 1 | 2 | 3;
+      const depth = heading[1].length as 1 | 2 | 3 | 4;
       const text = stripInline(heading[2]);
       parsed.push({ type: "heading", depth, text, id: slugify(text) });
       index++;
@@ -285,7 +287,7 @@ function parseMarkdown(markdown: string): Block[] {
     while (
       index < lines.length &&
       lines[index]?.trim() &&
-      !/^(#{1,3})\s+/.test(lines[index] ?? "") &&
+      !/^(#{1,4})\s+/.test(lines[index] ?? "") &&
       !/^```/.test(lines[index] ?? "") &&
       !/^(\s*)([-*]|\d+\.)\s+/.test(lines[index] ?? "") &&
       !isTableStart(lines, index)
