@@ -2,7 +2,7 @@
 
 Professional user guide for the IIAL Grants platform.
 
-Last updated: 2026-07-14
+Last updated: 2026-07-21
 
 ## Table of Contents
 
@@ -10,26 +10,27 @@ Last updated: 2026-07-14
 2. [How to Open the Platform](#how-to-open-the-platform)
 3. [Core Concepts](#core-concepts)
 4. [Main Navigation](#main-navigation)
-5. [End-to-End Grant Workflow](#end-to-end-grant-workflow)
-6. [Dashboard](#dashboard)
-7. [Grant Intelligence](#grant-intelligence)
-8. [Grant Detail Page](#grant-detail-page)
-9. [Funder Intelligence](#funder-intelligence)
-10. [Fit Rules](#fit-rules)
-11. [Proposal Workspace](#proposal-workspace)
-12. [Proposal Quality and Revision](#proposal-quality-and-revision)
-13. [Submissions](#submissions)
-14. [Post-Award Management](#post-award-management)
-15. [Competitive Intelligence](#competitive-intelligence)
-16. [Operations and Collaboration](#operations-and-collaboration)
-17. [Organization Profile](#organization-profile)
-18. [Compliance and Privacy](#compliance-and-privacy)
-19. [Administration](#administration)
-20. [Autonomous Improvement System](#autonomous-improvement-system)
-21. [Evidence, Auditability, and Trust](#evidence-auditability-and-trust)
-22. [Recommended Operating Rhythm](#recommended-operating-rhythm)
-23. [Troubleshooting](#troubleshooting)
-24. [Glossary](#glossary)
+5. [System Modules at a Glance](#system-modules-at-a-glance)
+6. [End-to-End Grant Workflow](#end-to-end-grant-workflow)
+7. [Dashboard](#dashboard)
+8. [Grant Intelligence](#grant-intelligence)
+9. [Grant Detail Page](#grant-detail-page)
+10. [Funder Intelligence](#funder-intelligence)
+11. [Fit Rules](#fit-rules)
+12. [Proposal Workspace](#proposal-workspace)
+13. [Proposal Quality and Revision](#proposal-quality-and-revision)
+14. [Submissions](#submissions)
+15. [Post-Award Management](#post-award-management)
+16. [Competitive Intelligence](#competitive-intelligence)
+17. [Operations and Collaboration](#operations-and-collaboration)
+18. [Organization Profile](#organization-profile)
+19. [Compliance and Privacy](#compliance-and-privacy)
+20. [Administration](#administration)
+21. [Autonomous Improvement System](#autonomous-improvement-system)
+22. [Evidence, Auditability, and Trust](#evidence-auditability-and-trust)
+23. [Recommended Operating Rhythm](#recommended-operating-rhythm)
+24. [Troubleshooting](#troubleshooting)
+25. [Glossary](#glossary)
 
 ## Purpose of the System
 
@@ -139,6 +140,54 @@ The sidebar organizes the platform into work areas.
 The interface includes theme controls, notifications, a user menu, responsive
 mobile navigation, and an optional UI version toggle where enabled.
 
+## System Modules at a Glance
+
+IIAL Grants is not only a grant search screen. It is an operating system for
+the full grant lifecycle: finding opportunities, qualifying them, producing
+proposal work, tracking submissions, and managing awarded grants.
+
+### Opportunity Discovery and Qualification
+
+| Module       | Page                | What it does                                                                                 | Main user action                                        |
+| ------------ | ------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Grant radar  | `/grants`           | Central catalog of active opportunities, search, filters, lifecycle stages, and next actions | Find, compare, enrich, score, shortlist, or open grants |
+| Grant detail | `/grants/:id`       | One-opportunity decision page with evidence, requirements, fit, source URLs, and audit link  | Decide whether to pursue a grant                        |
+| Grant audit  | `/grants/:id/audit` | Shows how rules, evidence, and agent traces support the decision                             | Verify why the system made a recommendation             |
+| Funder atlas | `/funders`          | Search and inspect funders, source metadata, CRA/T3010 enrichment, and related grants        | Understand who funds what                               |
+| Fit rules    | `/fit-rules`        | Configure eligibility, deadline, strategic fit, amount, and scoring behavior                 | Tune the screening model                                |
+
+### Proposal and Submission Pipeline
+
+| Module          | Page                      | What it does                                                         | Main user action                           |
+| --------------- | ------------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
+| Proposal studio | `/proposals`              | Lists active proposals and application work                          | Open or manage proposal drafts             |
+| Proposal detail | `/proposals/:id`          | Section-level drafting, documents, citations, readiness, and exports | Build the application package              |
+| Revision agent  | `/proposals/:id/revision` | Groups proposal weaknesses by severity and suggests fixes            | Improve proposal quality before submission |
+| Quality board   | `/quality`                | Portfolio-level proposal quality metrics and trends                  | Spot weak proposals and systemic issues    |
+| Submissions     | `/submissions`            | Tracks sent applications, status, response, and outcome              | Keep the submission record current         |
+
+### Post-Award and Portfolio Management
+
+| Module     | Page          | What it does                                                           | Main user action                 |
+| ---------- | ------------- | ---------------------------------------------------------------------- | -------------------------------- |
+| Award desk | `/post-award` | Outcomes, reporting deadlines, awarded grants, and win/loss state      | Manage grants after the decision |
+| Financials | `/financial`  | Budget, utilization, year-over-year funding, and financial performance | Monitor awarded funding          |
+| Impact     | `/impact`     | Outcomes, indicators, and evidence of program impact                   | Track what the grant achieved    |
+| Renewal    | `/renewal`    | Renewal likelihood and next-cycle intelligence                         | Prepare for recurring funding    |
+
+### Operations, Intelligence, and Administration
+
+| Module               | Page                      | What it does                                                                  | Main user action                            |
+| -------------------- | ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------- |
+| Tasks                | `/tasks`                  | Team assignments, priorities, and follow-up work                              | Coordinate grant work                       |
+| Compliance calendar  | `/compliance-calendar`    | Deadline tracking, reminders, and compliance items                            | Avoid missed reporting or application dates |
+| Market intel         | `/competitive`            | Public grant market, recipient, and program analysis                          | Understand competition and funding patterns |
+| Organization profile | `/org`                    | Stores organization attributes used by fit scoring                            | Keep eligibility context accurate           |
+| Governance/privacy   | `/compliance`, `/privacy` | Local-first compliance posture and privacy information                        | Review assurance posture                    |
+| Operations           | `/ops`                    | Platform health and operational checks                                        | Monitor system condition                    |
+| Admin console        | `/admin/*`                | Users, modules, agents, sources, candidates, history, monitoring, workflows   | Configure and govern the system             |
+| Autonomy             | `/autonomy`               | Local daemon health, self-evaluation, improvement backlog, and repair signals | Monitor continuous improvement              |
+
 ## End-to-End Grant Workflow
 
 The normal workflow is:
@@ -232,6 +281,248 @@ Use filters to reduce noise:
 - Show only eligible opportunities.
 - Show only grants with known deadlines.
 - Sort by highest-value or most urgent opportunities.
+
+### Detailed Grant Search Process
+
+The goal of grant search is not only to find a keyword match. The goal is to
+move from many possible opportunities to a short list of grants that are
+official, current, eligible, strategically relevant, and worth the proposal
+effort.
+
+Use this process every time.
+
+#### 1. Prepare the search context
+
+Before searching, confirm that the organization profile and fit rules are
+current.
+
+Check:
+
+- Organization type, legal status, and jurisdiction.
+- Core sectors and program areas.
+- Typical project size and minimum worthwhile grant amount.
+- Deadline runway: how many weeks are needed to prepare a good application.
+- Cost-share or matching-fund tolerance.
+- Any funders, sectors, or jurisdictions that should be excluded.
+
+If these inputs are wrong, the system may still find grants, but the fit
+recommendations will be less useful.
+
+#### 2. Open the grant radar
+
+Go to:
+
+```text
+/grants
+```
+
+From the dashboard, use the grant radar/open radar action. The grant catalog is
+the main place to search, filter, compare, and open opportunities.
+
+#### 3. Start with a broad search
+
+Use the search box to enter a simple keyword, funder name, program name, or
+sector.
+
+Examples:
+
+- `IRAP`
+- `training`
+- `innovation`
+- `youth employment`
+- `digital skills`
+- `Canada`
+- `Ontario`
+- `NRC`
+
+Good first searches are broad. Narrow too early and strong opportunities may be
+missed because funders use different wording than expected.
+
+#### 4. Review the visible records
+
+For each visible grant, scan:
+
+- Title and funder.
+- Status or lifecycle stage.
+- Deadline, if known.
+- Amount range, if known.
+- Eligibility signal.
+- Fit score or fit verdict.
+- Data quality indicators.
+- Whether the record is active, expired, archived, or incomplete.
+
+If a result looks promising but incomplete, do not reject it immediately. Open
+the grant and fetch details.
+
+#### 5. Apply filters
+
+After the first scan, narrow the list.
+
+Typical filter sequence:
+
+1. Jurisdiction: keep grants relevant to the organization.
+2. Eligibility: show likely eligible or reviewable records.
+3. Deadline: focus on open opportunities with enough runway.
+4. Funder: isolate a specific funder when researching known programs.
+5. Status: separate new leads from enriched/scored opportunities.
+6. Sort: prioritize by urgency, fit, or value.
+
+Use filters as decision aids, not as permanent truth. If a grant has partial
+data, it may disappear under strict filters until enrichment fills missing
+fields.
+
+#### 6. Use lifecycle stages
+
+The grant workspace separates records by where they are in the process:
+
+- Queue/new leads: items that need review.
+- Lifecycle/pipeline: items moving through qualification and pursuit.
+- Enriched/scored: items with structured facts or evaluation.
+- Shortlisted/in proposal: items that deserve active work.
+- Submitted/awarded/closed: items that have moved beyond search.
+
+Start with new or active records when searching for fresh opportunities. Use
+closed records for learning, history, or funder research.
+
+#### 7. Open the grant detail page
+
+Click the grant title to open the detail page.
+
+On the detail page, confirm:
+
+- The source is official or credible.
+- The official page link opens.
+- The title and funder match the source.
+- Deadline and amount are present or explicitly unknown.
+- Eligibility is specific enough to evaluate.
+- Application requirements are visible.
+- Evidence supports the extracted facts.
+
+If the record is incomplete, use the available fetch/enrich action to retrieve
+more details from official sources.
+
+#### 8. Fetch details when information is missing
+
+Use fetch/enrichment when a grant has missing or weak data:
+
+- No amount.
+- No deadline.
+- Vague eligibility.
+- Missing application requirements.
+- Missing source trail.
+- Partial enrichment review.
+
+The system should preserve uncertainty. If the funder does not publish a
+deadline, the system should say it is unknown instead of inventing one.
+
+#### 9. Evaluate fit
+
+Once enough facts are available, run or review the fit evaluation.
+
+The fit result combines:
+
+- Deterministic rules: eligibility, money math, strategic fit, deadline runway.
+- Local LLM reasoning: explanation and qualitative assessment.
+- Evidence: source-backed support for extracted facts and recommendations.
+
+Read the score together with the rationale. A high score is not a command to
+apply. A low score is not always a rejection if the data is incomplete or the
+grant is strategically important.
+
+#### 10. Decide the next action
+
+Choose one of these outcomes:
+
+| Outcome              | When to use it                                                         |
+| -------------------- | ---------------------------------------------------------------------- |
+| Fetch details        | The grant looks promising but lacks facts                              |
+| Evaluate fit         | Facts are available but the decision signal is missing                 |
+| Shortlist            | The grant is eligible, valuable, and strategically relevant            |
+| Draft proposal       | The team has decided to pursue the opportunity                         |
+| Assign task          | Someone must verify, call the funder, gather documents, or review fit  |
+| Archive/deprioritize | The grant is expired, ineligible, too small, too late, or off-strategy |
+
+#### 11. Document uncertainty
+
+If a decision depends on missing information, create a task or note before
+moving forward.
+
+Examples:
+
+- "Confirm whether nonprofits are eligible."
+- "Check if matching funds are cash-only or in-kind."
+- "Verify deadline; page lists program but no intake date."
+- "Call funder about applicant geography."
+- "Confirm whether IIAL can apply directly or needs a partner."
+
+#### 12. Repeat and compare
+
+Good grant search is iterative. After reviewing one result, return to `/grants`
+and compare against other opportunities. The best grant is not always the first
+grant found; it is the one with the best combination of eligibility, timing,
+amount, strategic fit, evidence quality, and proposal feasibility.
+
+### What Counts as a Good Search Result
+
+A high-quality opportunity usually has:
+
+- An official source URL.
+- Clear funder identity.
+- Current or recurring program status.
+- Deadline or intake timing.
+- Amount or funding range.
+- Applicant eligibility.
+- Eligible activities or sectors.
+- Application requirements.
+- Evidence trail.
+- Fit rationale.
+- A practical next action.
+
+If several of these are missing, treat the record as a lead, not as a ready
+opportunity.
+
+### What to Do When Search Finds Nothing
+
+If a search returns no useful grants:
+
+1. Remove filters and search again.
+2. Use broader keywords.
+3. Search by funder instead of program name.
+4. Try related terms. For example, search `training`, `skills`, `workforce`,
+   and `employment` separately.
+5. Check closed or archived records for historical funder patterns.
+6. Ask an admin to review discovery sources under `/admin/sources`.
+7. Add or refresh sources if the source list is stale.
+8. Use funder intelligence to look for related programs.
+
+No results does not always mean no funding exists. It may mean the source has
+not been crawled, the funder uses different wording, or the opportunity is
+recurring but not currently open.
+
+### Manual Search vs. System Discovery
+
+There are two ways opportunities enter the system:
+
+- Manual/user-led search: the user searches existing records in `/grants`.
+- Admin/system discovery: configured sources are crawled or refreshed, creating
+  new grant leads.
+
+Manual search is best when the team already knows a funder, keyword, or program
+area. System discovery is best for expanding the catalog and finding new leads
+from source lists.
+
+### Search Quality Checklist
+
+Before acting on a grant, confirm:
+
+- [ ] The grant came from an official or credible source.
+- [ ] The deadline is known or explicitly marked unknown.
+- [ ] Eligibility has been reviewed.
+- [ ] Amount and cost-share are acceptable.
+- [ ] Requirements are realistic for the team.
+- [ ] Fit score and rationale have been read.
+- [ ] Evidence supports the key fields.
+- [ ] The next action is clear.
 
 ### Discovery
 
