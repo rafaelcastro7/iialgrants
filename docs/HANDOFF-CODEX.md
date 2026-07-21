@@ -73,6 +73,73 @@ Active workspace claims:
   and a real disordered `agent_runs` job replay; the helper recomputed observed
   per-funder totals as expected.
 
+- 2026-07-21 13:45 America/Toronto - Claude finished the source-curator audit.
+  Correction to the 13:35 claim above: `claude/source-curator-audit` and
+  `codex/discovery-status-aggregation` share one working directory/HEAD in
+  this environment (not separate worktrees), so `git checkout` between them
+  actually moves the same checkout — there is no real branch isolation here,
+  only sequencing. It worked out fine this time because neither agent's
+  changed files overlapped and each commit was fast-forwarded, but don't rely
+  on branches alone to prevent a collision; the file-scope claim above is what
+  actually kept this safe. Committed directly on `main` (matching what Codex's
+  `47f6fab` already did) rather than maintaining a separate branch.
+
+  Findings + fixes, explicit files only (`src/lib/source-curator/
+  orchestrator.server.ts`, `scoring.server.ts`, new `scoring.test.ts`,
+  `src/routes/_authenticated.admin.candidates.tsx`):
+
+  - `orchestrator.server.ts` counted candidates rejected for low score
+    (`score < REVIEW_MIN_THRESHOLD`) as `bucket.dup++` — a real duplicate hit
+    and "not enough signal to review yet" were indistinguishable in
+    `source_ingest_runs.duplicates` / `source_health_summary`, understating
+    how many genuinely-new-but-thin candidates each source produces. Added a
+    `rejected` counter (no migration: stored honestly in the existing
+    `metadata` jsonb as `rejected_low_score`, `duplicates` now means only
+    actual dedup hits) and surfaced it in the admin candidates run-now toast.
+  - `scoring.server.ts`'s `findDuplicate` doc comment claimed fuzzy name
+    matching was scoped "within province"; the implementation never was.
+    Rewrote the comment to describe actual behavior and flagged the real
+    latent bug next to it: the fuzzy pass is capped at `.limit(2000)` funders
+    and 2000 candidates with no explicit order, so dedup coverage will
+    silently degrade once either table passes ~2000 rows. Not fixed (would
+    need a live-DB-verified pagination/pg_trgm change); left as a documented
+    follow-up.
+  - Added `src/lib/source-curator/scoring.test.ts` (11 cases): this whole
+    ingester pipeline had zero test coverage before. Covers
+    `normalizeName`/`nameSimilarity`/`scoreCandidate`, including one test that
+    pins down an existing limit (the suffix-strip regex only matches
+    "foundation" singular, not "foundations") so it's documented rather than
+    silently relied on.
+  - Could not run `bunx vitest`/`tsc`/`eslint`/`bun run build` from this
+    sandbox: no Docker, no Bun, and `node_modules` here is a Windows install
+    (native `rolldown` binding is `win32-x64-msvc`; this sandbox is
+    `linux-x64-gnu`), so even direct `node node_modules/vitest/vitest.mjs run`
+    fails at module load before running anything. Every new test assertion
+    was instead hand-verified by re-implementing the three pure functions in
+    a throwaway `node -e` script and diffing against the expected values
+    before writing them into the test file — but this is not a substitute for
+    the real suite. **Please run the full Verification Protocol
+    (`tsc`, `eslint`, `vitest`, `build`) on these 4 files before merging/
+    pushing**, same as any other change.
+  - Not touched, deliberately scoped out: the other 9 ingester files
+    (funder-scout, gc-proactive, t3010, otf, alberta-ckan, bbf-programs,
+    eu-ft, pfc-scrape, rss-grants, tri-council) were read and no comparably
+    clear, safely-fixable-without-a-live-DB bug was found in them today.
+
+- 2026-07-21 13:48 America/Toronto - Codex validation/coordination correction:
+  `47f6fab` added the discovery status aggregation fix and replay test.
+  `c248fec` was pushed to `origin/main` after targeted Vitest, full lint, and
+  build passed; it also included Claude's already-staged source-curator audit
+  files (`src/lib/source-curator/orchestrator.server.ts`,
+  `src/lib/source-curator/scoring.server.ts`,
+  `src/lib/source-curator/scoring.test.ts`, and
+  `src/routes/_authenticated.admin.candidates.tsx`). This happened because
+  those files were already staged in the shared checkout before Codex's
+  explicit add command. Do not rewrite the pushed history; the included changes
+  were inspected and the focal source-curator + discovery tests pass together
+  (13 tests). Future handoffs should run `git diff --cached --name-only` before
+  every commit, not just after `git add`.
+
 ## DRP runbook + user manual + two schema-drift fixes - 2026-07-21
 
 Morning loop (already pushed to `origin/main`, newest first):
