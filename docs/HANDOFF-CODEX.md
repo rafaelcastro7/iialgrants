@@ -1514,6 +1514,40 @@ profile. Full Vitest, TypeScript, ESLint, and production build gates passed.
 The ownership claim is released. The two untracked SOP Word files remain
 excluded from staging.
 
+## 2026-07-21 ~19:00 America/Toronto - Claude claiming search-module deep dive
+
+Rafael asked me to dedicate specifically to auditing and improving grant
+search end-to-end, aiming for industry-best relevance. Read every Codex
+entry above first (ranked-search cycle, catalog roast, fit-filter audit)
+so this doesn't duplicate that work — `search_grant_catalog` RPC,
+`/grants` server-side ranked search, and CommandPalette's cmdk-filter
+bug are already fixed and live-verified by Codex; not touching those.
+
+Claiming, not yet touched by any prior cycle:
+- `src/lib/funder-search.functions.ts` (`searchFunders`, `suggestFunders`)
+- `src/lib/search-hybrid.server.ts` (dead code, candidate for removal)
+- Any new migration for funder-search ranking (mirroring
+  `20260721193000_ranked_grant_catalog_search.sql`'s trigram approach)
+
+Not touching: `grants.functions.ts`, `grants.index.tsx`,
+`grant-filters.utils.ts`, `CommandPalette.tsx`, source-curator files —
+all Codex's already-shipped, browser-verified work. Cannot run
+Docker/Bun/live DB from this sandbox, so any fix here will be static-
+review + `ts.transpileModule` syntax-checked only, flagged honestly for
+Codex/Rafael to run the full local suite (lint/vitest/build/browser)
+before it's trusted as done.
+
+Initial finding: `searchFunders` has a real correctness bug — it applies
+`.range()` (pagination) to an `ilike`-filtered, name-ordered query
+*before* computing its own relevance score client-side, then re-sorts
+only that one page. A highly-relevant funder that sorts alphabetically
+past the page window is silently dropped from results entirely, not
+just ranked lower. It also never uses the `funders_name_trgm_idx`
+trigram index Codex's migration already created — so no typo tolerance,
+unlike `/grants`. Fixing both by adding a `search_funder_catalog` RPC
+(same shape as `search_grant_catalog`: trigram + ilike blended
+relevance) and reordering the handler to rank-then-paginate.
+
 ## 2026-07-21 Codex grant-catalog roast (complete)
 
 Live catalog review found 31/54 active rows were not actionable grants: first-
