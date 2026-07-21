@@ -142,7 +142,7 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
     let result: Awaited<ReturnType<typeof runDiscoveryJob>> | null = null;
     let runError: string | null = null;
     try {
-      result = await runDiscoveryJob(jobId, context.userId, data.funderIds);
+      result = await runDiscoveryJob(jobId, context.userId, data.funderIds, { forceRefresh: true });
     } catch (e) {
       runError = e instanceof Error ? e.message : String(e);
       console.error("[discoverAllFunders] orchestrator threw", e);
@@ -155,6 +155,8 @@ export const discoverAllFunders = createServerFn({ method: "POST" })
       totalInserted: result?.totalInserted ?? 0,
       totalSeenAgain: result?.totalSeenAgain ?? 0,
       totalProcessed: result?.totalProcessed ?? queued,
+      totalDegraded: result?.totalDegraded ?? 0,
+      totalFailed: result?.totalFailed ?? (runError ? queued : 0),
       evaluated: result?.evaluated ?? 0,
       perFunder: result?.perFunder ?? [],
       status: (runError ? "failed" : "completed") as "completed" | "failed",
@@ -213,6 +215,8 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
     let totalInserted = 0;
     let totalSeenAgain = 0;
     let totalProcessed = 0;
+    let totalDegraded = 0;
+    let totalFailed = 0;
     let evaluated = 0;
     let fundersQueued = 0;
 
@@ -244,6 +248,8 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
         totalSeenAgain = Number(m.totalSeenAgain ?? 0);
         totalProcessed = Number(m.totalProcessed ?? 0);
         evaluated = Number(m.evaluated ?? 0);
+        totalDegraded = Number(m.totalDegraded ?? 0);
+        totalFailed = Number(m.totalFailed ?? 0);
         fundersQueued = Number(m.funders_queued ?? 0);
         continue;
       }
@@ -270,7 +276,7 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
         prev.lastError = r.error ?? prev.lastError;
       } else if (r.status === "degraded") {
         prev.lastError = r.error ?? prev.lastError;
-        if (prev.status !== "succeeded") prev.status = "running";
+        if (prev.status !== "succeeded") prev.status = "degraded";
       }
       byFunder.set(fid, prev);
     }
@@ -284,6 +290,8 @@ export const getDiscoveryJobStatus = createServerFn({ method: "GET" })
       totalInserted,
       totalSeenAgain,
       totalProcessed,
+      totalDegraded,
+      totalFailed,
       evaluated,
       perFunder: [...byFunder.values()],
     };

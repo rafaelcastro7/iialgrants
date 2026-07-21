@@ -123,11 +123,78 @@ describe("local-only LLM cascade", () => {
     });
 
     expect(r.text).toBe("from-fallback");
-    expect(r.model).toBe("phi4-mini:latest");
+    expect(r.model).toBe("dolphin-mistral:7b");
     expect(models).toContain("dolphin3:latest");
-    expect(models.filter((m) => m === "phi4-mini:latest").length).toBeGreaterThanOrEqual(1);
+    expect(models).toContain("dolphin-mistral:7b");
     expect(calls.some((c) => c.startsWith(OLLAMA_URL))).toBe(true);
     expect(calls.every((c) => c.startsWith("http://localhost:"))).toBe(true);
+  }, 15000);
+
+  it("callLlm skips unavailable configured models when Ollama tags are available", async () => {
+    const models: string[] = [];
+    const calls: string[] = [];
+    const spy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      calls.push(url);
+      if (url.endsWith("/api/tags")) {
+        return new Response(
+          JSON.stringify({ models: [{ name: "phi4-mini:latest", model: "phi4-mini:latest" }] }),
+        );
+      }
+      if (url.endsWith("/api/ps")) return new Response(JSON.stringify({ models: [] }));
+      if (url.endsWith("/api/chat")) {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { model?: string };
+        models.push(body.model ?? "");
+        return okBody("from-installed-model");
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    (globalThis as unknown as { fetch: unknown }).fetch = spy;
+
+    const { callLlm } = await import("@/agents/llm.server");
+    const r = await callLlm({
+      agent: "strategist",
+      model: "qwen3:14b",
+      messages: [{ role: "user", content: "hi" }],
+    });
+
+    expect(r.text).toBe("from-installed-model");
+    expect(r.model).toBe("phi4-mini:latest");
+    expect(models.every((m) => m === "phi4-mini:latest")).toBe(true);
+    expect(calls.some((c) => c.endsWith("/api/tags"))).toBe(true);
+  }, 15000);
+
+  it("callLlm cascades past multiple missing streaming models", async () => {
+    const models: string[] = [];
+    const spy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/api/tags")) throw new Error("tags endpoint unavailable");
+      if (url.endsWith("/api/ps")) return new Response(JSON.stringify({ models: [] }));
+      if (url.endsWith("/api/chat")) {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { model?: string };
+        const model = body.model ?? "";
+        models.push(model);
+        if (model === "phi4-mini:latest") return okBody("from-last-resort");
+        return new Response(JSON.stringify({ error: `model '${model}' not found` }), {
+          status: 404,
+        });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    (globalThis as unknown as { fetch: unknown }).fetch = spy;
+
+    const { callLlm } = await import("@/agents/llm.server");
+    const r = await callLlm({
+      agent: "strategist",
+      model: "qwen3:14b",
+      messages: [{ role: "user", content: "hi" }],
+    });
+
+    expect(r.text).toBe("from-last-resort");
+    expect(r.model).toBe("phi4-mini:latest");
+    expect(models).toContain("qwen3:14b");
+    expect(models).toContain("dolphin3:latest");
+    expect(models).toContain("phi4-mini:latest");
   }, 15000);
 
   it("no cloud providers are ever contacted", async () => {

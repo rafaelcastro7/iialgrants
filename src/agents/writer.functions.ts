@@ -198,7 +198,7 @@ export const draftSection = createServerFn({ method: "POST" })
       throw new Error(`writer_llm_failed: ${llmErr instanceof Error ? llmErr.message : "unknown"}`);
     }
 
-    const model = resolveModel("writer");
+    const model = llm.model ?? resolveModel("writer");
     let parsed;
     try {
       parsed = WriterOutput.parse(
@@ -284,7 +284,7 @@ export const draftSection = createServerFn({ method: "POST" })
       run_id: runId,
       agent: "writer",
       status: "succeeded",
-      model: llm.model ?? model,
+      model,
       input_tokens: llm.inputTokens,
       output_tokens: llm.outputTokens,
       latency_ms: Date.now() - t0,

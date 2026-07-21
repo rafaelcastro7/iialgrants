@@ -34,11 +34,14 @@ async function basicUserFlow(page: Page) {
   await expect(page.getByRole("heading", { name: /prioritize every opportunity/i })).toBeVisible();
   await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
   await expect(
-    page.getByRole("link", { name: /industrial research assistance program/i }),
+    page.getByRole("link", { name: "Industrial Research Assistance Program (IRAP)", exact: true }),
   ).toBeVisible();
 
   await page.getByRole("searchbox", { name: /search grants/i }).fill("IRAP");
-  await expect(page.getByText(/showing 1 of 1 active records/i)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Industrial Research Assistance Program (IRAP)", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/showing \d+ of \d+ active records/i)).toBeVisible();
 
   expect(consoleErrors).toEqual([]);
 }

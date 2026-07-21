@@ -55,9 +55,9 @@ test.describe("navigation audit - member", () => {
     await expect(firstGrantLink).toBeVisible();
     await firstGrantLink.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+$/);
-    await expect(page.getByRole("link", { name: /audit/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Audit", exact: true })).toBeVisible();
 
-    const auditTrailLink = page.getByRole("link", { name: /audit/i });
+    const auditTrailLink = page.getByRole("link", { name: "Audit", exact: true });
     await auditTrailLink.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+\/audit$/);
     await expect(page.getByText(/rules evaluated/i)).toBeVisible();
