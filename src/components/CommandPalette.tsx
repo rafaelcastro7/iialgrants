@@ -26,6 +26,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizePgrstTerm } from "@/lib/search-sanitize";
 import "@/i18n";
 
 type CommandAction = {
@@ -41,6 +42,12 @@ export function CommandPalette() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  // The input stays instant (bound to `search`), but the DB queries below
+  // only fire against `debouncedSearch`, ~250ms after typing pauses. Without
+  // this, every single keystroke fired a fresh "grants" + "proposals" query
+  // (react-query dedupes by queryKey, which includes `search`, so it can't
+  // collapse "IR" / "IRA" / "IRAP" into one request on its own).
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -57,32 +64,39 @@ export function CommandPalette() {
     if (!open) setSearch("");
   }, [open]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const searchTerm = sanitizePgrstTerm(debouncedSearch);
+
   const { data: grants } = useQuery({
-    queryKey: ["cmd-grants", search],
+    queryKey: ["cmd-grants", searchTerm],
     queryFn: async () => {
-      if (!search || search.length < 2) return [];
+      if (!searchTerm || searchTerm.length < 2) return [];
       const { data } = await supabase
         .from("grants")
         .select("id, title, status, deadline")
-        .ilike("title", `%${search}%`)
+        .ilike("title", `%${searchTerm}%`)
         .limit(5);
       return data || [];
     },
-    enabled: open && search.length >= 2,
+    enabled: open && searchTerm.length >= 2,
   });
 
   const { data: proposals } = useQuery({
-    queryKey: ["cmd-proposals", search],
+    queryKey: ["cmd-proposals", searchTerm],
     queryFn: async () => {
-      if (!search || search.length < 2) return [];
+      if (!searchTerm || searchTerm.length < 2) return [];
       const { data } = await supabase
         .from("proposals")
         .select("id, title, status")
-        .ilike("title", `%${search}%`)
+        .ilike("title", `%${searchTerm}%`)
         .limit(5);
       return data || [];
     },
-    enabled: open && search.length >= 2,
+    enabled: open && searchTerm.length >= 2,
   });
 
   const navigationActions: CommandAction[] = [
