@@ -24,8 +24,11 @@ export type CuratorResult = {
   runId: string;
   tier: Tier;
   durationMs: number;
-  perSource: Record<string, { rows: number; new: number; dup: number; auto: number; err: number }>;
-  totals: { rows: number; new: number; dup: number; auto: number; err: number };
+  perSource: Record<
+    string,
+    { rows: number; new: number; dup: number; rejected: number; auto: number; err: number }
+  >;
+  totals: { rows: number; new: number; dup: number; rejected: number; auto: number; err: number };
 };
 
 type SourceFn = () => Promise<RawCandidate[]>;
@@ -33,7 +36,7 @@ type SourceFn = () => Promise<RawCandidate[]>;
 async function runSource(name: string, fn: SourceFn, result: CuratorResult): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const t0 = Date.now();
-  const bucket = { rows: 0, new: 0, dup: 0, auto: 0, err: 0 };
+  const bucket = { rows: 0, new: 0, dup: 0, rejected: 0, auto: 0, err: 0 };
   result.perSource[name] = bucket;
   let raw: RawCandidate[] = [];
   let status: "succeeded" | "failed" = "succeeded";
@@ -57,7 +60,13 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
         }
         const score = scoreCandidate(c);
         if (score < REVIEW_MIN_THRESHOLD) {
-          bucket.dup++;
+          // Not a duplicate — a genuinely new candidate whose signal quality
+          // (BN/website/multiple sources/etc.) is too thin to review yet.
+          // Counting this as `dup` corrupted the source_health_summary
+          // duplicate-rate telemetry (a real dedup hit and "we don't know
+          // enough about this org" look identical downstream). Track it
+          // separately instead.
+          bucket.rejected++;
           continue;
         }
         const cStatus = score >= AUTO_APPROVE_THRESHOLD ? "approved" : "pending_review";
@@ -113,7 +122,9 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
     latency_ms: Date.now() - t0,
     status,
     error_message: errorMessage,
-    metadata: { run_id: result.runId, tier: result.tier },
+    // `rejected_low_score` has no dedicated column (would need a migration);
+    // kept honest in metadata rather than folded into `duplicates`.
+    metadata: { run_id: result.runId, tier: result.tier, rejected_low_score: bucket.rejected },
   });
 
   // Update registry health snapshot.
@@ -193,7 +204,7 @@ export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResul
     tier,
     durationMs: 0,
     perSource: {},
-    totals: { rows: 0, new: 0, dup: 0, auto: 0, err: 0 },
+    totals: { rows: 0, new: 0, dup: 0, rejected: 0, auto: 0, err: 0 },
   };
   const t0 = Date.now();
   const ingestors = await ingestorsForTier(tier);
@@ -204,6 +215,7 @@ export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResul
     result.totals.rows += b.rows;
     result.totals.new += b.new;
     result.totals.dup += b.dup;
+    result.totals.rejected += b.rejected;
     result.totals.auto += b.auto;
     result.totals.err += b.err;
   }

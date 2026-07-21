@@ -84,7 +84,8 @@ function CandidatesPage() {
     try {
       const r = await runNow();
       toast.success(
-        `Curator: ${r.totals.new} new, ${r.totals.auto} auto-seeded, ${r.totals.dup} dup`,
+        `Curator: ${r.totals.new} new, ${r.totals.auto} auto-seeded, ${r.totals.dup} dup, ` +
+          `${r.totals.rejected} low-signal`,
       );
       router.invalidate();
     } catch (e) {
