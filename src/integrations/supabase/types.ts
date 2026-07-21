@@ -513,10 +513,12 @@ export type Database = {
         Row: {
           completed_at: string | null;
           created_at: string;
+          created_by: string | null;
           description: string | null;
           due_date: string;
           frequency: string;
           id: string;
+          org_id: string | null;
           status: string;
           submission_id: string | null;
           title: string;
@@ -525,10 +527,12 @@ export type Database = {
         Insert: {
           completed_at?: string | null;
           created_at?: string;
+          created_by?: string | null;
           description?: string | null;
           due_date: string;
           frequency?: string;
           id?: string;
+          org_id?: string | null;
           status?: string;
           submission_id?: string | null;
           title: string;
@@ -537,10 +541,12 @@ export type Database = {
         Update: {
           completed_at?: string | null;
           created_at?: string;
+          created_by?: string | null;
           description?: string | null;
           due_date?: string;
           frequency?: string;
           id?: string;
+          org_id?: string | null;
           status?: string;
           submission_id?: string | null;
           title?: string;

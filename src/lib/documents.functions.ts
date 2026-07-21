@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertEntityInUserOrg, TENANT_ENTITY_TYPES } from "./tenant-access.server";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 const ALLOWED_TYPES = [
@@ -28,13 +29,14 @@ export const listDocuments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      entityType: z.enum(["grant", "proposal", "submission", "funder"]),
+      entityType: z.enum(TENANT_ENTITY_TYPES),
       entityId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, data.entityType, data.entityId);
 
       const { data: docs, error } = await supabase
         .from("documents")
@@ -54,7 +56,7 @@ export const uploadDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      entityType: z.enum(["grant", "proposal", "submission", "funder"]),
+      entityType: z.enum(TENANT_ENTITY_TYPES),
       entityId: z.string().uuid(),
       fileName: z.string().min(1),
       fileSize: z.number().max(MAX_FILE_SIZE),
@@ -62,9 +64,10 @@ export const uploadDocument = createServerFn({ method: "POST" })
       base64Data: z.string(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, data.entityType, data.entityId);
 
       if (!ALLOWED_TYPES.includes(data.mimeType)) {
         throw new Error(`File type not allowed: ${data.mimeType}`);
@@ -88,6 +91,7 @@ export const uploadDocument = createServerFn({ method: "POST" })
           file_size: data.fileSize,
           mime_type: data.mimeType,
           storage_path: path,
+          uploaded_by: context.userId,
         })
         .select()
         .single();
@@ -102,17 +106,26 @@ export const uploadDocument = createServerFn({ method: "POST" })
 export const deleteDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ documentId: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
 
       const { data: doc, error: fetchError } = await supabase
         .from("documents")
-        .select("storage_path")
+        .select("storage_path, entity_type, entity_id")
         .eq("id", data.documentId)
         .single();
 
       if (fetchError) throw new Error(`Document not found: ${fetchError.message}`);
+      if (!TENANT_ENTITY_TYPES.includes(doc.entity_type as (typeof TENANT_ENTITY_TYPES)[number])) {
+        throw new Error("Forbidden: unsupported document entity type");
+      }
+      await assertEntityInUserOrg(
+        supabase,
+        context.userId,
+        doc.entity_type as (typeof TENANT_ENTITY_TYPES)[number],
+        doc.entity_id,
+      );
 
       await supabase.storage.from("documents").remove([doc.storage_path]);
 
@@ -131,17 +144,26 @@ export const deleteDocument = createServerFn({ method: "POST" })
 export const getDocumentUrl = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ documentId: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
 
       const { data: doc, error } = await supabase
         .from("documents")
-        .select("storage_path")
+        .select("storage_path, entity_type, entity_id")
         .eq("id", data.documentId)
         .single();
 
       if (error) throw new Error(`Document not found: ${error.message}`);
+      if (!TENANT_ENTITY_TYPES.includes(doc.entity_type as (typeof TENANT_ENTITY_TYPES)[number])) {
+        throw new Error("Forbidden: unsupported document entity type");
+      }
+      await assertEntityInUserOrg(
+        supabase,
+        context.userId,
+        doc.entity_type as (typeof TENANT_ENTITY_TYPES)[number],
+        doc.entity_id,
+      );
 
       const { data: urlData } = await supabase.storage
         .from("documents")

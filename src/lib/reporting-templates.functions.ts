@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { assertEntityInUserOrg } from "./tenant-access.server";
 
 // ─── Reporting Templates ──────────────────────────────────────
 
@@ -89,9 +90,10 @@ export const getReportingTemplate = createServerFn({ method: "GET" })
 export const getLogicModel = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ proposalId: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
       const { data: model, error } = await supabase
         .from("logic_models")
@@ -120,9 +122,10 @@ export const upsertLogicModel = createServerFn({ method: "POST" })
       assumptions: z.array(z.string()).default([]),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
       const { data: existing } = await supabase
         .from("logic_models")

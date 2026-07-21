@@ -20,6 +20,15 @@ import { PageTransition } from "@/components/PageTransition";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { ListTodo, Clock, CheckCircle2, Plus, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import type { TenantEntityType } from "@/lib/tenant-access.server";
+
+type TaskForm = {
+  title: string;
+  entityType: TenantEntityType;
+  entityId: string;
+  priority: "low" | "medium" | "high";
+  dueDate: string;
+};
 
 const tasksQO = queryOptions({
   queryKey: ["tasks"],
@@ -43,11 +52,11 @@ function TasksPage() {
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<TaskForm>({
     title: "",
     entityType: "grant",
     entityId: "",
-    priority: "medium" as "low" | "medium" | "high",
+    priority: "medium",
     dueDate: "",
   });
 
@@ -57,7 +66,7 @@ function TasksPage() {
         data: {
           title: data.title,
           entityType: data.entityType,
-          entityId: data.entityId || crypto.randomUUID(),
+          entityId: data.entityId,
           priority: data.priority,
           dueDate: data.dueDate || undefined,
         },
@@ -123,6 +132,7 @@ function TasksPage() {
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (!form.title.trim()) return toast.error("Title is required");
+                      if (!form.entityId.trim()) return toast.error("Entity ID is required");
                       createMutation.mutate(form);
                     }}
                   >
@@ -142,7 +152,12 @@ function TasksPage() {
                         <select
                           id="task-entity"
                           value={form.entityType}
-                          onChange={(e) => setForm((f) => ({ ...f, entityType: e.target.value }))}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              entityType: e.target.value as TenantEntityType,
+                            }))
+                          }
                           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         >
                           <option value="grant">Grant</option>
@@ -177,6 +192,7 @@ function TasksPage() {
                           value={form.entityId}
                           onChange={(e) => setForm((f) => ({ ...f, entityId: e.target.value }))}
                           placeholder="UUID"
+                          required
                         />
                       </div>
                       <div className="space-y-2">
