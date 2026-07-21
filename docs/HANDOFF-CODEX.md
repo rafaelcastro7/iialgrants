@@ -1287,3 +1287,27 @@ error is intentional.
   `enricher.functions.ts`.
 - Keep scratch artifacts out of git (`.playwright-mcp/`, screenshots,
   `test-results/`, `scripts/.local-audit-report.json` churn).
+
+## 2026-07-21 Codex live discovery + command palette cycle
+
+Validated against the local demo stack and in-app browser:
+
+- Command palette queries were returning real IRAP rows, but cmdk applied a
+  second client filter and removed every asynchronous item. The palette now
+  disables cmdk filtering for server-filtered results, shows honest
+  loading/error states, and has Playwright regression coverage in
+  `tests/e2e/basic-user.spec.ts`.
+- Live discovery job `6e386b2a-40ad-4575-97ab-3687b01a3beb` checked all five
+  active funders, inserted one Mitacs record, and recorded seen-again rows.
+  It also reproduced overlapping retries after Promise-only timeouts.
+- The orchestrator now uses a real worker pool instead of rigid batches and
+  does not retry a timeout while the uncancelled crawl may still be running.
+  Unit coverage lives in `src/agents/discoverer-orchestrator.test.ts`.
+- Discovery UI now says that the inline local run is active and reports the
+  terminal inserted/seen-again totals instead of incorrectly saying queued.
+
+Validation: TypeScript, full ESLint, 304 tests passing (3 skipped), production
+build, browser IRAP search/detail smoke, and focused desktop/mobile Playwright
+flow (2/2). Full Playwright navigation was attempted but exceeded the external
+five-minute command window without an assertion result; focused coverage is
+green.

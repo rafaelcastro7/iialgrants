@@ -43,6 +43,17 @@ async function basicUserFlow(page: Page) {
   ).toBeVisible();
   await expect(page.getByText(/showing \d+ of \d+ active records/i)).toBeVisible();
 
+  await page.getByRole("button", { name: /open command palette/i }).click();
+  const commandDialog = page.getByRole("dialog", { name: /command palette/i });
+  await commandDialog
+    .getByPlaceholder("Search grants, proposals, or type a command...")
+    .fill("IRAP");
+  await expect(
+    commandDialog.getByText("Industrial Research Assistance Program (IRAP)", { exact: true }),
+  ).toBeVisible();
+  await expect(commandDialog.getByText(/no results found/i)).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
   expect(consoleErrors).toEqual([]);
 }
 
