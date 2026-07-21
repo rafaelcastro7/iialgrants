@@ -4,11 +4,11 @@ Living handoff so another agent can continue safely. Read this plus
 `docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-21
 America/Toronto.
 
-## CRITICAL SECURITY FINDING - read this first - 2026-07-21 14:45 America/Toronto
+## CRITICAL SECURITY FINDING - FIXED - 2026-07-21 America/Toronto
 
-Claude found this during the RLS sweep (joint QA sprint lane 4, below). Not
-fixed yet — needs a live DB to implement and verify safely, flagging here
-with the highest priority rather than guessing at a fix blind.
+Claude found this during the RLS sweep (joint QA sprint lane 4, below). Codex
+implemented and live-verified both the service-function boundary and direct
+RLS defense; details and proof are recorded below.
 
 **What's wrong:** any authenticated user of this app can read, modify, or
 delete any OTHER organization's documents, tasks, comments, compliance
@@ -89,6 +89,33 @@ implies they should be org-scoped, not creator-only, or a teammate couldn't
 see their own team's tasks/comments). Pick org-scoping deliberately for
 these 5 tables and confirm against real seeded multi-member-org data, rather
 than copying whichever pattern is closer.
+
+### Live closure proof
+
+Implemented in `src/lib/tenant-access.server.ts`, the four affected function
+modules, and migration
+`20260721170000_close_collaboration_tenant_idor.sql`.
+
+- Before the migration, authenticated tenant A could SELECT all five seeded
+  tenant B fixtures (`documents`, `tasks`, `comments`, `compliance_items`,
+  `logic_models`): 1 row from every table.
+- After the migration, the same JWT returned `[]` from every table and a
+  cross-tenant task PATCH returned `[]`; tenant B still read all five and
+  updated its task.
+- A second member temporarily assigned to tenant B read all five fixtures,
+  proving team collaboration remains org-scoped rather than creator-only.
+- Calling `assertEntityInUserOrg` with the service-role client rejected tenant
+  A with `Forbidden: resource belongs to another organization`, while owner B
+  and the B teammate were allowed.
+- Temporary organizations, profile assignments, and fixture rows were removed
+  after validation. Two pre-existing orphan test rows (`tasks.title='test'`
+  referencing a deleted grant and standalone `compliance_items.title='trst'`)
+  were also removed from the local DB.
+- `tenant-access.test.ts` covers cross-org denial, same-org collaboration,
+  private null-org ownership, and intentionally global grant/funder behavior.
+
+Repository gates after combining Claude's broader IDOR sweep and this closure:
+TypeScript, full ESLint, 309 tests passed (3 skipped), and production build.
 
 ## IDOR finding update - scope was bigger than the original 5 tables - 2026-07-21 ~16:30 America/Toronto
 

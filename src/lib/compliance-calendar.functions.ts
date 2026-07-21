@@ -10,6 +10,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
+import {
+  assertComplianceItemInUserOrg,
+  assertEntityInUserOrg,
+  getTenantPrincipal,
+} from "./tenant-access.server";
 
 export const getComplianceCalendar = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -19,7 +24,7 @@ export const getComplianceCalendar = createServerFn({ method: "GET" })
       endDate: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
 
@@ -43,7 +48,20 @@ export const getComplianceCalendar = createServerFn({ method: "GET" })
       const { data: items, error } = await query;
       if (error) throw new Error(`Failed to fetch calendar: ${error.message}`);
 
-      return (items || []).map((item) => {
+      const visibleItems = (
+        await Promise.all(
+          (items || []).map(async (item) => {
+            try {
+              await assertComplianceItemInUserOrg(supabase, context.userId, item);
+              return item;
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter((item): item is NonNullable<typeof item> => item != null);
+
+      return visibleItems.map((item) => {
         const s = Array.isArray(item.submission) ? item.submission[0] : item.submission;
         const g = Array.isArray(s?.grant) ? s?.grant[0] : s?.grant;
         const p = Array.isArray(s?.proposal) ? s?.proposal[0] : s?.proposal;
@@ -86,9 +104,20 @@ export const createComplianceItem = createServerFn({ method: "POST" })
       frequency: z.enum(["once", "quarterly", "semi_annual", "annual"]).default("once"),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      const principal = await getTenantPrincipal(supabase, context.userId);
+      let itemOrgId = principal.orgId;
+      if (data.submissionId) {
+        const access = await assertEntityInUserOrg(
+          supabase,
+          context.userId,
+          "submission",
+          data.submissionId,
+        );
+        itemOrgId = access.orgId;
+      }
 
       const { data: item, error } = await supabase
         .from("compliance_items")
@@ -100,6 +129,8 @@ export const createComplianceItem = createServerFn({ method: "POST" })
           due_date: data.dueDate,
           frequency: data.frequency,
           status: "pending",
+          org_id: itemOrgId,
+          created_by: context.userId,
         })
         .select()
         .single();
@@ -114,9 +145,18 @@ export const createComplianceItem = createServerFn({ method: "POST" })
 export const markComplianceComplete = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ itemId: z.string().uuid() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+
+      const { data: item, error: itemError } = await supabase
+        .from("compliance_items")
+        .select("submission_id, org_id, created_by")
+        .eq("id", data.itemId)
+        .maybeSingle();
+      if (itemError) throw new Error(`Failed to fetch compliance item: ${itemError.message}`);
+      if (!item) throw new Error("Compliance item not found");
+      await assertComplianceItemInUserOrg(supabase, context.userId, item);
 
       const { error } = await supabase
         .from("compliance_items")
@@ -133,19 +173,36 @@ export const markComplianceComplete = createServerFn({ method: "POST" })
 export const getComplianceStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
     try {
       const supabase = await createSupabaseAdmin();
 
-      const { data: items } = await supabase.from("compliance_items").select("status, due_date");
+      const { data: items, error } = await supabase
+        .from("compliance_items")
+        .select("status, due_date, submission_id, org_id, created_by");
+      if (error) throw new Error(`Failed to fetch compliance stats: ${error.message}`);
+      const visibleItems = (
+        await Promise.all(
+          (items || []).map(async (item) => {
+            try {
+              await assertComplianceItemInUserOrg(supabase, context.userId, item);
+              return item;
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter((item): item is NonNullable<typeof item> => item != null);
 
       const today = new Date().toISOString().split("T")[0];
-      const total = items?.length || 0;
-      const completed = items?.filter((i) => i.status === "completed").length || 0;
-      const overdue =
-        items?.filter((i) => i.status !== "completed" && i.due_date < today).length || 0;
-      const upcoming =
-        items?.filter((i) => i.status === "pending" && i.due_date >= today).length || 0;
+      const total = visibleItems.length;
+      const completed = visibleItems.filter((i) => i.status === "completed").length;
+      const overdue = visibleItems.filter(
+        (i) => i.status !== "completed" && i.due_date < today,
+      ).length;
+      const upcoming = visibleItems.filter(
+        (i) => i.status === "pending" && i.due_date >= today,
+      ).length;
 
       return {
         total,

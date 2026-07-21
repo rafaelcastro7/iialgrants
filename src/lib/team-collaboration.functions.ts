@@ -8,20 +8,36 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  assertEntityInUserOrg,
+  assertUserInSameOrg,
+  filterEntityRowsForUser,
+  TENANT_ENTITY_TYPES,
+} from "./tenant-access.server";
 
 export const getTasks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      entityType: z.string().optional(),
+      entityType: z.enum(TENANT_ENTITY_TYPES).optional(),
       entityId: z.string().uuid().optional(),
       assignedTo: z.string().uuid().optional(),
       status: z.enum(["pending", "in_progress", "completed"]).optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+
+      if (data.entityId && !data.entityType) {
+        throw new Error("entityType is required when entityId is provided");
+      }
+      if (data.entityType && data.entityId) {
+        await assertEntityInUserOrg(supabase, context.userId, data.entityType, data.entityId);
+      }
+      if (data.assignedTo) {
+        await assertUserInSameOrg(supabase, context.userId, data.assignedTo);
+      }
 
       let query = supabase.from("tasks").select("*").order("due_date", { ascending: true });
 
@@ -32,7 +48,7 @@ export const getTasks = createServerFn({ method: "GET" })
 
       const { data: tasks, error } = await query;
       if (error) throw new Error(`Failed to fetch tasks: ${error.message}`);
-      return tasks || [];
+      return filterEntityRowsForUser(supabase, context.userId, tasks || []);
     } catch (e) {
       throw new Error(e instanceof Error ? e.message : String(e));
     }
@@ -42,7 +58,7 @@ export const createTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      entityType: z.string().min(1),
+      entityType: z.enum(TENANT_ENTITY_TYPES),
       entityId: z.string().uuid(),
       title: z.string().min(1),
       description: z.string().optional(),
@@ -54,6 +70,10 @@ export const createTask = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, data.entityType, data.entityId);
+      if (data.assignedTo) {
+        await assertUserInSameOrg(supabase, context.userId, data.assignedTo);
+      }
 
       const { data: task, error } = await supabase
         .from("tasks")
@@ -86,9 +106,26 @@ export const updateTaskStatus = createServerFn({ method: "POST" })
       status: z.enum(["pending", "in_progress", "completed"]),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+
+      const { data: task, error: taskError } = await supabase
+        .from("tasks")
+        .select("entity_type, entity_id")
+        .eq("id", data.taskId)
+        .maybeSingle();
+      if (taskError) throw new Error(`Failed to fetch task: ${taskError.message}`);
+      if (!task) throw new Error("Task not found");
+      if (!TENANT_ENTITY_TYPES.includes(task.entity_type as (typeof TENANT_ENTITY_TYPES)[number])) {
+        throw new Error("Forbidden: unsupported task entity type");
+      }
+      await assertEntityInUserOrg(
+        supabase,
+        context.userId,
+        task.entity_type as (typeof TENANT_ENTITY_TYPES)[number],
+        task.entity_id,
+      );
 
       const { error } = await supabase
         .from("tasks")
@@ -106,13 +143,14 @@ export const getComments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      entityType: z.string(),
+      entityType: z.enum(TENANT_ENTITY_TYPES),
       entityId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, data.entityType, data.entityId);
 
       const { data: comments, error } = await supabase
         .from("comments")
@@ -132,7 +170,7 @@ export const addComment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      entityType: z.string().min(1),
+      entityType: z.enum(TENANT_ENTITY_TYPES),
       entityId: z.string().uuid(),
       content: z.string().min(1),
     }),
@@ -140,6 +178,7 @@ export const addComment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, data.entityType, data.entityId);
 
       const { data: comment, error } = await supabase
         .from("comments")
