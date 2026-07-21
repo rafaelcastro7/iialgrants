@@ -102,6 +102,34 @@ export const listGrants = createServerFn({ method: "GET" })
     };
   });
 
+export const searchCommandGrants = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        term: z.string().trim().min(2).max(80),
+        limit: z.number().int().min(1).max(10).default(5),
+      })
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const term = data.term
+      .replace(/[%*,()]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (term.length < 2) return { grants: [] };
+
+    const { data: rows, error } = await context.supabase
+      .from("grants")
+      .select("id, title, summary, status, deadline, funder:funders(name)")
+      .or(`title.ilike.%${term}%,summary.ilike.%${term}%`)
+      .order("fit_score", { ascending: false, nullsFirst: false })
+      .order("deadline", { ascending: true, nullsFirst: false })
+      .limit(data.limit);
+    if (error) throw new Error(error.message);
+    return { grants: rows ?? [] };
+  });
+
 // Admin-triggered orchestration: fire-and-forget. Returns a jobId immediately
 // so the UI doesn't depend on keeping the connection open during the entire
 // orchestration. Per-funder runs (with retries and timeouts) are logged into
