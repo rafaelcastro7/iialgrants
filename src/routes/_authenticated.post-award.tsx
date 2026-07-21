@@ -12,6 +12,7 @@ import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { Trophy, TrendingUp, AlertTriangle, Calendar, DollarSign } from "lucide-react";
+import { useUiVersion } from "@/components/v2/ui-version";
 
 const metricsQO = queryOptions({
   queryKey: ["post-award", "metrics"],
@@ -39,6 +40,7 @@ export const Route = createFileRoute("/_authenticated/post-award")({
 });
 
 function PostAwardPage() {
+  const { version } = useUiVersion();
   const fetchMetrics = useServerFn(getAwardMetrics);
   const { data: metrics } = useSuspenseQuery({
     queryKey: ["post-award", "metrics"],
@@ -59,6 +61,10 @@ function PostAwardPage() {
 
   const resultColor = (r: string) =>
     r === "won" ? "text-emerald-600" : r === "lost" ? "text-red-600" : "text-muted-foreground";
+
+  if (version === "v2") {
+    return <PostAwardPageV2 metrics={metrics} deadlines={deadlines} outcomes={outcomes} />;
+  }
 
   return (
     <PageTransition>
@@ -221,6 +227,113 @@ function PostAwardPage() {
             </Card>
           )}
         </PageContainer>
+      </div>
+    </PageTransition>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// V2 — friendly redesign (presentation only; same metrics/outcomes/deadlines)
+// -----------------------------------------------------------------------------
+
+type AwardMetrics = Awaited<ReturnType<typeof getAwardMetrics>>;
+type ReportingDeadlines = Awaited<ReturnType<typeof getReportingDeadlines>>;
+type SubmissionOutcomes = Awaited<ReturnType<typeof getSubmissionOutcomes>>;
+
+function PostAwardPageV2({
+  metrics,
+  deadlines,
+  outcomes,
+}: {
+  metrics: AwardMetrics;
+  deadlines: ReportingDeadlines;
+  outcomes: SubmissionOutcomes;
+}) {
+  const won = outcomes.filter((o) => o.result === "won");
+
+  return (
+    <PageTransition>
+      <div className="min-h-screen text-foreground">
+        <section className="mx-auto max-w-[1100px] space-y-5 px-4 py-6 sm:px-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Awards</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Everything you've won and what's due next.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Trophy className="h-4 w-4" />
+                  <p className="text-xs">Won this year</p>
+                </div>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{metrics.won}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <DollarSign className="h-4 w-4" />
+                  <p className="text-xs">Active grants value</p>
+                </div>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  ${metrics.totalAwarded.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <AlertTriangle className="h-4 w-4" />
+                  <p className="text-xs">Reports due</p>
+                </div>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{deadlines.length}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {won.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-card px-5 py-12 text-center">
+              <h2 className="text-base font-semibold">No awards yet</h2>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                Wins will show up here once a submission comes back with a "won" outcome.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {won.map((o) => {
+                const s = Array.isArray(o.submission) ? o.submission[0] : o.submission;
+                const g = Array.isArray(s?.grant) ? s?.grant[0] : s?.grant;
+                const nextReport = deadlines.find((d) => d.outcomeId === o.id)
+                  ?.reportingRequirements[0];
+                return (
+                  <div
+                    key={o.id}
+                    className="flex items-center gap-4 rounded-xl border bg-card p-4 sm:p-5"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                      <Trophy className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-semibold leading-snug">{g?.title ?? "Untitled grant"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {nextReport
+                          ? `Next report: ${nextReport.type.replace(/_/g, " ")}`
+                          : "No report scheduled yet"}
+                        {o.decision_date && ` · Awarded ${o.decision_date}`}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right text-lg font-semibold tabular-nums">
+                      ${o.amount_awarded_cad?.toLocaleString() ?? "—"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
     </PageTransition>
   );
