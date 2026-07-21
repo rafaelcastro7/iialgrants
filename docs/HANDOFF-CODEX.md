@@ -4,6 +4,77 @@ Living handoff so another agent can continue safely. Read this plus
 `docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-21
 America/Toronto.
 
+## CRITICAL SECURITY FINDING - read this first - 2026-07-21 14:45 America/Toronto
+
+Claude found this during the RLS sweep (joint QA sprint lane 4, below). Not
+fixed yet — needs a live DB to implement and verify safely, flagging here
+with the highest priority rather than guessing at a fix blind.
+
+**What's wrong:** any authenticated user of this app can read, modify, or
+delete any OTHER organization's documents, tasks, comments, compliance
+deadlines, and proposal logic models — a full cross-tenant IDOR
+(insecure direct object reference), the same bug class as the `cdc1cb2`
+audit-trail/approval-workflows fix and the `91b6a10`/`154d13c` cross-tenant
+read-leak fixes, just in a part of the app those passes didn't reach.
+
+**Why:** `src/lib/documents.functions.ts`, `src/lib/team-collaboration.
+functions.ts` (`tasks`/`comments`), `src/lib/compliance-calendar.
+functions.ts` (`compliance_items`), and the logic-model handlers in
+`src/lib/reporting-templates.functions.ts` (`logic_models`) all:
+1. Use `createSupabaseAdmin()` (service-role, bypasses RLS entirely) for
+   every query, so the tables' RLS policies are moot regardless of what they
+   say.
+2. Take a bare `entityId`/`documentId`/`taskId`/`itemId`/`proposalId` from
+   the request and never check it belongs to the calling user's org before
+   reading, updating, or deleting it.
+
+Concretely reachable today: `listDocuments({entityType, entityId})` and
+`getDocumentUrl({documentId})` return/sign any other org's files;
+`deleteDocument({documentId})` deletes any other org's file by guessing/
+enumerating a UUID; `getTasks({})`/`getComments({entityType, entityId})` and
+`updateTaskStatus`/`addComment` read and write across every org;
+`getComplianceCalendar({})` and `getComplianceStats({})` return literally
+every org's compliance items with **no filter at all** (not even an
+entityId is required); `markComplianceComplete({itemId})` completes any
+org's compliance item; `getLogicModel`/`upsertLogicModel({proposalId})`
+read/write any org's logic model. IDs are also easy to obtain: the
+list/calendar endpoints that leak cross-tenant rows hand out the exact IDs
+the single-item endpoints need.
+
+Separately (secondary, since the admin client bypasses it anyway, but still
+worth closing as defense-in-depth): the RLS policies on these 5 tables
+(`documents`, `tasks`, `comments`, `compliance_items`, `logic_models`) were
+never tightened past their original `20260705210000`-`20260705210005`
+migrations' `USING (auth.role() = 'authenticated')` / `FOR ALL` — i.e. "any
+logged-in user," full stop. Every other table created in that same batch got
+this reviewed at some point (`audit_trail`, `approval_workflows` got explicit
+`20260711160000`/`20260711160100` admin-only follow-up migrations); these 5
+did not.
+
+**Proposed fix shape** (needs live verification, not a guess to commit blind):
+- A shared helper, e.g. `assertEntityInUserOrg(supabase, userId, entityType,
+  entityId)` for the polymorphic tables (`documents`/`tasks`/`comments`:
+  entity_type ∈ grant/proposal/submission/funder) that loads the referenced
+  row's `org_id` and compares it against the caller's `profiles.org_id`
+  (`org_id IS NULL` legacy rows can stay visible-to-all, matching the
+  existing `Org members can view org X` policies in
+  `20260705200000_multi_tenant_org_id.sql`). For `compliance_items`
+  (via `submission_id -> submissions.org_id`) and `logic_models` (via
+  `proposal_id -> proposals.org_id`) the join is direct, no polymorphism
+  needed.
+- Call that helper at the top of every handler above before any read/write/
+  delete, throwing (403-equivalent) on mismatch — the same shape as
+  `assertAdmin`/`assertAgentEnabled` already used elsewhere in this codebase.
+- Then (defense-in-depth, second step): replace the 5 tables'
+  `auth.role() = 'authenticated'` policies with real org-scoped policies
+  mirroring the `Org members can view org grants/proposals/submissions`
+  pattern in `20260705200000_multi_tenant_org_id.sql`, so a future
+  direct-client query (bypassing the server functions) is safe too.
+- Test explicitly: two users in two different orgs, confirm user A cannot
+  list/read/write/delete user B's documents/tasks/comments/compliance items/
+  logic models via each of the endpoints named above, and that legitimate
+  same-org access still works.
+
 ## Coordination protocol for Codex + Claude - 2026-07-21
 
 Rafael confirmed Claude is also working on this repository. Treat this file as
