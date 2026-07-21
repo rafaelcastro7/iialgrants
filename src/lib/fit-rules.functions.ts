@@ -82,15 +82,24 @@ export const previewFitRules = createServerFn({ method: "POST" })
     // grant's already-computed grant_evaluations.fit_score (real, not
     // re-invoked here) so the preview's pass/review/block counts actually
     // shift with the slider, matching what evaluator.impl.server.ts does.
+    // Also carry `eligibility_pass`: the real evaluator gates on
+    // `!hard_fail && eligibility_pass && combined_score >= threshold` (three
+    // conditions), so a preview that only checks the first and third would
+    // show a grant as "would pass" that the LLM already flagged ineligible
+    // for a reason the deterministic rules can't see.
     const grantIds = (rows ?? []).map((g) => g.id as string);
     const llmScoreById = new Map<string, number>();
+    const llmEligibilityById = new Map<string, boolean>();
     if (grantIds.length > 0) {
       const { data: evals } = await context.supabase
         .from("grant_evaluations")
-        .select("grant_id, fit_score")
+        .select("grant_id, fit_score, eligibility_pass")
         .eq("user_id", context.userId)
         .in("grant_id", grantIds);
-      for (const e of evals ?? []) llmScoreById.set(e.grant_id, e.fit_score);
+      for (const e of evals ?? []) {
+        llmScoreById.set(e.grant_id, e.fit_score);
+        llmEligibilityById.set(e.grant_id, e.eligibility_pass);
+      }
     }
 
     const out = (rows ?? []).map((g) => {
@@ -104,6 +113,9 @@ export const previewFitRules = createServerFn({ method: "POST" })
         rule_score: r.rule_score,
         combined_score: r.combined_score(llmFit ?? 0),
         has_llm_score: llmFit != null,
+        // null = no evaluation yet (don't penalize); true/false = the LLM's
+        // own stored verdict from the last real evaluator run.
+        llm_eligibility_pass: llmEligibilityById.get(g.id as string) ?? null,
         checks: r.checks,
       };
     });
