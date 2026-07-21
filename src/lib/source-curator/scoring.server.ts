@@ -37,11 +37,14 @@ export function nameSimilarity(a: string, b: string): number {
 
 export function normalizeName(s: string): string {
   return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(
       /\b(inc|incorporated|ltd|limited|llc|corp|corporation|foundation|fondation|society|société|association)\b/g,
       "",
     )
+    .replace(/\bsociete\b/g, "")
     .replace(/[^a-z0-9 ]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
