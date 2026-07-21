@@ -262,6 +262,22 @@ Progress log for this sprint (append below, newest first):
      a quick eye on ingester latency once `funders`/`funder_candidates`
      actually grow past a few thousand rows.
 
+- 2026-07-21 14:15 America/Toronto - Claude claiming: deeper pass on the
+  scoped-out source-curator ingesters found a real one. Of the 9 files, 6
+  (`gc-proactive`, `t3010`, `otf`, `rss-grants`, `funder-scout` via the
+  shared `jinaSearch` helper) already wrap their `fetch()` in an
+  `AbortController` + `setTimeout`. Three do not:
+  `alberta-ckan.server.ts`, `bbf-programs.server.ts`, `eu-ft.server.ts` —
+  a plain `fetch(url)`/`fetch(csvUrl)` with no signal/timeout at all. Given
+  `runSourceCurator` awaits each source sequentially in a `for` loop, one
+  hung upstream endpoint (Alberta/CKAN, the BBF CSV host, or the EU portal)
+  would stall that whole tier run indefinitely — exactly the "stuck job"
+  failure class the watchdog/self-criticism daemons exist to catch, better
+  prevented at the source. Fixing all three now: same pattern already used
+  by their siblings in this directory (25s `AbortController`), so low risk,
+  no behavior change on the happy path, no live DB needed to reason about
+  correctness. Will note exact validation status below once done.
+
 Progress log for this sprint (append below, newest first):
 
 Morning loop (already pushed to `origin/main`, newest first):
