@@ -13,7 +13,7 @@ move fast, but neither should overwrite the other's active work.
 Current authoritative baseline:
 
 - `origin/main` includes `b606c2b` (`Stabilize local agents and grant
-  discovery`), pushed by Codex after green validation.
+discovery`), pushed by Codex after green validation.
 - Validation for `b606c2b`: `bun run lint`, `bun run build`, `bunx vitest run`
   (283 passed / 4 skipped), `bun run test:e2e -- --reporter=list` (36 passed).
 - Live local discovery proof: job `3426ed3a-70ec-4914-b319-f6d217c3ac59`
@@ -26,8 +26,8 @@ Current authoritative baseline:
 Agent coordination rules:
 
 1. Pull/rebase-free sync before work: use normal `git pull --ff-only` or fetch
-   + inspect. Do not rewrite published history; Lovable is connected to this
-   branch.
+   - inspect. Do not rewrite published history; Lovable is connected to this
+     branch.
 2. If the change is larger than a tiny doc edit, use an agent branch:
    `codex/<short-task>` or `claude/<short-task>`. Merge/push only after
    validation.

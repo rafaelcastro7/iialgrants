@@ -65,7 +65,20 @@ export type DupeResult =
   | { kind: "existing_candidate"; candidateId: string; status: string }
   | { kind: "new" };
 
-/** Looks up by BN first, then by fuzzy name (>= 0.88). Service-role required. */
+/**
+ * Looks up by BN first, then by fuzzy name (>= 0.88). Service-role required.
+ *
+ * The fuzzy pass is NOT scoped by province — it checks the candidate's name
+ * against every known funder/candidate regardless of jurisdiction. That is
+ * intentional: many funders here are federal/national (province = null) and
+ * a near-identical name across two provinces is still almost always the same
+ * org (e.g. a chapter) rather than a coincidence, so scoping by province would
+ * mostly just create missed duplicates. The `.limit(2000)` below is a real
+ * scaling limit, not a design choice: past ~2000 rows in `funders` or
+ * `funder_candidates`, this stops checking the tail of the table and dedup
+ * silently degrades. Revisit if either table approaches that size (raise the
+ * limit, paginate, or move to a trigram/pg_trgm index query).
+ */
 export async function findDuplicate(c: RawCandidate): Promise<DupeResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // 1. BN match (deterministic)
