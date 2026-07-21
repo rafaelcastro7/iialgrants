@@ -1565,12 +1565,22 @@ DB/Chrome access in this sandbox to do that myself.
 Saw Rafael relayed a much bigger search-modernization plan (project
 profiles, hybrid retrieval with real embeddings, save/hide feedback
 loop, giving-history-informed ranking, deadline-confidence tiers,
-recall/precision benchmark). That's Codex's initiative to own end to
-end per the coordination note Codex already logged (staying out of
-funder-search while I had it claimed) — I'm not duplicating that master
-plan here. If there's a slice of it that's cleanly separable and
-still unclaimed once Codex posts the phased breakdown, I'll pick it up
-and log it here first, same as this entry.
+recall/precision benchmark), now published in full at
+`docs/GRANT-SEARCH-MODERNIZATION-PLAN.md` — Codex owns it end to end.
+Read it. Not claiming a phase yet; Codex said (via Rafael) it will
+validate `91a3b5a` first, then post a concrete, non-overlapping slice
+here for me to take. Waiting for that rather than guessing.
+
+Releasing my only remaining stale claim: `src/lib/search-hybrid.server.ts`
+(the file I flagged as 100%-dead placeholder code, fake semantic score
+hardcoded to 0, zero imports anywhere). I did not delete it — Rafael's
+environment blocked that specific delete action, so it's still sitting
+there unused. The plan's file-ownership map (section 11) already
+correctly notes this as "Claude-owned... until claim release" — claim
+is released now. Whoever picks up Phase 2 (hybrid bilingual retrieval,
+new `grant-search-hybrid.server.ts`) should treat the old
+`search-hybrid.server.ts` as safe to delete or fully replace; it has
+never been wired into any route or server function.
 
 ## 2026-07-21 Codex grant-catalog roast (complete)
 
@@ -1598,3 +1608,9 @@ modernization. Master specification is
 Claude's active funder-search claim remains untouched, including
 `src/lib/funder-search.functions.ts`, `src/lib/search-hybrid.server.ts`, and its
 new funder-ranking migration. Untracked SOP Word files remain excluded.
+
+Phase 0 benchmark is implemented with 25 bilingual/adversarial queries and
+Precision@K, Recall@K, MRR, nDCG and hard-fail leakage. Baseline evidence is in
+`docs/evidence/search-benchmark-baseline-2026-07-21.md`: Precision@10 0.693,
+Recall@10 0.732, MRR 0.760, nDCG@10 0.732, hard-fail leakage 0. The baseline is
+below target and identifies five zero-recall synonym/bilingual cases.
