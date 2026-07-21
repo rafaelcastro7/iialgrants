@@ -1548,6 +1548,30 @@ unlike `/grants`. Fixing both by adding a `search_funder_catalog` RPC
 (same shape as `search_grant_catalog`: trigram + ilike blended
 relevance) and reordering the handler to rank-then-paginate.
 
+**Update — done, claim released (commit `91a3b5a`).** Fixed
+`searchFunders` in `src/lib/funder-search.functions.ts`: added
+`supabase/migrations/20260721230000_ranked_funder_catalog_search.sql`
+(new `search_funder_catalog` RPC + `funders_legal_name_trgm_idx` /
+`funders_city_trgm_idx`), registered the RPC's return shape in
+`src/integrations/supabase/types.ts`, and reordered the handler to rank
+the full matching set via the RPC first, then filter/paginate — no more
+silently dropping relevant funders past page 1. `suggestFunders` (the
+autocomplete endpoint) and `getFunderStats` were left untouched, they
+don't have the same bug. Static-checked only (`ts.transpileModule`, 0
+diagnostics) — needs `bunx supabase db push` + the usual
+lint/vitest/build/browser gate before this is trusted; I have no
+DB/Chrome access in this sandbox to do that myself.
+
+Saw Rafael relayed a much bigger search-modernization plan (project
+profiles, hybrid retrieval with real embeddings, save/hide feedback
+loop, giving-history-informed ranking, deadline-confidence tiers,
+recall/precision benchmark). That's Codex's initiative to own end to
+end per the coordination note Codex already logged (staying out of
+funder-search while I had it claimed) — I'm not duplicating that master
+plan here. If there's a slice of it that's cleanly separable and
+still unclaimed once Codex posts the phased breakdown, I'll pick it up
+and log it here first, same as this entry.
+
 ## 2026-07-21 Codex grant-catalog roast (complete)
 
 Live catalog review found 31/54 active rows were not actionable grants: first-
@@ -1564,3 +1588,13 @@ longer visible while Governmental Financing Programs remains active, with no
 browser-console errors. Focused discovery tests pass 40/40; full gates pass at
 348 tests / 4 skipped, TypeScript, ESLint, and production build. The ownership
 claim is released; untracked SOP Word files remain excluded.
+
+## 2026-07-21 Codex grant-search modernization goal (active)
+
+Persistent goal: document and implement the complete grant-opportunity search
+modernization. Master specification is
+`docs/GRANT-SEARCH-MODERNIZATION-PLAN.md`. Codex currently claims new
+`src/evals/search/*` benchmark files and new profile/feedback schema/functions.
+Claude's active funder-search claim remains untouched, including
+`src/lib/funder-search.functions.ts`, `src/lib/search-hybrid.server.ts`, and its
+new funder-ranking migration. Untracked SOP Word files remain excluded.
