@@ -11,13 +11,19 @@ const PKG_URL =
 type CkanResource = { url: string; format?: string; name?: string };
 
 async function findCsvResource(): Promise<string | null> {
-  const res = await fetch(PKG_URL);
-  if (!res.ok) return null;
-  const json = (await res.json()) as { result?: { resources?: CkanResource[] } };
-  const resources = json.result?.resources ?? [];
-  // Prefer CSV, then JSON, then XLSX (which we'll fall back to skipping).
-  const csv = resources.find((r) => /csv/i.test(r.format ?? "") && /eng|en/i.test(r.name ?? ""));
-  return csv?.url ?? null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 25_000);
+  try {
+    const res = await fetch(PKG_URL, { signal: ctrl.signal });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { result?: { resources?: CkanResource[] } };
+    const resources = json.result?.resources ?? [];
+    // Prefer CSV, then JSON, then XLSX (which we'll fall back to skipping).
+    const csv = resources.find((r) => /csv/i.test(r.format ?? "") && /eng|en/i.test(r.name ?? ""));
+    return csv?.url ?? null;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 function parseCsvLine(line: string): string[] {
@@ -49,9 +55,16 @@ function parseCsvLine(line: string): string[] {
 export async function fetchBbfPrograms(): Promise<RawCandidate[]> {
   const csvUrl = await findCsvResource();
   if (!csvUrl) return [];
-  const res = await fetch(csvUrl);
-  if (!res.ok) return [];
-  const text = await res.text();
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 30_000);
+  let text = "";
+  try {
+    const res = await fetch(csvUrl, { signal: ctrl.signal });
+    if (!res.ok) return [];
+    text = await res.text();
+  } finally {
+    clearTimeout(t);
+  }
   const lines = text.split(/\r?\n/);
   if (lines.length < 2) return [];
   const header = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase());

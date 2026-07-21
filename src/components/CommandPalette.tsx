@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+﻿import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Search,
   FileText,
@@ -26,6 +27,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
+import { listGrants } from "@/lib/grants.functions";
 import { sanitizePgrstTerm } from "@/lib/search-sanitize";
 import "@/i18n";
 
@@ -42,6 +44,7 @@ export function CommandPalette() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const fetchGrantRows = useServerFn(listGrants);
   // The input stays instant (bound to `search`), but the DB queries below
   // only fire against `debouncedSearch`, ~250ms after typing pauses. Without
   // this, every single keystroke fired a fresh "grants" + "proposals" query
@@ -75,12 +78,15 @@ export function CommandPalette() {
     queryKey: ["cmd-grants", searchTerm],
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) return [];
-      const { data } = await supabase
-        .from("grants")
-        .select("id, title, status, deadline")
-        .ilike("title", `%${searchTerm}%`)
-        .limit(5);
-      return data || [];
+      const lower = searchTerm.toLowerCase();
+      const { grants: rows } = await fetchGrantRows({ data: { limit: 100 } });
+      return rows
+        .filter((grant) =>
+          [grant.title, grant.funder, grant.status, grant.summary]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(lower)),
+        )
+        .slice(0, 5);
     },
     enabled: open && searchTerm.length >= 2,
   });
@@ -156,6 +162,7 @@ export function CommandPalette() {
                     <div className="flex flex-col">
                       <span>{grant.title}</span>
                       <span className="text-xs text-muted-foreground">
+                        {grant.funder ? `${grant.funder} · ` : ""}
                         {grant.status} {grant.deadline ? `· Due ${grant.deadline}` : ""}
                       </span>
                     </div>

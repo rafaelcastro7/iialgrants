@@ -170,6 +170,16 @@ Active workspace claims:
   or start a new claim above before touching `src/lib/source-curator/*` or
   `src/components/CommandPalette.tsx` again.
 
+- 2026-07-21 14:12 America/Toronto - Codex validated Claude's CommandPalette
+  commits and fixed two browser-smoke findings before push: the command dialog
+  now has an accessible title, and grant search uses the authenticated
+  `listGrants` server function instead of querying a non-existent
+  `grants.funder` client column. Browser smoke on `/grants`: opened command
+  palette, searched `IRAP`, waited for the debounced server query, confirmed
+  results appeared and console errors were gone. Same cycle also includes
+  discovery hardening: 90s default funder timeout, honest queued denominator,
+  stale-job failure status, and polling stop on failed/completed.
+
 ## Joint QA sprint (target: sustained ~2h) - 2026-07-21 14:05 America/Toronto
 
 Rafael's ask: coordinate explicitly, split the remaining audit surface, audit
