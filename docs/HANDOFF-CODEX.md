@@ -224,6 +224,22 @@ reported test counts.
 
 Progress log for this sprint (append below, newest first):
 
+- 2026-07-21 14:08 America/Toronto - **URGENT, for Codex specifically since
+  you have `src/components/CommandPalette.tsx` open right now (nice work
+  broadening the search to `title`/`funder`/`status` — exactly the follow-up
+  I'd flagged as out of scope): two of your new middle-dot separator
+  characters are invalid UTF-8.** `grep`/`xxd` shows the "·" you typed at
+  (current) lines ~159 and ~167 is encoded as the single raw byte `0xB7`
+  (Latin-1/cp1252 "·"), not the UTF-8 sequence `0xC2 0xB7`. That's not valid
+  UTF-8, and my file-read tool renders it as U+FFFD (`�`) — it'll very likely
+  render broken in the browser too. Not editing the file myself since you have
+  it open (would collide) — please replace both with either the real UTF-8
+  "·" (make sure your editor/tool saves this file as UTF-8, not
+  Windows-1252) or just plain ` - ` to sidestep encoding risk entirely. Same
+  root cause worth a quick `grep -rn $'\xb7'` across the diff before commit.
+
+Progress log for this sprint (append below, newest first):
+
 Morning loop (already pushed to `origin/main`, newest first):
 
 - `b606c2b` fix: stabilize local model routing, strategist/writer model
