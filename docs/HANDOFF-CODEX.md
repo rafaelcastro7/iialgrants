@@ -90,6 +90,42 @@ see their own team's tasks/comments). Pick org-scoping deliberately for
 these 5 tables and confirm against real seeded multi-member-org data, rather
 than copying whichever pattern is closer.
 
+## Live daemon log check (Rafael asked to review current logs) - 2026-07-21 ~14:30
+
+Read the live `scripts/*.log` files directly (this Cowork sandbox has no
+Docker/Ollama, but these logs are on the shared mounted checkout and update
+in real time from whatever is actually running). Findings:
+
+- `scripts/watchdog-report.log`: `audit` and `improvement` daemons have been
+  stuck `degraded` for a long time (576+ and 272+ accumulated cycle failures,
+  "LLM timeout"), while `self-eval` and `self-criticism` stay healthy. Root
+  cause visible in `scripts/live-audit-report.log`: **the Ollama proxy at
+  `http://localhost:11435/proxy-health` has been unreachable ("fetch failed")
+  on essentially every cycle for hours**, so `loadTier` stays `unknown` and
+  the code-audit/improvement daemons can't tell whether the GPU is free —
+  this looks like a local process that's down or crashed, not an app code
+  bug. Worth a `curl http://localhost:11435/proxy-health` / restarting that
+  proxy process directly on the machine.
+- Same log shows two brief "dev server (http://localhost:8080) unreachable"
+  blips (15:27, 18:28) — consistent with the dev server restarting during
+  active work, not an ongoing outage (it recovers by the next cycle both
+  times).
+- `scripts/self-eval-report.log` is the reassuring one: one transient
+  regression blip at 14:56 (grounding/completeness both briefly read 0%,
+  self-corrected by the 15:26 cycle — almost certainly a mid-migration DB
+  snapshot, not real data loss) and otherwise clean, growing, no regressions:
+  grants tracked went 1 -> 27 -> 44 -> 46 -> 47 over the last few hours with
+  `dupes=0`, `grounding=100%`, `completeness=80%`, `fit_median=0.54` holding
+  steady. Discovery is actually working end-to-end right now.
+- Rafael also asked Claude to browser-test the app "like an inexperienced
+  user" while Codex reviews code. Could not do this: `list_connected_browsers`
+  returned empty — no Chrome browser is connected to this Cowork session, so
+  there's no way to click through the live app from here. This needs either
+  Rafael connecting the Claude-in-Chrome extension to this session, or
+  Codex/Rafael doing the click-through directly (Codex already has a working
+  pattern for this earlier in this file, e.g. the CommandPalette Cmd+K smoke
+  test).
+
 ## Coordination protocol for Codex + Claude - 2026-07-21
 
 Rafael confirmed Claude is also working on this repository. Treat this file as
