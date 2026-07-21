@@ -27,6 +27,14 @@ export type LlmCallResult = {
 
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const DEFAULT_LOCAL_MODEL = process.env.OLLAMA_MODEL || "phi4-mini:latest";
+const MODEL_ALIASES: Record<string, string[]> = {
+  "dolphin3:latest": ["dolphin-mistral:7b", "opencode-unsensored:latest"],
+  // If this exact heavy model is absent, prefer the agent's configured
+  // fallback. The local qwen3 "thinking" aliases can spend thousands of tokens
+  // in hidden reasoning and return empty `message.content` under JSON mode.
+  "qwen3:14b": [],
+};
+let installedModelsCache: { models: Set<string>; expires: number } | null = null;
 // timeoutFor/usesStreamingClient live in llm-timeouts.server.ts, SHARED with
 // llm-free.server.ts's callFreeLlm (enricher's gap-fill cascade) — this exact
 // bug happened once already when the two clients' timeout logic diverged (see
@@ -37,6 +45,62 @@ function toLocalModel(model: string | null | undefined): string {
   const looksCloud =
     model.includes("/") || /^(gpt|o1|o3|claude|gemini|command|mistral-large)/i.test(model);
   return looksCloud ? DEFAULT_LOCAL_MODEL : model;
+}
+
+function uniqueModels(models: Array<string | null | undefined>): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of models) {
+    const model = toLocalModel(raw);
+    if (!model || seen.has(model)) continue;
+    seen.add(model);
+    out.push(model);
+  }
+  return out;
+}
+
+function expandModelAliases(model: string): string[] {
+  return uniqueModels([model, ...(MODEL_ALIASES[model] ?? [])]);
+}
+
+async function getInstalledModels(): Promise<Set<string> | null> {
+  if (installedModelsCache && installedModelsCache.expires > Date.now()) {
+    return installedModelsCache.models;
+  }
+
+  try {
+    const res = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(5_000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rows = Array.isArray(data?.models) ? data.models : [];
+    const models = new Set<string>();
+    for (const row of rows) {
+      if (typeof row?.name === "string") models.add(row.name);
+      if (typeof row?.model === "string") models.add(row.model);
+    }
+    installedModelsCache = { models, expires: Date.now() + 30_000 };
+    return models;
+  } catch {
+    // If Ollama is busy or older than /api/tags, fall back to trying the chain
+    // directly. Runtime errors below still cascade across the same candidates.
+    return null;
+  }
+}
+
+async function resolveRunnableModelChain(
+  primary: string,
+  fallbacks: Array<string | null | undefined>,
+): Promise<string[]> {
+  const expanded = uniqueModels(
+    [primary, ...fallbacks, DEFAULT_LOCAL_MODEL, "phi4-mini:latest"].flatMap((m) =>
+      m ? expandModelAliases(m) : [],
+    ),
+  );
+  const installed = await getInstalledModels();
+  if (!installed) return expanded;
+
+  const runnable = expanded.filter((model) => installed.has(model));
+  return runnable.length ? runnable : expanded;
 }
 
 async function doOllamaCall(
@@ -180,9 +244,15 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
 
   // Normalize cloud model IDs that might come from DB
   usedModel = toLocalModel(usedModel);
-  const fallbackModel = fallback ? toLocalModel(fallback) : null;
+  const configuredFallbackModel = fallback ? toLocalModel(fallback) : null;
   const streamResponse = usesStreamingClient(opts.agent);
   const callTimeoutMs = timeoutFor(opts.agent, configuredTimeoutMs);
+  const fallbackModels = await resolveRunnableModelChain(usedModel, [
+    configuredFallbackModel,
+    resolveModel(opts.agent),
+    resolveFallback(opts.agent),
+  ]);
+  usedModel = fallbackModels.shift() ?? usedModel;
 
   // A discarded streamed Response (retry/fallback below) leaves its body
   // unread — undici won't release the underlying socket back to the
@@ -192,49 +262,43 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     if (streamResponse) response.body?.cancel().catch(() => {});
   };
 
+  const recordModelFailure = (model: string, error: unknown) => {
+    logGenAI({
+      "gen_ai.system": "ollama",
+      "gen_ai.request.model": model,
+      "gen_ai.operation.name": "chat",
+      latency_ms: Date.now() - t0,
+      agent: opts.agent,
+      run_id: runId,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  };
+
+  const switchToNextModel = () => {
+    const next = fallbackModels.shift();
+    if (!next || next === usedModel) return false;
+    usedModel = next;
+    return true;
+  };
+
   try {
-    if (usesStreamingClient(opts.agent)) {
-      // True worst case for a cold model on a slow agent is prewarm (up to
-      // 180s) PLUS the main call (up to callTimeoutMs, e.g. 600s for writer)
-      // — up to 780s, not just callTimeoutMs alone. Any watchdog/reverse-proxy
-      // timeout wrapping draftSection or similar must account for both.
-      try {
-        await prewarmModel(usedModel, AbortSignal.timeout(180_000));
-      } catch (prewarmErr) {
-        if (!fallbackModel || fallbackModel === usedModel) throw prewarmErr;
-        const failedModel = usedModel;
-        usedModel = fallbackModel;
-        logGenAI({
-          "gen_ai.system": "ollama",
-          "gen_ai.request.model": failedModel,
-          "gen_ai.operation.name": "chat",
-          latency_ms: Date.now() - t0,
-          agent: opts.agent,
-          run_id: runId,
-          ok: false,
-          error: prewarmErr instanceof Error ? prewarmErr.message : String(prewarmErr),
-        });
-        await prewarmModel(usedModel, AbortSignal.timeout(180_000));
+    while (true) {
+      if (usesStreamingClient(opts.agent)) {
+        // True worst case for a cold model on a slow agent is prewarm (up to
+        // 180s) PLUS the main call (up to callTimeoutMs, e.g. 600s for writer)
+        // — up to 780s, not just callTimeoutMs alone. Any watchdog/reverse-proxy
+        // timeout wrapping draftSection or similar must account for both.
+        try {
+          await prewarmModel(usedModel, AbortSignal.timeout(180_000));
+        } catch (prewarmErr) {
+          recordModelFailure(usedModel, prewarmErr);
+          if (switchToNextModel()) continue;
+          throw prewarmErr;
+        }
       }
-    }
 
-    let res = await doOllamaCall(
-      usedModel,
-      opts.messages,
-      resolvedTemp,
-      resolvedMax,
-      resolvedJson,
-      streamResponse,
-      AbortSignal.timeout(callTimeoutMs),
-    );
-
-    let attempt = 0;
-    const maxRetries = 2;
-    while (!res.ok && (res.status === 429 || res.status >= 500) && attempt < maxRetries) {
-      attempt++;
-      discard(res);
-      await new Promise((r) => setTimeout(r, 250 * Math.pow(2, attempt)));
-      res = await doOllamaCall(
+      let res = await doOllamaCall(
         usedModel,
         opts.messages,
         resolvedTemp,
@@ -243,31 +307,38 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
         streamResponse,
         AbortSignal.timeout(callTimeoutMs),
       );
+
+      let attempt = 0;
+      const maxRetries = 2;
+      while (!res.ok && (res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+        attempt++;
+        discard(res);
+        await new Promise((r) => setTimeout(r, 250 * Math.pow(2, attempt)));
+        res = await doOllamaCall(
+          usedModel,
+          opts.messages,
+          resolvedTemp,
+          resolvedMax,
+          resolvedJson,
+          streamResponse,
+          AbortSignal.timeout(callTimeoutMs),
+        );
+      }
+
+      if (!res.ok) {
+        const error = new Error(`ollama_error_${res.status}: ${await res.text()}`);
+        recordModelFailure(usedModel, error);
+        if (switchToNextModel()) continue;
+        throw error;
+      }
+
+      const data = await readOllamaResponse(res, streamResponse);
+      text = data?.message?.content ?? "";
+      inputTokens = data?.prompt_eval_count;
+      outputTokens = data?.eval_count;
+      ok = true;
+      return { text, inputTokens, outputTokens, runId, model: usedModel, provider: "ollama" };
     }
-
-    // Fallback to secondary model if primary fails
-    if (!res.ok && fallbackModel && fallbackModel !== usedModel) {
-      discard(res);
-      usedModel = fallbackModel;
-      res = await doOllamaCall(
-        fallbackModel,
-        opts.messages,
-        resolvedTemp,
-        resolvedMax,
-        resolvedJson,
-        streamResponse,
-        AbortSignal.timeout(callTimeoutMs),
-      );
-    }
-
-    if (!res.ok) throw new Error(`ollama_error_${res.status}: ${await res.text()}`);
-
-    const data = await readOllamaResponse(res, streamResponse);
-    text = data?.message?.content ?? "";
-    inputTokens = data?.prompt_eval_count;
-    outputTokens = data?.eval_count;
-    ok = true;
-    return { text, inputTokens, outputTokens, runId, model: usedModel, provider: "ollama" };
   } catch (err) {
     errMsg = err instanceof Error ? err.message : String(err);
     throw err;

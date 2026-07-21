@@ -175,6 +175,7 @@ export const runStrategist = createServerFn({ method: "POST" })
         agent: "strategist",
         runId,
         temperature: 0.2,
+        maxOutputTokens: 900,
         responseFormat: "json",
         messages: [
           {
@@ -210,14 +211,17 @@ export const runStrategist = createServerFn({ method: "POST" })
       );
     }
 
-    const model = resolveModel("strategist");
+    const model = llm.model ?? resolveModel("strategist");
     let parsed;
+    let recoveredParseError: string | null = null;
     try {
-      parsed = coerceStrategistPlan(
-        JSON.parse(extractJsonObject(llm.text)),
-        g.title,
-        (tpl.sections ?? []) as TemplateSection[],
-      );
+      let raw: unknown = {};
+      try {
+        raw = JSON.parse(extractJsonObject(llm.text));
+      } catch (jsonErr) {
+        recoveredParseError = jsonErr instanceof Error ? jsonErr.message : "invalid_json";
+      }
+      parsed = coerceStrategistPlan(raw, g.title, (tpl.sections ?? []) as TemplateSection[]);
     } catch (parseErr) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("agent_runs").insert({
@@ -289,7 +293,11 @@ export const runStrategist = createServerFn({ method: "POST" })
       latency_ms: Date.now() - t0,
       user_id: context.userId,
       grant_id: g.id,
-      metadata: { proposal_id: proposal.id, sections: parsed.sections.length },
+      metadata: {
+        proposal_id: proposal.id,
+        sections: parsed.sections.length,
+        recovered_parse_error: recoveredParseError,
+      },
     });
 
     return { ok: true, proposalId: proposal.id, sections: parsed.sections.length, runId };

@@ -323,6 +323,7 @@ export type DiscoverFunderOptions = {
   jobId?: string;
   attempt?: number;
   funderName?: string;
+  forceRefresh?: boolean;
 };
 
 export async function discoverFunderImpl(
@@ -687,15 +688,22 @@ export async function discoverFunderImpl(
     );
   }
 
-  const indexHtml = await fetchHtml(F.source_url, 10_000);
+  let indexHtml = "";
+  let indexFetchError: string | null = null;
+  try {
+    indexHtml = await fetchHtml(F.source_url, 10_000);
+  } catch (e) {
+    indexFetchError = e instanceof Error ? e.message : String(e);
+  }
   const indexText = htmlToText(indexHtml, 8_000);
-  const linksFromIndex = extractCandidateLinks(indexHtml, F.source_url);
+  const linksFromIndex = indexHtml ? extractCandidateLinks(indexHtml, F.source_url) : [];
 
   // Seed extra candidates via Jina Search so we never depend on the funder's
   // own navigation surfacing every program. This makes discovery resilient on
   // sites that hide programs behind JS menus, filters, or pagination.
   const seedHost = new URL(F.source_url).host;
   const seeded: Array<{ url: string; text: string; score: number }> = [];
+  const searchSeeds: Array<{ query: string; ok: boolean; hits: number; error?: string }> = [];
   try {
     const queries = [
       `site:${seedHost} (program OR funding OR grant OR subvention OR financement OR prêt)`,
@@ -703,6 +711,12 @@ export async function discoverFunderImpl(
     ];
     for (const q of queries) {
       const r = await jinaSearch(q, 15);
+      searchSeeds.push({
+        query: q,
+        ok: r.ok,
+        hits: r.ok ? r.hits.length : 0,
+        error: r.ok ? undefined : r.error,
+      });
       if (!r.ok) continue;
       for (const h of r.hits) {
         try {
@@ -747,10 +761,18 @@ export async function discoverFunderImpl(
         funder_id: F.id,
         funder_name: F.name,
         engine: "fallback",
+        index_fetch_error: indexFetchError,
         links_considered: 0,
       },
     });
-    return { ok: true, inserted: 0, runId, degraded: true, engine: "fallback" };
+    return {
+      ok: true,
+      inserted: 0,
+      runId,
+      degraded: true,
+      engine: "fallback",
+      error: "page_too_short",
+    };
   }
 
   // Scrape candidate pages in parallel (bounded) using the local engine chain.
@@ -760,11 +782,15 @@ export async function discoverFunderImpl(
   const pageDocs: PageDoc[] = [];
   let ledgerSkipped = 0;
   let ledgerFreshHits = 0;
+  const pageFetchFailures: Array<{ url: string; reason: string }> = [];
+  const pageSkipReasons: Record<string, number> = {};
   for (let i = 0; i < links.length; i += SCRAPE_CONCURRENCY) {
     const batch = links.slice(i, i + SCRAPE_CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map(async (l) => {
-        const decision = await shouldFetch(l.url);
+        const decision = opts.forceRefresh
+          ? { fetch: true as const, etag: undefined, lastModified: undefined }
+          : await shouldFetch(l.url);
         if (!decision.fetch)
           return { url: l.url, text: "", skipped: true, reason: decision.reason };
         const scrape = await scrapeWithFallback(l.url, {
@@ -798,15 +824,65 @@ export async function discoverFunderImpl(
       if (r.status !== "fulfilled") continue;
       if (r.value.skipped) {
         ledgerSkipped++;
+        const reason = r.value.reason ?? "skipped";
+        pageSkipReasons[reason] = (pageSkipReasons[reason] ?? 0) + 1;
         continue;
       }
       if (r.value.text.length >= 400) {
         pageDocs.push({ url: r.value.url, text: r.value.text });
         ledgerFreshHits++;
+      } else {
+        const reason = r.value.reason ?? "too_short_after_fetch";
+        pageFetchFailures.push({ url: r.value.url, reason });
+        pageSkipReasons[reason] = (pageSkipReasons[reason] ?? 0) + 1;
       }
     }
   }
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  if (pageDocs.length === 0) {
+    await supabaseAdmin.from("agent_runs").insert({
+      run_id: runId,
+      agent: "discoverer",
+      status: "degraded",
+      model: "phi4-mini:latest",
+      input_tokens: null,
+      output_tokens: null,
+      latency_ms: Date.now() - t0,
+      error: "no_candidate_pages_scraped",
+      metadata: {
+        ...baseMeta,
+        funder_id: F.id,
+        funder_name: F.name,
+        engine: "fallback",
+        index_fetch_error: indexFetchError,
+        links_from_index: linksFromIndex.length,
+        links_from_search: seeded.length,
+        links_from_sitemap: sitemapSeeded.length,
+        links_extracted: links.length,
+        pages_scraped: 0,
+        ledger_skipped: ledgerSkipped,
+        ledger_fresh_hits: ledgerFreshHits,
+        search_seeds: searchSeeds,
+        page_skip_reasons: pageSkipReasons,
+        page_fetch_failures: pageFetchFailures.slice(0, 10),
+        found: 0,
+        inserted: 0,
+        seen_again: 0,
+      },
+    });
+    return {
+      ok: true,
+      inserted: 0,
+      seenAgain: 0,
+      found: 0,
+      urlsScraped: 0,
+      runId,
+      degraded: true,
+      engine: "fallback",
+      error: "no_candidate_pages_scraped",
+    };
+  }
 
   let inserted = 0;
   let seenAgain = 0;
@@ -998,10 +1074,17 @@ export async function discoverFunderImpl(
       funder_id: F.id,
       funder_name: F.name,
       engine: "fallback",
+      index_fetch_error: indexFetchError,
       links_extracted: links.length,
       pages_scraped: pageDocs.length,
+      links_from_index: linksFromIndex.length,
+      links_from_search: seeded.length,
+      links_from_sitemap: sitemapSeeded.length,
       ledger_skipped: ledgerSkipped,
       ledger_fresh_hits: ledgerFreshHits,
+      search_seeds: searchSeeds,
+      page_skip_reasons: pageSkipReasons,
+      page_fetch_failures: pageFetchFailures.slice(0, 10),
       found: foundTotal,
       inserted,
       seen_again: seenAgain,

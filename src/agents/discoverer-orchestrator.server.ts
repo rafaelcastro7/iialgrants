@@ -4,7 +4,7 @@
 
 import { discoverFunderImpl } from "@/agents/discoverer.impl.server";
 
-const FUNDER_TIMEOUT_MS = 60_000;
+const FUNDER_TIMEOUT_MS = Number(process.env.DISCOVERY_FUNDER_TIMEOUT_MS ?? 300_000);
 const MAX_ATTEMPTS = 2;
 const BACKOFF_MS = [0, 1500]; // pre-attempt wait per attempt index
 const FUNDER_CONCURRENCY = 4; // run up to N funders in parallel
@@ -59,12 +59,15 @@ export type DiscoveryJobResult = {
   totalInserted: number;
   totalSeenAgain: number;
   totalProcessed: number;
+  totalDegraded: number;
+  totalFailed: number;
   evaluated: number;
   perFunder: Array<{
     funder: string;
     inserted: number;
     seenAgain?: number;
     engine?: string;
+    degraded?: boolean;
     error?: string;
   }>;
 };
@@ -73,6 +76,7 @@ export async function runDiscoveryJob(
   jobId: string,
   triggeringUserId: string,
   funderIds?: string[],
+  opts: { forceRefresh?: boolean } = {},
 ): Promise<DiscoveryJobResult> {
   const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
   await assertModuleEnabled("grants_discovery");
@@ -108,12 +112,22 @@ export async function runDiscoveryJob(
       error: error.message,
       metadata: { job_id: jobId, stage: "orchestrator_funders_query" },
     });
-    return { totalInserted: 0, totalSeenAgain: 0, totalProcessed: 0, evaluated: 0, perFunder: [] };
+    return {
+      totalInserted: 0,
+      totalSeenAgain: 0,
+      totalProcessed: 0,
+      totalDegraded: 0,
+      totalFailed: 1,
+      evaluated: 0,
+      perFunder: [],
+    };
   }
 
   let totalInserted = 0;
   let totalSeenAgain = 0;
   let totalProcessed = 0;
+  let totalDegraded = 0;
+  let totalFailed = 0;
   const perFunder: DiscoveryJobResult["perFunder"] = [];
 
   async function runOne(f: { id: string; name: string }) {
@@ -123,7 +137,12 @@ export async function runDiscoveryJob(
       if (attempt > 1) await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt - 1] ?? 5000));
       try {
         const r = await withTimeout(
-          discoverFunderImpl(f.id, { jobId, attempt, funderName: f.name }),
+          discoverFunderImpl(f.id, {
+            jobId,
+            attempt,
+            funderName: f.name,
+            forceRefresh: opts.forceRefresh ?? false,
+          }),
           FUNDER_TIMEOUT_MS,
           "funder_run",
         );
@@ -135,7 +154,10 @@ export async function runDiscoveryJob(
           inserted: r.inserted,
           seenAgain: r.seenAgain,
           engine: r.engine,
+          degraded: !!r.degraded,
+          error: r.degraded ? (r.error ?? "degraded") : undefined,
         });
+        if (r.degraded) totalDegraded += 1;
         success = true;
         return;
       } catch (e) {
@@ -153,7 +175,10 @@ export async function runDiscoveryJob(
         if (!willRetry) totalProcessed += 1;
       }
     }
-    if (!success) perFunder.push({ funder: f.name, inserted: 0, error: lastError });
+    if (!success) {
+      totalFailed += 1;
+      perFunder.push({ funder: f.name, inserted: 0, error: lastError });
+    }
   }
 
   // Parallelize across funders so a single slow site can't starve the budget.
@@ -215,11 +240,21 @@ export async function runDiscoveryJob(
       totalInserted,
       totalSeenAgain,
       totalProcessed,
+      totalDegraded,
+      totalFailed,
       evaluated,
       eval_errors: evalErrors.slice(0, 5),
       funders_queued: funders?.length ?? 0,
     },
   });
 
-  return { totalInserted, totalSeenAgain, totalProcessed, evaluated, perFunder };
+  return {
+    totalInserted,
+    totalSeenAgain,
+    totalProcessed,
+    totalDegraded,
+    totalFailed,
+    evaluated,
+    perFunder,
+  };
 }

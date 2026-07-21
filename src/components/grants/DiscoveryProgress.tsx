@@ -115,12 +115,12 @@ function categorizeError(msg: string): { category: ErrorCategory; hint: string; 
 function StatusIcon({ s }: { s: FunderState["status"] }) {
   if (s === "succeeded") return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />;
   if (s === "failed") return <AlertCircle className="h-3.5 w-3.5 text-destructive" />;
-  if (s === "running" || s === "degraded")
-    return <Loader2 className="h-3.5 w-3.5 text-sky-500 animate-spin" />;
+  if (s === "degraded") return <AlertCircle className="h-3.5 w-3.5 text-amber-500" />;
+  if (s === "running") return <Loader2 className="h-3.5 w-3.5 text-sky-500 animate-spin" />;
   return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
-type ViewFilter = "all" | "queued" | "running" | "succeeded" | "failed";
+type ViewFilter = "all" | "queued" | "running" | "succeeded" | "degraded" | "failed";
 
 function downloadBlob(content: string, mime: string, filename: string) {
   const blob = new Blob([content], { type: mime });
@@ -157,17 +157,25 @@ export function DiscoveryProgress({
   const status = data?.status ?? "queued";
   const perFunder = useMemo(() => (data?.perFunder ?? []) as FunderState[], [data?.perFunder]);
   const processed = perFunder.filter(
-    (f) => f.status === "succeeded" || f.status === "failed",
+    (f) => f.status === "succeeded" || f.status === "degraded" || f.status === "failed",
   ).length;
   const total = data?.fundersQueued || queued || perFunder.length || 1;
   const pct = Math.round((processed / total) * 100);
 
   const counts = useMemo(() => {
-    const c = { all: perFunder.length, queued: 0, running: 0, succeeded: 0, failed: 0 };
+    const c = {
+      all: perFunder.length,
+      queued: 0,
+      running: 0,
+      succeeded: 0,
+      degraded: 0,
+      failed: 0,
+    };
     for (const f of perFunder) {
       if (f.status === "succeeded") c.succeeded++;
       else if (f.status === "failed") c.failed++;
-      else if (f.status === "running" || f.status === "degraded") c.running++;
+      else if (f.status === "degraded") c.degraded++;
+      else if (f.status === "running") c.running++;
       else c.queued++;
     }
     return c;
@@ -180,7 +188,7 @@ export function DiscoveryProgress({
       { hint: string; funders: { name: string; msg: string }[] }
     >();
     for (const f of perFunder) {
-      if (f.status !== "failed" || !f.lastError) continue;
+      if (!["failed", "degraded"].includes(f.status) || !f.lastError) continue;
       const { category, hint, hintFr } = categorizeError(f.lastError);
       const g = groups.get(category) ?? { hint: fr ? hintFr : hint, funders: [] };
       g.funders.push({ name: f.funder_name, msg: f.lastError });
@@ -192,7 +200,7 @@ export function DiscoveryProgress({
   const visible = useMemo(() => {
     if (view === "all") return perFunder;
     return perFunder.filter((f) => {
-      if (view === "running") return f.status === "running" || f.status === "degraded";
+      if (view === "running") return f.status === "running";
       if (view === "queued") return f.status === "queued";
       return f.status === view;
     });
@@ -210,6 +218,8 @@ export function DiscoveryProgress({
         totalInserted: data.totalInserted,
         totalSeenAgain: data.totalSeenAgain,
         totalProcessed: data.totalProcessed,
+        totalDegraded: data.totalDegraded,
+        totalFailed: data.totalFailed,
         evaluated: data.evaluated,
       },
       perFunder,
@@ -252,8 +262,20 @@ export function DiscoveryProgress({
     { key: "queued", label: "Queued", labelFr: "En attente", n: counts.queued },
     { key: "running", label: "Running", labelFr: "En cours", n: counts.running },
     { key: "succeeded", label: "Succeeded", labelFr: "Réussis", n: counts.succeeded },
+    { key: "degraded", label: "Degraded", labelFr: "Dégradés", n: counts.degraded },
     { key: "failed", label: "Failed", labelFr: "Échoués", n: counts.failed },
   ];
+
+  const totalSummary = data
+    ? [
+        `+${data.totalInserted} ${fr ? "nouvelles" : "new"}`,
+        `${data.totalSeenAgain} ${fr ? "revues" : "repeats"}`,
+        data.totalDegraded ? `${data.totalDegraded} ${fr ? "dégradés" : "degraded"}` : null,
+        data.totalFailed ? `${data.totalFailed} ${fr ? "échoués" : "failed"}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
 
   return (
     <section className="mb-4 border rounded-lg bg-card overflow-hidden">
@@ -265,9 +287,7 @@ export function DiscoveryProgress({
           <span className="font-medium">{fr ? "Découverte" : "Discovery"}</span>
           <span className="text-muted-foreground text-xs">
             {processed}/{total} {fr ? "fournisseurs" : "funders"}
-            {data
-              ? ` · +${data.totalInserted} ${fr ? "nouvelles" : "new"} · ${data.totalSeenAgain} ${fr ? "revues" : "repeats"}`
-              : ""}
+            {totalSummary ? ` · ${totalSummary}` : ""}
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -372,8 +392,13 @@ export function DiscoveryProgress({
                 {f.latency_ms}ms
               </span>
             )}
-            {f.status === "failed" && f.lastError && (
-              <span className="text-destructive truncate max-w-[40%]" title={f.lastError}>
+            {(f.status === "failed" || f.status === "degraded") && f.lastError && (
+              <span
+                className={`truncate max-w-[40%] ${
+                  f.status === "failed" ? "text-destructive" : "text-amber-600"
+                }`}
+                title={f.lastError}
+              >
                 ·{" "}
                 {(() => {
                   const c = categorizeError(f.lastError);
