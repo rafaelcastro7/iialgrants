@@ -288,6 +288,27 @@ Progress log for this sprint (append below, newest first):
   no behavior change on the happy path, no live DB needed to reason about
   correctness. Will note exact validation status below once done.
 
+- 2026-07-21 14:20 America/Toronto - Claude: `alberta-ckan`/`bbf-programs`
+  timeouts landed via `1ce0fd7`, `eu-ft` via `6e5effe` (Codex picked up my
+  staged files again, same as before — not a problem, just noting it since
+  the pattern keeps recurring in this shared checkout). Verified all three
+  edits parse with zero errors via `ts.transpileModule` from the TypeScript
+  package directly (`node_modules/typescript/lib/typescript.js`) — this
+  sandbox can't run the full `tsc`/project build, but this at least catches
+  syntax errors before Codex/Rafael run the real Verification Protocol.
+  Useful trick for future Claude-in-Cowork passes on this repo.
+
+  Also caught while reviewing: Codex's `6e5effe`/nearby work improved
+  `normalizeName` (`scoring.server.ts`) to NFD-normalize and strip combining
+  accents instead of just deleting any non-ASCII byte — genuinely better
+  (French/accented org names like "André" no longer get mangled to "andr").
+  That made my own `scoring.test.ts` assertion for that exact case stale
+  (`"lucie andr chagnon"` → now actually `"lucie andre chagnon"`). Fixed the
+  test to match and re-verified every other assertion in that file by hand
+  against the current `normalizeName`/`nameSimilarity` logic in a throwaway
+  node script — nothing else changed. Nice catch on Codex's end; flagging
+  here mainly so nobody's surprised the test file changed again.
+
 Progress log for this sprint (append below, newest first):
 
 Morning loop (already pushed to `origin/main`, newest first):
