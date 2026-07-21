@@ -1,5 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, CalendarDays, FileText, Hash } from "lucide-react";
+import {
+  Archive,
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Database,
+  FileSearch,
+  FileText,
+  Hash,
+  Scale,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  Target,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { AppTopBar } from "@/components/AppSidebar";
 import { Badge } from "@/components/ui/badge";
@@ -148,6 +164,10 @@ function MarkdownBlock({ block }: { block: Block }) {
   }
 
   if (block.type === "code") {
+    if (block.language === "grantflow") {
+      return <GrantSearchRulesDiagram />;
+    }
+
     return (
       <pre className="mt-4 overflow-x-auto rounded-md border bg-muted/60 p-4 text-xs leading-6 text-foreground">
         <code>{block.code}</code>
@@ -179,6 +199,179 @@ function MarkdownBlock({ block }: { block: Block }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+const searchFlow = [
+  {
+    icon: Search,
+    title: "1. Search",
+    detail: "Keyword, funder, sector, jurisdiction, or known program name.",
+  },
+  {
+    icon: Database,
+    title: "2. Candidate record",
+    detail: "The system shows matching grants and their current lifecycle status.",
+  },
+  {
+    icon: FileSearch,
+    title: "3. Enrichment",
+    detail: "Fetches official pages and extracts deadline, amount, eligibility, and requirements.",
+  },
+  {
+    icon: SlidersHorizontal,
+    title: "4. Rule validation",
+    detail: "Runs deterministic gates before proposal time is committed.",
+  },
+  {
+    icon: CheckCircle2,
+    title: "5. Decision",
+    detail: "Shortlist, verify manually, draft, archive, or monitor for a later intake.",
+  },
+];
+
+const ruleCards = [
+  {
+    code: "F1",
+    icon: ShieldCheck,
+    title: "Legal eligibility",
+    question: "Are we allowed to apply?",
+    pass: "Applicant type, geography, and direct/partner rules fit.",
+  },
+  {
+    code: "F3",
+    icon: Scale,
+    title: "Money math",
+    question: "Is the grant financially practical?",
+    pass: "Amount, cost-share, reimbursement, and cash-flow are viable.",
+  },
+  {
+    code: "F4",
+    icon: Target,
+    title: "Strategic fit",
+    question: "Does it match what we can credibly deliver?",
+    pass: "Sectors, activities, outcomes, and funder priorities align.",
+  },
+  {
+    code: "F5",
+    icon: Clock3,
+    title: "Deadline runway",
+    question: "Do we have enough time?",
+    pass: "Deadline or intake timing leaves enough preparation runway.",
+  },
+];
+
+function GrantSearchRulesDiagram() {
+  return (
+    <div className="mt-5 rounded-md border bg-gradient-to-br from-primary/10 via-background to-muted/60 p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-base font-semibold tracking-normal">
+            Visual map: grant search and rule validation
+          </h4>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Use this as the mental model for moving from a broad search result to a source-backed
+            pursue / verify / archive decision.
+          </p>
+        </div>
+        <Badge variant="secondary" className="rounded-md">
+          Search → Evidence → Rules → Decision
+        </Badge>
+      </div>
+
+      <div className="mt-5 overflow-x-auto pb-2">
+        <div className="flex min-w-[980px] items-stretch gap-2">
+          {searchFlow.map((step, index) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.title} className="flex flex-1 items-center gap-2">
+                <div className="min-h-[132px] flex-1 rounded-md border bg-card p-3 shadow-sm">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="mt-3 text-sm font-semibold text-foreground">{step.title}</div>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.detail}</p>
+                </div>
+                {index < searchFlow.length - 1 && (
+                  <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground/60" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 lg:grid-cols-4">
+        {ruleCards.map((rule) => {
+          const Icon = rule.icon;
+          return (
+            <div key={rule.code} className="rounded-md border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <Badge className="rounded-md">{rule.code}</Badge>
+                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-primary">
+                  <Icon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3 text-sm font-semibold text-foreground">{rule.title}</div>
+              <p className="mt-1 text-xs font-medium text-foreground/80">{rule.question}</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{rule.pass}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
+        <DecisionBox
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          title="Pass"
+          text="Evidence supports eligibility, money, strategic fit, and runway. Shortlist or draft."
+          tone="pass"
+        />
+        <ArrowRight className="hidden h-5 w-5 self-center text-muted-foreground/60 lg:block" />
+        <DecisionBox
+          icon={<FileSearch className="h-4 w-4" />}
+          title="Review"
+          text="One or more fields are unclear. Assign manual verification before proposal work."
+          tone="review"
+        />
+        <ArrowRight className="hidden h-5 w-5 self-center text-muted-foreground/60 lg:block" />
+        <DecisionBox
+          icon={<Archive className="h-4 w-4" />}
+          title="Fail"
+          text="A hard blocker exists: ineligible, too late, too small, or off strategy. Archive or monitor."
+          tone="fail"
+        />
+      </div>
+    </div>
+  );
+}
+
+function DecisionBox({
+  icon,
+  title,
+  text,
+  tone,
+}: {
+  icon: ReactNode;
+  title: string;
+  text: string;
+  tone: "pass" | "review" | "fail";
+}) {
+  const toneClass =
+    tone === "pass"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : tone === "review"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+        : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300";
+
+  return (
+    <div className={`rounded-md border p-4 ${toneClass}`}>
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        {icon}
+        {title}
+      </div>
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">{text}</p>
     </div>
   );
 }

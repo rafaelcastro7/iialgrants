@@ -289,6 +289,17 @@ move from many possible opportunities to a short list of grants that are
 official, current, eligible, strategically relevant, and worth the proposal
 effort.
 
+The complete process has two connected parts:
+
+- **Search and discovery**: finding candidate opportunities and turning them
+  into structured grant records.
+- **Rule validation**: checking whether each record passes IIAL's deterministic
+  screening rules before the team spends proposal time.
+
+```grantflow
+search-rules-v1
+```
+
 Use this process every time.
 
 #### 1. Prepare the search context
@@ -428,6 +439,162 @@ The fit result combines:
 Read the score together with the rationale. A high score is not a command to
 apply. A low score is not always a rejection if the data is incomplete or the
 grant is strategically important.
+
+#### 9A. Validate deterministic screening rules
+
+The rules engine is the first serious decision checkpoint. It exists to prevent
+the system from recommending grants that sound attractive but are legally,
+financially, strategically, or operationally weak.
+
+The current rule model focuses on these IIAL screening gates:
+
+| Rule                  | Question answered                                               | Typical source fields                                                     | Result types          |
+| --------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------- |
+| F1 Legal eligibility  | Can this organization legally apply?                            | applicant types, charity/nonprofit language, geography, partner rules     | pass, review, fail    |
+| F3 Money math         | Is the funding amount and cost-share practical?                 | min/max amount, matching funds, reimbursement rules, in-kind restrictions | pass, review, fail    |
+| F4 Strategic fit      | Does the program match IIAL capabilities and target sectors?    | sectors, eligible activities, program objectives, organization profile    | strong, medium, weak  |
+| F5 Deadline runway    | Is there enough time to prepare a credible application?         | deadline, intake status, today, internal runway thresholds                | safe, tight, too late |
+| Evidence completeness | Are the decision fields backed by official or credible sources? | source URL, evidence spans, scrape/fetch trail, partial review notes      | complete, partial     |
+
+For each rule, the system tries to avoid false certainty. If the source does
+not clearly answer a question, the result should be **review**, not an invented
+pass.
+
+#### 9B. How F1 legal eligibility is checked
+
+F1 asks whether IIAL, or the organization using the system, is allowed to apply.
+
+The system reviews:
+
+- Applicant type: nonprofit, charity, municipality, business, academic
+  institution, Indigenous organization, consortium, or individual.
+- Geography: federal, provincial, local, or funder-specific location limits.
+- Direct applicant rules: whether the organization can apply directly or needs
+  a partner.
+- Exclusions: for-profit-only, individuals-only, province-only, sector-only, or
+  invitation-only restrictions.
+- Evidence wording: exact funder language that supports eligibility.
+
+Recommended interpretation:
+
+| F1 result | Meaning                                                      | User action                                      |
+| --------- | ------------------------------------------------------------ | ------------------------------------------------ |
+| Pass      | The source clearly allows this applicant type or profile     | Continue to money, strategic fit, and deadline   |
+| Review    | Eligibility is ambiguous, partial, or depends on partnership | Create a task to verify before proposal drafting |
+| Fail      | The source clearly excludes this applicant type or region    | Archive or keep only for reference               |
+
+#### 9C. How F3 money math is checked
+
+F3 checks whether the opportunity is financially worth pursuing.
+
+The system reviews:
+
+- Maximum award amount.
+- Minimum award amount, if published.
+- Whether the grant pays cash, reimbursement, tax credit, wage subsidy, or
+  contribution funding.
+- Matching funds or cost-share percentage.
+- Whether in-kind contributions are accepted.
+- Whether the funding amount is large enough for the expected proposal effort.
+- Whether the organization can realistically carry cash-flow or reimbursement
+  timing.
+
+Recommended interpretation:
+
+| F3 result | Meaning                                                             | User action                                 |
+| --------- | ------------------------------------------------------------------- | ------------------------------------------- |
+| Pass      | Amount and cost-share are viable                                    | Continue qualification                      |
+| Review    | Amount is unknown, cost-share is unclear, or cash-flow risk exists  | Verify with funder or finance lead          |
+| Fail      | Funding is too small, cost-share too high, or structure impractical | Deprioritize unless strategic value is high |
+
+#### 9D. How F4 strategic fit is checked
+
+F4 checks whether the grant aligns with what the organization actually does and
+can credibly deliver.
+
+The system compares grant language against:
+
+- Organization mission and profile.
+- Target sectors.
+- Program capabilities.
+- Eligible activities.
+- Past or planned projects.
+- Required outcomes and reporting burden.
+- Funder priorities and keywords.
+
+Recommended interpretation:
+
+| F4 result | Meaning                                                 | User action                                 |
+| --------- | ------------------------------------------------------- | ------------------------------------------- |
+| Strong    | Grant purpose closely matches organization strengths    | Shortlist if F1, F3, and F5 also pass       |
+| Medium    | Some alignment exists but the proposal angle needs work | Assign strategist/reviewer before drafting  |
+| Weak      | The grant is outside the organization's real strengths  | Archive or use only for market intelligence |
+
+#### 9E. How F5 deadline runway is checked
+
+F5 protects the team from chasing grants that are too late to prepare well.
+
+The system reviews:
+
+- Published deadline.
+- Rolling or intake-based status.
+- Today's date.
+- Internal minimum runway.
+- Proposal complexity.
+- Whether supporting documents, partners, budgets, or board approvals are
+  needed.
+
+Recommended interpretation:
+
+| F5 result | Meaning                                            | User action                                         |
+| --------- | -------------------------------------------------- | --------------------------------------------------- |
+| Safe      | Enough time exists for a credible application      | Continue or shortlist                               |
+| Tight     | Possible, but only if the team can act immediately | Assign tasks and confirm capacity                   |
+| Too late  | Deadline passed or runway is below threshold       | Archive unless it is recurring and worth monitoring |
+| Unknown   | No clear deadline published                        | Verify manually before treating as urgent           |
+
+#### 9F. How the final fit score is formed
+
+The final score combines deterministic rules with local LLM evaluation:
+
+```text
+combined_score = (weight_llm × llm_score) + ((1 - weight_llm) × rule_score)
+```
+
+The deterministic rule score keeps the system grounded. The LLM score adds
+qualitative judgment, but it should not override hard blockers such as legal
+ineligibility or a passed deadline.
+
+Decision logic:
+
+| Situation                                  | Recommended decision                                  |
+| ------------------------------------------ | ----------------------------------------------------- |
+| F1 fail                                    | Do not pursue unless a partner path exists            |
+| F5 too late                                | Archive or monitor for next intake                    |
+| F3 fail                                    | Deprioritize unless strategic value justifies effort  |
+| F4 weak                                    | Usually archive; keep for market intelligence         |
+| Any rule review/unknown                    | Create a verification task before proposal drafting   |
+| All major rules pass and fit score is high | Shortlist and consider drafting                       |
+| Rules pass but fit score is medium         | Review proposal angle before committing team capacity |
+
+#### 9G. Where to verify the rule decision
+
+Use the grant detail and audit pages together:
+
+- On `/grants/:id`, read the fit card, requirements, eligibility evidence,
+  official sources, and data quality panel.
+- On `/grants/:id/audit`, review rules evaluated, evidence used, and agent
+  trace.
+- If the audit trail does not support a recommendation, treat the grant as
+  unresolved and assign manual verification.
+
+The rule validation process is complete only when the team can answer:
+
+1. Are we allowed to apply?
+2. Is the money worth it?
+3. Does this match our strategy?
+4. Do we have enough time?
+5. Is the decision backed by source evidence?
 
 #### 10. Decide the next action
 
