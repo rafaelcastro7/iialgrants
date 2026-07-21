@@ -140,6 +140,16 @@ Active workspace claims:
   (13 tests). Future handoffs should run `git diff --cached --name-only` before
   every commit, not just after `git add`.
 
+- 2026-07-21 13:50 America/Toronto - Codex fixed the source-curator fuzzy
+  dedup scaling limit on branch `codex/discovery-next-risk-scan`. Scope:
+  `src/lib/source-curator/scoring.server.ts`,
+  `src/lib/source-curator/scoring.test.ts`, and this handoff. `findDuplicate`
+  now pages funders/candidates by stable `id` ranges instead of reading only a
+  fixed first page, and the pure duplicate matcher has tail-row regression
+  tests that cover records beyond the old 2000-row cutoff. Validation:
+  `bunx vitest run src/lib/source-curator/scoring.test.ts`, `bun run lint`,
+  and `bun run build` all passed before commit.
+
 ## DRP runbook + user manual + two schema-drift fixes - 2026-07-21
 
 Morning loop (already pushed to `origin/main`, newest first):
