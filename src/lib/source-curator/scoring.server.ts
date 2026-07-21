@@ -65,6 +65,12 @@ export type DupeResult =
   | { kind: "existing_candidate"; candidateId: string; status: string }
   | { kind: "new" };
 
+type ExistingFunderRow = { id: string; name: string | null };
+type ExistingCandidateRow = { id: string; name: string | null; status: string | null };
+
+const DEDUP_PAGE_SIZE = 1000;
+const FUZZY_DEDUP_THRESHOLD = 0.88;
+
 /**
  * Looks up by BN first, then by fuzzy name (>= 0.88). Service-role required.
  *
@@ -73,11 +79,9 @@ export type DupeResult =
  * intentional: many funders here are federal/national (province = null) and
  * a near-identical name across two provinces is still almost always the same
  * org (e.g. a chapter) rather than a coincidence, so scoping by province would
- * mostly just create missed duplicates. The `.limit(2000)` below is a real
- * scaling limit, not a design choice: past ~2000 rows in `funders` or
- * `funder_candidates`, this stops checking the tail of the table and dedup
- * silently degrades. Revisit if either table approaches that size (raise the
- * limit, paginate, or move to a trigram/pg_trgm index query).
+ * mostly just create missed duplicates. The fuzzy scan is paged
+ * deterministically so dedup coverage does not silently stop at a fixed
+ * table-size cutoff.
  */
 export async function findDuplicate(c: RawCandidate): Promise<DupeResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -97,22 +101,49 @@ export async function findDuplicate(c: RawCandidate): Promise<DupeResult> {
       .maybeSingle();
     if (c2?.id) return { kind: "existing_candidate", candidateId: c2.id, status: c2.status };
   }
-  // 2. Fuzzy name match within province
-  const { data: funders } = await supabaseAdmin.from("funders").select("id,name").limit(2000);
-  for (const f of funders ?? []) {
-    if (nameSimilarity(c.name, f.name as string) >= 0.88)
-      return { kind: "existing_funder", funderId: f.id as string };
+  // 2. Fuzzy name match across all rows, paged to avoid fixed-size blind spots.
+  for (let from = 0; ; from += DEDUP_PAGE_SIZE) {
+    const { data: funders, error } = await supabaseAdmin
+      .from("funders")
+      .select("id,name")
+      .order("id", { ascending: true })
+      .range(from, from + DEDUP_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const match = findDuplicateInRows(c, funders ?? [], []);
+    if (match.kind !== "new") return match;
+    if ((funders ?? []).length < DEDUP_PAGE_SIZE) break;
   }
-  const { data: cands } = await supabaseAdmin
-    .from("funder_candidates")
-    .select("id,name,status")
-    .limit(2000);
-  for (const ec of cands ?? []) {
-    if (nameSimilarity(c.name, ec.name as string) >= 0.88) {
+
+  for (let from = 0; ; from += DEDUP_PAGE_SIZE) {
+    const { data: cands, error } = await supabaseAdmin
+      .from("funder_candidates")
+      .select("id,name,status")
+      .order("id", { ascending: true })
+      .range(from, from + DEDUP_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const match = findDuplicateInRows(c, [], cands ?? []);
+    if (match.kind !== "new") return match;
+    if ((cands ?? []).length < DEDUP_PAGE_SIZE) break;
+  }
+  return { kind: "new" };
+}
+
+export function findDuplicateInRows(
+  c: Pick<RawCandidate, "name">,
+  funders: ExistingFunderRow[],
+  candidates: ExistingCandidateRow[],
+): DupeResult {
+  for (const f of funders) {
+    if (f.name && nameSimilarity(c.name, f.name) >= FUZZY_DEDUP_THRESHOLD) {
+      return { kind: "existing_funder", funderId: f.id };
+    }
+  }
+  for (const ec of candidates) {
+    if (ec.name && nameSimilarity(c.name, ec.name) >= FUZZY_DEDUP_THRESHOLD) {
       return {
         kind: "existing_candidate",
-        candidateId: ec.id as string,
-        status: ec.status as string,
+        candidateId: ec.id,
+        status: ec.status ?? "unknown",
       };
     }
   }

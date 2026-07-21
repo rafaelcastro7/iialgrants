@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTO_APPROVE_THRESHOLD,
   REVIEW_MIN_THRESHOLD,
+  findDuplicateInRows,
   nameSimilarity,
   normalizeName,
   scoreCandidate,
@@ -109,5 +110,47 @@ describe("scoreCandidate", () => {
     const withBadBn = scoreCandidate(candidate({ bn_number: "abc" }));
     const withNoBn = scoreCandidate(candidate());
     expect(withBadBn).toBe(withNoBn);
+  });
+});
+
+describe("findDuplicateInRows", () => {
+  it("finds a fuzzy funder match beyond the old 2000-row cutoff", () => {
+    const funders = Array.from({ length: 2005 }, (_, i) => ({
+      id: `funder-${i}`,
+      name: `Unrelated Foundation ${i}`,
+    }));
+    funders[2004] = {
+      id: "tail-funder",
+      name: "Natural Sciences & Engineering Research Council of Canada",
+    };
+
+    expect(
+      findDuplicateInRows(
+        { name: "Natural Sciences and Engineering Research Council of Canada" },
+        funders,
+        [],
+      ),
+    ).toEqual({ kind: "existing_funder", funderId: "tail-funder" });
+  });
+
+  it("finds a fuzzy candidate match beyond the old 2000-row cutoff", () => {
+    const candidates = Array.from({ length: 2005 }, (_, i) => ({
+      id: `candidate-${i}`,
+      name: `Unrelated Candidate ${i}`,
+      status: "pending_review",
+    }));
+    candidates[2004] = {
+      id: "tail-candidate",
+      name: "Ontario Trillium Foundation",
+      status: "approved",
+    };
+
+    expect(
+      findDuplicateInRows({ name: "Ontario Trillium Foundation Inc." }, [], candidates),
+    ).toEqual({
+      kind: "existing_candidate",
+      candidateId: "tail-candidate",
+      status: "approved",
+    });
   });
 });
