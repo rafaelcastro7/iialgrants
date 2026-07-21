@@ -31,9 +31,11 @@ const STATIC_HTML = `<!doctype html>
 const dataUrl = `data:text/html,${encodeURIComponent(STATIC_HTML)}`;
 
 describe("browser-render captures client-rendered content static engines cannot", () => {
+  // Chromium shutdown can be slow on this CI/dev box, so give the cleanup
+  // hook enough room to finish instead of failing a healthy suite on exit.
   afterAll(async () => {
     await closeBrowserRenderer();
-  });
+  }, 30_000);
 
   it("a static HTML parse of the same markup does NOT see the JS-inserted marker", () => {
     const { markdown } = htmlToReadableMarkdown(STATIC_HTML, "https://example.test/grant");
