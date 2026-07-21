@@ -26,20 +26,57 @@ export type CuratorResult = {
   durationMs: number;
   perSource: Record<
     string,
-    { rows: number; new: number; dup: number; rejected: number; auto: number; err: number }
+    {
+      rows: number;
+      new: number;
+      dup: number;
+      held: number;
+      rejected: number;
+      auto: number;
+      err: number;
+    }
   >;
-  totals: { rows: number; new: number; dup: number; rejected: number; auto: number; err: number };
+  totals: {
+    rows: number;
+    new: number;
+    dup: number;
+    held: number;
+    rejected: number;
+    auto: number;
+    err: number;
+  };
 };
 
 type SourceFn = () => Promise<RawCandidate[]>;
 
+export function mergeCandidateEvidence(
+  existing: RawCandidate,
+  incoming: RawCandidate,
+): RawCandidate {
+  return {
+    name: existing.name || incoming.name,
+    name_fr: existing.name_fr || incoming.name_fr || null,
+    bn_number: existing.bn_number || incoming.bn_number || null,
+    province: existing.province || incoming.province || null,
+    funder_type: existing.funder_type || incoming.funder_type || null,
+    website: existing.website || incoming.website || null,
+    disbursed_annual:
+      Math.max(existing.disbursed_annual ?? 0, incoming.disbursed_annual ?? 0) || null,
+    source_signals: [...new Set([...existing.source_signals, ...incoming.source_signals])],
+    raw_metadata: {
+      ...(existing.raw_metadata ?? {}),
+      ...(incoming.raw_metadata ?? {}),
+    },
+  };
+}
+
 async function runSource(name: string, fn: SourceFn, result: CuratorResult): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const t0 = Date.now();
-  const bucket = { rows: 0, new: 0, dup: 0, rejected: 0, auto: 0, err: 0 };
+  const bucket = { rows: 0, new: 0, dup: 0, held: 0, rejected: 0, auto: 0, err: 0 };
   result.perSource[name] = bucket;
   let raw: RawCandidate[] = [];
-  let status: "succeeded" | "failed" = "succeeded";
+  let status: "succeeded" | "failed" | "degraded" = "succeeded";
   let errorMessage: string | null = null;
   try {
     raw = await fn();
@@ -54,8 +91,46 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
     for (const c of raw) {
       try {
         const dupe = await findDuplicate(c);
-        if (dupe.kind !== "new") {
+        if (dupe.kind === "existing_funder") {
           bucket.dup++;
+          continue;
+        }
+        if (dupe.kind === "existing_candidate") {
+          const { data: existing, error: existingError } = await supabaseAdmin
+            .from("funder_candidates")
+            .select(
+              "name,name_fr,bn_number,province,funder_type,website,disbursed_annual,source_signals,score,status,raw_metadata",
+            )
+            .eq("id", dupe.candidateId)
+            .single();
+          if (existingError || !existing) {
+            throw new Error(existingError?.message ?? "candidate_missing");
+          }
+          if (existing.status === "approved" || existing.status === "rejected") {
+            bucket.dup++;
+            continue;
+          }
+          const merged = mergeCandidateEvidence(existing as RawCandidate, c);
+          const mergedScore = scoreCandidate(merged);
+          const mergedStatus = mergedScore >= REVIEW_MIN_THRESHOLD ? "pending_review" : "candidate";
+          const { error: mergeError } = await supabaseAdmin
+            .from("funder_candidates")
+            .update({
+              name_fr: merged.name_fr ?? null,
+              bn_number: merged.bn_number ?? null,
+              province: merged.province ?? null,
+              funder_type: merged.funder_type ?? null,
+              website: merged.website ?? null,
+              disbursed_annual: merged.disbursed_annual ?? null,
+              source_signals: merged.source_signals,
+              score: mergedScore,
+              status: mergedStatus,
+              raw_metadata: (merged.raw_metadata ?? {}) as never,
+            })
+            .eq("id", dupe.candidateId);
+          if (mergeError) throw new Error(mergeError.message);
+          bucket.dup++;
+          if (mergedStatus === "candidate") bucket.held++;
           continue;
         }
         const score = scoreCandidate(c);
@@ -66,7 +141,22 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
           // duplicate-rate telemetry (a real dedup hit and "we don't know
           // enough about this org" look identical downstream). Track it
           // separately instead.
-          bucket.rejected++;
+          const { error: heldError } = await supabaseAdmin.from("funder_candidates").insert({
+            name: c.name,
+            name_fr: c.name_fr ?? null,
+            bn_number: c.bn_number ?? null,
+            province: c.province ?? null,
+            funder_type: c.funder_type ?? null,
+            website: c.website ?? null,
+            disbursed_annual: c.disbursed_annual ?? null,
+            source_signals: c.source_signals,
+            score,
+            status: "candidate",
+            raw_metadata: (c.raw_metadata ?? {}) as never,
+          });
+          if (heldError) throw new Error(heldError.message);
+          bucket.new++;
+          bucket.held++;
           continue;
         }
         const cStatus = score >= AUTO_APPROVE_THRESHOLD ? "approved" : "pending_review";
@@ -79,6 +169,7 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
             province: c.province ?? null,
             funder_type: c.funder_type ?? null,
             website: c.website ?? null,
+            disbursed_annual: c.disbursed_annual ?? null,
             source_signals: c.source_signals,
             score,
             status: cStatus,
@@ -106,9 +197,14 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
           });
           if (!fErr) bucket.auto++;
         }
-      } catch {
+      } catch (error) {
         bucket.err++;
+        errorMessage = error instanceof Error ? error.message : String(error);
       }
+    }
+    if (bucket.err > 0) {
+      status = "degraded";
+      errorMessage = `candidate_processing_errors:${bucket.err}:${errorMessage ?? "unknown"}`;
     }
   }
 
@@ -122,9 +218,14 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
     latency_ms: Date.now() - t0,
     status,
     error_message: errorMessage,
-    // `rejected_low_score` has no dedicated column (would need a migration);
-    // kept honest in metadata rather than folded into `duplicates`.
-    metadata: { run_id: result.runId, tier: result.tier, rejected_low_score: bucket.rejected },
+    // Low-signal candidates are persisted for future corroboration and kept
+    // separate from genuine rejections and deduplication telemetry.
+    metadata: {
+      run_id: result.runId,
+      tier: result.tier,
+      held_low_signal: bucket.held,
+      rejected_low_score: bucket.rejected,
+    },
   });
 
   // Update registry health snapshot.
@@ -180,22 +281,20 @@ async function ingestorsForTier(tier: Tier): Promise<Array<{ key: string; fn: So
     out.push({ key: "alberta_ckan", fn: fetchAlbertaGrants });
   }
 
-  // Respect registry enabled flag.
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
-      .from("discovery_sources_registry")
-      .select("dataset_key, enabled");
-    const enabled = new Map(
-      (data ?? []).map((r: { dataset_key: string; enabled: boolean }) => [
-        r.dataset_key,
-        r.enabled,
-      ]),
-    );
-    return out.filter((i) => enabled.get(i.key) !== false);
-  } catch {
-    return out;
-  }
+  // Respect registry enabled flags. A failed registry read must not run sources
+  // an administrator intentionally disabled.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("discovery_sources_registry")
+    .select("dataset_key, enabled");
+  if (error) throw new Error(`source_registry_read_failed:${error.message}`);
+  const enabled = new Map(
+    (data ?? []).map((row: { dataset_key: string; enabled: boolean }) => [
+      row.dataset_key,
+      row.enabled,
+    ]),
+  );
+  return out.filter((ingester) => enabled.get(ingester.key) !== false);
 }
 
 export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResult> {
@@ -204,7 +303,7 @@ export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResul
     tier,
     durationMs: 0,
     perSource: {},
-    totals: { rows: 0, new: 0, dup: 0, rejected: 0, auto: 0, err: 0 },
+    totals: { rows: 0, new: 0, dup: 0, held: 0, rejected: 0, auto: 0, err: 0 },
   };
   const t0 = Date.now();
   const ingestors = await ingestorsForTier(tier);
@@ -215,6 +314,7 @@ export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResul
     result.totals.rows += b.rows;
     result.totals.new += b.new;
     result.totals.dup += b.dup;
+    result.totals.held += b.held;
     result.totals.rejected += b.rejected;
     result.totals.auto += b.auto;
     result.totals.err += b.err;

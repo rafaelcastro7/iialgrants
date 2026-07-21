@@ -6,9 +6,10 @@
 import type { RawCandidate } from "./scoring.server";
 
 // Publicly hosted CSV of OTF grants (verified June 2026 endpoint).
-const OTF_CSV = "https://otf.ca/sites/default/files/2024-11/otf-grants-all-time.csv";
+const OTF_CSV = "https://otf.ca/sites/default/files/OTF-Grants_since2000.csv";
 
-const REGRANT_KEYWORDS = /(foundation|fondation|community|trust|society|council|association)/i;
+const REGRANT_KEYWORDS =
+  /(foundation|fondation|charitable trust|grant[- ]?making|arts council|council for the arts|research council|conseil des arts|conseil de recherches)/i;
 
 function parseCsvLine(line: string): string[] {
   const out: string[] = [];
@@ -42,17 +43,17 @@ export async function fetchOtfRecipients(): Promise<RawCandidate[]> {
   let text = "";
   try {
     const res = await fetch(OTF_CSV, { signal: ctrl.signal });
-    if (!res.ok) return [];
+    if (!res.ok) throw new Error(`otf_csv_http_${res.status}`);
     text = await res.text();
   } finally {
     clearTimeout(t);
   }
   const lines = text.split(/\r?\n/);
-  if (lines.length < 2) return [];
+  if (lines.length < 2) throw new Error("otf_csv_too_short");
   const header = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
   const idxName = header.findIndex((h) => h.includes("recipient") || h.includes("organization"));
   const idxAmt = header.findIndex((h) => h.includes("amount"));
-  if (idxName < 0) return [];
+  if (idxName < 0) throw new Error("otf_csv_recipient_column_missing");
   const agg = new Map<string, { total: number; signals: number }>();
   for (let i = 1; i < lines.length; i++) {
     const row = parseCsvLine(lines[i]);
@@ -76,5 +77,5 @@ export async function fetchOtfRecipients(): Promise<RawCandidate[]> {
       raw_metadata: { otf_grants_count: v.signals },
     });
   }
-  return out.slice(0, 200);
+  return out.sort((a, b) => (b.disbursed_annual ?? 0) - (a.disbursed_annual ?? 0)).slice(0, 200);
 }

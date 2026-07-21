@@ -1097,6 +1097,7 @@ export type Database = {
       funder_candidates: {
         Row: {
           bn_number: string | null;
+          disbursed_annual: number | null;
           discovered_at: string;
           funder_type: string | null;
           id: string;
@@ -1115,6 +1116,7 @@ export type Database = {
         };
         Insert: {
           bn_number?: string | null;
+          disbursed_annual?: number | null;
           discovered_at?: string;
           funder_type?: string | null;
           id?: string;
@@ -1133,6 +1135,7 @@ export type Database = {
         };
         Update: {
           bn_number?: string | null;
+          disbursed_annual?: number | null;
           discovered_at?: string;
           funder_type?: string | null;
           id?: string;

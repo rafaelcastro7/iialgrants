@@ -10,7 +10,9 @@ export const listFunderCandidates = createServerFn({ method: "GET" })
   .inputValidator((d: { status?: string; limit?: number } | undefined) =>
     z
       .object({
-        status: z.enum(["pending_review", "approved", "rejected", "all"]).default("pending_review"),
+        status: z
+          .enum(["candidate", "pending_review", "approved", "rejected", "all"])
+          .default("pending_review"),
         limit: z.number().min(1).max(200).default(50),
       })
       .parse(d ?? {}),
@@ -21,7 +23,7 @@ export const listFunderCandidates = createServerFn({ method: "GET" })
     let q = supabaseAdmin
       .from("funder_candidates")
       .select(
-        "id,name,name_fr,bn_number,province,funder_type,website,source_signals,score,status,raw_metadata,discovered_at,reviewed_at,reject_reason",
+        "id,name,name_fr,bn_number,province,funder_type,website,disbursed_annual,source_signals,score,status,raw_metadata,discovered_at,reviewed_at,reject_reason",
       )
       .order("score", { ascending: false })
       .limit(data.limit);
@@ -39,7 +41,7 @@ export const approveFunderCandidate = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: c, error } = await supabaseAdmin
       .from("funder_candidates")
-      .select("name,name_fr,bn_number,province,website,raw_metadata")
+      .select("name,name_fr,bn_number,province,website,disbursed_annual,raw_metadata")
       .eq("id", data.id)
       .single();
     if (error || !c) throw new Error(error?.message ?? "not_found");
@@ -52,6 +54,7 @@ export const approveFunderCandidate = createServerFn({ method: "POST" })
       source_url: c.website as string | null,
       source_type: "manual",
       bn_number: c.bn_number as string | null,
+      disbursed_annual: c.disbursed_annual as number | null,
       active: true,
     });
     if (fErr && !/duplicate key/i.test(fErr.message)) throw new Error(fErr.message);

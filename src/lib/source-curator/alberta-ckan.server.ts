@@ -23,8 +23,9 @@ export async function fetchAlbertaGrants(limit = 2000): Promise<RawCandidate[]> 
   const t = setTimeout(() => ctrl.abort(), 25_000);
   try {
     const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) return [];
-    const json = (await res.json()) as { result?: { records?: Row[] } };
+    if (!res.ok) throw new Error(`alberta_ckan_http_${res.status}`);
+    const json = (await res.json()) as { success?: boolean; result?: { records?: Row[] } };
+    if (json.success !== true) throw new Error("alberta_ckan_invalid_response");
     const rows = json.result?.records ?? [];
     const agg = new Map<string, { total: number; bn: string | null; signals: number }>();
     for (const r of rows) {
@@ -51,8 +52,6 @@ export async function fetchAlbertaGrants(limit = 2000): Promise<RawCandidate[]> 
       });
     }
     return out.slice(0, 150);
-  } catch {
-    return [];
   } finally {
     clearTimeout(t);
   }

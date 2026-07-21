@@ -1459,3 +1459,39 @@ Follow-up `searchMatch` UI evidence is complete: V1 Kanban and V2 Queue now
 label each ranked result as title/funder/summary/fuzzy evidence and explicitly
 state that this is not a fit score. Browser verification with `IRPA` showed the
 two IRAP programs as `Match: title (fuzzy)` followed by funder matches.
+
+## 2026-07-21 Codex extreme grant-process audit (complete)
+
+Codex currently owns the source-curator ingestion/error-contract area:
+`src/lib/source-curator/*.server.ts`, its focused tests, and source registry
+telemetry in the orchestrator. Claude should review or work outside this slice
+until this claim is marked complete. Initial systemic finding: several sources
+coerce HTTP/configuration/parse failures to `[]`, making outages indistinguishable
+from a valid empty source. The cycle will preserve partial cross-source results
+while recording each failed source honestly. The user's untracked SOP Word files
+remain out of scope and must not be staged.
+
+Audit repairs now implemented: EU Funding & Tenders uses its official multipart
+POST API; BBF resolves and parses the current official XLSX; OTF uses the current
+CSV and sorts explicit re-grant organizations by awarded amount; retired Alberta
+CKAN and PFC directory sources are disabled with actionable errors. Source
+failures and per-candidate failures are distinct (`failed` vs `degraded`).
+Low-signal observations persist as `candidate` for later corroboration.
+
+Evidence scoring was also repaired. Repeated rows, months, queries, and labels no
+longer count as independent sources (`bbf_programs`, `tbs_gc`, `funder_scout`,
+`tri_council` are stable families). `disbursed_annual` is persisted on candidates
+and copied on approval. Most importantly, CRA T3010 now uses official line 5050
+(gifts to qualified donees), not line 5100 total expenditures. Migration
+`20260721211500_correct_t3010_grantmaking_metric.sql` removes machine candidates
+created solely from the invalid metric without touching human decisions.
+
+Live proof: Tier B run `f44e1230-9f90-48f3-91f6-a2db3e2d2459` processed 643
+rows with zero errors and zero new duplicates. Corrected Tier C run
+`55772372-504f-4f37-8c0e-eec3aac2044c` processed 701 rows; TBS, T3010, and OTF
+succeeded, while the then-enabled retired PFC path failed honestly. Browser
+verification of `/admin/candidates` showed Pending review + Building evidence
+queues, recent run telemetry, and no console errors. Final gates: 330 tests
+passed / 4 skipped, full ESLint passed, production build passed. The source-
+curator ownership claim is released; Claude may work in this slice after
+reading this handoff and the final commit.
