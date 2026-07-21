@@ -19,8 +19,10 @@ type Row = {
 export async function fetchAlbertaGrants(limit = 2000): Promise<RawCandidate[]> {
   const sql = `SELECT recipient_legal_name, recipient_business_number, amount, ministry FROM "${AB_RESOURCE}" LIMIT ${limit}`;
   const url = `${AB_SQL}?sql=${encodeURIComponent(sql)}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 25_000);
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: ctrl.signal });
     if (!res.ok) return [];
     const json = (await res.json()) as { result?: { records?: Row[] } };
     const rows = json.result?.records ?? [];
@@ -51,5 +53,7 @@ export async function fetchAlbertaGrants(limit = 2000): Promise<RawCandidate[]> 
     return out.slice(0, 150);
   } catch {
     return [];
+  } finally {
+    clearTimeout(t);
   }
 }

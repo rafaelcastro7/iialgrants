@@ -4,7 +4,7 @@
 
 import { discoverFunderImpl } from "@/agents/discoverer.impl.server";
 
-const FUNDER_TIMEOUT_MS = Number(process.env.DISCOVERY_FUNDER_TIMEOUT_MS ?? 300_000);
+const FUNDER_TIMEOUT_MS = Number(process.env.DISCOVERY_FUNDER_TIMEOUT_MS ?? 90_000);
 const MAX_ATTEMPTS = 2;
 const BACKOFF_MS = [0, 1500]; // pre-attempt wait per attempt index
 const FUNDER_CONCURRENCY = 4; // run up to N funders in parallel
@@ -82,20 +82,6 @@ export async function runDiscoveryJob(
   await assertModuleEnabled("grants_discovery");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  // Job started marker (status='running' so UI knows it's in flight).
-  await supabaseAdmin.from("agent_runs").insert({
-    run_id: jobId,
-    agent: "discoverer",
-    status: "running",
-    model: "phi4-mini:latest",
-    metadata: {
-      job_id: jobId,
-      stage: "orchestrator_started",
-      user_id: triggeringUserId,
-      funder_ids: funderIds ?? null,
-    },
-  });
-
   let q = supabaseAdmin
     .from("funders")
     .select("id, name")
@@ -122,6 +108,24 @@ export async function runDiscoveryJob(
       perFunder: [],
     };
   }
+
+  // Job started marker (status='running' so UI knows it's in flight). Write it
+  // after the funder query so the progress panel can show an honest denominator
+  // even if the local request/runtime is interrupted before completion.
+  await supabaseAdmin.from("agent_runs").insert({
+    run_id: jobId,
+    agent: "discoverer",
+    status: "running",
+    model: "phi4-mini:latest",
+    metadata: {
+      job_id: jobId,
+      stage: "orchestrator_started",
+      user_id: triggeringUserId,
+      funder_ids: funderIds ?? null,
+      funders_queued: funders?.length ?? 0,
+      funder_timeout_ms: FUNDER_TIMEOUT_MS,
+    },
+  });
 
   let totalInserted = 0;
   let totalSeenAgain = 0;

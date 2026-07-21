@@ -204,7 +204,13 @@ type DiscoveryFunderState = {
   latency_ms?: number;
 };
 
-export function summarizeDiscoveryJobRows(jobId: string, all: DiscoveryRunRow[]) {
+const DISCOVERY_STALE_AFTER_MS = Number(process.env.DISCOVERY_STALE_AFTER_MS ?? 120_000);
+
+export function summarizeDiscoveryJobRows(
+  jobId: string,
+  all: DiscoveryRunRow[],
+  opts: { now?: Date; staleAfterMs?: number } = {},
+) {
   let started_at: string | null = null;
   let completed_at: string | null = null;
   let status: "queued" | "running" | "completed" | "failed" = "queued";
@@ -217,15 +223,18 @@ export function summarizeDiscoveryJobRows(jobId: string, all: DiscoveryRunRow[])
   let fundersQueued = 0;
   let completedMarkerAt: string | null = null;
   let latestFunderRowAt: string | null = null;
+  let latestRowAt: string | null = null;
 
   const byFunder = new Map<string, DiscoveryFunderState>();
 
   for (const r of all) {
+    if (latestRowAt == null || r.created_at > latestRowAt) latestRowAt = r.created_at;
     const m = (r.metadata ?? {}) as Record<string, unknown>;
     const stage = typeof m.stage === "string" ? m.stage : undefined;
     if (stage === "orchestrator_started") {
       started_at = r.created_at;
       if (status === "queued") status = "running";
+      fundersQueued = Number(m.funders_queued ?? fundersQueued);
       continue;
     }
     if (stage === "orchestrator_completed") {
@@ -287,6 +296,27 @@ export function summarizeDiscoveryJobRows(jobId: string, all: DiscoveryRunRow[])
     ).length;
     totalDegraded = perFunder.filter((f) => f.status === "degraded").length;
     totalFailed = perFunder.filter((f) => f.status === "failed").length;
+  }
+
+  const now = opts.now ?? new Date();
+  const staleAfterMs = opts.staleAfterMs ?? DISCOVERY_STALE_AFTER_MS;
+  const latestMs = latestRowAt ? new Date(latestRowAt).getTime() : null;
+  const stale =
+    status === "running" &&
+    latestMs != null &&
+    Number.isFinite(latestMs) &&
+    now.getTime() - latestMs > staleAfterMs;
+  if (stale) {
+    status = "failed";
+    const observedProcessed = perFunder.filter((f) =>
+      ["succeeded", "degraded", "failed"].includes(f.status),
+    ).length;
+    totalProcessed = observedProcessed;
+    totalDegraded = perFunder.filter((f) => f.status === "degraded").length;
+    totalFailed = Math.max(
+      totalFailed,
+      Math.max((fundersQueued || observedProcessed) - observedProcessed, 0),
+    );
   }
 
   return {

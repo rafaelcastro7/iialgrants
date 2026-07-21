@@ -150,7 +150,8 @@ export function DiscoveryProgress({
   const { data, error } = useQuery({
     queryKey: ["discovery-job", jobId],
     queryFn: () => fetchStatus({ data: { jobId } }),
-    refetchInterval: (q) => (q.state.data?.status === "completed" ? false : 3_000),
+    refetchInterval: (q) =>
+      q.state.data?.status === "completed" || q.state.data?.status === "failed" ? false : 3_000,
     staleTime: 1_000,
   });
 
@@ -281,7 +282,12 @@ export function DiscoveryProgress({
     <section className="mb-4 border rounded-lg bg-card overflow-hidden">
       <header className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
         <div className="flex items-center gap-2 text-sm">
-          <Badge variant={status === "completed" ? "default" : "secondary"} className="font-mono">
+          <Badge
+            variant={
+              status === "completed" ? "default" : status === "failed" ? "destructive" : "secondary"
+            }
+            className="font-mono"
+          >
             {status}
           </Badge>
           <span className="font-medium">{fr ? "Découverte" : "Discovery"}</span>

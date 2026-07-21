@@ -102,4 +102,33 @@ describe("summarizeDiscoveryJobRows", () => {
       "succeeded",
     ]);
   });
+
+  it("marks a stale unfinished job as failed instead of running forever", () => {
+    const summary = summarizeDiscoveryJobRows(
+      jobId,
+      [
+        row("running", "2026-07-21T17:00:00.000Z", {
+          stage: "orchestrator_started",
+          funders_queued: 5,
+        }),
+        row("degraded", "2026-07-21T17:01:00.000Z", {
+          funder_id: "f1",
+          funder_name: "Innovation Canada",
+          attempt: 1,
+        }),
+        row("degraded", "2026-07-21T17:01:10.000Z", {
+          funder_id: "f2",
+          funder_name: "Trade Commissioner Service",
+          attempt: 1,
+        }),
+      ],
+      { now: new Date("2026-07-21T17:04:00.000Z"), staleAfterMs: 120_000 },
+    );
+
+    expect(summary.status).toBe("failed");
+    expect(summary.fundersQueued).toBe(5);
+    expect(summary.totalProcessed).toBe(2);
+    expect(summary.totalDegraded).toBe(2);
+    expect(summary.totalFailed).toBe(3);
+  });
 });
