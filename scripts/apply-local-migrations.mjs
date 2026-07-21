@@ -7,7 +7,7 @@ import { Client } from "pg";
 
 const DB_URL =
   process.env.DATABASE_URL ||
-  "postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres";
+  "postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:15432/postgres";
 const MIGRATIONS_DIR = resolve(import.meta.dirname, "../supabase/migrations");
 
 async function main() {

@@ -32,7 +32,7 @@ async function main() {
     email_confirm: true,
     password: "live-pilot-pass-123",
   });
-  if (created) {
+  if (created?.user) {
     userId = created.user.id;
   } else if (/already.*registered|exists/i.test(ue?.message ?? "")) {
     const { data: list, error: le } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -50,7 +50,9 @@ async function main() {
   const { data: existing } = await db
     .from("funders")
     .select("id")
-    .eq("name", "National Research Council Canada (IRAP)")
+    .in("name", ["National Research Council Canada (IRAP)", "NRC IRAP"])
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
   if (existing) {
     funderId = existing.id;
@@ -66,7 +68,7 @@ async function main() {
       })
       .select("id")
       .single();
-    if (fe) throw new Error(`funder insert: ${fe.message}`);
+    if (fe) throw new Error(`funder insert: ${fe.message ?? JSON.stringify(fe)}`);
     funderId = f.id;
   }
 

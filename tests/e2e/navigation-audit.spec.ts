@@ -16,7 +16,9 @@ async function signInDemo(page: Page, buttonName: string) {
   await page.goto("/auth");
   await page.getByRole("button", { name: buttonName }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole("heading", { name: /dashboard/i })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /run the grant operation from one place/i }),
+  ).toBeVisible();
 }
 
 async function clickAndAssert(
@@ -26,8 +28,10 @@ async function clickAndAssert(
   ready: () => Promise<void>,
 ) {
   await test.step(href, async () => {
-    const link = page.locator(`a[href="${href}"]`).first();
-    await Promise.all([page.waitForURL(urlPattern), link.click()]);
+    const link = page.locator(`a[href="${href}"]`).filter({ visible: true }).first();
+    await expect(link).toBeVisible();
+    await link.click();
+    await expect(page).toHaveURL(urlPattern);
     await ready();
   });
 }
@@ -39,21 +43,22 @@ test.describe("navigation audit - member", () => {
     await signInDemo(page, DEMO_MEMBER);
 
     await clickAndAssert(page, "/grants", /\/grants\/?$/, async () => {
-      await expect(page.getByRole("tab", { name: "Express" })).toBeVisible();
-      await expect(page.getByRole("tab", { name: "Advanced" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: /prioritize every opportunity/i }),
+      ).toBeVisible();
+      await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
+      await expect(page.getByRole("tab", { name: "Queue" })).toBeVisible();
+      await expect(page.getByRole("tab", { name: "Lifecycle" })).toBeVisible();
     });
-
-    await page.getByRole("tab", { name: "Advanced" }).click();
-    await expect(page.getByLabel("Search grants")).toBeVisible();
 
     const firstGrantLink = page.locator('a[href^="/grants/"]').first();
     await expect(firstGrantLink).toBeVisible();
     await firstGrantLink.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+$/);
-    await expect(page.getByRole("link", { name: /audit trail/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /audit/i })).toBeVisible();
 
-    const auditTrailLink = page.getByRole("link", { name: /audit trail/i });
-    await Promise.all([page.waitForURL(/\/grants\/[^/]+\/audit$/), auditTrailLink.click()]);
+    const auditTrailLink = page.getByRole("link", { name: /audit/i });
+    await auditTrailLink.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+\/audit$/);
     await expect(page.getByText(/rules evaluated/i)).toBeVisible();
     await expect(page.getByText(/evidence used/i)).toBeVisible();
@@ -129,9 +134,11 @@ test.describe("navigation audit - admin", () => {
       await expect(page.getByRole("heading", { name: /discovery history/i })).toBeVisible();
     });
 
-    await page.locator('a[href="/dashboard"]').last().click();
+    await page.locator('a[href="/dashboard"]').filter({ visible: true }).last().click();
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole("heading", { name: /dashboard/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /run the grant operation from one place/i }),
+    ).toBeVisible();
 
     expect(errors).toEqual([]);
   });
