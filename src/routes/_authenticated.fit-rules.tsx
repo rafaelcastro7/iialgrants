@@ -165,8 +165,16 @@ function FitRulesPage() {
     // threshold's own copy promises and what evaluator.impl.server.ts
     // actually gates on. Was rule_score alone, which meant dragging the
     // "Trust the AI vs. the rules" slider changed nothing in this preview.
+    // Also excludes grants the LLM already marked ineligible
+    // (llm_eligibility_pass === false) from "pass" — the real evaluator
+    // requires that too, alongside the rule-based hard_fail/threshold checks
+    // this preview simulates. `null` (no evaluation run yet) is not treated
+    // as ineligible, only a real stored `false` is.
     const pass = items.filter(
-      (i) => !i.hard_fail && i.combined_score >= r.threshold_fit_pass,
+      (i) =>
+        !i.hard_fail &&
+        i.combined_score >= r.threshold_fit_pass &&
+        i.llm_eligibility_pass !== false,
     ).length;
     const block = items.filter((i) => i.hard_fail).length;
     const review = items.length - pass - block;
