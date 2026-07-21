@@ -1622,6 +1622,38 @@ identically to before. The other 17 screens in
 `reference-prototype.html` and the `V2AuthenticatedShell` nav
 relabeling are still unclaimed and out of scope for this pass.
 
+## 2026-07-21 ~19:50 America/Toronto - Claude porting remaining 17 UX-redesign screens
+
+Rafael asked to apply the rest of the design bundle. Scope check against
+the current codebase: `dashboard` (Home), `grants.index` (Grant radar,
+done above), and `grants.$id` (Grant detail) already have a `useUiVersion()`
+-gated v2 variant inline in their route file. The other 14 screens in the
+README (Proposals, Quality check, Submissions, Awards, Money, Impact,
+Renewals, Tasks, Deadlines, Market view, About us, What we show you,
+Guide, Privacy) have NO v2 variant yet — these are net-new components,
+not drop-ins, since the bundle only shipped one real TSX file
+(`V2GrantsWorkspace.tsx`, already applied) plus an HTML prototype as a
+visual reference for the rest.
+
+Claiming: `src/routes/_authenticated.dashboard.tsx` (Home copy pass),
+`src/components/v2/V2GrantDetail.tsx` (verdict-card copy pass), and
+building new inline v2 variants (same `useUiVersion()` pattern as
+dashboard.tsx) for: `_authenticated.proposals.tsx`, `_authenticated.quality.tsx`,
+`_authenticated.submissions.tsx`, `_authenticated.post-award.tsx`,
+`_authenticated.financial.tsx`, `_authenticated.impact.tsx`,
+`_authenticated.renewal.tsx`, `_authenticated.tasks.tsx`,
+`_authenticated.compliance-calendar.tsx`, `_authenticated.competitive.tsx`,
+`_authenticated.org.tsx`, `_authenticated.fit-rules.tsx`,
+`_authenticated.manual.tsx`, `_authenticated.privacy.tsx`.
+
+Not touching v1 (non-v2) rendering paths, data-fetching hooks, or any
+server function — presentation-only, same pattern Codex already uses
+(`if (version === "v2") return <ScreenV2 .../>`). Going screen by
+screen, committing each individually so progress survives if I get
+interrupted. Static-check only (`ts.transpileModule` + manual field
+cross-check against real types) — no dev server/browser here, flagging
+each for Codex/Rafael to browser-verify with the v2 toggle on.
+
 ## 2026-07-21 Codex grant-catalog roast (complete)
 
 Live catalog review found 31/54 active rows were not actionable grants: first-
