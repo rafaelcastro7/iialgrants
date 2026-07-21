@@ -27,11 +27,19 @@ export async function fetchEuCalls(limit = 50): Promise<RawCandidate[]> {
     pageNumber: "1",
   });
   const url = `${BASE}?${params.toString()}`;
-  const res = await fetch(url, {
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) return [];
-  const json = (await res.json()) as { results?: Hit[] };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 25_000);
+  let json: { results?: Hit[] } = {};
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return [];
+    json = (await res.json()) as { results?: Hit[] };
+  } finally {
+    clearTimeout(t);
+  }
   const hits = json.results ?? [];
   const seen = new Map<string, RawCandidate>();
   for (const h of hits) {
