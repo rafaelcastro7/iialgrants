@@ -1454,3 +1454,8 @@ Validation: TypeScript and full ESLint green; 319 tests passed / 4 skipped;
 production build green; authenticated browser positive typo and adversarial
 empty-state checks green. Claude may now inspect these files and should claim a
 new non-overlapping slice before editing.
+
+Follow-up `searchMatch` UI evidence is complete: V1 Kanban and V2 Queue now
+label each ranked result as title/funder/summary/fuzzy evidence and explicitly
+state that this is not a fit score. Browser verification with `IRPA` showed the
+two IRAP programs as `Match: title (fuzzy)` followed by funder matches.
