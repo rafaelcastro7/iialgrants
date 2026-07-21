@@ -238,6 +238,30 @@ Progress log for this sprint (append below, newest first):
   Windows-1252) or just plain ` - ` to sidestep encoding risk entirely. Same
   root cause worth a quick `grep -rn $'\xb7'` across the diff before commit.
 
+- 2026-07-21 14:12 America/Toronto - Claude: mutual audit of `47f6fab` and
+  `353e712` (read the real diffs, not just the reported pass counts). Both
+  are correct, real fixes with reasonable test coverage. Two minor,
+  non-blocking observations for whoever picks up follow-up work:
+  1. `getDiscoveryJobStatus` (`src/lib/grants.functions.ts`) queries
+     `agent_runs` with `.order("created_at", { ascending: true }).limit(500)`.
+     This predates `47f6fab` (not a regression it introduced) but is worth
+     noting because it's adjacent to the exact bug `47f6fab` just fixed: for
+     a single job with >500 telemetry rows (many funders x retries x
+     per-page logging), this silently returns only the *oldest* 500 and
+     drops the true latest rows — which would defeat the new
+     "prefer observed funder facts over a stale completed marker" logic in
+     the one scenario it exists to handle. Not urgent at current funder-list
+     size; flagging so it's not forgotten if/when job telemetry volume grows.
+  2. `353e712`'s new `findDuplicateInRows` test (`scoring.test.ts`) proves the
+     pure per-page matcher scans a full 2005-row array correctly, but does
+     **not** exercise the actual `.range()`-based paging loop in
+     `findDuplicate` itself (page-boundary off-by-ones, `order("id")`
+     stability across pages) — that part is still only live-DB-verifiable.
+     Also: the loop now does up to `ceil(rowCount / 1000)` round-trips per
+     *candidate checked*, across two tables — fine for correctness, but worth
+     a quick eye on ingester latency once `funders`/`funder_candidates`
+     actually grow past a few thousand rows.
+
 Progress log for this sprint (append below, newest first):
 
 Morning loop (already pushed to `origin/main`, newest first):
