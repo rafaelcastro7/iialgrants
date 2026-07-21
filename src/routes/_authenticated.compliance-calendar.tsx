@@ -37,6 +37,7 @@ import {
   Grid3X3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUiVersion } from "@/components/v2/ui-version";
 
 const calendarQO = queryOptions({
   queryKey: ["compliance", "calendar"],
@@ -94,6 +95,7 @@ function generateICal(
 }
 
 function ComplianceCalendarPage() {
+  const { version } = useUiVersion();
   const fetchCalendar = useServerFn(getComplianceCalendar);
   const { data: items } = useSuspenseQuery({
     queryKey: ["compliance", "calendar"],
@@ -194,6 +196,16 @@ function ComplianceCalendarPage() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Calendar exported (.ics)");
+  }
+
+  if (version === "v2") {
+    return (
+      <ComplianceCalendarPageV2
+        items={items}
+        stats={stats}
+        completeMutation={completeMutation}
+      />
+    );
   }
 
   return (
@@ -529,5 +541,159 @@ function ComplianceCalendarPage() {
         </PageContainer>
       </div>
     </PageTransition>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// V2 — friendly redesign (presentation only; same items/stats/completeMutation)
+// -----------------------------------------------------------------------------
+
+type CalendarItems = Awaited<ReturnType<typeof getComplianceCalendar>>;
+type ComplianceStats = Awaited<ReturnType<typeof getComplianceStats>>;
+
+function bucketDeadlines(items: CalendarItems) {
+  const thisWeek: CalendarItems = [];
+  const thisMonth: CalendarItems = [];
+  const later: CalendarItems = [];
+  for (const item of items) {
+    const days = item.daysUntilDue;
+    if (days == null || days > 30) later.push(item);
+    else if (days <= 7) thisWeek.push(item);
+    else thisMonth.push(item);
+  }
+  return { thisWeek, thisMonth, later };
+}
+
+function ComplianceCalendarPageV2({
+  items,
+  stats,
+  completeMutation,
+}: {
+  items: CalendarItems;
+  stats: ComplianceStats;
+  completeMutation: { mutate: (itemId: string) => void; isPending: boolean };
+}) {
+  const groups = bucketDeadlines(items.filter((i) => i.status !== "completed"));
+
+  return (
+    <PageTransition>
+      <div className="min-h-screen text-foreground">
+        <section className="mx-auto max-w-[1100px] space-y-5 px-4 py-6 sm:px-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Deadlines</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Reports and applications due, soonest first.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <p className="text-xs">Total</p>
+                </div>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{stats.total}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <p className="text-xs">Done</p>
+                </div>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-600">
+                  {stats.completed}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <AlertTriangle className="h-4 w-4" />
+                  <p className="text-xs">Overdue</p>
+                </div>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-rose-600">
+                  {stats.overdue}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <p className="text-xs">On track</p>
+                </div>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{stats.complianceRate}%</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <DeadlineGroup title="This week" items={groups.thisWeek} completeMutation={completeMutation} />
+          <DeadlineGroup title="This month" items={groups.thisMonth} completeMutation={completeMutation} />
+          <DeadlineGroup title="Later" items={groups.later} completeMutation={completeMutation} />
+
+          {items.length === 0 && (
+            <div className="rounded-lg border border-dashed bg-card px-5 py-12 text-center">
+              <p className="text-sm text-muted-foreground">No deadlines tracked yet.</p>
+            </div>
+          )}
+        </section>
+      </div>
+    </PageTransition>
+  );
+}
+
+function DeadlineGroup({
+  title,
+  items,
+  completeMutation,
+}: {
+  title: string;
+  items: CalendarItems;
+  completeMutation: { mutate: (itemId: string) => void; isPending: boolean };
+}) {
+  if (items.length === 0) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center gap-3 rounded-md border p-3">
+            <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-md bg-muted text-[10px] font-semibold leading-tight">
+              {item.due_date?.slice(5) ?? "—"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium">{item.title}</span>
+                <Badge variant="outline" className="text-[10px]">
+                  {item.type.replace(/_/g, " ")}
+                </Badge>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">{item.grantTitle}</p>
+            </div>
+            <div className="shrink-0 text-right text-xs">
+              {item.daysUntilDue != null && (
+                <span className={item.daysUntilDue < 0 ? "text-rose-600" : "text-muted-foreground"}>
+                  {item.daysUntilDue < 0
+                    ? `${Math.abs(item.daysUntilDue)}d overdue`
+                    : `${item.daysUntilDue}d left`}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => completeMutation.mutate(item.id)}
+              disabled={completeMutation.isPending}
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600 disabled:opacity-50"
+              title="Mark as complete"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
