@@ -1582,6 +1582,30 @@ new `grant-search-hybrid.server.ts`) should treat the old
 `search-hybrid.server.ts` as safe to delete or fully replace; it has
 never been wired into any route or server function.
 
+## 2026-07-21 ~19:45 America/Toronto - Claude applying Rafael's UX redesign drop-in
+
+Rafael provided a design handoff bundle (`Grant Radar UX Review.zip`,
+unzipped to `outputs/design-review/` in my sandbox) with a friendly-copy
+redesign of the Grant Radar workspace. The bundle's README states
+`design_handoff_friendly_ux/V2GrantsWorkspace.tsx` is a **production,
+drop-in replacement** for `src/components/v2/V2GrantsWorkspace.tsx` —
+same props contract, same imports, compiles against the current repo
+with no other changes (presentation/copy only, no behavior change:
+same `onEnrich`/`onEvaluate`/`onDraft` handlers, same
+`eligibleOnly`/`onlyWithDeadline`/`sortKey` state wiring).
+
+Claiming `src/components/v2/V2GrantsWorkspace.tsx` only — not the other
+17 screens in the bundle's `reference-prototype.html` (those need to be
+ported screen-by-screen later, out of scope right now) and not
+`V2AuthenticatedShell.tsx`'s `NAV_GROUPS` relabeling (also out of scope
+for this pass). Diffed the incoming file against the current one first
+to confirm it's genuinely additive/cosmetic (KPI strip consolidation,
+"Do this next" banner, fit-ring cards, plain-language copy) and doesn't
+touch data-fetching, routes, or the props contract. Applying, static-
+checking with `ts.transpileModule`, and flagging for Codex/Rafael to
+run `bun run dev` and browser-verify the `/grants` v2 UI toggle — I
+cannot run the dev server or a browser from this sandbox.
+
 ## 2026-07-21 Codex grant-catalog roast (complete)
 
 Live catalog review found 31/54 active rows were not actionable grants: first-
