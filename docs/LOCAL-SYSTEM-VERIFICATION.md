@@ -247,6 +247,37 @@ captures raw numeric company IDs with trailing query params
 LinkedIn URL instead of a named slug — cosmetic only, the data is still real
 and present.
 
+### Eighth issue found (unfixed, flagged, HIGH severity): app-wide click-freeze after a Dialog closes via mutation `onSuccess`
+
+On `/tasks`, creating a task via the "New task" dialog works and shows a
+"Task created" toast — but immediately afterward, **every click anywhere on
+the page silently does nothing** (confirmed: clicking "Start task" produced
+no network request at all, and the task's `status` stayed `pending` in the
+DB). Root-caused with a direct DOM inspection: `document.body.style.pointerEvents`
+was stuck at `"none"`, and the Radix Dialog's overlay + content `<div>`s were
+still present in the DOM — full-viewport (`0,0` to `1280,720`), `z-index: 50`,
+`pointer-events: auto` — despite both showing `data-state="closed"`. A hard
+reload clears it (`pointerEvents` back to `"auto"`), and confirms the click
+handler itself is fine: on a fresh load, clicking "Start task" correctly
+fires `updateTaskStatus` and flips the row to `in_progress`. So the bug is
+specifically in the **dialog-close path**, not the button.
+
+The Create Task dialog closes via `setDialogOpen(false)` called inside the
+`createMutation`'s `onSuccess`, alongside `toast.success(...)` and
+`queryClient.invalidateQueries(...)` in the same callback
+(`_authenticated.tasks.tsx`) — a state update fired from an async
+mutation callback rather than a direct user gesture (Escape/overlay-click),
+which is a known trigger for Radix Dialog body-lock cleanup races. The same
+"dialog + close-on-mutation-success" pattern is used in at least 14 files
+across the app (`grep` for `setDialogOpen(false)`/`setOpen(false)` next to a
+mutation `onSuccess`), so this is very likely reproducible well beyond
+`/tasks` — any "Create X" dialog that closes itself from a mutation success
+handler is a candidate. Flagged as a background task rather than patched
+blindly here, since Radix animation/cleanup races need careful diagnosis
+(exact repro conditions, whether it's tied to the toast library coexisting
+with the dialog, whether a targeted fix or a app-wide safety net is right) —
+not a 5-minute fix.
+
 ## All pipeline stages + buttons now exercised
 
 Every stage of the grant lifecycle (discover → enrich → evaluate → draft →
