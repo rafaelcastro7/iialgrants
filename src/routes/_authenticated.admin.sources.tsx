@@ -85,7 +85,7 @@ type RegistrationGateRow = {
   url: string;
   reason: string;
   snippet: string | null;
-  status: "pending" | "registered" | "not_needed";
+  status: string;
   first_detected_at: string;
   last_detected_at: string;
   times_seen: number;
