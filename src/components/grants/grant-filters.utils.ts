@@ -33,9 +33,16 @@ export function funderOf(g: GrantLite): FunderLite | null {
 
 export function applyGrantFilters<T extends GrantLite>(
   grants: T[],
-  opts: { search: string; jurisdiction: string; eligibleOnly: boolean; onlyWithDeadline: boolean },
+  opts: {
+    search: string;
+    jurisdiction: string;
+    sector?: string;
+    eligibleOnly: boolean;
+    onlyWithDeadline: boolean;
+  },
 ): T[] {
   const q = opts.search.trim().toLowerCase();
+  const sector = opts.sector ?? "all";
   return grants.filter((g) => {
     if (q) {
       const funder = funderOf(g);
@@ -45,10 +52,24 @@ export function applyGrantFilters<T extends GrantLite>(
     if (opts.jurisdiction !== "all") {
       if ((funderOf(g)?.jurisdiction ?? "") !== opts.jurisdiction) return false;
     }
+    if (sector !== "all") {
+      if (!(g.sectors ?? []).some((s) => s.toLowerCase() === sector.toLowerCase())) return false;
+    }
     if (opts.eligibleOnly && !g.evaluation?.eligibility_pass) return false;
     if (opts.onlyWithDeadline && !g.deadline) return false;
     return true;
   });
+}
+
+/** Distinct sector values across a grant list, alphabetized for the filter dropdown. */
+export function collectSectors(grants: GrantLite[]): string[] {
+  const set = new Set<string>();
+  for (const g of grants) {
+    for (const s of g.sectors ?? []) {
+      if (s && s.trim()) set.add(s.trim());
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
 function fitValue(g: GrantLite): number {
