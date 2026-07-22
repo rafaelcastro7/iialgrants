@@ -93,6 +93,23 @@ A funder is the organization behind one or more funding opportunities. Funder
 records may include jurisdiction, source URLs, CRA/T3010 enrichment, giving
 patterns, and related programs.
 
+### Discovery
+
+Discovery is how new grants get found on a funder's own website. It tries
+several techniques in order — a fast direct read of the page, a real local
+browser rendering the page (for sites that only show content after
+JavaScript runs), and a couple of remote/archive fallbacks — before giving
+up on a page. This is deliberately local-first: no paid scraping service is
+required for it to work (see `/admin/sources` for the technical detail if
+you're curious).
+
+**If a funder's page requires you to sign in or create an account to see
+program details, the system does not create that account for you.** It
+detects the login wall, tracks it, and lists it under **Admin → Discovery
+Sources → "Needs manual sign-up"** so it is never silently lost. If you want
+that source covered, sign up on the funder's site yourself, then mark the
+row "Registered" in that list so discovery knows it's handled.
+
 ### Enrichment
 
 Enrichment is the process of fetching official pages and extracting structured
