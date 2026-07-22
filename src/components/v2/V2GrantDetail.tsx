@@ -43,6 +43,7 @@ import { FetchTrailPanel } from "@/components/grants/FetchTrailPanel";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
+import type { AxisScore } from "@/agents/fit-rules.shared";
 import { SelfCheckBanner } from "@/components/grants/SelfCheckBanner";
 import { ValueBlock } from "@/components/grants/GrantDetailExpress";
 import { Badge } from "@/components/ui/badge";
