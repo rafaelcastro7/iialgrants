@@ -123,6 +123,21 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
         runId,
         temperature: 0.2,
         responseFormat: "json",
+        // Loose shape guard (no Zod schema here, just the 3 expected keys) so
+        // a provider returning something else entirely advances the chain
+        // instead of silently producing an empty/garbage brief section.
+        validate: (text) => {
+          try {
+            const v = JSON.parse(text) as Record<string, unknown>;
+            return (
+              typeof v.strategic_angle === "string" ||
+              Array.isArray(v.mandatory_components) ||
+              Array.isArray(v.risks)
+            );
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
