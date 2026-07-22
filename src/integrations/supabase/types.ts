@@ -864,6 +864,56 @@ export type Database = {
         }
         Relationships: []
       }
+      discovery_registration_gates: {
+        Row: {
+          first_detected_at: string
+          funder_id: string | null
+          id: string
+          last_detected_at: string
+          reason: string
+          resolved_at: string | null
+          resolved_note: string | null
+          snippet: string | null
+          status: string
+          times_seen: number
+          url: string
+        }
+        Insert: {
+          first_detected_at?: string
+          funder_id?: string | null
+          id?: string
+          last_detected_at?: string
+          reason: string
+          resolved_at?: string | null
+          resolved_note?: string | null
+          snippet?: string | null
+          status?: string
+          times_seen?: number
+          url: string
+        }
+        Update: {
+          first_detected_at?: string
+          funder_id?: string | null
+          id?: string
+          last_detected_at?: string
+          reason?: string
+          resolved_at?: string | null
+          resolved_note?: string | null
+          snippet?: string | null
+          status?: string
+          times_seen?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovery_registration_gates_funder_id_fkey"
+            columns: ["funder_id"]
+            isOneToOne: false
+            referencedRelation: "funders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           created_at: string
