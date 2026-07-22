@@ -116,6 +116,22 @@ function SourcesPage() {
     queryFn: () => funderFn(),
     refetchInterval: 30_000,
   });
+  const qGates = useQuery({
+    queryKey: ["admin-registration-gates"],
+    queryFn: () => gatesFn(),
+  });
+
+  async function resolveGate(id: string, status: "registered" | "not_needed") {
+    setBusy(`gate:${id}`);
+    try {
+      await resolveGateFn({ data: { id, status } });
+      qGates.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const sources: SourceRow[] = q.data?.sources ?? [];
   const health: HealthRow[] = q.data?.health ?? [];
