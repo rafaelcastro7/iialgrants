@@ -13,6 +13,11 @@
 //   • HTTP 404/410                 : 720 (30d), status = 'gone'
 //   • Blocked by robots.txt        : 168 (7d), status = 'blocked'
 //   • Transient error (5xx/timeout): min(prev × 2, 168) capped, status = 'error'
+//
+// recordFetch()'s read-modify-write runs atomically inside the
+// record_crawl_fetch() SQL function (supabase/migrations/20260722130000_*),
+// serialized per-URL via a Postgres advisory lock — this prevents lost
+// updates when two discovery runs overlap on the same URL.
 
 import { createHash } from "crypto";
 
