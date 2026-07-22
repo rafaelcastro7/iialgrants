@@ -24,6 +24,17 @@ import { ArrowLeft } from "lucide-react";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
 
+// Matches CRITIC_RUBRIC_CATEGORIES in src/agents/schemas.ts.
+const CRITIC_RUBRIC_LABELS: Record<string, string> = {
+  need_significance: "Need & significance",
+  approach_feasibility: "Approach & feasibility",
+  capacity: "Organizational capacity",
+  evaluation_plan: "Evaluation plan",
+  sustainability: "Sustainability",
+  budget: "Budget",
+  compliance: "Compliance",
+};
+
 export const Route = createFileRoute("/_authenticated/proposals/$id")({
   head: ({ params }) => ({
     meta: [{ title: `Proposal ${params.id.slice(0, 8)} - IIAL` }],
