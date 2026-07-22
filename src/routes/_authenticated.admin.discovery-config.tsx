@@ -206,7 +206,11 @@ function DiscoveryConfigPage() {
           <CardTitle className="text-base">Funder-scout seed queries</CardTitle>
           <CardDescription>
             Overrides the built-in 6 search seeds for the web-wide funder scout. Leave empty to
-            keep the defaults.
+            keep the defaults. To reach grants outside Canada: replace{" "}
+            <code className="font-mono text-[11px]">site:.ca</code> with the target country's TLD
+            (or drop it) and swap "Canada" for the target country/region in each query — combined
+            with setting your org's jurisdictions in Org settings and adding funder sites manually,
+            this is how the system searches other countries today.
           </CardDescription>
         </CardHeader>
         <CardContent>
