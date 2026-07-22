@@ -141,7 +141,7 @@ export async function fetchBbfPrograms(): Promise<RawCandidate[]> {
     candidates.set(key, {
       name: organization,
       name_fr: organizationFr && organizationFr !== organization ? organizationFr : null,
-      funder_type: "Government program",
+      funder_type: classifyFunderType(rawOrganization),
       website: url.startsWith("http") ? url : null,
       source_signals: ["bbf_programs"],
       raw_metadata: {
