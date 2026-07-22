@@ -179,11 +179,33 @@ export const CriticFinding = z.object({
   message_en: z.string().min(5).max(1000),
   message_fr: z.string().max(1000).nullable().optional().default(""),
 });
+// The 7 categories real funder reviewer rubrics score against (NIH's
+// Significance/Approach/Environment, foundation-style Need/Feasibility/
+// Capacity/Evaluation/Sustainability) — an opaque 0-1 overall_score doesn't
+// tell a writer WHICH weak dimension to fix, same reasoning as the grant's
+// own fit-rules axis breakdown. Optional/defaulted so a provider that only
+// returns the legacy shape still parses.
+export const CRITIC_RUBRIC_CATEGORIES = [
+  "need_significance",
+  "approach_feasibility",
+  "capacity",
+  "evaluation_plan",
+  "sustainability",
+  "budget",
+  "compliance",
+] as const;
+export const CriticRubricItem = z.object({
+  category: z.enum(CRITIC_RUBRIC_CATEGORIES),
+  score: z.number().min(0).max(10),
+  note: z.string().min(1).max(500),
+});
+export type CriticRubricItem = z.infer<typeof CriticRubricItem>;
 export const CriticOutput = z.object({
   overall_score: z.number().min(0).max(1),
   summary_en: z.string().min(10).max(2000),
   summary_fr: z.string().max(2000).nullable().optional().default(""),
   findings: z.array(CriticFinding).max(30).default([]),
+  rubric: z.array(CriticRubricItem).max(7).default([]),
 });
 export type CriticOutput = z.infer<typeof CriticOutput>;
 
