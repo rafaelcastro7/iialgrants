@@ -44,6 +44,10 @@ export type RulesResult = {
   combined_score: (llmScore: number) => number;
   pass: (llmScore: number) => boolean;
   detected_role: "lead" | "partner" | "unknown";
+  // Only meaningful when detected_role === "partner" — which KIND of partner
+  // the eligibility text implies, so the brief can say "you'll need a
+  // municipal co-applicant" instead of just "partner".
+  detected_partner_type: "municipality" | "first_nation" | "co_applicant" | "other" | null;
   cost_share_pct: number | null;
   rolling_intake: boolean;
 };
