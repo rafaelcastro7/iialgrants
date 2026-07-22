@@ -291,7 +291,9 @@ function ProposalDetailPage() {
   const meta = (proposal.metadata ?? {}) as {
     critic_summary_en?: string;
     critic_summary_fr?: string;
+    critic_rubric?: Array<{ category: string; score: number; note: string }>;
   };
+  const rubric = meta.critic_rubric ?? [];
 
   return (
     <main className="min-h-screen text-foreground">
