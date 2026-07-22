@@ -10,6 +10,7 @@ export type GenAIEvent = {
     | "google.gemini"
     | "openai"
     | "ollama"
+    | "cerebras"
     | "groq"
     | "free.groq"
     | "free.gemini"
