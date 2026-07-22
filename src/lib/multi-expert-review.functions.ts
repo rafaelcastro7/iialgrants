@@ -13,29 +13,33 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+// Lens wording tracks the most common, evidence-backed reasons real grant
+// proposals lose points (funder misalignment, unmeasurable objectives, weak
+// evaluation/sustainability plans, capacity gaps, budget mismatches, format
+// non-compliance) — see docs/TECHNIQUES.md for the research this maps to.
 const REVIEWER_ARCHETYPES = [
   {
     id: "domain_expert",
     name: "Domain Expert",
-    lens: "Methodology, evidence base, field conventions, technical accuracy",
+    lens: "Methodology, evidence base, field conventions, technical accuracy, and whether objectives are stated as SMART (specific, measurable, achievable, relevant, time-bound) with a clear need -> objective -> activity chain",
     weight: 0.2,
   },
   {
     id: "program_officer",
     name: "Program Officer",
-    lens: "Funder alignment, priority fit, format compliance, eligibility",
+    lens: "Funder alignment, priority fit, format compliance, eligibility, and whether the sustainability plan names a specific post-grant revenue/partnership mechanism rather than 'seek more funding'",
     weight: 0.2,
   },
   {
     id: "budget_analyst",
     name: "Budget Analyst",
-    lens: "Cost justification, budget realism, math correctness, benchmarks",
+    lens: "Cost justification, budget realism, math correctness, benchmarks, and whether costs tie back to the stated activities",
     weight: 0.15,
   },
   {
     id: "feasibility_reviewer",
     name: "Feasibility Reviewer",
-    lens: "Timeline realism, team capacity, milestones, risk mitigation",
+    lens: "Timeline realism, team capacity, milestones, risk mitigation, and whether the evaluation plan names concrete metrics/instruments/intervals rather than a vague 'track progress' statement",
     weight: 0.15,
   },
   {
