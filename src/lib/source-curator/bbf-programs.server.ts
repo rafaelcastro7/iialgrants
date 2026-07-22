@@ -38,11 +38,15 @@ function cellText(value: ExcelJS.CellValue): string {
   return String(value).trim();
 }
 
+// Matches a government-of-X prefix regardless of what (if anything) follows —
+// used to classify. `GOVERNMENT_PREFIX_STRIP` below additionally requires a
+// trailing comma, since it strips the prefix down to the specific department.
 const GOVERNMENT_PREFIX =
-  /^(?:government of (?:canada|alberta|british columbia|manitoba|new brunswick|newfoundland and labrador|nova scotia|ontario|prince edward island|quebec|saskatchewan)|gouvernement du canada|gouvernement de l['’]ontario|gouvernement du québec|gouvernement du (?:qu[ée]bec|nouveau-brunswick|manitoba|yukon|nunavut)|gouvernement de (?:la nouvelle-[ée]cosse|l['’][iî]le-du-prince-[ée]douard|la colombie-britannique|terre-neuve-et-labrador)|gouvernement des territoires du nord-ouest),\s*/i;
+  /^(?:government of (?:canada|alberta|british columbia|manitoba|new brunswick|newfoundland and labrador|nova scotia|ontario|prince edward island|quebec|saskatchewan)|gouvernement du canada|gouvernement de l['’]ontario|gouvernement du québec|gouvernement du (?:qu[ée]bec|nouveau-brunswick|manitoba|yukon|nunavut)|gouvernement de (?:la nouvelle-[ée]cosse|l['’][iî]le-du-prince-[ée]douard|la colombie-britannique|terre-neuve-et-labrador)|gouvernement des territoires du nord-ouest)\b/i;
+const GOVERNMENT_PREFIX_STRIP = new RegExp(`${GOVERNMENT_PREFIX.source},\\s*`, "i");
 
 function specificOrganization(value: string): string {
-  return value.trim().replace(GOVERNMENT_PREFIX, "");
+  return value.trim().replace(GOVERNMENT_PREFIX_STRIP, "");
 }
 
 /**
@@ -56,7 +60,7 @@ function specificOrganization(value: string): string {
  * still applies before `specificOrganization` strips it.
  */
 function classifyFunderType(rawOrganization: string): string {
-  if (GOVERNMENT_PREFIX.test(`${rawOrganization.trim()},`)) return "Government program";
+  if (GOVERNMENT_PREFIX.test(rawOrganization.trim())) return "Government program";
 
   const pipeIndex = rawOrganization.indexOf("|");
   const segment = pipeIndex >= 0 ? rawOrganization.slice(pipeIndex + 1).trim() : rawOrganization;
