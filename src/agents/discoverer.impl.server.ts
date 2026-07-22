@@ -760,6 +760,21 @@ export async function discoverFunderImpl(
     }
   }
 
+  // A registration/login wall must be tracked, not just silently skipped as
+  // "page too short" — same category of content-blocker as a 404 or WAF
+  // block, but this one has a concrete resolution (a human signs up).
+  const { detectRegistrationWall, recordRegistrationGate } =
+    await import("@/lib/registration-gate.server");
+  const indexWall = detectRegistrationWall(indexText, F.source_url);
+  if (indexWall.blocked) {
+    await recordRegistrationGate(supabaseAdmin, {
+      funderId: F.id,
+      url: F.source_url,
+      reason: indexWall.reason,
+      snippet: indexWall.snippet,
+    });
+  }
+
   // Seed extra candidates via Jina Search so we never depend on the funder's
   // own navigation surfacing every program. This makes discovery resilient on
   // sites that hide programs behind JS menus, filters, or pagination.
