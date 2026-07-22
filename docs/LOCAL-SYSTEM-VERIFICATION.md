@@ -96,12 +96,34 @@ real data ("Grants won 1", award-by-award list).
 - Note: GET server functions are HTTP-cached by the browser, so a stale 500
   response can linger in the console after a fix until a cache-bypassing reload.
 
-### Deterministic actions verified
+### Cerebras model names FIXED (live 404 → working)
 
-| Action | Result |
+Live LLM logs showed the hybrid cloud chain is **cloud-first** (per Rafael:
+"usa los cerebros como fuente inicial") and Cerebras→Groq fallback works — but
+Cerebras was always 404ing: the code used `llama3.1-8b` / `llama-3.3-70b`, which
+this account does not have. `GET /v1/models` shows the account only exposes
+`gemma-4-31b`, `gpt-oss-120b`, `zai-glm-4.7`. Tested JSON output of each:
+`gemma-4-31b` returns clean `{"score":0.8,"pass":true}`; `gpt-oss-120b` truncates
+(harmony reasoning tokens → "Unexpected end of JSON input"); `zai-glm-4.7`
+returns empty content. Fixed `CEREBRAS_MODEL_MAP` to use `gemma-4-31b` for all
+agents (heavier reasoning falls through to Groq `llama-3.3-70b` next in chain).
+Before the fix the evaluator failed `schema_validation: Unexpected end of JSON
+input`; after it, evaluation succeeds.
+
+### Action / lifecycle stages verified
+
+| Stage / action | Result |
 | --- | --- |
 | `/grants` search "IRAP" | ✅ 17→8 relevant |
 | `/fit-rules` Simulate impact | ✅ 3 pass / 13 review / 4 block |
+| Enricher (Check fit on discovered grant) | ✅ ran via cloud; grounding gate honestly refused `enrichment_insufficient` (source lacks amount/deadline) — correct behavior |
+| Evaluator (Re-evaluate fit, enriched grant) | ✅ Cerebras `gemma-4-31b` ok=true 438ms → `fit_score 0.96`, `eligibility_pass true` |
+| Hybrid cloud chain fallback | ✅ live: Cerebras→Groq observed in logs |
+
+### Still to exercise (next loop iterations)
+
+Proposal drafting (writer), quality review (critic), submission recording,
+discovery "Find new grants", funder enrich, DOCX/PDF export.
 
 ## Conclusion
 
