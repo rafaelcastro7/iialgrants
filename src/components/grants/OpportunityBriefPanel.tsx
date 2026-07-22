@@ -225,7 +225,7 @@ export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
 
             <section>
               <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                SOP filters
+                Screening details
               </h4>
               <ul className="space-y-1 text-xs">
                 {b.filters.map((c) => (
