@@ -237,6 +237,20 @@ const NON_GRANT_URL_PATTERNS: RegExp[] = [
   /outside-employment|emploi.*ext[ée]rieur/i,
   /code-of-conduct|code-de-conduite/i,
   /national-inventory/i,
+  // Salesforce Experience Cloud / Community sites (path pattern "/s/...")
+  // ship a standard set of transactional/utility page slugs that have
+  // nothing to do with any specific funder's content — e.g.
+  // innovation.ised-isde.canada.ca's sitemap includes /s/email-verification
+  // and /s/dovdetail (its own "Business Benefits Finder" landing page),
+  // both of which the LLM mistakenly extracted as "grant programs" on
+  // 2026-07-22 (titles "Email Verification Program", "Business Benefits
+  // Finder"). These slugs are Salesforce platform boilerplate, not specific
+  // to this funder, so they're safe to reject globally rather than per-host.
+  /\/s\/(check-your-)?email-verification\b/i,
+  /\/s\/unsubscribe(-desabonner)?\b/i,
+  /\/s\/(login|logout|password-reset)\b/i,
+  /\/s\/error[0-9]{3}\b/i,
+  /\/s\/dovdetail\b/i,
 ];
 // Hosts that are never a funder's own program page — encyclopedias, social
 // networks, aggregators. A grant lives on the funder's site, not Wikipedia.
