@@ -22,6 +22,33 @@ The local development loop is intentionally local-first:
 - LLM work can run through Ollama on `http://localhost:11434`.
 - `bun run check:local` verifies the local stack.
 
+## Environment Architecture (dev vs prod)
+
+One codebase, two databases and a hybrid LLM stack. Full operational detail
+(exact keys, restart/CORS gotchas, demo-password reset) lives in
+`docs/DRP-MIGRATION-RUNBOOK.md`; the summary:
+
+**Databases** — local dev uses the Docker Supabase (`localhost:15435`);
+production (Lovable) uses the Cloud Supabase (`*.supabase.co`). The dev machine
+switches to local purely through a `.env.local` file that overrides `.env`
+per-key (both Bun and Vite load `.env` then `.env.local`). Both files are
+gitignored; Lovable production reads its own dashboard env vars, not any repo
+file. Never hand-edit `.env` to switch DBs — create/remove `.env.local` instead.
+
+The local anon/service keys must be the JWTs from this stack's `kong.yml` (issuer
+`supabase`), not the generic `supabase-demo` keys, or Kong rejects everything
+with `{"message":"Unauthorized"}`. Run the dev server on port 8080 (local
+Supabase CORS only allows that origin) and keep it non-elevated so it can be
+restarted after env changes.
+
+**LLM router** (`src/agents/llm.server.ts`, `llm-free.server.ts`,
+`llm-cloud.server.ts`) is hybrid and picks its path by environment: if Ollama is
+reachable (dev) it is local-first; if not (Lovable prod) it uses the cloud chain
+**Cerebras → Groq → Gemini** (each skipped when its API key is unset), then still
+falls back to local Ollama if the whole cloud chain fails. This is why the app
+works both offline on the workstation and deployed to Lovable with no code
+change.
+
 ## Stack
 
 | Layer           | Technology                                                |
