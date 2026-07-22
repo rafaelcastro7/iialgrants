@@ -305,6 +305,8 @@ async function ingestorsForTier(
 }
 
 export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResult> {
+  const { resolveDiscoveryConfig } = await import("@/lib/discovery-config.server");
+  const cfg = await resolveDiscoveryConfig();
   const result: CuratorResult = {
     runId: newRunId(),
     tier,
@@ -313,9 +315,9 @@ export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResul
     totals: { rows: 0, new: 0, dup: 0, held: 0, rejected: 0, auto: 0, err: 0 },
   };
   const t0 = Date.now();
-  const ingestors = await ingestorsForTier(tier);
+  const ingestors = await ingestorsForTier(tier, cfg);
   for (const ing of ingestors) {
-    await runSource(ing.key, ing.fn, result);
+    await runSource(ing.key, ing.fn, result, cfg);
   }
   for (const b of Object.values(result.perSource)) {
     result.totals.rows += b.rows;
