@@ -65,7 +65,12 @@ export function mergeCandidateEvidence(
   };
 }
 
-async function runSource(name: string, fn: SourceFn, result: CuratorResult): Promise<void> {
+async function runSource(
+  name: string,
+  fn: SourceFn,
+  result: CuratorResult,
+  cfg: DiscoveryConfig,
+): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const t0 = Date.now();
   const bucket = { rows: 0, new: 0, dup: 0, held: 0, rejected: 0, auto: 0, err: 0 };
