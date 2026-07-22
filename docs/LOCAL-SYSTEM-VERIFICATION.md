@@ -148,10 +148,51 @@ After both fixes, "Run critic" on proposal `3c57dedf` succeeded end-to-end
 correctly in the Advanced view — before the fix this action failed 100% of the
 time.
 
+### Second bug found: Citation Tracker read the wrong source entirely
+
+"Extract Citations" always reported 0 citations for every proposal, no matter
+how well-grounded. Cause: `citation-tracker.functions.ts` regexed section
+*prose* for academic `(Author, 2024)`-style inline citations — a format this
+app never produces. The writer already grounds every claim to a retrieved
+evidence chunk and records it in `proposal_citations` (`marker` = `[dN]`,
+`chunk_id`, `snippet`) as it drafts — visible right in the same page as each
+section's "Citations" list. Fixed `extractCitations` to read that table
+instead of re-parsing content with the wrong pattern. Verified: proposal
+`3c57dedf` now reports 7 total citations / 7 verified / per-section counts
+matching the real `[d1]`-`[d4]` markers, where it previously always showed 0.
+
+### Third (unfixed, flagged) bug: Compliance Matrix checks contradict its own policy badges
+
+`generateComplianceMatrix`'s `checks` list matches each requirement by taking
+only its *first word* and doing a bare substring `.includes()` with no word
+boundaries — so "EDI considerations addressed" reduces to "edi", which matches
+inside ordinary words like "immediate" and reports "met" even when the
+proposal never discusses EDI. This directly contradicts the same function's
+separate `policyAlignment` object (proper keyword list: "equity"/"diversity"/
+"inclusion"), which correctly shows ✗ for EDI on the same proposal — both are
+rendered side by side in the UI, visibly disagreeing. Flagged as a background
+task rather than fixed inline (cosmetic/confusing, not blocking).
+
+### Fourth stage verified: Expert Review Panel
+
+"Run Expert Review" (6-reviewer LLM panel, `multi-expert-review.functions.ts`)
+previously failed 100% of the time via every provider (9min timeout locally)
+with the same `"major|critical"` enum bug as the critic — same schema shape,
+same root cause. After the critic prompt/schema fix (which this endpoint
+shares), it now succeeds in 3.7s: overall score 1.3/10 for proposal
+`3c57dedf` (7/9 sections empty), with grounded, non-fabricated per-reviewer
+findings (e.g. Budget Analyst: 0/10, "Budget section is entirely empty";
+Domain Expert: 2/10, cites the specific missing methodology). Confirms the
+fallback fix generalizes correctly beyond the single critic action.
+
+### Exports verified (all fired real server calls, 200 OK)
+
+Export Markdown / DOCX / PDF all triggered `exportProposalFile` with the
+correct `format` param and returned 200.
+
 ### Still to exercise (next loop iterations)
 
-Submission recording (Submit), discovery "Find new grants", funder enrich,
-DOCX/PDF export, Expert Review panel, Citation Tracker, Compliance Matrix.
+Submission recording (Submit), discovery "Find new grants", funder enrich.
 
 ## Conclusion
 
