@@ -143,6 +143,20 @@ export const draftSection = createServerFn({ method: "POST" })
         // section plus citations while bounding local latency.
         maxOutputTokens: 450,
         responseFormat: "json",
+        // Schema guard: coerceWriterOutput repairs common shape issues, but a
+        // provider's output that's still unusable after coercion (or not
+        // even parseable JSON) used to fail the whole section instead of the
+        // cloud/local chain advancing to a provider that can produce a valid
+        // WriterOutput. Mirrors the exact coerce+parse pipeline below so the
+        // guard's verdict matches what the real parse will do.
+        validate: (text) => {
+          try {
+            WriterOutput.parse(coerceWriterOutput(JSON.parse(extractJsonObject(text)), allowed));
+            return true;
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
