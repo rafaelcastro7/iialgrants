@@ -190,9 +190,20 @@ fallback fix generalizes correctly beyond the single critic action.
 Export Markdown / DOCX / PDF all triggered `exportProposalFile` with the
 correct `format` param and returned 200.
 
+### Fifth stage verified: Submit (with blocking gate + force path)
+
+Clicking Submit on proposal `3c57dedf` (22% ready, critic 62%, well below the
+submit threshold) correctly triggered the `submit_blocked` gate and rendered a
+"Submit Anyway" escalation instead of silently allowing or silently refusing.
+Force-submitting recorded a real `submissions` row (method `portal`,
+confirmation `TEST-LOOP-001`, real timestamp), flipped `proposals.status` to
+`submitted`, and the Submissions list page immediately showed the new "Sent"
+entry with today's date and the Sent counter incrementing 1→2. No fabrication,
+no silent bypass — the low-readiness warning worked exactly as designed.
+
 ### Still to exercise (next loop iterations)
 
-Submission recording (Submit), discovery "Find new grants", funder enrich.
+Discovery "Find new grants", funder enrich.
 
 ## Conclusion
 
