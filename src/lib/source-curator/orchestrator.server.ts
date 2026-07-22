@@ -263,7 +263,10 @@ async function ingestorsForTier(
 
   if (tier === "scout" || tier === "all") {
     const { runFunderScout } = await import("./funder-scout.server");
-    out.push({ key: "funder_scout", fn: runFunderScout });
+    out.push({
+      key: "funder_scout",
+      fn: () => runFunderScout(cfg.funderScoutQueries.length ? cfg.funderScoutQueries : undefined),
+    });
   }
 
   if (tier === "C" || tier === "all") {
