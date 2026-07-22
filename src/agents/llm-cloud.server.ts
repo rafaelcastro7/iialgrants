@@ -20,6 +20,12 @@ export type CloudLlmOptions = {
   maxOutputTokens?: number;
   responseFormat?: "json";
   runId?: string;
+  // Optional schema guard: return true if the response text is usable. When a
+  // provider returns HTTP 200 but content that fails the agent's schema (e.g.
+  // Cerebras gemma-4-31b omitting required fields for the critic), the chain
+  // falls through to the next provider (Groq/Gemini) instead of surfacing a
+  // broken response. Callers pass their Zod parse as this guard.
+  validate?: (text: string) => boolean;
 };
 
 export type CloudLlmResult = {
