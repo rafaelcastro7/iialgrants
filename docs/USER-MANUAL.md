@@ -138,6 +138,14 @@ the system got its information and why a decision was made.
 
 Autonomy refers to the local daemon fleet that continuously audits the system,
 measures data quality, identifies weaknesses, and proposes improvements.
+Concretely: one process scores the system's own health every cycle (how much
+of what it claims is actually backed by evidence, how many duplicates, how
+many grants are stuck), one watches for regressions against the last score,
+one audits the code and data for problems, and one turns all of that into a
+prioritized to-do list. **None of these processes edit code or data on their
+own** — they measure and propose; a human (or an assisted coding session)
+reviews the proposal and decides whether to act on it. See it in-app at
+`/autonomy`, and the running list of lessons learned at `docs/TECHNIQUES.md`.
 
 ## Main Navigation
 
