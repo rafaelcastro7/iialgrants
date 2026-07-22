@@ -70,7 +70,11 @@ export type FetchedPage =
 const JINA_READER_BASE = "https://r.jina.ai/";
 const JINA_SEARCH_BASE = "https://s.jina.ai/";
 
-const CHROME_UA =
+// Exported so callers outside this ladder (e.g. discoverer.impl.server.ts's
+// funder index-page fetch) can send the same proven-effective browser UA
+// instead of a self-identifying bot string that gets blocked by WAFs many
+// government/institutional sites already run.
+export const CHROME_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 const GOOGLEBOT_UA = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 
