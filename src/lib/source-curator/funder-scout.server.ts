@@ -2,7 +2,9 @@ import { callLlm } from "@/agents/llm.server";
 import { jinaSearch } from "@/lib/web-fetch.server";
 import type { RawCandidate } from "./scoring.server";
 
-const QUERIES = [
+// Default seed queries — used unless discovery_config.funder_scout_queries
+// has been customized by an admin (empty override list = keep these).
+const DEFAULT_QUERIES = [
   '"grants for nonprofits" Canada "workforce" OR "credentials" site:.ca 2026',
   '"funding opportunities" Canada "micro-credentials" OR "skills training" site:.ca',
   '"call for proposals" Canada "applied research" "industry partnership" site:.ca',
