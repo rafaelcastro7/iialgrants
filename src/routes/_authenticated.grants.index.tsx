@@ -38,12 +38,14 @@ import { V2GrantsWorkspace } from "@/components/v2/V2GrantsWorkspace";
 import { useUiVersion } from "@/components/v2/ui-version";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
+import { GrantSearchProfileBar } from "@/components/grants/GrantSearchProfileBar";
+import { recordGrantSearchFeedback } from "@/lib/grant-search-profiles.functions";
 import "@/i18n";
 
-const grantsQueryOptions = (search = "") =>
+const grantsQueryOptions = (search = "", profileId?: string) =>
   queryOptions({
-    queryKey: ["grants", "all", search],
-    queryFn: () => listGrants({ data: { limit: 100, search: search || undefined } }),
+    queryKey: ["grants", "all", search, profileId ?? "general"],
+    queryFn: () => listGrants({ data: { limit: 100, search: search || undefined, profileId } }),
   });
 
 // SSR-safe sessionStorage access (component renders on the server too).
@@ -81,6 +83,7 @@ function GrantsPage() {
   const discoverAll = useServerFn(discoverAllFunders);
   const enrichOne = useServerFn(enrichGrant);
   const autoEvaluate = useServerFn(autoEvaluatePending);
+  const recordSearchFeedback = useServerFn(recordGrantSearchFeedback);
 
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
@@ -91,6 +94,9 @@ function GrantsPage() {
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
   const [search, setSearch] = useState<string>(() => ss.get("grants.search") ?? "");
   const [serverSearch, setServerSearch] = useState(search.trim());
+  const [searchProfileId, setSearchProfileId] = useState<string | null>(
+    () => ss.get("grants.searchProfileId") || null,
+  );
   const [jurisdiction, setJurisdiction] = useState<string>(
     () => ss.get("grants.jurisdiction") ?? "all",
   );
@@ -123,6 +129,11 @@ function GrantsPage() {
   }, [search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline]);
 
   useEffect(() => {
+    ss.set("grants.searchProfileId", searchProfileId ?? "");
+    if (searchProfileId) setSortKey("relevance");
+  }, [searchProfileId]);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => setServerSearch(search.trim()), 250);
     return () => window.clearTimeout(timer);
   }, [search]);
@@ -136,10 +147,14 @@ function GrantsPage() {
   }, [search]);
 
   const { data } = useSuspenseQuery({
-    queryKey: ["grants", "all", serverSearch],
+    queryKey: ["grants", "all", serverSearch, searchProfileId ?? "general"],
     queryFn: () =>
       fetchGrants({
-        data: { limit: 100, search: serverSearch.length >= 2 ? serverSearch : undefined },
+        data: {
+          limit: 100,
+          search: serverSearch.length >= 2 ? serverSearch : undefined,
+          profileId: searchProfileId ?? undefined,
+        },
       }),
   });
 
@@ -150,7 +165,7 @@ function GrantsPage() {
   const moveMutation = useMutation({
     mutationFn: (vars: { grantIds: string[]; toStatus: GrantStatus }) => moveFn({ data: vars }),
     onMutate: async (vars) => {
-      const activeKey = ["grants", "all", serverSearch];
+      const activeKey = ["grants", "all", serverSearch, searchProfileId ?? "general"];
       await qc.cancelQueries({ queryKey: activeKey });
       const prev = qc.getQueryData<typeof data>(activeKey);
       qc.setQueryData<typeof data>(activeKey, (old) =>
@@ -166,7 +181,8 @@ function GrantsPage() {
       return { prev };
     },
     onError: (e, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["grants", "all", serverSearch], ctx.prev);
+      if (ctx?.prev)
+        qc.setQueryData(["grants", "all", serverSearch, searchProfileId ?? "general"], ctx.prev);
       setEvalError(e instanceof Error ? e.message : String(e));
     },
     onSuccess: (r) => {
@@ -182,6 +198,37 @@ function GrantsPage() {
   });
   const onMove = (grantIds: string[], toStatus: GrantStatus) =>
     moveMutation.mutate({ grantIds, toStatus });
+
+  const feedbackMutation = useMutation({
+    mutationFn: ({ grant, action }: { grant: GrantRowData; action: "saved" | "hidden" }) => {
+      if (!searchProfileId) throw new Error("Select a project profile before saving feedback.");
+      return recordSearchFeedback({
+        data: {
+          profile_id: searchProfileId,
+          grant_id: grant.id,
+          action,
+          reason: null,
+          note: null,
+          query_text: serverSearch || null,
+          rank_position: data.grants.findIndex((item) => item.id === grant.id) + 1,
+          score_snapshot: {
+            combined_relevance: grant.combinedRelevance ?? null,
+            profile_match: grant.profileMatch ?? null,
+            lexical_match: grant.searchMatch ?? null,
+          },
+        },
+      });
+    },
+    onSuccess: async (_result, variables) => {
+      setAutoMsg(
+        variables.action === "hidden"
+          ? "Grant hidden for this project profile."
+          : "Grant saved to this project profile.",
+      );
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    },
+    onError: (cause) => setEvalError(cause instanceof Error ? cause.message : String(cause)),
+  });
 
   const autoRan = useRef(false);
   useEffect(() => {
@@ -344,6 +391,7 @@ function GrantsPage() {
   if (version === "v2") {
     return (
       <PageTransition>
+        <GrantSearchProfileBar selectedProfileId={searchProfileId} onSelect={setSearchProfileId} />
         <V2GrantsWorkspace
           activeJob={activeJob}
           allGrants={data.grants as GrantRowData[]}
@@ -372,6 +420,11 @@ function GrantsPage() {
           onEligibleOnlyChange={setEligibleOnly}
           onEnrich={onEnrich}
           onEvaluate={onEvaluate}
+          onFeedback={
+            searchProfileId
+              ? (grant, action) => feedbackMutation.mutate({ grant, action })
+              : undefined
+          }
           onJurisdictionChange={setJurisdiction}
           onOnlyWithDeadlineChange={setOnlyWithDeadline}
           onSearchChange={setSearch}
@@ -411,6 +464,11 @@ function GrantsPage() {
                 </TabsList>
               </Tabs>
             }
+          />
+
+          <GrantSearchProfileBar
+            selectedProfileId={searchProfileId}
+            onSelect={setSearchProfileId}
           />
 
           {activeJob && (

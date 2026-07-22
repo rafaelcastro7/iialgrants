@@ -4,11 +4,13 @@ import {
   AlertTriangle,
   ArrowRight,
   Bot,
+  Bookmark,
   CalendarClock,
   CheckCircle2,
   ClipboardList,
   ExternalLink,
   FileText,
+  EyeOff,
   Landmark,
   Loader2,
   MapPin,
@@ -39,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 // -----------------------------------------------------------------------------
@@ -81,6 +83,7 @@ type V2GrantsWorkspaceProps = {
   onEligibleOnlyChange: (next: boolean) => void;
   onEnrich: (grantId: string) => void;
   onEvaluate: (grantId: string) => void;
+  onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
   onJurisdictionChange: (next: string) => void;
   onOnlyWithDeadlineChange: (next: boolean) => void;
   onSearchChange: (next: string) => void;
@@ -97,12 +100,48 @@ const PIPELINE_STAGES: Array<{
   label: string;
   statuses: string[];
 }> = [
-  { description: "Fresh leads that still need a source check.", icon: Search, key: "discover", label: "New leads", statuses: ["discovered"] },
-  { description: "Facts and fit checks are being put together.", icon: ShieldCheck, key: "qualify", label: "Checking", statuses: ["enriched", "scored"] },
-  { description: "Worth spending application time on.", icon: FileText, key: "pursue", label: "Pursuing", statuses: ["shortlisted", "in_proposal"] },
-  { description: "Sent, waiting to hear back.", icon: Send, key: "submit", label: "Submitted", statuses: ["submitted"] },
-  { description: "Wins to manage for reporting and renewal.", icon: CheckCircle2, key: "award", label: "Won", statuses: ["won"] },
-  { description: "Closed, expired, or set aside.", icon: XCircle, key: "close", label: "Closed", statuses: ["lost", "expired", "archived"] },
+  {
+    description: "Fresh leads that still need a source check.",
+    icon: Search,
+    key: "discover",
+    label: "New leads",
+    statuses: ["discovered"],
+  },
+  {
+    description: "Facts and fit checks are being put together.",
+    icon: ShieldCheck,
+    key: "qualify",
+    label: "Checking",
+    statuses: ["enriched", "scored"],
+  },
+  {
+    description: "Worth spending application time on.",
+    icon: FileText,
+    key: "pursue",
+    label: "Pursuing",
+    statuses: ["shortlisted", "in_proposal"],
+  },
+  {
+    description: "Sent, waiting to hear back.",
+    icon: Send,
+    key: "submit",
+    label: "Submitted",
+    statuses: ["submitted"],
+  },
+  {
+    description: "Wins to manage for reporting and renewal.",
+    icon: CheckCircle2,
+    key: "award",
+    label: "Won",
+    statuses: ["won"],
+  },
+  {
+    description: "Closed, expired, or set aside.",
+    icon: XCircle,
+    key: "close",
+    label: "Closed",
+    statuses: ["lost", "expired", "archived"],
+  },
 ];
 
 export function V2GrantsWorkspace({
@@ -130,6 +169,7 @@ export function V2GrantsWorkspace({
   onEligibleOnlyChange,
   onEnrich,
   onEvaluate,
+  onFeedback,
   onJurisdictionChange,
   onOnlyWithDeadlineChange,
   onSearchChange,
@@ -138,7 +178,10 @@ export function V2GrantsWorkspace({
 }: V2GrantsWorkspaceProps) {
   const [tab, setTab] = useState("queue");
 
-  const activeAll = useMemo(() => allGrants.filter((g) => isActiveGrantStatus(g.status)), [allGrants]);
+  const activeAll = useMemo(
+    () => allGrants.filter((g) => isActiveGrantStatus(g.status)),
+    [allGrants],
+  );
   const activeFiltered = useMemo(
     () => filteredGrants.filter((g) => isActiveGrantStatus(g.status)),
     [filteredGrants],
@@ -170,6 +213,10 @@ export function V2GrantsWorkspace({
   const queue = useMemo(
     () =>
       [...activeFiltered].sort((a, b) => {
+        if (a.profileMatch || b.profileMatch) {
+          const profileDelta = (b.combinedRelevance ?? 0) - (a.combinedRelevance ?? 0);
+          if (profileDelta !== 0) return profileDelta;
+        }
         const av = priorityScore(a);
         const bv = priorityScore(b);
         if (av !== bv) return bv - av;
@@ -191,9 +238,9 @@ export function V2GrantsWorkspace({
             Here&rsquo;s where to focus today
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            We checked{" "}
-            <span className="font-semibold text-foreground">{metrics.total} grants</span> against
-            your organization. They&rsquo;re sorted so the best use of your time is right at the top.
+            We checked <span className="font-semibold text-foreground">{metrics.total} grants</span>{" "}
+            against your organization. They&rsquo;re sorted so the best use of your time is right at
+            the top.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -225,16 +272,55 @@ export function V2GrantsWorkspace({
           At a glance
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <KpiCard icon={SearchCheck} label="Grants in view" value={metrics.total} help="Active opportunities for you" accent="primary" />
-          <KpiCard icon={ShieldCheck} label="You can apply" value={metrics.eligible} help="You meet the eligibility rules" accent="success" />
-          <KpiCard icon={CalendarClock} label="Closing soon" value={metrics.urgent} help="Deadline within 30 days" accent="danger" />
-          <KpiCard icon={FileText} label="Ready to draft" value={metrics.proposalReady} help={metrics.value ? `${formatCompactCad(metrics.value)} in eligible funding` : "Scored or shortlisted"} accent="violet" />
-          <KpiCard icon={AlertTriangle} label="Need a look" value={metrics.exceptions} help="Missing info or a blocker" accent={metrics.exceptions > 0 ? "warning" : "neutral"} />
+          <KpiCard
+            icon={SearchCheck}
+            label="Grants in view"
+            value={metrics.total}
+            help="Active opportunities for you"
+            accent="primary"
+          />
+          <KpiCard
+            icon={ShieldCheck}
+            label="You can apply"
+            value={metrics.eligible}
+            help="You meet the eligibility rules"
+            accent="success"
+          />
+          <KpiCard
+            icon={CalendarClock}
+            label="Closing soon"
+            value={metrics.urgent}
+            help="Deadline within 30 days"
+            accent="danger"
+          />
+          <KpiCard
+            icon={FileText}
+            label="Ready to draft"
+            value={metrics.proposalReady}
+            help={
+              metrics.value
+                ? `${formatCompactCad(metrics.value)} in eligible funding`
+                : "Scored or shortlisted"
+            }
+            accent="violet"
+          />
+          <KpiCard
+            icon={AlertTriangle}
+            label="Need a look"
+            value={metrics.exceptions}
+            help="Missing info or a blocker"
+            accent={metrics.exceptions > 0 ? "warning" : "neutral"}
+          />
         </div>
       </div>
 
       {activeJob && (
-        <DiscoveryProgress jobId={activeJob.jobId} queued={activeJob.queued} fr={false} onClose={onCloseJob} />
+        <DiscoveryProgress
+          jobId={activeJob.jobId}
+          queued={activeJob.queued}
+          fr={false}
+          onClose={onCloseJob}
+        />
       )}
 
       <StatusMessages
@@ -275,6 +361,7 @@ export function V2GrantsWorkspace({
             onDraft={onDraft}
             onEnrich={onEnrich}
             onEvaluate={onEvaluate}
+            onFeedback={onFeedback}
           />
         </TabsContent>
         <TabsContent value="board" className="mt-0">
@@ -303,7 +390,8 @@ export function V2GrantsWorkspace({
             New here? The match score just means &ldquo;how well this grant fits you.&rdquo;
           </div>
           <div className="mt-0.5 text-sm text-muted-foreground">
-            Green is a strong fit, amber is worth a look. We only show grants you could realistically win.
+            Green is a strong fit, amber is worth a look. We only show grants you could
+            realistically win.
           </div>
         </div>
         <Button asChild variant="outline" className="hidden shrink-0 sm:inline-flex">
@@ -321,8 +409,16 @@ export function V2GrantsWorkspace({
             Discovery scans your enabled funders and adds source-linked grants to review.
           </p>
           {isAdmin ? (
-            <Button className="mt-4 gap-2" disabled={pending === "__discover__"} onClick={onDiscoverAll}>
-              {pending === "__discover__" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            <Button
+              className="mt-4 gap-2"
+              disabled={pending === "__discover__"}
+              onClick={onDiscoverAll}
+            >
+              {pending === "__discover__" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
               Find new grants
             </Button>
           ) : (
@@ -339,9 +435,22 @@ export function V2GrantsWorkspace({
               Local tools
             </div>
             <NotebookLMBridge />
-            <FunderSelector fr={false} selected={selectedFunders} onChange={onSelectedFundersChange} />
-            <Button size="sm" className="gap-2" disabled={pending === "__discover__"} onClick={onDiscoverAll}>
-              {pending === "__discover__" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            <FunderSelector
+              fr={false}
+              selected={selectedFunders}
+              onChange={onSelectedFundersChange}
+            />
+            <Button
+              size="sm"
+              className="gap-2"
+              disabled={pending === "__discover__"}
+              onClick={onDiscoverAll}
+            >
+              {pending === "__discover__" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
               Discover
             </Button>
           </div>
@@ -383,7 +492,9 @@ function NextBestAction({ grant }: { grant: GrantRowData }) {
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-primary-foreground/70">
           <span className="inline-flex items-center gap-1.5">
             <CalendarClock className="h-3.5 w-3.5" />
-            {deadline.days != null && deadline.days >= 0 ? `${deadline.days} days runway` : deadline.label}
+            {deadline.days != null && deadline.days >= 0
+              ? `${deadline.days} days runway`
+              : deadline.label}
           </span>
           {funder?.name && (
             <span className="inline-flex items-center gap-1.5">
@@ -399,7 +510,11 @@ function NextBestAction({ grant }: { grant: GrantRowData }) {
           )}
         </div>
       </div>
-      <Button asChild variant="secondary" className="z-10 shrink-0 gap-2 bg-white text-primary hover:bg-white/90">
+      <Button
+        asChild
+        variant="secondary"
+        className="z-10 shrink-0 gap-2 bg-white text-primary hover:bg-white/90"
+      >
         <Link to="/grants/$id" params={{ id: grant.id }}>
           Open this grant
           <ArrowRight className="h-4 w-4" />
@@ -448,10 +563,17 @@ function KpiCard({
     <div className="relative overflow-hidden rounded-xl border bg-card p-4">
       <span className={cn("absolute inset-y-0 left-0 w-[3px]", ACCENT_BAR[accent])} />
       <div className="flex items-center gap-2">
-        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg bg-muted/60", ACCENT_TEXT[accent])}>
+        <span
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-lg bg-muted/60",
+            ACCENT_TEXT[accent],
+          )}
+        >
           <Icon className="h-4 w-4" />
         </span>
-        <span className={cn("text-2xl font-semibold tabular-nums", ACCENT_TEXT[accent])}>{value}</span>
+        <span className={cn("text-2xl font-semibold tabular-nums", ACCENT_TEXT[accent])}>
+          {value}
+        </span>
       </div>
       <div className="mt-2.5 text-sm font-semibold">{label}</div>
       <div className="mt-0.5 text-xs leading-4 text-muted-foreground">{help}</div>
@@ -543,8 +665,7 @@ function FilterBar({
           aria-pressed={eligibleOnly}
           onClick={() => onEligibleOnlyChange(!eligibleOnly)}
         >
-          <CheckCircle2 className="h-4 w-4" />
-          I can apply
+          <CheckCircle2 className="h-4 w-4" />I can apply
         </Button>
         <Button
           type="button"
@@ -557,17 +678,29 @@ function FilterBar({
           <CalendarClock className="h-4 w-4" />
           Has a deadline
         </Button>
-        <TabsList className="ml-auto h-10" >
-          <button type="button" onClick={() => onTabChange("queue")} className={tabCls(tab === "queue")}>
+        <div className="ml-auto flex h-10 items-center rounded-lg bg-muted p-1" role="tablist">
+          <button
+            type="button"
+            onClick={() => onTabChange("queue")}
+            className={tabCls(tab === "queue")}
+          >
             List
           </button>
-          <button type="button" onClick={() => onTabChange("board")} className={tabCls(tab === "board")}>
+          <button
+            type="button"
+            onClick={() => onTabChange("board")}
+            className={tabCls(tab === "board")}
+          >
             Board
           </button>
-          <button type="button" onClick={() => onTabChange("exceptions")} className={tabCls(tab === "exceptions")}>
+          <button
+            type="button"
+            onClick={() => onTabChange("exceptions")}
+            className={tabCls(tab === "exceptions")}
+          >
             Needs a look
           </button>
-        </TabsList>
+        </div>
       </div>
       <div className="text-xs text-muted-foreground">
         Showing <span className="font-semibold text-foreground">{filteredCount}</span> of{" "}
@@ -596,6 +729,7 @@ function DecisionQueue({
   onDraft,
   onEnrich,
   onEvaluate,
+  onFeedback,
 }: {
   evaluatingIds: Set<string>;
   grants: GrantRowData[];
@@ -604,6 +738,7 @@ function DecisionQueue({
   onDraft: (grantId: string) => void;
   onEnrich: (grantId: string) => void;
   onEvaluate: (grantId: string) => void;
+  onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
 }) {
   if (grants.length === 0) {
     return (
@@ -626,6 +761,7 @@ function DecisionQueue({
           onDraft={onDraft}
           onEnrich={onEnrich}
           onEvaluate={onEvaluate}
+          onFeedback={onFeedback}
         />
       ))}
     </div>
@@ -640,6 +776,7 @@ function QueueCard({
   onDraft,
   onEnrich,
   onEvaluate,
+  onFeedback,
 }: {
   evaluating: boolean;
   grant: GrantRowData;
@@ -648,6 +785,7 @@ function QueueCard({
   onDraft: (grantId: string) => void;
   onEnrich: (grantId: string) => void;
   onEvaluate: (grantId: string) => void;
+  onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
 }) {
   const deadline = deadlineState(grant.deadline);
   const fit = fitValue(grant);
@@ -673,7 +811,12 @@ function QueueCard({
           >
             {grant.title}
           </Link>
-          <span className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold", elig.cls)}>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold",
+              elig.cls,
+            )}
+          >
             {elig.icon}
             {elig.label}
           </span>
@@ -690,7 +833,12 @@ function QueueCard({
             </span>
           )}
           <span className="inline-flex items-center gap-1.5">{amountLabel(grant)}</span>
-          <span className={cn("inline-flex items-center gap-1.5 font-semibold", deadlineTextClass(deadline.tone))}>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 font-semibold",
+              deadlineTextClass(deadline.tone),
+            )}
+          >
             <CalendarClock className="h-3.5 w-3.5" />
             {friendlyDeadline(deadline)}
           </span>
@@ -716,6 +864,30 @@ function QueueCard({
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
+        {onFeedback && (
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-1"
+              aria-label={`Save ${grant.title}`}
+              onClick={() => onFeedback(grant, "saved")}
+            >
+              <Bookmark className="h-3.5 w-3.5" /> Save
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="flex-1 gap-1 text-muted-foreground"
+              aria-label={`Hide ${grant.title}`}
+              onClick={() => onFeedback(grant, "hidden")}
+            >
+              <EyeOff className="h-3.5 w-3.5" /> Hide
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -726,7 +898,13 @@ function FitRing({ fit }: { fit: number | null }) {
   const C = 2 * Math.PI * 16;
   const dash = pct == null ? 0 : (pct / 100) * C;
   const stroke =
-    pct == null ? "var(--muted-foreground)" : pct >= 85 ? "#16a34a" : pct >= 70 ? "var(--primary)" : "#d97706";
+    pct == null
+      ? "var(--muted-foreground)"
+      : pct >= 85
+        ? "#16a34a"
+        : pct >= 70
+          ? "var(--primary)"
+          : "#d97706";
   return (
     <div className="relative h-[60px] w-[60px]">
       <svg width="60" height="60" viewBox="0 0 44 44">
@@ -765,7 +943,13 @@ function LifecycleBoard({ grants }: { grants: GrantRowData[] }) {
   );
 }
 
-function StagePanel({ items, stage }: { items: GrantRowData[]; stage: (typeof PIPELINE_STAGES)[number] }) {
+function StagePanel({
+  items,
+  stage,
+}: {
+  items: GrantRowData[];
+  stage: (typeof PIPELINE_STAGES)[number];
+}) {
   const Icon = stage.icon;
   const shown = items.slice(0, 5);
   return (
@@ -816,7 +1000,9 @@ function StageGrant({ grant }: { grant: GrantRowData }) {
         </p>
       </div>
       <div className="flex items-center gap-2 sm:justify-end">
-        <span className="text-xl font-semibold tabular-nums">{fit == null ? "—" : Math.round(fit * 100)}</span>
+        <span className="text-xl font-semibold tabular-nums">
+          {fit == null ? "—" : Math.round(fit * 100)}
+        </span>
         <ArrowRight className="h-4 w-4 text-muted-foreground" />
       </div>
     </Link>
@@ -889,10 +1075,16 @@ function RiskCard({
     <section className="rounded-lg border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link to="/grants/$id" params={{ id: grant.id }} className="text-sm font-semibold hover:text-primary hover:underline">
+          <Link
+            to="/grants/$id"
+            params={{ id: grant.id }}
+            className="text-sm font-semibold hover:text-primary hover:underline"
+          >
             {grant.title}
           </Link>
-          <p className="mt-1 truncate text-xs text-muted-foreground">{funderOf(grant)?.name ?? "Unknown funder"}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            {funderOf(grant)?.name ?? "Unknown funder"}
+          </p>
         </div>
         <Badge variant="outline" className="rounded-md text-amber-700">
           {risks.length} to check
@@ -970,7 +1162,11 @@ function PrimaryGrantAction({
         disabled={pending === `${grant.id}:enrich`}
         onClick={() => onEnrich(grant.id)}
       >
-        {pending === `${grant.id}:enrich` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+        {pending === `${grant.id}:enrich` ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <RefreshCw className="h-4 w-4" />
+        )}
         Get the details
       </Button>
     );
@@ -984,7 +1180,11 @@ function PrimaryGrantAction({
         disabled={pending === grant.id || evaluating}
         onClick={() => onEvaluate(grant.id)}
       >
-        {evaluating || pending === grant.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchCheck className="h-4 w-4" />}
+        {evaluating || pending === grant.id ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <SearchCheck className="h-4 w-4" />
+        )}
         Check the fit
       </Button>
     );
@@ -1008,7 +1208,11 @@ function PrimaryGrantAction({
         disabled={pending === `${grant.id}:draft`}
         onClick={() => onDraft(grant.id)}
       >
-        {pending === `${grant.id}:draft` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        {pending === `${grant.id}:draft` ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Send className="h-4 w-4" />
+        )}
         Draft application
       </Button>
     );
@@ -1056,23 +1260,46 @@ function StatusMessages({
   );
 }
 
-function Message({ children, onClear, tone = "neutral" }: { children: ReactNode; onClear: () => void; tone?: "danger" | "neutral" }) {
+function Message({
+  children,
+  onClear,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  onClear: () => void;
+  tone?: "danger" | "neutral";
+}) {
   return (
     <div
       className={cn(
         "flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm",
-        tone === "danger" ? "border-destructive/35 bg-destructive/5 text-destructive" : "bg-card text-muted-foreground",
+        tone === "danger"
+          ? "border-destructive/35 bg-destructive/5 text-destructive"
+          : "bg-card text-muted-foreground",
       )}
     >
       <p className="min-w-0 break-words">{children}</p>
-      <button type="button" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={onClear} aria-label="Dismiss">
+      <button
+        type="button"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        onClick={onClear}
+        aria-label="Dismiss"
+      >
         <XCircle className="h-4 w-4" />
       </button>
     </div>
   );
 }
 
-function EmptyPanel({ body, icon: Icon, title }: { body: string; icon: LucideIcon; title: string }) {
+function EmptyPanel({
+  body,
+  icon: Icon,
+  title,
+}: {
+  body: string;
+  icon: LucideIcon;
+  title: string;
+}) {
   return (
     <section className="rounded-lg border border-dashed bg-card px-5 py-12 text-center">
       <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border bg-muted">
@@ -1138,11 +1365,16 @@ function plainGuidance(grant: GrantRowData): string {
   if (grant.summary) return grant.summary;
   const fit = fitValue(grant);
   const deadline = deadlineState(grant.deadline);
-  if (deadline.days != null && deadline.days < 0) return "The deadline has passed — keep for reference unless the funder reopens.";
-  if (grant.status === "discovered") return "A new lead we just found. Pull the details so we can check amount, deadline, and eligibility.";
-  if (!grant.evaluation) return "We have the facts but haven't scored the fit yet. Run a quick check to see if it's worth pursuing.";
-  if (grant.evaluation.eligibility_pass && (fit ?? 0) >= 0.7) return "You can apply and it's a good fit — a strong candidate for a proposal.";
-  if (grant.evaluation.eligibility_pass) return "You're eligible; whether to apply depends on the project angle and how much time you have.";
+  if (deadline.days != null && deadline.days < 0)
+    return "The deadline has passed — keep for reference unless the funder reopens.";
+  if (grant.status === "discovered")
+    return "A new lead we just found. Pull the details so we can check amount, deadline, and eligibility.";
+  if (!grant.evaluation)
+    return "We have the facts but haven't scored the fit yet. Run a quick check to see if it's worth pursuing.";
+  if (grant.evaluation.eligibility_pass && (fit ?? 0) >= 0.7)
+    return "You can apply and it's a good fit — a strong candidate for a proposal.";
+  if (grant.evaluation.eligibility_pass)
+    return "You're eligible; whether to apply depends on the project angle and how much time you have.";
   return "Heads up: there may be an eligibility blocker. Confirm it before spending time here.";
 }
 
@@ -1162,7 +1394,8 @@ function deadlineState(deadline: string | null): {
 } {
   if (!deadline) return { days: null, label: "No deadline (rolling)", tone: "neutral" };
   const date = new Date(deadline);
-  if (Number.isNaN(date.getTime())) return { days: null, label: "Deadline unclear", tone: "warning" };
+  if (Number.isNaN(date.getTime()))
+    return { days: null, label: "Deadline unclear", tone: "warning" };
   const days = Math.ceil((date.getTime() - Date.now()) / DAY_MS);
   if (days < 0) return { days, label: "Closed", tone: "danger" };
   if (days === 0) return { days, label: "Closes today", tone: "danger" };
@@ -1183,20 +1416,29 @@ function friendlyDeadline(d: ReturnType<typeof deadlineState>): string {
 }
 
 function deadlineTextClass(tone: "danger" | "neutral" | "warning"): string {
-  return tone === "danger" ? "text-rose-600" : tone === "warning" ? "text-amber-600" : "text-muted-foreground";
+  return tone === "danger"
+    ? "text-rose-600"
+    : tone === "warning"
+      ? "text-amber-600"
+      : "text-muted-foreground";
 }
 
 function amountLabel(grant: GrantRowData): string {
   const min = grant.amount_cad_min;
   const max = grant.amount_cad_max;
-  if (min != null && max != null) return min === max ? formatCad(max) : `${formatCad(min)} – ${formatCad(max)}`;
+  if (min != null && max != null)
+    return min === max ? formatCad(max) : `${formatCad(min)} – ${formatCad(max)}`;
   if (max != null) return `Up to ${formatCad(max)}`;
   if (min != null) return `From ${formatCad(min)}`;
   return "Amount not listed";
 }
 
 function formatCad(value: number): string {
-  return new Intl.NumberFormat("en-CA", { currency: "CAD", maximumFractionDigits: 0, style: "currency" }).format(value);
+  return new Intl.NumberFormat("en-CA", {
+    currency: "CAD",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value);
 }
 
 function formatCompactCad(value: number): string {
@@ -1207,7 +1449,9 @@ function formatCompactCad(value: number): string {
 
 function collectJurisdictions(grants: GrantRowData[]): string[] {
   return Array.from(
-    new Set(grants.map((g) => funderOf(g)?.jurisdiction ?? null).filter((v): v is string => Boolean(v))),
+    new Set(
+      grants.map((g) => funderOf(g)?.jurisdiction ?? null).filter((v): v is string => Boolean(v)),
+    ),
   ).sort();
 }
 
@@ -1216,7 +1460,15 @@ function priorityScore(grant: GrantRowData): number {
   const deadline = deadlineState(grant.deadline);
   const eligible = grant.evaluation?.eligibility_pass ? 40 : 0;
   const urgency =
-    deadline.days == null ? 0 : deadline.days < 0 ? -50 : deadline.days <= 7 ? 30 : deadline.days <= 30 ? 18 : 0;
+    deadline.days == null
+      ? 0
+      : deadline.days < 0
+        ? -50
+        : deadline.days <= 7
+          ? 30
+          : deadline.days <= 30
+            ? 18
+            : 0;
   const workflow = ["scored", "shortlisted", "in_proposal"].includes(grant.status) ? 12 : 0;
   return fit * 100 + eligible + urgency + workflow;
 }
@@ -1228,12 +1480,20 @@ function hasOperationalRisk(grant: GrantRowData): boolean {
 function riskReasons(grant: GrantRowData): string[] {
   const reasons: string[] = [];
   const deadline = deadlineState(grant.deadline);
-  if (deadline.days != null && deadline.days >= 0 && deadline.days <= 14) reasons.push(`Deadline is close: ${friendlyDeadline(deadline).toLowerCase()}.`);
-  if (deadline.days != null && deadline.days < 0 && !["expired", "archived", "lost"].includes(grant.status))
+  if (deadline.days != null && deadline.days >= 0 && deadline.days <= 14)
+    reasons.push(`Deadline is close: ${friendlyDeadline(deadline).toLowerCase()}.`);
+  if (
+    deadline.days != null &&
+    deadline.days < 0 &&
+    !["expired", "archived", "lost"].includes(grant.status)
+  )
     reasons.push("The deadline looks closed but this is still active.");
-  if (!grant.evaluation && grant.status !== "discovered") reasons.push("Verified but not fit-checked yet.");
+  if (!grant.evaluation && grant.status !== "discovered")
+    reasons.push("Verified but not fit-checked yet.");
   if (grant.status === "discovered") reasons.push("New lead — still needs its details fetched.");
-  if ((grant.duplicateGroupSize ?? 1) > 1) reasons.push("Similar records may split your evidence or duplicate work.");
-  if (grant.evaluation && !grant.evaluation.eligibility_pass) reasons.push("Possible eligibility blocker to confirm.");
+  if ((grant.duplicateGroupSize ?? 1) > 1)
+    reasons.push("Similar records may split your evidence or duplicate work.");
+  if (grant.evaluation && !grant.evaluation.eligibility_pass)
+    reasons.push("Possible eligibility blocker to confirm.");
   return reasons;
 }
