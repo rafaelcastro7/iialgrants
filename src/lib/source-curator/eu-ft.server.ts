@@ -1,6 +1,9 @@
 // EU Funding & Tenders Portal public Search API. The API requires POST with a
-// multipart JSON query; GET returns 405. We retain only current English grant
-// calls that mention Canada and emit their framework as a funder signal.
+// multipart JSON query; GET returns 405. Retains current, open, English grant
+// calls and emits their framework as a funder signal — genuinely EU-wide, not
+// filtered down to Canada-relevant calls only (a `text: "Canada"` search-term
+// filter used to sit here, which meant this was effectively a "Canada
+// mentions in EU calls" ingester rather than a real EU funding source).
 
 import type { RawCandidate } from "./scoring.server";
 
