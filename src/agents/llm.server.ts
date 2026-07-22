@@ -213,10 +213,9 @@ async function prewarmModel(model: string, signal: AbortSignal): Promise<void> {
 }
 
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
-  // Auto-detect environment: if Ollama is not reachable, route to cloud.
-  const ollamaUp = await isOllamaReachable();
-  if (!ollamaUp) {
-    return callCloudLlm({
+  // 1. CLOUD FIRST: Attempt cloud generation via Groq API (faster, 70B models).
+  try {
+    return await callCloudLlm({
       agent: opts.agent,
       messages: opts.messages,
       temperature: opts.temperature,
@@ -224,8 +223,15 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       responseFormat: opts.responseFormat,
       runId: opts.runId,
     });
+  } catch (err) {
+    // 2. LOCAL FALLBACK: If cloud fails (rate limit, offline, no API key), explicitly warn and fallback.
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("cloud_llm_unavailable")) {
+      console.warn(`[LLM Router] Cloud failed (${msg}). Falling back to local Ollama...`);
+    }
   }
 
+  // Fallback to local Ollama logic...
   const runId = opts.runId ?? newRunId();
   const t0 = Date.now();
   let ok = false;
