@@ -215,6 +215,9 @@ function SourcesPage() {
             <Link to="/admin/candidates">
               <Button variant="ghost">View candidates →</Button>
             </Link>
+            <Link to="/admin/discovery-config">
+              <Button variant="ghost">Configure search →</Button>
+            </Link>
           </>
         }
       />
