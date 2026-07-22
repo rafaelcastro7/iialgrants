@@ -38,13 +38,51 @@ function cellText(value: ExcelJS.CellValue): string {
   return String(value).trim();
 }
 
+const GOVERNMENT_PREFIX =
+  /^(?:government of (?:canada|alberta|british columbia|manitoba|new brunswick|newfoundland and labrador|nova scotia|ontario|prince edward island|quebec|saskatchewan)|gouvernement du canada|gouvernement de l['’]ontario|gouvernement du québec|gouvernement du (?:qu[ée]bec|nouveau-brunswick|manitoba|yukon|nunavut)|gouvernement de (?:la nouvelle-[ée]cosse|l['’][iî]le-du-prince-[ée]douard|la colombie-britannique|terre-neuve-et-labrador)|gouvernement des territoires du nord-ouest),\s*/i;
+
 function specificOrganization(value: string): string {
-  return value
-    .trim()
-    .replace(
-      /^(?:government of (?:canada|alberta|british columbia|manitoba|new brunswick|newfoundland and labrador|nova scotia|ontario|prince edward island|quebec|saskatchewan)|gouvernement du canada|gouvernement de l['’]ontario|gouvernement du québec),\s*/i,
-      "",
-    );
+  return value.trim().replace(GOVERNMENT_PREFIX, "");
+}
+
+/**
+ * The BBF workbook's "Organization - English" column is not exclusively
+ * government departments — roughly 65% of unique values have no government
+ * prefix and are hospitals, universities, foundations, or private
+ * administrators (e.g. "Cognit.ca | Hospital for Sick Children" — Cognit.ca
+ * is a private research-grants platform the source spreadsheet uses to list
+ * programs on behalf of the institution named after the pipe). Classify from
+ * the raw (unstripped) organization string so the government-prefix check
+ * still applies before `specificOrganization` strips it.
+ */
+function classifyFunderType(rawOrganization: string): string {
+  if (GOVERNMENT_PREFIX.test(`${rawOrganization.trim()},`)) return "Government program";
+
+  const pipeIndex = rawOrganization.indexOf("|");
+  const segment = pipeIndex >= 0 ? rawOrganization.slice(pipeIndex + 1).trim() : rawOrganization;
+
+  if (
+    /\b(hospital|health (?:sciences|network|care|services)|medical cent(?:er|re)|cancer (?:agency|centre|center)|research institute|institut de recherche|centre hospitalier|sant[ée] mentale)\b/i.test(
+      segment,
+    )
+  ) {
+    return "Hospital / Research Institute";
+  }
+  if (
+    /\b(universit[ée]|college|coll[èe]ge|c[ée]gep|polytechnique|institute of technology)\b/i.test(
+      segment,
+    )
+  ) {
+    return "University / College";
+  }
+  if (/\b(foundation|fondation)\b/i.test(segment)) return "Foundation";
+  if (
+    /\b(inc\.?|ltd\.?|limited|llc)\b/i.test(segment) ||
+    /^[a-z0-9][\w-]*\.(?:ca|com|org|net)\b/i.test(segment)
+  ) {
+    return "Private / Other";
+  }
+  return "Community / Re-grant";
 }
 
 export async function fetchBbfPrograms(): Promise<RawCandidate[]> {
