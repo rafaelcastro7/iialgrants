@@ -91,10 +91,10 @@ export function freeProvidersAvailable(): string[] {
 }
 
 export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> {
-  // LOCAL FIRST: Ollama is primary wherever it's reachable. Cloud (Groq) is
-  // used only when Ollama is unreachable (e.g. deployed to Lovable) or as a
-  // last-resort fallback below when every local model attempt fails.
-  if (!(await isOllamaReachable())) {
+  // CLOUD FIRST: cloud chain is Cerebras -> Groq (see llm-cloud.server.ts),
+  // the initial source everywhere including Lovable. Local Ollama below is the
+  // last-resort fallback when no cloud key is set or every provider fails.
+  try {
     return await callCloudLlm({
       agent: opts.agent,
       messages: opts.messages,
@@ -103,6 +103,11 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       responseFormat: opts.responseFormat,
       runId: opts.runId,
     });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("cloud_llm_unavailable")) {
+      console.warn(`[Free LLM Router] Cloud failed (${msg}). Falling back to local Ollama...`);
+    }
   }
 
   const runId = opts.runId ?? newRunId();
