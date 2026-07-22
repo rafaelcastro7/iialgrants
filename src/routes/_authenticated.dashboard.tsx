@@ -88,6 +88,16 @@ function Dashboard() {
     queryKey: ["dashboard", "grants"],
     queryFn: () => fetchGrants({ data: { limit: 100 } }),
   });
+  // Coverage trust signal — "how many funders are we watching" is table
+  // stakes on every competing grant-search product (Instrumentl, Candid);
+  // without it, "56 grants" has no context for whether that's a small slice
+  // or the whole relevant universe.
+  const fetchFunderStats = useServerFn(getFunderDashboardStats);
+  const { data: funderStats } = useQuery({
+    queryKey: ["dashboard", "funder-stats"],
+    queryFn: () => fetchFunderStats({ data: {} }),
+  });
+  const funderCount = funderStats?.totalFunders ?? null;
 
   const p = org?.profile;
   const profileComplete = !!(p?.org_name && p.sectors?.length && p.jurisdictions?.length);
