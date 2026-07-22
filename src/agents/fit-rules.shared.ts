@@ -310,7 +310,19 @@ export function deriveRulesFromOrg(
           .map((s) => s.trim().replace(/^"|"$/g, ""))
       : [];
   const sectors = [...(org.sectors ?? []), ...focus].map((s) => String(s).trim()).filter(Boolean);
-  if (sectors.length > 0) rules.required_sectors = Array.from(new Set(sectors));
+  if (sectors.length > 0) {
+    rules.required_sectors = Array.from(new Set(sectors));
+    // SOP F4's strategic-fit check (`iial_capabilities`) used to stay pinned
+    // to DEFAULT_RULES' fixed keyword list ("wcis", "smart city", "aiot", …)
+    // for every org, since only required_sectors was derived here — a
+    // second org with a completely different profile (e.g. sectors
+    // "technology, ai" instead of IIAL's own) was screened against a
+    // capability list that was never theirs. The same declared
+    // sectors/focus-areas ARE the org's own capabilities, so reuse them here
+    // too rather than leaving a single hardcoded tenant's keywords as the
+    // permanent default for every organization using this system.
+    rules.iial_capabilities = Array.from(new Set(sectors));
+  }
 
   return rules;
 }
