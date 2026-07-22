@@ -365,11 +365,24 @@ Firecrawl itself (`firecrawl.server.ts`) is also wired in as an optional
 preferred path (`discoverFunderImpl`'s "Path A") but is **off by default**
 (`USE_FIRECRAWL=0`, empty `FIRECRAWL_API_KEY` in `.env`) — the ladder above is
 the active path ("Path B" / `engine: "fallback"` in `agent_runs.metadata`).
-Turning Firecrawl on requires no code change, just the env var + a real key
-(cloud) or self-hosting the open-source `firecrawl/firecrawl` repo (Docker
-Compose, ~8-12GB RAM) or a lighter alternative like Crawl4AI. Not yet done as
-of this writing — the local ladder above already covers most of what
-Firecrawl would add for this specific job.
+
+**Considered and declined (2026-07-22): self-hosting Firecrawl or Crawl4AI.**
+Checked before writing this off — `docker info` on this machine shows Docker
+Desktop's own memory budget is ~8.3GB total, already shared across the
+running Supabase stack (kong/auth/rest/db/meta). Self-hosted Firecrawl's own
+Docker Compose stack (API + Playwright + Redis + RabbitMQ + Postgres) needs
+8-12GB **on its own** — there isn't headroom without raising Docker's memory
+allocation, a host-level change affecting every other Docker-based project on
+this machine, not just this one. Crawl4AI is lighter (~2GB image, ~300MB idle
+RAM) but is a Python library/service — this project has zero other Python
+dependencies, and it would largely duplicate `browser-render.server.ts` +
+`scrape-engine.server.ts`, which already provide equivalent local, free
+headless-render + Readability-based extraction in the same Node/TS runtime
+everything else here runs in. Conclusion: skip both. If cloud Firecrawl
+capacity is ever wanted for its `map()` relevance-ranking specifically (the
+one thing the local ladder doesn't replicate), a paid API key is the lower-
+friction path — flip `USE_FIRECRAWL=1` and set a real `FIRECRAWL_API_KEY`, no
+code change needed.
 
 **Realistic User-Agent, not a self-identifying one.** The discoverer's
 funder-index-page fetch used to send `"IIAL/0.1 (+https://iial.ca)"` — a
