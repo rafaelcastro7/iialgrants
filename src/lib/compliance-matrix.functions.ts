@@ -49,6 +49,63 @@ const REQUIREMENT_TEMPLATES: Record<string, Array<{ category: string; requiremen
   ],
 };
 
+const REQUIREMENT_STOPWORDS = new Set([
+  "a",
+  "an",
+  "the",
+  "of",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "and",
+  "or",
+  "with",
+  "before",
+  "after",
+  "not",
+  "than",
+  "less",
+  "each",
+  "max",
+]);
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripParenthetical(requirement: string): string {
+  return requirement.replace(/\([^)]*\)/g, "").trim();
+}
+
+function significantWords(requirement: string): string[] {
+  return requirement
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 3 && !REQUIREMENT_STOPWORDS.has(word));
+}
+
+function includesWholeWord(haystack: string, word: string): boolean {
+  return new RegExp(`\\b${escapeRegExp(word)}\\b`, "i").test(haystack);
+}
+
+/**
+ * Matching is whole-word/phrase based (not first-word substring) so short terms like "EDI"
+ * don't false-positive against unrelated words such as "immediate" or "expedite".
+ */
+function matchRatio(haystack: string, requirement: string): number {
+  const normalized = stripParenthetical(requirement);
+  const phraseRegex = new RegExp(`\\b${escapeRegExp(normalized)}\\b`, "i");
+  if (phraseRegex.test(haystack)) return 1;
+
+  const words = significantWords(normalized);
+  if (words.length === 0) return 0;
+
+  const matched = words.filter((word) => includesWholeWord(haystack, word)).length;
+  return matched / words.length;
+}
+
 export const generateComplianceMatrix = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
