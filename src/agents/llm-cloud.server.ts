@@ -111,17 +111,12 @@ export async function isOllamaReachable(): Promise<boolean> {
   }
 }
 
-async function callGroq(opts: CloudLlmOptions): Promise<CloudLlmResult> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "cloud_llm_unavailable: GROQ_API_KEY is not set. " +
-        "Add it to your Lovable environment variables (Settings → Environment Variables).",
-    );
-  }
-
-  const model = CLOUD_MODEL_MAP[opts.agent] ?? "llama-3.1-8b-instant";
-  const runId = opts.runId ?? newRunId();
+async function callOpenAICompat(
+  provider: CloudProvider,
+  opts: CloudLlmOptions,
+  runId: string,
+): Promise<CloudLlmResult> {
+  const model = provider.modelMap[opts.agent] ?? provider.modelMap.discoverer;
   const t0 = Date.now();
   let ok = false;
   let errMsg: string | undefined;
@@ -132,17 +127,16 @@ async function callGroq(opts: CloudLlmOptions): Promise<CloudLlmResult> {
     temperature: opts.temperature ?? 0.2,
     max_tokens: opts.maxOutputTokens ?? 2048,
   };
-
   if (opts.responseFormat === "json") {
     body.response_format = { type: "json_object" };
   }
 
   try {
-    const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+    const res = await fetch(`${provider.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${provider.apiKey}`,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(60_000),
@@ -150,7 +144,7 @@ async function callGroq(opts: CloudLlmOptions): Promise<CloudLlmResult> {
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      throw new Error(`groq_error_${res.status}: ${errBody.slice(0, 300)}`);
+      throw new Error(`${provider.name}_error_${res.status}: ${errBody.slice(0, 300)}`);
     }
 
     const data = await res.json();
@@ -159,13 +153,13 @@ async function callGroq(opts: CloudLlmOptions): Promise<CloudLlmResult> {
     const outputTokens: number | undefined = data?.usage?.completion_tokens;
     ok = true;
 
-    return { text, inputTokens, outputTokens, runId, provider: "groq", model };
+    return { text, inputTokens, outputTokens, runId, provider: provider.name, model };
   } catch (e) {
     errMsg = e instanceof Error ? e.message : String(e);
     throw e;
   } finally {
     logGenAI({
-      "gen_ai.system": "groq",
+      "gen_ai.system": provider.name,
       "gen_ai.request.model": model,
       "gen_ai.operation.name": "chat",
       latency_ms: Date.now() - t0,
@@ -179,8 +173,31 @@ async function callGroq(opts: CloudLlmOptions): Promise<CloudLlmResult> {
 
 /**
  * Main cloud entrypoint — mirrors callLlm / callFreeLlm signatures.
- * Called by the environment-aware router when Ollama is not reachable.
+ * Tries the cloud chain in order (Cerebras -> Groq), skipping providers with
+ * no API key. Throws `cloud_llm_unavailable` only when NO provider has a key,
+ * so the router falls back to local Ollama. If keys exist but every provider
+ * errors, the last provider error is surfaced.
  */
 export async function callCloudLlm(opts: CloudLlmOptions): Promise<CloudLlmResult> {
-  return callGroq(opts);
+  const runId = opts.runId ?? newRunId();
+  const providers = cloudProviders().filter((p) => !!p.apiKey);
+
+  if (providers.length === 0) {
+    throw new Error(
+      "cloud_llm_unavailable: no cloud LLM key set (CEREBRAS_API_KEY / GROQ_API_KEY). " +
+        "Add one to your Lovable environment variables (Settings → Environment Variables).",
+    );
+  }
+
+  let lastErr: unknown;
+  for (const provider of providers) {
+    try {
+      return await callOpenAICompat(provider, opts, runId);
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`[Cloud LLM] ${provider.name} failed (${msg}). Trying next provider...`);
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
