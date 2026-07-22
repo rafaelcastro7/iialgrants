@@ -9,6 +9,8 @@ import {
   runDiscoveryTier,
   promoteStaleCandidates,
   recentSourceRuns,
+  listRegistrationGates,
+  resolveRegistrationGate,
 } from "@/lib/admin-sources.functions";
 import { funderActivityRollup, type FunderActivityRow } from "@/lib/admin-sources-audit.functions";
 import { Button } from "@/components/ui/button";
