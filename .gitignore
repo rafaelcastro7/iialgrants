@@ -53,3 +53,8 @@ scripts/.supervisor.pid
 scripts/.watchdog-state.json
 [
 ]+.env
+
+# Environment files — never commit (secrets). Use .env.example as the template.
+.env
+.env.*
+!.env.example
