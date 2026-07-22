@@ -139,14 +139,14 @@ export const generateComplianceMatrix = createServerFn({ method: "POST" })
 
         const relevantSection = data.sections.find(
           (s) =>
-            s.title.toLowerCase().includes(req.requirement.toLowerCase().split(" ")[0] || "") ||
-            s.content.toLowerCase().includes(req.requirement.toLowerCase().split(" ")[0] || ""),
+            matchRatio(s.title.toLowerCase(), req.requirement) === 1 ||
+            matchRatio(s.content.toLowerCase(), req.requirement) === 1,
         );
 
         if (relevantSection) {
           status = "met";
           details = `Found in section: ${relevantSection.title}`;
-        } else if (fullContent.includes(req.requirement.toLowerCase().split(" ")[0] || "")) {
+        } else if (matchRatio(fullContent, req.requirement) >= 0.5) {
           status = "partial";
           details = "Referenced but not in a dedicated section";
         } else {
