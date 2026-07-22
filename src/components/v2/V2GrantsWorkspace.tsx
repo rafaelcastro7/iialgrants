@@ -665,6 +665,19 @@ function FilterBar({
             ))}
           </SelectContent>
         </Select>
+        <Select value={sector} onValueChange={onSectorChange}>
+          <SelectTrigger className="w-[180px]" aria-label="Filter by sector">
+            <SelectValue placeholder="Sector" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any sector</SelectItem>
+            {sectors.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button
           type="button"
           variant={eligibleOnly ? "default" : "outline"}
