@@ -119,11 +119,39 @@ input`; after it, evaluation succeeds.
 | Enricher (Check fit on discovered grant) | ✅ ran via cloud; grounding gate honestly refused `enrichment_insufficient` (source lacks amount/deadline) — correct behavior |
 | Evaluator (Re-evaluate fit, enriched grant) | ✅ Cerebras `gemma-4-31b` ok=true 438ms → `fit_score 0.96`, `eligibility_pass true` |
 | Hybrid cloud chain fallback | ✅ live: Cerebras→Groq observed in logs |
+| Writer (Draft "Problem Statement") | ✅ Cerebras `gemma-4-31b` ok=true 849ms → 1207 chars written |
+| Critic (Run critic) | ✅ after fix below → succeeded, score 62%, 8 findings, renders in Advanced view |
+
+### Schema-validation-aware LLM fallback ADDED + critic prompt FIXED
+
+The critic's schema is more complex than the evaluator's (`overall_score`,
+`summary_en`, `findings[]` with strict `severity` enum). Cerebras `gemma-4-31b`
+returned syntactically valid JSON that didn't match the Zod schema (missing
+`overall_score`), and the critic only ever called one provider — no retry on a
+schema mismatch, unlike the retry-on-HTTP-error path. Root cause found by
+testing every provider: **all** of them (Cerebras, Groq 70b, Gemini, local
+dolphin3/dolphin-mistral) failed to produce `severity` as one of
+`critical|major|minor|suggestion` — the prompt described the rules in prose but
+never stated the exact JSON shape, so models invented values like
+`"major|critical"` or omitted `overall_score` entirely. Two fixes:
+
+1. **`llm.server.ts` / `llm-cloud.server.ts`**: added an optional `validate`
+   guard to the LLM call chain — if a provider's output parses as JSON but
+   fails the caller's schema, the chain now advances to the next provider
+   (Cerebras→Groq→Gemini→Ollama) instead of stopping at "the LLM responded ok".
+   Applies to both the cloud chain and the local Ollama path.
+2. **`schemas.ts`**: rewrote the critic prompt to spell out the exact JSON
+   shape and the literal enum values expected for `severity`.
+
+After both fixes, "Run critic" on proposal `3c57dedf` succeeded end-to-end
+(model `dolphin3:latest`, 3081ms, score 0.62, 8 findings) and rendered
+correctly in the Advanced view — before the fix this action failed 100% of the
+time.
 
 ### Still to exercise (next loop iterations)
 
-Proposal drafting (writer), quality review (critic), submission recording,
-discovery "Find new grants", funder enrich, DOCX/PDF export.
+Submission recording (Submit), discovery "Find new grants", funder enrich,
+DOCX/PDF export, Expert Review panel, Citation Tracker, Compliance Matrix.
 
 ## Conclusion
 
