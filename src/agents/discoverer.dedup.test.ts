@@ -82,6 +82,11 @@ describe("isGenericTitle rejects administrative pages despite acronyms", () => {
     "NRC Annual Report 2025",
     "IRAP Privacy Notice",
     "NRC Terms of Use",
+    // Live discovery on 2026-07-21 surfaced this as a 96%-fit "grant" — it's
+    // an Investissement Québec index page listing several distinct tax-credit
+    // programs, but the LLM summarized it as one generic title instead of
+    // splitting it into the underlying specific programs.
+    "Governmental Financing Programs",
   ];
   for (const title of adminTitles) {
     it(`rejects: ${title.slice(0, 60)}`, () => {
