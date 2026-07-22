@@ -810,6 +810,7 @@ export async function discoverFunderImpl(
         funder_name: F.name,
         engine: "fallback",
         index_fetch_error: indexFetchError,
+        index_via_browser: indexViaBrowser,
         links_considered: 0,
       },
     });
@@ -904,6 +905,7 @@ export async function discoverFunderImpl(
         funder_name: F.name,
         engine: "fallback",
         index_fetch_error: indexFetchError,
+        index_via_browser: indexViaBrowser,
         links_from_index: linksFromIndex.length,
         links_from_search: seeded.length,
         links_from_sitemap: sitemapSeeded.length,
@@ -1124,6 +1126,7 @@ export async function discoverFunderImpl(
       funder_name: F.name,
       engine: "fallback",
       index_fetch_error: indexFetchError,
+        index_via_browser: indexViaBrowser,
       links_extracted: links.length,
       pages_scraped: pageDocs.length,
       links_from_index: linksFromIndex.length,
