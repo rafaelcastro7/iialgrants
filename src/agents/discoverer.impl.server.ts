@@ -321,12 +321,26 @@ const FIRECRAWL_JSON_SCHEMA = {
           title_fr: { type: ["string", "null"], description: "French (Quebec) title if present" },
           summary: { type: ["string", "null"], description: "1-3 sentence description" },
           summary_fr: { type: ["string", "null"] },
-          amount_cad_min: { type: ["number", "null"], description: "Min funding in CAD" },
-          amount_cad_max: { type: ["number", "null"], description: "Max funding in CAD" },
+          amount_cad_min: {
+            type: ["number", "null"],
+            description: "Min funding amount, in the currency field below",
+          },
+          amount_cad_max: {
+            type: ["number", "null"],
+            description: "Max funding amount, in the currency field below",
+          },
+          country: {
+            type: ["string", "null"],
+            description: "ISO 3166-1 alpha-2 country the program applies to, e.g. CA, US, FR",
+          },
+          currency: {
+            type: ["string", "null"],
+            description: "ISO 4217 currency of the amounts, e.g. CAD, USD, EUR",
+          },
           deadline: { type: ["string", "null"], description: "ISO YYYY-MM-DD or null" },
           eligibility: { type: "object" },
           sectors: { type: "array", items: { type: "string" } },
-          language: { type: "string", enum: ["en", "fr"] },
+          language: { type: "string", description: "ISO 639-1 language code of the page, e.g. en, fr, es" },
           url: { type: "string", description: "Canonical program URL" },
         },
         required: ["title", "language", "url"],
@@ -337,10 +351,11 @@ const FIRECRAWL_JSON_SCHEMA = {
 } as const;
 
 const JSON_PROMPT =
-  "Extract every distinct Canadian funding program described on this page. " +
+  "Extract every distinct funding program (grant, subsidy, or loan — any country) described on this page. " +
   "If the page is an index that lists multiple programs with links, extract one entry per listed program using the link as `url`. " +
-  "Use Canadian dollars; never invent amounts or deadlines (null if unknown). " +
-  "Deadlines must be ISO YYYY-MM-DD or null. Detect language ('en' or 'fr') from the text.";
+  "Detect the country (ISO 3166-1 alpha-2) and currency (ISO 4217) from context — do not assume Canada/CAD; " +
+  "only default to CA/CAD when the page gives no country/currency signal at all. Never invent amounts or deadlines (null if unknown). " +
+  "Deadlines must be ISO YYYY-MM-DD or null. Detect the page's language (ISO 639-1, e.g. en, fr, es, de).";
 
 export type DiscoveryResult = {
   ok: boolean;
