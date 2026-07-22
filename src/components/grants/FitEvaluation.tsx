@@ -16,6 +16,7 @@ import {
   Gavel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AxisScore } from "@/agents/fit-rules.shared";
 
 type Stage = "discovered" | "enriched" | "evaluated" | "verdict";
 
@@ -30,9 +31,22 @@ interface Props {
     rationale_en: string;
     rationale_fr: string;
     created_at: string;
+    axis_breakdown?: AxisScore[] | null;
   } | null;
   isEvaluating?: boolean;
   fr?: boolean;
+}
+
+// A high score computed from only 1-2 evaluable factors reads as more
+// confident than it should — the same 100% pass rate on 2 known factors and
+// on 6 known factors are NOT equally trustworthy, but a bare score doesn't
+// say so. Surfaces "assessed 2 of 6 factors" next to the score whenever
+// coverage is thin, instead of letting a high number imply more certainty
+// than the underlying data supports.
+function coverage(axes: AxisScore[] | null | undefined) {
+  if (!axes || axes.length === 0) return null;
+  const assessed = axes.filter((a) => a.status !== "na").length;
+  return { assessed, total: axes.length };
 }
 
 const STAGE_ORDER: Stage[] = ["discovered", "enriched", "evaluated", "verdict"];
