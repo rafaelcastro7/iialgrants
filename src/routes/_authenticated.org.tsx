@@ -238,8 +238,11 @@ function OrgPageV2({
                 <FormField label="Sectors" description="Comma-separated: tech, retail">
                   <Input {...form.register("sectors")} placeholder="tech, retail" />
                 </FormField>
-                <FormField label="Where you operate" description="Comma-separated: CA, ON">
-                  <Input {...form.register("jurisdictions")} placeholder="CA, ON" />
+                <FormField
+                  label="Where you operate"
+                  description="Any country or region — comma-separated. Not limited to Canada: CA, ON, US, FR..."
+                >
+                  <Input {...form.register("jurisdictions")} placeholder="CA, ON, US, FR" />
                 </FormField>
                 <FormField label="Organization type">
                   <select
