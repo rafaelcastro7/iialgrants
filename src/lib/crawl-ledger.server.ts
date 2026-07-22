@@ -105,6 +105,7 @@ export async function recordFetch(
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabaseAdmin as any;
+  console.log("[DEBUG recordFetch]", url, "rpc typeof:", typeof sb.rpc, "isMock:", !!sb.__isMock);
   const host = (() => {
     try {
       return new URL(url).host;
