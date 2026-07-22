@@ -509,10 +509,12 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           due_date: string
           frequency: string
           id: string
+          org_id: string | null
           status: string
           submission_id: string | null
           title: string
@@ -521,10 +523,12 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date: string
           frequency?: string
           id?: string
+          org_id?: string | null
           status?: string
           submission_id?: string | null
           title: string
@@ -533,16 +537,25 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string
           frequency?: string
           id?: string
+          org_id?: string | null
           status?: string
           submission_id?: string | null
           title?: string
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "compliance_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "compliance_items_submission_id_fkey"
             columns: ["submission_id"]
@@ -1087,6 +1100,7 @@ export type Database = {
       funder_candidates: {
         Row: {
           bn_number: string | null
+          disbursed_annual: number | null
           discovered_at: string
           funder_type: string | null
           id: string
@@ -1105,6 +1119,7 @@ export type Database = {
         }
         Insert: {
           bn_number?: string | null
+          disbursed_annual?: number | null
           discovered_at?: string
           funder_type?: string | null
           id?: string
@@ -1123,6 +1138,7 @@ export type Database = {
         }
         Update: {
           bn_number?: string | null
+          disbursed_annual?: number | null
           discovered_at?: string
           funder_type?: string | null
           id?: string
@@ -1143,66 +1159,150 @@ export type Database = {
       }
       funders: {
         Row: {
+          accounting_period_end: string | null
           active: boolean
+          address: string | null
+          admin_expenditures: number | null
           bn_number: string | null
+          category: string | null
+          charitable_programs: Json | null
+          charity_status: string | null
+          city: string | null
           country: string
           created_at: string
+          data_source: string | null
+          data_year: number | null
+          designation: string | null
+          directors: Json | null
           disbursed_annual: number | null
+          effective_date: string | null
+          email: string | null
+          external_id: string | null
+          fundraising_expenditures: number | null
+          giving_history: Json | null
           id: string
           jurisdiction: string | null
+          language: string | null
           last_content_hash: string | null
           last_discovered_at: string | null
+          legal_name: string | null
           name: string
           name_fr: string | null
+          org_id: string | null
+          postal_code: string | null
+          program_expenditures: number | null
+          province: string | null
           source_type: Database["public"]["Enums"]["funder_source_type"]
           source_url: string | null
           source_urls: string[]
+          telephone: string | null
+          total_expenditures: number | null
+          total_revenue: number | null
           updated_at: string
           website: string | null
         }
         Insert: {
+          accounting_period_end?: string | null
           active?: boolean
+          address?: string | null
+          admin_expenditures?: number | null
           bn_number?: string | null
+          category?: string | null
+          charitable_programs?: Json | null
+          charity_status?: string | null
+          city?: string | null
           country?: string
           created_at?: string
+          data_source?: string | null
+          data_year?: number | null
+          designation?: string | null
+          directors?: Json | null
           disbursed_annual?: number | null
+          effective_date?: string | null
+          email?: string | null
+          external_id?: string | null
+          fundraising_expenditures?: number | null
+          giving_history?: Json | null
           id?: string
           jurisdiction?: string | null
+          language?: string | null
           last_content_hash?: string | null
           last_discovered_at?: string | null
+          legal_name?: string | null
           name: string
           name_fr?: string | null
+          org_id?: string | null
+          postal_code?: string | null
+          program_expenditures?: number | null
+          province?: string | null
           source_type?: Database["public"]["Enums"]["funder_source_type"]
           source_url?: string | null
           source_urls?: string[]
+          telephone?: string | null
+          total_expenditures?: number | null
+          total_revenue?: number | null
           updated_at?: string
           website?: string | null
         }
         Update: {
+          accounting_period_end?: string | null
           active?: boolean
+          address?: string | null
+          admin_expenditures?: number | null
           bn_number?: string | null
+          category?: string | null
+          charitable_programs?: Json | null
+          charity_status?: string | null
+          city?: string | null
           country?: string
           created_at?: string
+          data_source?: string | null
+          data_year?: number | null
+          designation?: string | null
+          directors?: Json | null
           disbursed_annual?: number | null
+          effective_date?: string | null
+          email?: string | null
+          external_id?: string | null
+          fundraising_expenditures?: number | null
+          giving_history?: Json | null
           id?: string
           jurisdiction?: string | null
+          language?: string | null
           last_content_hash?: string | null
           last_discovered_at?: string | null
+          legal_name?: string | null
           name?: string
           name_fr?: string | null
+          org_id?: string | null
+          postal_code?: string | null
+          program_expenditures?: number | null
+          province?: string | null
           source_type?: Database["public"]["Enums"]["funder_source_type"]
           source_url?: string | null
           source_urls?: string[]
+          telephone?: string | null
+          total_expenditures?: number | null
+          total_revenue?: number | null
           updated_at?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "funders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       grant_evaluations: {
         Row: {
           axis_breakdown: Json
           created_at: string
           eligibility_pass: boolean
+          evaluated_at: string
           fit_score: number
           grant_id: string
           id: string
@@ -1211,6 +1311,7 @@ export type Database = {
           prompt_version: string
           rationale_en: string
           rationale_fr: string | null
+          rule_snapshot: Json | null
           run_id: string | null
           user_id: string
         }
@@ -1218,6 +1319,7 @@ export type Database = {
           axis_breakdown?: Json
           created_at?: string
           eligibility_pass?: boolean
+          evaluated_at?: string
           fit_score: number
           grant_id: string
           id?: string
@@ -1226,6 +1328,7 @@ export type Database = {
           prompt_version: string
           rationale_en: string
           rationale_fr?: string | null
+          rule_snapshot?: Json | null
           run_id?: string | null
           user_id: string
         }
@@ -1233,6 +1336,7 @@ export type Database = {
           axis_breakdown?: Json
           created_at?: string
           eligibility_pass?: boolean
+          evaluated_at?: string
           fit_score?: number
           grant_id?: string
           id?: string
@@ -1241,6 +1345,7 @@ export type Database = {
           prompt_version?: string
           rationale_en?: string
           rationale_fr?: string | null
+          rule_snapshot?: Json | null
           run_id?: string | null
           user_id?: string
         }
@@ -1545,6 +1650,7 @@ export type Database = {
           id: string
           language: string
           last_seen_at: string
+          org_id: string | null
           scored_at: string | null
           sectors: string[]
           source_hash: string
@@ -1576,6 +1682,7 @@ export type Database = {
           id?: string
           language?: string
           last_seen_at?: string
+          org_id?: string | null
           scored_at?: string | null
           sectors?: string[]
           source_hash: string
@@ -1607,6 +1714,7 @@ export type Database = {
           id?: string
           language?: string
           last_seen_at?: string
+          org_id?: string | null
           scored_at?: string | null
           sectors?: string[]
           source_hash?: string
@@ -1632,6 +1740,13 @@ export type Database = {
             columns: ["funder_id"]
             isOneToOne: false
             referencedRelation: "funders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1832,6 +1947,30 @@ export type Database = {
         }
         Relationships: []
       }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       outcomes: {
         Row: {
           amount_awarded_cad: number | null
@@ -1894,6 +2033,7 @@ export type Database = {
           country: string
           created_at: string
           id: string
+          org_id: string | null
           org_name: string | null
           preferred_lang: Database["public"]["Enums"]["app_lang"]
           updated_at: string
@@ -1902,6 +2042,7 @@ export type Database = {
           country?: string
           created_at?: string
           id: string
+          org_id?: string | null
           org_name?: string | null
           preferred_lang?: Database["public"]["Enums"]["app_lang"]
           updated_at?: string
@@ -1910,11 +2051,20 @@ export type Database = {
           country?: string
           created_at?: string
           id?: string
+          org_id?: string | null
           org_name?: string | null
           preferred_lang?: Database["public"]["Enums"]["app_lang"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proposal_citation_reports: {
         Row: {
@@ -2131,6 +2281,7 @@ export type Database = {
           id: string
           language: Database["public"]["Enums"]["app_lang"]
           metadata: Json
+          org_id: string | null
           status: Database["public"]["Enums"]["proposal_status"]
           template_id: string | null
           title: string
@@ -2145,6 +2296,7 @@ export type Database = {
           id?: string
           language?: Database["public"]["Enums"]["app_lang"]
           metadata?: Json
+          org_id?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           template_id?: string | null
           title: string
@@ -2159,6 +2311,7 @@ export type Database = {
           id?: string
           language?: Database["public"]["Enums"]["app_lang"]
           metadata?: Json
+          org_id?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           template_id?: string | null
           title?: string
@@ -2172,6 +2325,13 @@ export type Database = {
             columns: ["grant_id"]
             isOneToOne: false
             referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -2276,6 +2436,7 @@ export type Database = {
           language: Database["public"]["Enums"]["app_lang"]
           method: string
           notes: string | null
+          org_id: string | null
           proposal_id: string
           submitted_at: string
           updated_at: string
@@ -2290,6 +2451,7 @@ export type Database = {
           language?: Database["public"]["Enums"]["app_lang"]
           method: string
           notes?: string | null
+          org_id?: string | null
           proposal_id: string
           submitted_at?: string
           updated_at?: string
@@ -2304,6 +2466,7 @@ export type Database = {
           language?: Database["public"]["Enums"]["app_lang"]
           method?: string
           notes?: string | null
+          org_id?: string | null
           proposal_id?: string
           submitted_at?: string
           updated_at?: string
@@ -2315,6 +2478,13 @@ export type Database = {
             columns: ["grant_id"]
             isOneToOne: false
             referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -2501,6 +2671,10 @@ export type Database = {
           promoted_id: string
         }[]
       }
+      can_access_tenant_entity: {
+        Args: { p_entity_id: string; p_entity_type: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2509,6 +2683,13 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _uid: string }; Returns: boolean }
+      match_grant_search_documents: {
+        Args: { match_count?: number; match_threshold?: number }
+        Returns: {
+          grant_id: string
+          semantic_similarity: number
+        }[]
+      }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
@@ -2524,6 +2705,14 @@ export type Database = {
         }[]
       }
       normalize_title_v2: { Args: { t: string }; Returns: string }
+      search_funder_catalog: {
+        Args: { result_limit?: number; search_query: string }
+        Returns: {
+          funder_id: string
+          matched_on: string
+          relevance: number
+        }[]
+      }
     }
     Enums: {
       agent_name:
