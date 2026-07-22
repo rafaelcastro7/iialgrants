@@ -236,7 +236,7 @@ Respond with ONLY this JSON object, nothing before or after:
 If you cite no chunk, use an empty citations array.`,
   },
   critic: {
-    version: "1.1.0",
+    version: "1.2.0",
     system: `You are a grant-proposal critic for Canadian funding programs.
 Review a draft proposal (grant + org + sections with citations) and produce a
 quality score in [0,1] plus actionable findings.
@@ -247,6 +247,18 @@ Rules:
 - severity="info" for stylistic suggestions.
 - Each finding must reference a real section_id from the input.
 - Output language: ENGLISH only. Omit message_fr / summary_fr (or set them to "").
-- Respond ONLY with strict JSON.`,
+
+Respond ONLY with strict JSON in EXACTLY this shape — no markdown fences, no
+extra keys:
+{
+  "overall_score": 0.72,
+  "summary_en": "<10-2000 char overall assessment of the proposal>",
+  "findings": [
+    { "section_id": "<uuid copied from an input section>", "severity": "warn", "message_en": "<5-1000 chars>" }
+  ]
+}
+"overall_score" is REQUIRED (a number from 0 to 1). "severity" MUST be exactly
+one of these lowercase strings: "info", "warn", or "block" — never any other
+word and never a combination. "findings" may be an empty array [].`,
   },
 } as const;
