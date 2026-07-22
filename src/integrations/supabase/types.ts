@@ -237,6 +237,115 @@ export type Database = {
           },
         ]
       }
+      approval_instances: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_step: number
+          entity_id: string
+          entity_type: string
+          id: string
+          status: string
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          entity_id: string
+          entity_type: string
+          id?: string
+          status?: string
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          status?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_instances_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "approval_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_steps: {
+        Row: {
+          approver_role: string
+          comments: string | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          name: string
+          status: string
+          step_order: number
+          workflow_id: string
+        }
+        Insert: {
+          approver_role: string
+          comments?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          name: string
+          status?: string
+          step_order: number
+          workflow_id: string
+        }
+        Update: {
+          approver_role?: string
+          comments?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          name?: string
+          status?: string
+          step_order?: number
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_steps_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "approval_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_workflows: {
+        Row: {
+          created_at: string
+          entity_type: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -266,6 +375,239 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      audit_trail: {
+        Row: {
+          action: string
+          changes: Json
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          metadata?: Json
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json
+          performed_by?: string | null
+        }
+        Relationships: []
+      }
+      comments: {
+        Row: {
+          author_id: string | null
+          content: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          author_id?: string | null
+          content: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      competitive_grants: {
+        Row: {
+          agreement_end_date: string | null
+          agreement_start_date: string | null
+          agreement_title: string | null
+          agreement_type: string | null
+          agreement_value: number | null
+          created_at: string | null
+          data_source: string
+          data_year: number
+          department: string | null
+          description: string | null
+          external_id: string
+          id: string
+          naics_code: string | null
+          program_name: string | null
+          recipient_city: string | null
+          recipient_legal_name: string | null
+          recipient_name: string
+          recipient_province: string | null
+          recipient_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          agreement_end_date?: string | null
+          agreement_start_date?: string | null
+          agreement_title?: string | null
+          agreement_type?: string | null
+          agreement_value?: number | null
+          created_at?: string | null
+          data_source?: string
+          data_year?: number
+          department?: string | null
+          description?: string | null
+          external_id: string
+          id?: string
+          naics_code?: string | null
+          program_name?: string | null
+          recipient_city?: string | null
+          recipient_legal_name?: string | null
+          recipient_name: string
+          recipient_province?: string | null
+          recipient_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          agreement_end_date?: string | null
+          agreement_start_date?: string | null
+          agreement_title?: string | null
+          agreement_type?: string | null
+          agreement_value?: number | null
+          created_at?: string | null
+          data_source?: string
+          data_year?: number
+          department?: string | null
+          description?: string | null
+          external_id?: string
+          id?: string
+          naics_code?: string | null
+          program_name?: string | null
+          recipient_city?: string | null
+          recipient_legal_name?: string | null
+          recipient_name?: string
+          recipient_province?: string | null
+          recipient_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      compliance_items: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string
+          frequency: string
+          id: string
+          org_id: string | null
+          status: string
+          submission_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date: string
+          frequency?: string
+          id?: string
+          org_id?: string | null
+          status?: string
+          submission_id?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string
+          frequency?: string
+          id?: string
+          org_id?: string | null
+          status?: string
+          submission_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_items_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_matrices: {
+        Row: {
+          checks: Json
+          created_at: string | null
+          id: string
+          mandatory_met: number
+          mandatory_total: number
+          overall_score: number
+          policy_alignment: Json
+          proposal_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          checks?: Json
+          created_at?: string | null
+          id?: string
+          mandatory_met: number
+          mandatory_total: number
+          overall_score: number
+          policy_alignment?: Json
+          proposal_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          checks?: Json
+          created_at?: string | null
+          id?: string
+          mandatory_met?: number
+          mandatory_total?: number
+          overall_score?: number
+          policy_alignment?: Json
+          proposal_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_matrices_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: true
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       consent_ledger: {
         Row: {
@@ -522,6 +864,42 @@ export type Database = {
         }
         Relationships: []
       }
+      documents: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          file_name: string
+          file_size: number
+          id?: string
+          mime_type: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       dsar_requests: {
         Row: {
           completed_at: string | null
@@ -722,6 +1100,7 @@ export type Database = {
       funder_candidates: {
         Row: {
           bn_number: string | null
+          disbursed_annual: number | null
           discovered_at: string
           funder_type: string | null
           id: string
@@ -740,6 +1119,7 @@ export type Database = {
         }
         Insert: {
           bn_number?: string | null
+          disbursed_annual?: number | null
           discovered_at?: string
           funder_type?: string | null
           id?: string
@@ -758,6 +1138,7 @@ export type Database = {
         }
         Update: {
           bn_number?: string | null
+          disbursed_annual?: number | null
           discovered_at?: string
           funder_type?: string | null
           id?: string
@@ -778,98 +1159,193 @@ export type Database = {
       }
       funders: {
         Row: {
+          accounting_period_end: string | null
           active: boolean
+          address: string | null
+          admin_expenditures: number | null
           bn_number: string | null
+          category: string | null
+          charitable_programs: Json | null
+          charity_status: string | null
+          city: string | null
           country: string
           created_at: string
+          data_source: string | null
+          data_year: number | null
+          designation: string | null
+          directors: Json | null
           disbursed_annual: number | null
+          effective_date: string | null
+          email: string | null
+          external_id: string | null
+          fundraising_expenditures: number | null
+          giving_history: Json | null
           id: string
           jurisdiction: string | null
+          language: string | null
           last_content_hash: string | null
           last_discovered_at: string | null
+          legal_name: string | null
           name: string
           name_fr: string | null
+          org_id: string | null
+          postal_code: string | null
+          program_expenditures: number | null
+          province: string | null
           source_type: Database["public"]["Enums"]["funder_source_type"]
           source_url: string | null
           source_urls: string[]
+          telephone: string | null
+          total_expenditures: number | null
+          total_revenue: number | null
           updated_at: string
           website: string | null
         }
         Insert: {
+          accounting_period_end?: string | null
           active?: boolean
+          address?: string | null
+          admin_expenditures?: number | null
           bn_number?: string | null
+          category?: string | null
+          charitable_programs?: Json | null
+          charity_status?: string | null
+          city?: string | null
           country?: string
           created_at?: string
+          data_source?: string | null
+          data_year?: number | null
+          designation?: string | null
+          directors?: Json | null
           disbursed_annual?: number | null
+          effective_date?: string | null
+          email?: string | null
+          external_id?: string | null
+          fundraising_expenditures?: number | null
+          giving_history?: Json | null
           id?: string
           jurisdiction?: string | null
+          language?: string | null
           last_content_hash?: string | null
           last_discovered_at?: string | null
+          legal_name?: string | null
           name: string
           name_fr?: string | null
+          org_id?: string | null
+          postal_code?: string | null
+          program_expenditures?: number | null
+          province?: string | null
           source_type?: Database["public"]["Enums"]["funder_source_type"]
           source_url?: string | null
           source_urls?: string[]
+          telephone?: string | null
+          total_expenditures?: number | null
+          total_revenue?: number | null
           updated_at?: string
           website?: string | null
         }
         Update: {
+          accounting_period_end?: string | null
           active?: boolean
+          address?: string | null
+          admin_expenditures?: number | null
           bn_number?: string | null
+          category?: string | null
+          charitable_programs?: Json | null
+          charity_status?: string | null
+          city?: string | null
           country?: string
           created_at?: string
+          data_source?: string | null
+          data_year?: number | null
+          designation?: string | null
+          directors?: Json | null
           disbursed_annual?: number | null
+          effective_date?: string | null
+          email?: string | null
+          external_id?: string | null
+          fundraising_expenditures?: number | null
+          giving_history?: Json | null
           id?: string
           jurisdiction?: string | null
+          language?: string | null
           last_content_hash?: string | null
           last_discovered_at?: string | null
+          legal_name?: string | null
           name?: string
           name_fr?: string | null
+          org_id?: string | null
+          postal_code?: string | null
+          program_expenditures?: number | null
+          province?: string | null
           source_type?: Database["public"]["Enums"]["funder_source_type"]
           source_url?: string | null
           source_urls?: string[]
+          telephone?: string | null
+          total_expenditures?: number | null
+          total_revenue?: number | null
           updated_at?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "funders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       grant_evaluations: {
         Row: {
+          axis_breakdown: Json
           created_at: string
           eligibility_pass: boolean
+          evaluated_at: string
           fit_score: number
           grant_id: string
           id: string
+          llm_fit_score: number | null
           model: string
           prompt_version: string
           rationale_en: string
           rationale_fr: string | null
+          rule_snapshot: Json | null
           run_id: string | null
           user_id: string
         }
         Insert: {
+          axis_breakdown?: Json
           created_at?: string
           eligibility_pass?: boolean
+          evaluated_at?: string
           fit_score: number
           grant_id: string
           id?: string
+          llm_fit_score?: number | null
           model: string
           prompt_version: string
           rationale_en: string
           rationale_fr?: string | null
+          rule_snapshot?: Json | null
           run_id?: string | null
           user_id: string
         }
         Update: {
+          axis_breakdown?: Json
           created_at?: string
           eligibility_pass?: boolean
+          evaluated_at?: string
           fit_score?: number
           grant_id?: string
           id?: string
+          llm_fit_score?: number | null
           model?: string
           prompt_version?: string
           rationale_en?: string
           rationale_fr?: string | null
+          rule_snapshot?: Json | null
           run_id?: string | null
           user_id?: string
         }
@@ -927,6 +1403,233 @@ export type Database = {
           },
         ]
       }
+      grant_search_documents: {
+        Row: {
+          content_en: string
+          content_fr: string
+          content_hash: string
+          embedded_at: string | null
+          embedding_model: string | null
+          grant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_en: string
+          content_fr?: string
+          content_hash: string
+          embedded_at?: string | null
+          embedding_model?: string | null
+          grant_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_en?: string
+          content_fr?: string
+          content_hash?: string
+          embedded_at?: string | null
+          embedding_model?: string | null
+          grant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grant_search_documents_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: true
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grant_search_feedback: {
+        Row: {
+          action: string
+          created_at: string
+          grant_id: string
+          id: string
+          note: string | null
+          profile_id: string
+          query_text: string | null
+          rank_position: number | null
+          reason: string | null
+          score_snapshot: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          grant_id: string
+          id?: string
+          note?: string | null
+          profile_id: string
+          query_text?: string | null
+          rank_position?: number | null
+          reason?: string | null
+          score_snapshot?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          grant_id?: string
+          id?: string
+          note?: string | null
+          profile_id?: string
+          query_text?: string | null
+          rank_position?: number | null
+          reason?: string | null
+          score_snapshot?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grant_search_feedback_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grant_search_feedback_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "grant_search_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grant_search_feedback_events: {
+        Row: {
+          action: string
+          created_at: string
+          grant_id: string
+          id: string
+          note: string | null
+          profile_id: string
+          query_text: string | null
+          rank_position: number | null
+          reason: string | null
+          score_snapshot: Json
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          grant_id: string
+          id?: string
+          note?: string | null
+          profile_id: string
+          query_text?: string | null
+          rank_position?: number | null
+          reason?: string | null
+          score_snapshot?: Json
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          grant_id?: string
+          id?: string
+          note?: string | null
+          profile_id?: string
+          query_text?: string | null
+          rank_position?: number | null
+          reason?: string | null
+          score_snapshot?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grant_search_feedback_events_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grant_search_feedback_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "grant_search_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grant_search_profiles: {
+        Row: {
+          active: boolean
+          activities: string[]
+          amount_max_cad: number | null
+          amount_min_cad: number | null
+          applicant_types: string[]
+          created_at: string
+          excluded_terms: string[]
+          funding_uses: string[]
+          id: string
+          jurisdictions: string[]
+          mission: string
+          name: string
+          org_id: string | null
+          populations_served: string[]
+          project_end: string | null
+          project_start: string | null
+          required_terms: string[]
+          role: string
+          sectors: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          activities?: string[]
+          amount_max_cad?: number | null
+          amount_min_cad?: number | null
+          applicant_types?: string[]
+          created_at?: string
+          excluded_terms?: string[]
+          funding_uses?: string[]
+          id?: string
+          jurisdictions?: string[]
+          mission?: string
+          name: string
+          org_id?: string | null
+          populations_served?: string[]
+          project_end?: string | null
+          project_start?: string | null
+          required_terms?: string[]
+          role?: string
+          sectors?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          activities?: string[]
+          amount_max_cad?: number | null
+          amount_min_cad?: number | null
+          applicant_types?: string[]
+          created_at?: string
+          excluded_terms?: string[]
+          funding_uses?: string[]
+          id?: string
+          jurisdictions?: string[]
+          mission?: string
+          name?: string
+          org_id?: string | null
+          populations_served?: string[]
+          project_end?: string | null
+          project_start?: string | null
+          required_terms?: string[]
+          role?: string
+          sectors?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       grants: {
         Row: {
           amount_cad_max: number | null
@@ -947,6 +1650,8 @@ export type Database = {
           id: string
           language: string
           last_seen_at: string
+          org_id: string | null
+          requirements: Json | null
           scored_at: string | null
           sectors: string[]
           source_hash: string
@@ -978,6 +1683,8 @@ export type Database = {
           id?: string
           language?: string
           last_seen_at?: string
+          org_id?: string | null
+          requirements?: Json | null
           scored_at?: string | null
           sectors?: string[]
           source_hash: string
@@ -1009,6 +1716,8 @@ export type Database = {
           id?: string
           language?: string
           last_seen_at?: string
+          org_id?: string | null
+          requirements?: Json | null
           scored_at?: string | null
           sectors?: string[]
           source_hash?: string
@@ -1034,6 +1743,13 @@ export type Database = {
             columns: ["funder_id"]
             isOneToOne: false
             referencedRelation: "funders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1073,6 +1789,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      logic_models: {
+        Row: {
+          activities: Json
+          assumptions: Json
+          created_at: string
+          id: string
+          impact: Json
+          inputs: Json
+          outcomes: Json
+          outputs: Json
+          proposal_id: string
+          updated_at: string
+        }
+        Insert: {
+          activities?: Json
+          assumptions?: Json
+          created_at?: string
+          id?: string
+          impact?: Json
+          inputs?: Json
+          outcomes?: Json
+          outputs?: Json
+          proposal_id: string
+          updated_at?: string
+        }
+        Update: {
+          activities?: Json
+          assumptions?: Json
+          created_at?: string
+          id?: string
+          impact?: Json
+          inputs?: Json
+          outcomes?: Json
+          outputs?: Json
+          proposal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logic_models_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: true
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       module_flags: {
         Row: {
@@ -1187,6 +1950,30 @@ export type Database = {
         }
         Relationships: []
       }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       outcomes: {
         Row: {
           amount_awarded_cad: number | null
@@ -1195,6 +1982,7 @@ export type Database = {
           feedback: string | null
           grant_id: string
           id: string
+          impact_description: string | null
           lessons_learned: string | null
           result: string
           submission_id: string
@@ -1208,6 +1996,7 @@ export type Database = {
           feedback?: string | null
           grant_id: string
           id?: string
+          impact_description?: string | null
           lessons_learned?: string | null
           result: string
           submission_id: string
@@ -1221,6 +2010,7 @@ export type Database = {
           feedback?: string | null
           grant_id?: string
           id?: string
+          impact_description?: string | null
           lessons_learned?: string | null
           result?: string
           submission_id?: string
@@ -1249,6 +2039,7 @@ export type Database = {
           country: string
           created_at: string
           id: string
+          org_id: string | null
           org_name: string | null
           preferred_lang: Database["public"]["Enums"]["app_lang"]
           updated_at: string
@@ -1257,6 +2048,7 @@ export type Database = {
           country?: string
           created_at?: string
           id: string
+          org_id?: string | null
           org_name?: string | null
           preferred_lang?: Database["public"]["Enums"]["app_lang"]
           updated_at?: string
@@ -1265,11 +2057,55 @@ export type Database = {
           country?: string
           created_at?: string
           id?: string
+          org_id?: string | null
           org_name?: string | null
           preferred_lang?: Database["public"]["Enums"]["app_lang"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_citation_reports: {
+        Row: {
+          citations: Json
+          created_at: string
+          id: string
+          proposal_id: string
+          summary: Json
+          updated_at: string
+        }
+        Insert: {
+          citations?: Json
+          created_at?: string
+          id?: string
+          proposal_id: string
+          summary?: Json
+          updated_at?: string
+        }
+        Update: {
+          citations?: Json
+          created_at?: string
+          id?: string
+          proposal_id?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_citation_reports_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: true
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proposal_citations: {
         Row: {
@@ -1312,6 +2148,41 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "proposal_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_reviews: {
+        Row: {
+          created_at: string | null
+          id: string
+          overall_score: number
+          proposal_id: string
+          reviewer_scores: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          overall_score: number
+          proposal_id: string
+          reviewer_scores?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          overall_score?: number
+          proposal_id?: string
+          reviewer_scores?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_reviews_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: true
+            referencedRelation: "proposals"
             referencedColumns: ["id"]
           },
         ]
@@ -1416,6 +2287,7 @@ export type Database = {
           id: string
           language: Database["public"]["Enums"]["app_lang"]
           metadata: Json
+          org_id: string | null
           status: Database["public"]["Enums"]["proposal_status"]
           template_id: string | null
           title: string
@@ -1430,6 +2302,7 @@ export type Database = {
           id?: string
           language?: Database["public"]["Enums"]["app_lang"]
           metadata?: Json
+          org_id?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           template_id?: string | null
           title: string
@@ -1444,6 +2317,7 @@ export type Database = {
           id?: string
           language?: Database["public"]["Enums"]["app_lang"]
           metadata?: Json
+          org_id?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           template_id?: string | null
           title?: string
@@ -1460,10 +2334,55 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "proposals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "proposals_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_fit_reports: {
+        Row: {
+          created_at: string
+          expires_at: string
+          grant_id: string
+          id: string
+          revoked: boolean
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          grant_id: string
+          id?: string
+          revoked?: boolean
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          grant_id?: string
+          id?: string
+          revoked?: boolean
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_fit_reports_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "grants"
             referencedColumns: ["id"]
           },
         ]
@@ -1523,6 +2442,7 @@ export type Database = {
           language: Database["public"]["Enums"]["app_lang"]
           method: string
           notes: string | null
+          org_id: string | null
           proposal_id: string
           submitted_at: string
           updated_at: string
@@ -1537,6 +2457,7 @@ export type Database = {
           language?: Database["public"]["Enums"]["app_lang"]
           method: string
           notes?: string | null
+          org_id?: string | null
           proposal_id: string
           submitted_at?: string
           updated_at?: string
@@ -1551,6 +2472,7 @@ export type Database = {
           language?: Database["public"]["Enums"]["app_lang"]
           method?: string
           notes?: string | null
+          org_id?: string | null
           proposal_id?: string
           submitted_at?: string
           updated_at?: string
@@ -1565,6 +2487,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "submissions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "submissions_proposal_id_fkey"
             columns: ["proposal_id"]
             isOneToOne: false
@@ -1572,6 +2501,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          priority: string
+          status: string
+          title: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -1703,6 +2677,14 @@ export type Database = {
           promoted_id: string
         }[]
       }
+      bump_proposal_version: {
+        Args: { target_proposal_id: string }
+        Returns: number
+      }
+      can_access_tenant_entity: {
+        Args: { p_entity_id: string; p_entity_type: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1711,6 +2693,13 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _uid: string }; Returns: boolean }
+      match_grant_search_documents: {
+        Args: { match_count?: number; match_threshold?: number }
+        Returns: {
+          grant_id: string
+          semantic_similarity: number
+        }[]
+      }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
@@ -1726,6 +2715,54 @@ export type Database = {
         }[]
       }
       normalize_title_v2: { Args: { t: string }; Returns: string }
+      record_grant_search_feedback: {
+        Args: {
+          p_action: string
+          p_grant_id: string
+          p_note?: string
+          p_profile_id: string
+          p_query_text?: string
+          p_rank_position?: number
+          p_reason?: string
+          p_score_snapshot?: Json
+        }
+        Returns: {
+          action: string
+          created_at: string
+          grant_id: string
+          id: string
+          note: string | null
+          profile_id: string
+          query_text: string | null
+          rank_position: number | null
+          reason: string | null
+          score_snapshot: Json
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "grant_search_feedback"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      search_funder_catalog: {
+        Args: { result_limit?: number; search_query: string }
+        Returns: {
+          funder_id: string
+          matched_on: string
+          relevance: number
+        }[]
+      }
+      search_grant_catalog: {
+        Args: { result_limit?: number; search_query: string }
+        Returns: {
+          grant_id: string
+          matched_on: string
+          relevance: number
+        }[]
+      }
     }
     Enums: {
       agent_name:
