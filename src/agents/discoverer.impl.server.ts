@@ -347,7 +347,7 @@ export async function discoverFunderImpl(
   const { newRunId } = await import("@/lib/otel");
   const { firecrawlAvailable, firecrawlMap, filterProgramUrls } =
     await import("@/lib/firecrawl.server");
-  const { scrapeWithFallback, jinaSearch } = await import("@/lib/web-fetch.server");
+  const { scrapeWithFallback, jinaSearch, CHROME_UA } = await import("@/lib/web-fetch.server");
   const { shouldFetch, recordFetch } = await import("@/lib/crawl-ledger.server");
   const { fetchCandidateLinksFromSitemaps } = await import("@/lib/site-candidates.server");
 
