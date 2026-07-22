@@ -351,6 +351,7 @@ export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date(
   const grantCountry = (g.country ?? "").trim();
   const hay = buildHaystack(g);
   const detected_role = detectRole(hay);
+  const detected_partner_type = detected_role === "partner" ? detectPartnerType(hay) : null;
   const cost_share_pct = detectCostShare(hay);
   const rolling_intake = isRollingIntake(hay, g.deadline);
 
