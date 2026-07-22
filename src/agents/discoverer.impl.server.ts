@@ -1159,8 +1159,13 @@ export async function discoverFunderImpl(
       }
       // Force page URL when the LLM omits it or returns the index URL.
       const effectiveUrl = g.url && g.url !== F.source_url ? g.url : doc.url;
-      if (isRootIndex(effectiveUrl) || isNonGrantUrl(effectiveUrl)) {
-        const reason = isNonGrantUrl(effectiveUrl) ? "non_grant_url" : "root_index";
+      if (
+        isRootIndex(effectiveUrl, cfg.extraRootIndexPaths) ||
+        isNonGrantUrl(effectiveUrl, cfg.extraNonGrantUrlPatterns)
+      ) {
+        const reason = isNonGrantUrl(effectiveUrl, cfg.extraNonGrantUrlPatterns)
+          ? "non_grant_url"
+          : "root_index";
         skipReasons[reason] = (skipReasons[reason] ?? 0) + 1;
         if (skippedSamples.length < 5)
           skippedSamples.push({ title: g.title, url: effectiveUrl, reason });
