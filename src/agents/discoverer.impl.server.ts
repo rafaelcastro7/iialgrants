@@ -560,7 +560,11 @@ export async function discoverFunderImpl(
       perPageStats.push({ url, found: pageGrants.length, via });
 
       for (const g of pageGrants) {
-        if (isGenericTitle(g.title) || isRootIndex(g.url || url) || isNonGrantUrl(g.url || url)) {
+        if (
+          isGenericTitle(g.title) ||
+          isRootIndex(g.url || url, cfg.extraRootIndexPaths) ||
+          isNonGrantUrl(g.url || url, cfg.extraNonGrantUrlPatterns)
+        ) {
           continue; // structural filter: skip landing-page / index / non-grant policy pages
         }
         const ck = canonicalKey(F.id, g.title, F.name);
