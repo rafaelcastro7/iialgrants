@@ -1,8 +1,11 @@
-// E2E: local-only LLM cascade behavior.
+// E2E: LLM cascade behavior.
 //
-// Contract: all LLM calls go to Ollama localhost only. Primary model is tried
-// first with 2 attempts (with rate-limit backoff), then fallback model if
-// primary fails. No cloud providers are ever contacted.
+// Contract: cloud is the initial source (Cerebras -> Groq), and local Ollama is
+// the last-resort fallback when no cloud key is set. These local-cascade cases
+// clear the cloud keys in beforeEach so they exercise the Ollama path in
+// isolation; a dedicated case at the end asserts cloud-first routing when a key
+// is present. The local model cascade: primary model tried first with 2
+// attempts (rate-limit backoff), then fallback model.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
