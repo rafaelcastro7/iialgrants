@@ -543,7 +543,9 @@ export async function discoverFunderImpl(
               role: "system",
               content:
                 `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}\n` +
-                `Extract every distinct Canadian funding program described on this page. ` +
+                `Extract every distinct funding program (grant, subsidy, or loan — any country) described on this page. ` +
+                `Detect the country (ISO 3166-1 alpha-2) and currency (ISO 4217) from context — do not assume Canada/CAD; ` +
+                `only default to CA/CAD when the page gives no country/currency signal at all. ` +
                 `If the page is an index listing multiple programs, return one entry per listed program. ` +
                 `If nothing is a real program, return { "grants": [] }.`,
             },
