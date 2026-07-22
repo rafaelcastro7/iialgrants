@@ -21,10 +21,12 @@ councils, or programs), never articles, news, university research pages, or
 consulting firms. Return strict JSON: {"hits":[{"name":"...","url":"https://...","reason":"<=120 chars"}]}.
 Only include high-confidence hits. Return an empty hits array when none qualify.`;
 
-export async function runFunderScout(): Promise<RawCandidate[]> {
+export async function runFunderScout(
+  queries: string[] = DEFAULT_QUERIES,
+): Promise<RawCandidate[]> {
   const candidates: RawCandidate[] = [];
   const failures: string[] = [];
-  for (const query of QUERIES) {
+  for (const query of queries) {
     const search = await jinaSearch(query, 6);
     if (!search.ok) {
       failures.push(`search:${search.error ?? "unknown"}`);
