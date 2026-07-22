@@ -617,6 +617,11 @@ export async function discoverFunderImpl(
           // the one and only source of truth for these two fields.
           amount_cad_min: null,
           amount_cad_max: null,
+          // Previously never set — DB default ('CA'/'CAD') silently applied
+          // even when the LLM correctly detected a different country, which
+          // meant a non-Canadian source's grant was always mis-tagged CA/CAD.
+          country: g.country ?? "CA",
+          currency: g.currency ?? "CAD",
           deadline: null,
           eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
           sectors: g.sectors ?? [],
