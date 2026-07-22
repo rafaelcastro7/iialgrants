@@ -273,7 +273,10 @@ const NON_GRANT_HOSTS = [
   "crunchbase.com",
   "reddit.com",
 ];
-export function isNonGrantUrl(url: string): boolean {
+// `extraPatterns` are admin-added regexes from discovery_config (additive on
+// top of NON_GRANT_URL_PATTERNS, never a replacement) — default empty keeps
+// every existing call site and test unaffected.
+export function isNonGrantUrl(url: string, extraPatterns: RegExp[] = []): boolean {
   try {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
@@ -290,7 +293,8 @@ export function isNonGrantUrl(url: string): boolean {
       if (/^\/services\//.test(path)) return true;
       if (/eligible-research.*adjudication.*criteria/.test(path)) return true;
     }
-    return NON_GRANT_URL_PATTERNS.some((re) => re.test(path));
+    if (NON_GRANT_URL_PATTERNS.some((re) => re.test(path))) return true;
+    return extraPatterns.some((re) => re.test(path));
   } catch {
     return false;
   }
