@@ -72,7 +72,7 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
       supabase
         .from("grants")
         .select(
-          "id, title, summary, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, url, funder:funders(name)",
+          "id, title, summary, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, url, requirements, funder:funders(name)",
         )
         .eq("id", grantId)
         .maybeSingle(),
