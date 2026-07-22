@@ -46,6 +46,7 @@ import { Route as AuthenticatedAdminSourcesRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminMonitoringRouteImport } from './routes/_authenticated.admin.monitoring'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated.admin.modules'
 import { Route as AuthenticatedAdminHistoryRouteImport } from './routes/_authenticated.admin.history'
+import { Route as AuthenticatedAdminDiscoveryConfigRouteImport } from './routes/_authenticated.admin.discovery-config'
 import { Route as AuthenticatedAdminCandidatesRouteImport } from './routes/_authenticated.admin.candidates'
 import { Route as AuthenticatedAdminAuditTrailRouteImport } from './routes/_authenticated.admin.audit-trail'
 import { Route as AuthenticatedAdminAgentsRouteImport } from './routes/_authenticated.admin.agents'
@@ -258,6 +259,12 @@ const AuthenticatedAdminHistoryRoute =
     path: '/history',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminDiscoveryConfigRoute =
+  AuthenticatedAdminDiscoveryConfigRouteImport.update({
+    id: '/discovery-config',
+    path: '/discovery-config',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminCandidatesRoute =
   AuthenticatedAdminCandidatesRouteImport.update({
     id: '/candidates',
@@ -351,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/admin/audit-trail': typeof AuthenticatedAdminAuditTrailRoute
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
+  '/admin/discovery-config': typeof AuthenticatedAdminDiscoveryConfigRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/monitoring': typeof AuthenticatedAdminMonitoringRoute
@@ -400,6 +408,7 @@ export interface FileRoutesByTo {
   '/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/admin/audit-trail': typeof AuthenticatedAdminAuditTrailRoute
   '/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
+  '/admin/discovery-config': typeof AuthenticatedAdminDiscoveryConfigRoute
   '/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/admin/monitoring': typeof AuthenticatedAdminMonitoringRoute
@@ -452,6 +461,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/agents': typeof AuthenticatedAdminAgentsRoute
   '/_authenticated/admin/audit-trail': typeof AuthenticatedAdminAuditTrailRoute
   '/_authenticated/admin/candidates': typeof AuthenticatedAdminCandidatesRoute
+  '/_authenticated/admin/discovery-config': typeof AuthenticatedAdminDiscoveryConfigRoute
   '/_authenticated/admin/history': typeof AuthenticatedAdminHistoryRoute
   '/_authenticated/admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/admin/monitoring': typeof AuthenticatedAdminMonitoringRoute
@@ -504,6 +514,7 @@ export interface FileRouteTypes {
     | '/admin/agents'
     | '/admin/audit-trail'
     | '/admin/candidates'
+    | '/admin/discovery-config'
     | '/admin/history'
     | '/admin/modules'
     | '/admin/monitoring'
@@ -553,6 +564,7 @@ export interface FileRouteTypes {
     | '/admin/agents'
     | '/admin/audit-trail'
     | '/admin/candidates'
+    | '/admin/discovery-config'
     | '/admin/history'
     | '/admin/modules'
     | '/admin/monitoring'
@@ -604,6 +616,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/agents'
     | '/_authenticated/admin/audit-trail'
     | '/_authenticated/admin/candidates'
+    | '/_authenticated/admin/discovery-config'
     | '/_authenticated/admin/history'
     | '/_authenticated/admin/modules'
     | '/_authenticated/admin/monitoring'
@@ -907,6 +920,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminHistoryRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/discovery-config': {
+      id: '/_authenticated/admin/discovery-config'
+      path: '/discovery-config'
+      fullPath: '/admin/discovery-config'
+      preLoaderRoute: typeof AuthenticatedAdminDiscoveryConfigRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/candidates': {
       id: '/_authenticated/admin/candidates'
       path: '/candidates'
@@ -998,6 +1018,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAgentsRoute: typeof AuthenticatedAdminAgentsRoute
   AuthenticatedAdminAuditTrailRoute: typeof AuthenticatedAdminAuditTrailRoute
   AuthenticatedAdminCandidatesRoute: typeof AuthenticatedAdminCandidatesRoute
+  AuthenticatedAdminDiscoveryConfigRoute: typeof AuthenticatedAdminDiscoveryConfigRoute
   AuthenticatedAdminHistoryRoute: typeof AuthenticatedAdminHistoryRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
   AuthenticatedAdminMonitoringRoute: typeof AuthenticatedAdminMonitoringRoute
@@ -1011,6 +1032,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAgentsRoute: AuthenticatedAdminAgentsRoute,
   AuthenticatedAdminAuditTrailRoute: AuthenticatedAdminAuditTrailRoute,
   AuthenticatedAdminCandidatesRoute: AuthenticatedAdminCandidatesRoute,
+  AuthenticatedAdminDiscoveryConfigRoute:
+    AuthenticatedAdminDiscoveryConfigRoute,
   AuthenticatedAdminHistoryRoute: AuthenticatedAdminHistoryRoute,
   AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
   AuthenticatedAdminMonitoringRoute: AuthenticatedAdminMonitoringRoute,
