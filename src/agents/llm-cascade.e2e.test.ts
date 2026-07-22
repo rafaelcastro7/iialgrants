@@ -36,6 +36,11 @@ describe("local-only LLM cascade", () => {
 
   beforeEach(() => {
     process.env.OLLAMA_BASE_URL = "http://localhost:11434";
+    // Isolate the local Ollama cascade: with no cloud key, callLlm/callFreeLlm
+    // skip the cloud chain and go straight to Ollama. The cloud-first path has
+    // its own dedicated case at the end.
+    delete process.env.CEREBRAS_API_KEY;
+    delete process.env.GROQ_API_KEY;
     vi.resetModules();
   });
 
