@@ -363,24 +363,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
     }
   } catch (err) {
     errMsg = err instanceof Error ? err.message : String(err);
-    // Last-resort cloud fallback: every local model attempt failed even though
-    // Ollama was reachable (e.g. all configured models missing, or GPU wedged).
-    // Only meaningful if GROQ_API_KEY is set; otherwise callCloudLlm throws
-    // cloud_llm_unavailable and we surface the original local error.
-    try {
-      const cloud = await callCloudLlm({
-        agent: opts.agent,
-        messages: opts.messages,
-        temperature: opts.temperature,
-        maxOutputTokens: opts.maxOutputTokens,
-        responseFormat: opts.responseFormat,
-        runId,
-      });
-      ok = true;
-      return cloud;
-    } catch {
-      throw err;
-    }
+    throw err;
   } finally {
     logGenAI({
       "gen_ai.system": "ollama",
