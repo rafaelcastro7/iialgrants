@@ -1,11 +1,12 @@
-// Cloud LLM adapter — activates automatically when Ollama is unreachable.
-// Uses Groq API (free tier, OpenAI-compatible) as a cloud fallback so the
-// app works in production (Lovable / Supabase cloud) without code changes.
+// Cloud LLM adapter — the app's INITIAL source everywhere (dev + Lovable prod).
+// Cloud chain: Cerebras (primary) -> Groq (secondary). Both are OpenAI-compatible.
+// callLlm/callFreeLlm fall back to local Ollama only if this whole chain fails
+// (e.g. no cloud keys set), so the dev machine still works fully offline.
 //
-// Model mapping mirrors local agent assignments:
-//   discoverer/enricher → llama-3.1-8b-instant  (fast, structured extraction)
-//   evaluator/critic    → llama-3.3-70b-versatile (honest evaluation)
-//   strategist/writer   → llama-3.3-70b-versatile (deep reasoning)
+// Model mapping mirrors local agent roles:
+//   discoverer/enricher → fast 8B model  (structured extraction, high volume)
+//   evaluator/critic    → 70B model      (honest evaluation)
+//   strategist/writer   → 70B model      (deep reasoning)
 
 import { logGenAI, newRunId } from "@/lib/otel";
 import type { AgentName } from "@/lib/agent-config.server";
@@ -30,8 +31,25 @@ export type CloudLlmResult = {
   model: string;
 };
 
-// Cloud model map — free Groq tier equivalents of the local Ollama models
-const CLOUD_MODEL_MAP: Record<AgentName, string> = {
+type CloudProvider = {
+  name: string;
+  baseUrl: string;
+  apiKey: string | undefined;
+  modelMap: Record<AgentName, string>;
+};
+
+// Cerebras — primary cloud source ("los cerebros"). OpenAI-compatible API.
+const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
+  discoverer: "llama3.1-8b",
+  enricher: "llama3.1-8b",
+  evaluator: "llama-3.3-70b",
+  strategist: "llama-3.3-70b",
+  writer: "llama-3.3-70b",
+  critic: "llama-3.3-70b",
+};
+
+// Groq — secondary cloud source (free tier) if Cerebras is unavailable.
+const GROQ_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "llama-3.1-8b-instant",
   enricher: "llama-3.1-8b-instant",
   evaluator: "llama-3.3-70b-versatile",
@@ -40,7 +58,22 @@ const CLOUD_MODEL_MAP: Record<AgentName, string> = {
   critic: "llama-3.3-70b-versatile",
 };
 
-const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+function cloudProviders(): CloudProvider[] {
+  return [
+    {
+      name: "cerebras",
+      baseUrl: "https://api.cerebras.ai/v1",
+      apiKey: process.env.CEREBRAS_API_KEY,
+      modelMap: CEREBRAS_MODEL_MAP,
+    },
+    {
+      name: "groq",
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: process.env.GROQ_API_KEY,
+      modelMap: GROQ_MODEL_MAP,
+    },
+  ];
+}
 
 /**
  * Returns true when we are running in a cloud environment where Ollama
