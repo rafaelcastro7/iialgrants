@@ -360,6 +360,7 @@ function DashboardV2({
   eligible,
   email,
   enrichedCount,
+  funderCount,
   grantsCount,
   greeting,
   inPipeline,
@@ -374,6 +375,7 @@ function DashboardV2({
   eligible: number;
   email: string | null;
   enrichedCount: number;
+  funderCount: number | null;
   grantsCount: number;
   greeting: string;
   inPipeline: number;
