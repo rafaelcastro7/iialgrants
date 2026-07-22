@@ -720,11 +720,22 @@ export async function discoverFunderImpl(
       .trim()
       .slice(0, max);
   }
-  const PROGRAM_HINTS =
-    /(program|programme|fund(ing)?|grant|subvention|aide|prêt|pret|bourse|scholarship|prime|credit|crédit|incentive|loan)/i;
+  // Builds a keyword-alternation regex from a base pattern plus any
+  // admin-added keywords from discovery_config — identical to the original
+  // hardcoded regex when no extras are configured.
+  function withExtraKeywords(base: string, extra: string[]): RegExp {
+    const escaped = extra.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return new RegExp(`(${[base, ...escaped].join("|")})`, "i");
+  }
+  const PROGRAM_HINTS = withExtraKeywords(
+    "program|programme|fund(ing)?|grant|subvention|aide|prêt|pret|bourse|scholarship|prime|credit|crédit|incentive|loan",
+    cfg.extraProgramHintKeywords,
+  );
   // Negative patterns: obviously non-program pages we should never spend an LLM call on.
-  const NON_PROGRAM =
-    /(about|contact|press|news|blog|career|jobs|privacy|terms|legal|cookie|login|sign[-_]?in|sitemap|search|rss|feed|sponsor|commandite|salle[-_]de[-_]presse|nous[-_]joindre|tout[-_]sur[-_]nous|qui[-_]sommes|esg|publication|rapport|annual[-_]report|events?|evenements?|webinair|partners?|partenaires)/i;
+  const NON_PROGRAM = withExtraKeywords(
+    "about|contact|press|news|blog|career|jobs|privacy|terms|legal|cookie|login|sign[-_]?in|sitemap|search|rss|feed|sponsor|commandite|salle[-_]de[-_]presse|nous[-_]joindre|tout[-_]sur[-_]nous|qui[-_]sommes|esg|publication|rapport|annual[-_]report|events?|evenements?|webinair|partners?|partenaires",
+    cfg.extraNonProgramKeywords,
+  );
   function extractCandidateLinks(
     html: string,
     baseUrl: string,
