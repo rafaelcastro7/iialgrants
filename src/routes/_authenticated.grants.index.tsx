@@ -124,10 +124,11 @@ function GrantsPage() {
   useEffect(() => {
     ss.set("grants.search", search);
     ss.set("grants.jurisdiction", jurisdiction);
+    ss.set("grants.sector", sector);
     ss.set("grants.sort", sortKey);
     ss.set("grants.eligibleOnly", eligibleOnly ? "1" : "0");
     ss.set("grants.onlyWithDeadline", onlyWithDeadline ? "1" : "0");
-  }, [search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline]);
+  }, [search, jurisdiction, sector, sortKey, eligibleOnly, onlyWithDeadline]);
 
   useEffect(() => {
     ss.set("grants.searchProfileId", searchProfileId ?? "");
