@@ -175,7 +175,16 @@ function buildHaystack(g: GrantForRules): string {
       g.summary ?? "",
       g.title ?? "",
     ].join(" "),
-  ).replace(/[_/]+/g, " ");
+    // Underscore-stripping matters here: JS's native \b treats "_" as a word
+    // character, so "in_the_middle" would never get a boundary around
+    // "the" without this. "/" must NOT be stripped the same way — it broke
+    // detectCostShare()'s ratio pattern (e.g. "50/50", "70/30") by turning
+    // "50/50" into "50 50" before the regex ever saw it, silently making
+    // that entire detection path dead code. containsAny/overlap's
+    // Unicode-boundary regex already treats "/" as a boundary on its own
+    // (it isn't \p{L} or \p{N}), so nothing downstream needed the slash
+    // replaced with a space in the first place.
+  ).replace(/_+/g, " ");
 }
 
 function detectRole(hay: string): "lead" | "partner" | "unknown" {
