@@ -856,10 +856,10 @@ export async function discoverFunderImpl(
 
   const sitemapSeeded = await fetchCandidateLinksFromSitemaps(F.source_url, {
     title: F.name,
-    max: FALLBACK_MAX_LINKS,
+    max: cfg.fallbackMaxLinks,
   }).catch(() => []);
 
-  // Merge index + seeded, dedupe by URL, keep best score, cap at FALLBACK_MAX_LINKS.
+  // Merge index + seeded, dedupe by URL, keep best score, cap at fallbackMaxLinks.
   const merged = new Map<string, { url: string; text: string; score: number }>();
   for (const l of [...linksFromIndex, ...seeded, ...sitemapSeeded]) {
     const prev = merged.get(l.url);
@@ -867,7 +867,7 @@ export async function discoverFunderImpl(
   }
   const links = Array.from(merged.values())
     .sort((a, b) => b.score - a.score)
-    .slice(0, FALLBACK_MAX_LINKS);
+    .slice(0, cfg.fallbackMaxLinks);
 
   if (links.length === 0 && indexText.length < 200) {
     await supabaseAdmin.from("agent_runs").insert({
