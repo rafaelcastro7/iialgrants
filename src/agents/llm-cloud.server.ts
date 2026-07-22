@@ -32,7 +32,7 @@ export type CloudLlmResult = {
 };
 
 type CloudProvider = {
-  name: "cerebras" | "groq";
+  name: "cerebras" | "groq" | "gemini";
   baseUrl: string;
   apiKey: string | undefined;
   modelMap: Record<AgentName, string>;
