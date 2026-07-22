@@ -7,8 +7,8 @@
 //
 // Cadence rules (hours):
 //   • First fetch                  : 24
-//   • Unchanged                    : min(prev × 1.5, 336 [14d])
-//   • Changed                      : max(prev × 0.5, 6)
+//   • Unchanged                    : clamp(prev × 1.5, 24, 336 [14d])
+//   • Changed                      : clamp(prev × 0.5, 6, 336)
 //   • HTTP 304 (cheap recheck)     : same as unchanged
 //   • HTTP 404/410                 : 720 (30d), status = 'gone'
 //   • Blocked by robots.txt        : 168 (7d), status = 'blocked'
