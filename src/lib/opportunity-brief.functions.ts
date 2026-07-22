@@ -13,6 +13,13 @@ import {
   type GrantForRules,
 } from "@/agents/fit-rules.server";
 
+const PARTNER_TYPE_LABEL: Record<string, string> = {
+  municipality: "a municipality (city or town)",
+  first_nation: "a First Nation",
+  co_applicant: "a co-applicant partner",
+  other: "a partner organization",
+};
+
 export type Brief = {
   program_snapshot: {
     funder: string | null;
@@ -24,8 +31,21 @@ export type Brief = {
     intake: "fixed" | "rolling" | "unknown";
   };
   iial_role: "lead" | "partner" | "unknown";
+  // Plain-language answer to "what partner do I need?" — merges the
+  // deterministic role/partner-type detection into one sentence instead of
+  // leaving the reader to interpret a bare "partner" badge themselves.
+  partner: {
+    needed: boolean;
+    type: "municipality" | "first_nation" | "co_applicant" | "other" | null;
+    note: string;
+  };
   strategic_angle: string;
   mandatory_components: string[];
+  // Single merged "what do I need to apply" checklist — combines the
+  // LLM-drafted mandatory_components with the grant's own extracted
+  // requirements (previously two disconnected lists the reader had to
+  // reconcile themselves across two different UI sections).
+  application_checklist: string[];
   money: {
     request_amount: number | null;
     match_required_pct: number | null;
