@@ -623,8 +623,8 @@ export async function discoverFunderImpl(
     }
 
     // Bounded concurrency.
-    for (let i = 0; i < candidates.length; i += SCRAPE_CONCURRENCY) {
-      await Promise.all(candidates.slice(i, i + SCRAPE_CONCURRENCY).map(processOne));
+    for (let i = 0; i < candidates.length; i += cfg.scrapeConcurrency) {
+      await Promise.all(candidates.slice(i, i + cfg.scrapeConcurrency).map(processOne));
     }
 
     await supabaseAdmin
