@@ -91,8 +91,10 @@ export function freeProvidersAvailable(): string[] {
 }
 
 export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> {
-  // 1. CLOUD FIRST: Attempt cloud generation via Groq API (super fast extraction).
-  try {
+  // LOCAL FIRST: Ollama is primary wherever it's reachable. Cloud (Groq) is
+  // used only when Ollama is unreachable (e.g. deployed to Lovable) or as a
+  // last-resort fallback below when every local model attempt fails.
+  if (!(await isOllamaReachable())) {
     return await callCloudLlm({
       agent: opts.agent,
       messages: opts.messages,
@@ -101,15 +103,8 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
       responseFormat: opts.responseFormat,
       runId: opts.runId,
     });
-  } catch (err) {
-    // 2. LOCAL FALLBACK: If cloud fails explicitly warn and fallback.
-    const msg = err instanceof Error ? err.message : String(err);
-    if (!msg.includes("cloud_llm_unavailable")) {
-      console.warn(`[Free LLM Router] Cloud failed (${msg}). Falling back to local Ollama...`);
-    }
   }
 
-  // Fallback to local Ollama logic...
   const runId = opts.runId ?? newRunId();
 
   const primaryModel = resolveModel(opts.agent);
