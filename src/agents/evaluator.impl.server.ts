@@ -145,6 +145,22 @@ export async function evaluateGrantImpl(opts: {
     temperature: 0.1,
     maxOutputTokens: 256,
     responseFormat: "json",
+    // Schema guard: without this, a provider whose JSON fails EvaluatorOutput
+    // (e.g. missing fit_score, rationale_en too short) marks the whole run
+    // failed instead of the cloud/local chain advancing to the next
+    // provider — the exact bug class fixed for critic.functions.ts, applied
+    // here since evaluateGrantImpl never got the same guard.
+    validate: (text) => {
+      try {
+        const raw = JSON.parse(text);
+        if (raw && typeof raw === "object" && raw.eligibility_pass === undefined) {
+          raw.eligibility_pass = true; // mirror the real parse path's default below
+        }
+        return EvaluatorOutput.safeParse(raw).success;
+      } catch {
+        return false;
+      }
+    },
     messages: [
       {
         role: "system",
