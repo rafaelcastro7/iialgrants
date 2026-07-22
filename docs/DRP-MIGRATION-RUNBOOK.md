@@ -65,24 +65,39 @@ cd iialgrants
 bun install
 ```
 
-Create local env files from the example, then replace redacted values with the
-local Supabase keys used by the Docker stack:
+Set up the two-file env split (see "Environment architecture" below for the
+rationale). `.env` holds the base/production values; `.env.local` overrides them
+to point the dev machine at the local Docker Supabase. Both are gitignored.
 
 ```powershell
-Copy-Item .env.example env.local
-Copy-Item .env.example .env
+Copy-Item .env.example .env   # then fill cloud + LLM keys (Supabase Cloud URL, GROQ/CEREBRAS/GOOGLE keys)
 ```
 
-Required local values:
+Create `.env.local` with the LOCAL Docker Supabase values. These anon/service
+keys are the JWTs baked into THIS stack's `supabase/docker/volumes/api/kong.yml`
+(issuer `supabase`, JWT secret `your-super-secret-and-long-postgres-password`) —
+NOT the generic `supabase-demo` keys. Using the wrong keys makes Kong reject
+every request with `{"message":"Unauthorized"}` (a 401 at the gateway, before
+GoTrue ever sees it). Extract the current keys with:
+
+```powershell
+docker exec docker-kong-1 sh -c "cat /home/kong/kong.yml" | Select-String "key:"
+```
+
+`.env.local` (local dev DB; cloud LLM keys stay inherited from `.env`):
 
 ```text
 SUPABASE_URL=http://localhost:15435
+SUPABASE_PUBLISHABLE_KEY=<anon JWT from kong.yml>
+SUPABASE_SERVICE_ROLE_KEY=<service_role JWT from kong.yml>
+SUPABASE_PROJECT_ID=local
 VITE_SUPABASE_URL=http://localhost:15435
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=phi4-mini:latest
-OLLAMA_TIMEOUT_MS=180000
-DISABLE_CLOUD_LLM=1
+VITE_SUPABASE_PUBLISHABLE_KEY=<anon JWT from kong.yml>
+VITE_SUPABASE_PROJECT_ID=local
 ```
+
+Do NOT set `DISABLE_CLOUD_LLM` — the LLM stack is now hybrid (cloud-first with a
+graceful local fallback when Ollama is reachable). See "LLM architecture" below.
 
 Start local Supabase:
 
