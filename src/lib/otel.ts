@@ -7,14 +7,14 @@
 
 export type GenAIEvent = {
   "gen_ai.system":
-  | "google.gemini"
-  | "openai"
-  | "ollama"
-  | "groq"
-  | "free.groq"
-  | "free.gemini"
-  | "free.cerebras"
-  | "free.ollama";
+    | "google.gemini"
+    | "openai"
+    | "ollama"
+    | "groq"
+    | "free.groq"
+    | "free.gemini"
+    | "free.cerebras"
+    | "free.ollama";
   "gen_ai.request.model": string;
   "gen_ai.operation.name": "chat" | "embedding" | "generate_content";
   "gen_ai.usage.input_tokens"?: number;
