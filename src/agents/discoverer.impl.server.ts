@@ -555,8 +555,8 @@ export async function discoverFunderImpl(
                 `Funder: ${F.name}\nPage URL: ${url}\nPage title: ${scrape.title ?? ""}\n\n` +
                 `Markdown:\n${md}\n\n` +
                 `Return JSON: { "grants": [ { "title", "title_fr"?, "summary"?, "summary_fr"?, ` +
-                `"amount_cad_min"?, "amount_cad_max"?, "deadline"?, "eligibility"?, "sectors"?, ` +
-                `"language", "url" } ] }`,
+                `"amount_cad_min"?, "amount_cad_max"?, "country"?, "currency"?, "deadline"?, ` +
+                `"eligibility"?, "sectors"?, "language", "url" } ] }`,
             },
           ],
         });
