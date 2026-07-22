@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/public/hooks/deadlines")({
 
         let created = 0;
         for (const row of rows ?? []) {
-          const g = row.grant as {
+          const g = (Array.isArray(row.grant) ? row.grant[0] : row.grant) as {
             id: string;
             title: string;
             title_fr: string | null;
