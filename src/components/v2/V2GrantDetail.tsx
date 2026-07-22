@@ -637,7 +637,6 @@ export function V2GrantDetail({
           <Panel icon={NotebookText} title="Briefing tools" description="Human review outputs.">
             {hasBriefingTools ? (
               <div className="flex flex-wrap gap-2">
-                {grant.status !== "discovered" && <OpportunityBriefPanel grantId={grant.id} />}
                 {isAdmin && grant.status === "scored" && (
                   <Button size="sm" disabled={busy === "shortlist"} onClick={onShortlist}>
                     Shortlist
