@@ -120,6 +120,14 @@ node scripts/demo-seed.mjs
 bun scripts/seed-live-grant.mjs
 ```
 
+If the demo login buttons return 401 even with the correct anon key, the seeded
+password hash does not match the app's `DEMO_PASSWORD` (`IIAL-Demo-2026!`, in
+`src/routes/auth.tsx`). Reset it directly in the local auth DB:
+
+```powershell
+docker exec docker-db-1 psql -U postgres -d postgres -c "UPDATE auth.users SET encrypted_password = crypt('IIAL-Demo-2026!', gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, now()) WHERE email IN ('demo-admin@iial.test','demo-member-a@iial.test','demo-member-b@iial.test');"
+```
+
 Start the app:
 
 ```powershell
