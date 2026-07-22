@@ -1073,6 +1073,18 @@ export async function discoverFunderImpl(
           runId,
           temperature: 0,
           responseFormat: "json",
+          // Lower-severity than the two extraction call sites above (a failed
+          // translation here just keeps the original text, never drops the
+          // grant), but still worth advancing past a provider that returns
+          // JSON without either expected string field.
+          validate: (text) => {
+            try {
+              const v = JSON.parse(text) as Record<string, unknown>;
+              return typeof v.title_en === "string" || typeof v.summary_en === "string";
+            } catch {
+              return false;
+            }
+          },
           messages: [
             {
               role: "system",
