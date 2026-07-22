@@ -138,6 +138,18 @@ export const scoreProposal = createServerFn({ method: "POST" })
         runId,
         temperature: 0.2,
         responseFormat: "json",
+        // Schema guard: this reuses the critic agent slot but has its OWN
+        // schema (ExpertPanelOutput) and never got the validate guard that
+        // was added for critic.functions.ts's own schema — a provider
+        // returning JSON that satisfies neither shape would previously mark
+        // the whole panel failed instead of the chain advancing.
+        validate: (text) => {
+          try {
+            return ExpertPanelOutput.safeParse(JSON.parse(text)).success;
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
