@@ -724,13 +724,27 @@ export async function discoverFunderImpl(
 
   let indexHtml = "";
   let indexFetchError: string | null = null;
+  let indexViaBrowser = false;
   try {
     indexHtml = await fetchHtml(F.source_url, 10_000);
   } catch (e) {
     indexFetchError = e instanceof Error ? e.message : String(e);
   }
-  const indexText = htmlToText(indexHtml, 8_000);
+  let indexText = htmlToText(indexHtml, 8_000);
   const linksFromIndex = indexHtml ? extractCandidateLinks(indexHtml, F.source_url) : [];
+  // Plain fetch either failed outright or returned an empty/near-empty shell
+  // (common for JS-rendered SPA index pages, which still return HTTP 200).
+  // Try the local headless-browser engine so the degraded-run gate below
+  // reflects real page content rather than an unrendered shell. This can't
+  // recover link extraction (browser-render only exposes markdown, not raw
+  // HTML anchors), so sitemap + search seeding remain the link sources here.
+  if (indexText.length < 200) {
+    const rendered = await fetchIndexTextViaBrowser(F.source_url);
+    if (rendered && rendered.length > indexText.length) {
+      indexText = rendered.slice(0, 8_000);
+      indexViaBrowser = true;
+    }
+  }
 
   // Seed extra candidates via Jina Search so we never depend on the funder's
   // own navigation surfacing every program. This makes discovery resilient on
