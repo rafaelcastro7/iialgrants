@@ -16,6 +16,11 @@ export type LlmCallOptions = {
   agent: "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";
   runId?: string;
   responseFormat?: "json";
+  // Optional schema guard — when set, a provider's output that fails this check
+  // is treated as a failure and the chain advances (cloud provider → next
+  // provider → local model), instead of returning unusable content. Pass the
+  // caller's Zod parse (see critic.functions.ts).
+  validate?: (text: string) => boolean;
 };
 
 export type LlmCallResult = {
@@ -225,6 +230,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       maxOutputTokens: opts.maxOutputTokens,
       responseFormat: opts.responseFormat,
       runId: opts.runId,
+      validate: opts.validate,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
