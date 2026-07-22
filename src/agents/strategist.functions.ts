@@ -34,6 +34,25 @@ const STRATEGIST_KINDS = new Set([
 const asRecord = (v: unknown): Record<string, unknown> =>
   v && typeof v === "object" ? (v as Record<string, unknown>) : {};
 
+// Per-kind fallback angle, used only when the LLM's own angle is too thin to
+// use (< 10 chars). Even the fallback should point the Writer at the actual
+// grant-writing theory for that section kind (SMART objectives, evidence-
+// based need, etc.) instead of one generic "make the case" sentence for
+// every kind — see PROMPTS.strategist.system for the full rationale.
+const FALLBACK_ANGLE_BY_KIND: Record<string, string> = {
+  problem:
+    "State the need with specific, evidence-based data about this organization and its region — not generic sector statistics.",
+  solution:
+    "Describe the program design and give each objective in SMART form: specific, measurable, achievable, relevant, and time-bound.",
+  impact:
+    "State the expected outcomes as SMART objectives, tying each one directly back to the need described earlier.",
+  evaluation:
+    "Name concrete metrics, data-collection instruments, and intervals tied to the stated objectives — not a vague 'track progress' plan.",
+  sustainability:
+    "Name a specific post-grant revenue or partnership mechanism (diversified funding, earned revenue, cost-share) — not 'seek additional funding.'",
+  budget: "Justify each cost against the activities described in the solution/impact sections.",
+};
+
 // Coerce the strategist LLM output into a valid StrategistOutput by ANCHORING on
 // the template sections (deterministic structure) and enriching angle/must_cover
 // from whatever the model returned — an array under `sections`, or named keys
