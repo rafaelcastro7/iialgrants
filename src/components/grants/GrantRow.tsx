@@ -15,6 +15,7 @@ export type GrantRowData = {
   amount_cad_min: number | null;
   amount_cad_max: number | null;
   deadline: string | null;
+  sectors?: string[] | null;
   status: string;
   url: string;
   discovered_at: string | null;
