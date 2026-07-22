@@ -51,6 +51,6 @@ describe("grant catalog result handling", () => {
       { ...ranked[0], sectors: ["ai", "Clean Tech"] },
       { ...ranked[1], sectors: ["clean tech", "Forestry", null as unknown as string] },
     ];
-    expect(collectSectors(grants)).toEqual(["ai", "Clean Tech", "clean tech", "Forestry"]);
+    expect(collectSectors(grants)).toEqual(["ai", "clean tech", "Clean Tech", "Forestry"]);
   });
 });
