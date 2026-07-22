@@ -79,6 +79,19 @@ type RunRow = {
   run_at: string;
 };
 
+type RegistrationGateRow = {
+  id: string;
+  funder_id: string | null;
+  url: string;
+  reason: string;
+  snippet: string | null;
+  status: "pending" | "registered" | "not_needed";
+  first_detected_at: string;
+  last_detected_at: string;
+  times_seen: number;
+  funders: { name: string } | null;
+};
+
 function SourcesPage() {
   const listFn = useServerFn(listDiscoverySources);
   const toggleFn = useServerFn(setSourceEnabled);
