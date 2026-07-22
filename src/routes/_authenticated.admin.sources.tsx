@@ -99,6 +99,8 @@ function SourcesPage() {
   const promoteFn = useServerFn(promoteStaleCandidates);
   const runsFn = useServerFn(recentSourceRuns);
   const funderFn = useServerFn(funderActivityRollup);
+  const gatesFn = useServerFn(listRegistrationGates);
+  const resolveGateFn = useServerFn(resolveRegistrationGate);
   const [busy, setBusy] = useState<string | null>(null);
 
   const q = useQuery({
