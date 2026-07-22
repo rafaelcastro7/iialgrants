@@ -135,7 +135,7 @@ async function runSource(
           continue;
         }
         const score = scoreCandidate(c);
-        if (score < REVIEW_MIN_THRESHOLD) {
+        if (score < cfg.candidateReviewMinThreshold) {
           // Not a duplicate — a genuinely new candidate whose signal quality
           // (BN/website/multiple sources/etc.) is too thin to review yet.
           // Counting this as `dup` corrupted the source_health_summary
