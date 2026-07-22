@@ -33,50 +33,41 @@ function VerdictBadge({ v }: { v: Brief["recommendation"]["verdict"] }) {
 export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
   const gen = useServerFn(generateOpportunityBrief);
   const m = useMutation({ mutationFn: () => gen({ data: { grantId } }) });
-  const [open, setOpen] = useState(false);
 
-  if (!open) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          setOpen(true);
-          m.mutate();
-        }}
-        className="gap-2"
-      >
-        <FileText className="h-4 w-4" />
-        Opportunity Brief
-      </Button>
-    );
-  }
+  // Auto-loads as soon as this panel mounts — no button to find first. A
+  // grant detail page view is already a deliberate look at one opportunity,
+  // so the one LLM call this costs is worth not making the reader hunt for
+  // "what do I need" behind a click.
+  useEffect(() => {
+    m.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grantId]);
 
   const b = m.data?.brief;
 
   return (
-    <Card className="mt-4 border-primary/40">
+    <Card className="border-primary/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4" />
-            Opportunity Brief - IIAL SOP v2
+            What you need to apply
           </CardTitle>
           <p className="mt-1 text-xs text-muted-foreground">
-            Structured leadership brief for the go / no-go decision.
+            Documents, partners, and money — everything before the go / no-go call.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => m.mutate()} disabled={m.isPending}>
-            Refresh
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            Close
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" onClick={() => m.mutate()} disabled={m.isPending}>
+          <Loader2 className={`h-3.5 w-3.5 ${m.isPending ? "animate-spin" : "hidden"}`} />
+          Refresh
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
-        {m.isPending && <p className="text-muted-foreground">Generating brief...</p>}
+        {m.isPending && !b && (
+          <p className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Working out what this grant needs...
+          </p>
+        )}
         {m.isError && <p className="text-xs text-destructive">{(m.error as Error).message}</p>}
         {b && (
           <>
@@ -98,6 +89,35 @@ export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
                 )}
               </div>
             </div>
+
+            <section className="rounded-lg bg-muted/40 p-3">
+              <h4 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Users className="h-3.5 w-3.5" /> Partners needed
+              </h4>
+              <p className="text-sm leading-relaxed">{b.partner.note}</p>
+            </section>
+
+            <section className="rounded-lg bg-muted/40 p-3">
+              <h4 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <ListChecks className="h-3.5 w-3.5" /> Application checklist
+              </h4>
+              {b.application_checklist.length === 0 ? (
+                <p className="text-xs italic text-muted-foreground">
+                  No specific requirements detected yet — check the funder's own guidelines page.
+                </p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {b.application_checklist.map((x, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span>{x}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <Separator />
 
             <section>
               <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
