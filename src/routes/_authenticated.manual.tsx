@@ -21,6 +21,7 @@ import { AppTopBar } from "@/components/AppSidebar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import manualMarkdown from "../../docs/USER-MANUAL.md?raw";
+import { useUiVersion } from "@/components/v2/ui-version";
 
 export const Route = createFileRoute("/_authenticated/manual")({
   head: () => ({
@@ -50,6 +51,11 @@ const headings = blocks.filter(
 
 function UserManualRoute() {
   const sectionCount = headings.length;
+  const { version } = useUiVersion();
+
+  if (version === "v2") {
+    return <UserManualRouteV2 />;
+  }
 
   return (
     <>
@@ -118,6 +124,53 @@ function UserManualRoute() {
               </div>
             </section>
           </article>
+        </section>
+      </main>
+    </>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// V2 — friendly redesign: 2-up topic cards over the same parsed manual content
+// -----------------------------------------------------------------------------
+
+function UserManualRouteV2() {
+  return (
+    <>
+      <AppTopBar title="Guide" />
+      <main className="min-h-screen bg-background">
+        <section className="mx-auto max-w-[1100px] space-y-5 px-4 py-6 sm:px-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Guide</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Everything you need to know, by topic.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {headings.map((heading) => (
+              <a
+                key={heading.id}
+                href={`#${heading.id}`}
+                className="rounded-xl border bg-card p-4 transition-colors hover:bg-accent/40"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                <p className="mt-3 text-sm font-semibold leading-snug">{heading.text}</p>
+              </a>
+            ))}
+          </div>
+
+          <section className="rounded-md border bg-card shadow-sm">
+            <div className="manual-article px-5 py-6 sm:px-8 lg:px-10">
+              {blocks
+                .filter((block) => !(block.type === "heading" && block.depth === 1))
+                .map((block, index) => (
+                  <MarkdownBlock key={index} block={block} />
+                ))}
+            </div>
+          </section>
         </section>
       </main>
     </>
