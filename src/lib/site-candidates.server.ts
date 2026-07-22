@@ -171,6 +171,46 @@ async function fetchText(url: string, timeoutMs: number, accept: string): Promis
   }
 }
 
+/**
+ * Sitemaps are sometimes served as literal gzip files (e.g. sitemap.xml.gz) without a
+ * Content-Encoding header, so `fetch` never auto-decompresses them. Detect that case via the
+ * gzip magic number (rather than trusting headers, which can't distinguish "the transport
+ * already decompressed this" from "this body is genuinely gzip bytes") and gunzip manually.
+ */
+async function fetchSitemapXml(url: string, timeoutMs: number): Promise<string | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      redirect: "follow",
+      headers: {
+        "User-Agent": DISCOVERY_UA,
+        Accept: "application/xml,text/xml,application/gzip;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-CA,en;q=0.9,fr-CA;q=0.5",
+      },
+    });
+    if (!res.ok) return null;
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const isGzipMagic = buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b;
+    if (!isGzipMagic) return buffer.toString("utf-8");
+
+    try {
+      return gunzipSync(buffer).toString("utf-8");
+    } catch (err) {
+      console.warn(
+        `[site-candidates] failed to gunzip sitemap at ${url}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function decodeXml(value: string): string {
   return value
     .replace(/&amp;/g, "&")
