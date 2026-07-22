@@ -35,3 +35,19 @@ skipped, `build` OK.
 | --- | --- | --- |
 | `/auth` | ✅ PASS | Demo login buttons render; Admin login → `/dashboard`. |
 | `/dashboard` | ✅ PASS | Real local data (17 active, 9 eligible, NRC IRAP grants), no console errors. |
+| `/grants` | ✅ PASS | 17 grants, V2 radar; search "IRAP" → 17→8 relevant, no errors. |
+| `/grants/$id` | ✅ PASS | Grant detail (fit 88/100, evidence 4/7, completeness 57%), no errors. |
+| `/proposals` | ✅ PASS | 3 proposals from local DB, no errors. |
+| `/submissions` | ✅ PASS | Sent/Won/Waiting/Win-rate + IRAP submission, no errors. |
+| `/fit-rules` | ✅ PASS | Screening profiles render, no errors. |
+| `/funders` | ⚠️ WARN | Renders 8 funders from local DB, but React dev warning "state update on a component that hasn't mounted yet" (see Known issues). |
+| `/admin` | ⚠️ WARN | Renders; same React mount warning as /funders (shared AppTopBar/V1 layout, not on V2-shell routes). |
+
+## Known issues (non-blocking)
+
+- **React "state update on a component that hasn't mounted yet" on `/funders`
+  and `/admin`.** Both use the older `AppTopBar` layout; the V2-shell routes
+  (dashboard/grants/proposals/submissions/fit-rules) do not show it. Page still
+  renders all real data. Hypothesis: a suspense-query/side-effect firing during
+  render in the shared V1 layout path. Non-fatal dev warning; flagged for a
+  focused fix.
