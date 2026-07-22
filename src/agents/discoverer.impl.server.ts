@@ -1231,6 +1231,8 @@ export async function discoverFunderImpl(
         // guess.
         amount_cad_min: null,
         amount_cad_max: null,
+        country: g.country ?? "CA",
+        currency: g.currency ?? "CAD",
         deadline: null,
         eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
         sectors: g.sectors ?? [],
