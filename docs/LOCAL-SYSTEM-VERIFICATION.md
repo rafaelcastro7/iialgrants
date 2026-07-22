@@ -66,6 +66,43 @@ skipped, `build` OK.
   transition/unmount timing under fast navigation. Flagged for a focused fix if
   it ever surfaces at human speed.
 
+## 2026-07-22 (2nd loop) — Actions & lifecycle testing
+
+### Schema drift FIXED — the 5 newest migrations were never applied locally
+
+`/fit-rules` "Simulate impact" worked (3 pass / 13 review / 4 block), but exposed
+a real bug: `column outcomes.impact_description does not exist` crashing the
+`/impact` route to its error boundary. Root cause: the 5 migrations Lovable/Gemini
+generated overnight (`20260722012054`, `012237`, `012327`, `012841`, `020029`)
+were committed to the repo but **never applied to the local Docker DB**.
+
+Fix: `node scripts/apply-local-migrations.mjs` → 6 applied (added
+`outcomes.impact_description`, `grants.requirements`, `proposals.version`,
+`search_grant_catalog` RPC, org tables, webhook deny policies). Then restarted
+`docker-rest-1` (a plain `NOTIFY pgrst` was not enough) so PostgREST picked up
+the new columns. Verified: service-role query for the exact embedded
+outcomes+submissions+grants join returns rows; server log shows **zero**
+`impact_description` errors after a clean dev-server restart; `/impact` renders
+real data ("Grants won 1", award-by-award list).
+
+- One migration (`20260722012841`) fails idempotently ("policy
+  `approval_workflows_admin_all` already exists") — its intent is already
+  satisfied by `20260711160100`; harmless but it retries each run. Low priority.
+- **Cloud implication:** the same migration drift almost certainly exists on the
+  Lovable Cloud DB (these + ~38 earlier migrations were only ever applied to
+  local Docker). Deploying to Lovable will hit the same "column does not exist"
+  errors until the migrations are applied to Cloud (needs `supabase link` +
+  `db push`, still pending — see DRP runbook).
+- Note: GET server functions are HTTP-cached by the browser, so a stale 500
+  response can linger in the console after a fix until a cache-bypassing reload.
+
+### Deterministic actions verified
+
+| Action | Result |
+| --- | --- |
+| `/grants` search "IRAP" | ✅ 17→8 relevant |
+| `/fit-rules` Simulate impact | ✅ 3 pass / 13 review / 4 block |
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
