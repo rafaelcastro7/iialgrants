@@ -117,6 +117,18 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
       reason = `${rr.checks.length} filters passed; rule score ${rr.rule_score}/100`;
     }
 
+    // Experienced grant writers apply an "~80% fit or don't apply" discipline
+    // and treat pre-submission contact with the program officer as the
+    // highest-return activity before drafting begins — a borderline pass
+    // (rule score under 80) is exactly the case where that quick check pays
+    // off most, before investing writer/critic time on a marginal fit.
+    if (verdict !== "no_go" && rr.rule_score < 80) {
+      conditions.push(
+        `Borderline fit (rule score ${rr.rule_score}/100, below the ~80% experienced grant-writers use as a go/no-go line) — consider confirming alignment with the funder's program officer before drafting`,
+      );
+      if (verdict === "go") verdict = "go_conditional";
+    }
+
     if (rr.cost_share_pct !== null && rr.cost_share_pct > 0 && rules.require_match_verification) {
       conditions.push(
         `Confirm cash-match availability (~${rr.cost_share_pct}%) with leadership`,
