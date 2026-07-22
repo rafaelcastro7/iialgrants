@@ -1086,11 +1086,15 @@ export async function discoverFunderImpl(
               `Funder: ${F.name}\nProgram page URL: ${doc.url}\n\nPage text:\n${doc.text}\n\n` +
               `Return JSON: { "grants": [ one entry describing THIS specific program with fields: ` +
               `"title", "title_fr"?, "summary"?, "summary_fr"?, "amount_cad_min"?, "amount_cad_max"?, ` +
-              `"deadline"?, "eligibility"?, "sectors"?, "language", "url" ] }. Use "${doc.url}" as the url. ` +
+              `"country"?, "currency"?, "deadline"?, "eligibility"?, "sectors"?, "language", "url" ] }. Use "${doc.url}" as the url. ` +
+              `Detect "country" (ISO 3166-1 alpha-2) and "currency" (ISO 4217) from context — do not assume Canada/CAD; ` +
+              `only default to CA/CAD when the page gives no signal at all. ` +
               `LANGUAGE RULE (CRITICAL): "title" and "summary" MUST always be in ENGLISH. ` +
               `If the source page is in French, translate them to natural English and put the ORIGINAL French ` +
-              `text in "title_fr" and "summary_fr". Set "language" to the source page language ("en" or "fr"). ` +
-              `Do not leave French strings in "title" or "summary". Translate "eligibility" values and "sectors" to English as well. ` +
+              `text in "title_fr" and "summary_fr". If the source page is in another language (Spanish, German, etc.), ` +
+              `translate "title" and "summary" to natural English directly (no _fr fields needed). ` +
+              `Set "language" to the source page's ISO 639-1 code (e.g. "en", "fr", "es", "de"). ` +
+              `Do not leave non-English strings in "title" or "summary". Translate "eligibility" values and "sectors" to English as well. ` +
               `If the page is not a specific funding program, return { "grants": [] }.`,
           },
         ],
