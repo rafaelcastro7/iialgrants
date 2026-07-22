@@ -436,7 +436,7 @@ export async function discoverFunderImpl(
     indexUrls.forEach((u) => mapped.add(u));
 
     const origin = new URL(F.source_url).origin;
-    const candidates = filterProgramUrls([...mapped], origin).slice(0, MAX_PAGES_PER_RUN);
+    const candidates = filterProgramUrls([...mapped], origin).slice(0, cfg.maxPagesPerRun);
 
     let inserted = 0;
     let seenAgain = 0;
