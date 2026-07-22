@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "eval:search": "bun scripts/run-search-benchmark.ts",
+    "search:backfill": "bun scripts/backfill-grant-search-embeddings.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

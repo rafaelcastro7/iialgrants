@@ -1400,6 +1400,38 @@ export type Database = {
           },
         ];
       };
+      grant_search_documents: {
+        Row: {
+          content_en: string;
+          content_fr: string;
+          content_hash: string;
+          embedded_at: string | null;
+          embedding: string | null;
+          embedding_model: string | null;
+          grant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          content_en: string;
+          content_fr?: string;
+          content_hash: string;
+          embedded_at?: string | null;
+          embedding?: string | null;
+          embedding_model?: string | null;
+          grant_id: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["grant_search_documents"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "grant_search_documents_grant_id_fkey";
+            columns: ["grant_id"];
+            isOneToOne: true;
+            referencedRelation: "grants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       grant_search_profiles: {
         Row: {
           active: boolean;
@@ -2627,6 +2659,17 @@ export type Database = {
           language: Database["public"]["Enums"]["app_lang"];
           similarity: number;
           source: string;
+        }[];
+      };
+      match_grant_search_documents: {
+        Args: {
+          match_count?: number;
+          match_threshold?: number;
+          query_embedding: string;
+        };
+        Returns: {
+          grant_id: string;
+          semantic_similarity: number;
         }[];
       };
       normalize_title_v2: { Args: { t: string }; Returns: string };

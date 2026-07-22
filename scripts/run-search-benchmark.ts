@@ -4,6 +4,8 @@ import {
   summarizeSearchBenchmark,
   type SearchBenchmarkCase,
 } from "../src/evals/search/metrics";
+import type { Database } from "../src/integrations/supabase/types";
+import { searchGrantCatalogHybrid } from "../src/lib/grant-search-hybrid.server";
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -12,7 +14,7 @@ if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY ar
 const cases = (await Bun.file(
   new URL("../src/evals/search/golden.cases.json", import.meta.url),
 ).json()) as SearchBenchmarkCase[];
-const supabase = createClient(url, key, {
+const supabase = createClient<Database>(url, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const activeStatuses = new Set([
@@ -25,14 +27,29 @@ const activeStatuses = new Set([
   "won",
 ]);
 const rows = [];
+const staleCaseIds: string[] = [];
+const relevantIds = [...new Set(cases.flatMap((testCase) => Object.keys(testCase.relevance)))];
+const { data: relevantGrants, error: relevantError } = await supabase
+  .from("grants")
+  .select("id,status")
+  .in("id", relevantIds);
+if (relevantError) throw new Error(relevantError.message);
+const activeRelevantIds = new Set(
+  (relevantGrants ?? [])
+    .filter((grant) => activeStatuses.has(grant.status))
+    .map((grant) => grant.id),
+);
 
 for (const testCase of cases) {
-  const { data: ranked, error } = await supabase.rpc("search_grant_catalog", {
-    search_query: testCase.query,
-    result_limit: 50,
-  });
-  if (error) throw new Error(`${testCase.id}: ${error.message}`);
-  const ids = (ranked ?? []).map((row) => row.grant_id as string);
+  const effectiveRelevance = Object.fromEntries(
+    Object.entries(testCase.relevance).filter(([grantId]) => activeRelevantIds.has(grantId)),
+  );
+  if (Object.keys(testCase.relevance).length > 0 && Object.keys(effectiveRelevance).length === 0) {
+    staleCaseIds.push(testCase.id);
+    continue;
+  }
+  const { matches } = await searchGrantCatalogHybrid(supabase, testCase.query, 50);
+  const ids = matches.map((row) => row.grantId);
   let activeIds: string[] = [];
   if (ids.length > 0) {
     const { data: grants, error: grantsError } = await supabase
@@ -45,14 +62,15 @@ for (const testCase of cases) {
     );
     activeIds = ids.filter((id) => activeById.has(id));
   }
-  rows.push(evaluateSearchCase(testCase, activeIds, 10));
+  rows.push(evaluateSearchCase({ ...testCase, relevance: effectiveRelevance }, activeIds, 10));
 }
 
 const report = {
   generatedAt: new Date().toISOString(),
-  ranking: "search_grant_catalog",
+  ranking: "hybrid_rrf_v1",
   k: 10,
   summary: summarizeSearchBenchmark(rows),
+  staleCaseIds,
   cases: rows,
 };
 console.log(JSON.stringify(report, null, 2));
