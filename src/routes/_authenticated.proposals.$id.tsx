@@ -420,6 +420,43 @@ function ProposalDetailPage() {
               </Card>
             )}
 
+            {rubric.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Reviewer rubric</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Scored the way a real funder panel scores: need, approach, capacity,
+                    evaluation, sustainability, budget, compliance.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-2.5">
+                  {rubric.map((r) => (
+                    <div key={r.category} className="text-xs">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-medium">
+                          {CRITIC_RUBRIC_LABELS[r.category] ?? r.category}
+                        </span>
+                        <span className="tabular-nums text-muted-foreground">{r.score}/10</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${
+                            r.score >= 7
+                              ? "bg-emerald-500"
+                              : r.score >= 4
+                                ? "bg-amber-500"
+                                : "bg-rose-500"
+                          }`}
+                          style={{ width: `${r.score * 10}%` }}
+                        />
+                      </div>
+                      <p className="text-muted-foreground mt-0.5">{r.note}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-3">
