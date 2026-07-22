@@ -221,6 +221,93 @@ function SourcesPage() {
 
       <CrawlLedgerWidget />
 
+      {(() => {
+        const gates: RegistrationGateRow[] = qGates.data ?? [];
+        const pending = gates.filter((g) => g.status === "pending");
+        if (gates.length === 0) return null;
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Needs manual sign-up ({pending.length} pending)
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Pages that gated content behind a login/registration wall during discovery. This
+                system never creates accounts on external sites — sign up yourself, then mark the
+                row resolved so discovery stops flagging it.
+              </p>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Funder</TableHead>
+                    <TableHead>URL</TableHead>
+                    <TableHead>Why</TableHead>
+                    <TableHead>Seen</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {gates.map((g) => (
+                    <TableRow key={g.id} className={g.status !== "pending" ? "opacity-50" : ""}>
+                      <TableCell>{g.funders?.name ?? "—"}</TableCell>
+                      <TableCell className="max-w-xs">
+                        <a
+                          href={g.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs truncate block hover:underline"
+                        >
+                          {g.url}
+                        </a>
+                      </TableCell>
+                      <TableCell className="text-xs max-w-xs truncate" title={g.snippet ?? ""}>
+                        {g.reason === "redirected_to_login_url"
+                          ? "Redirected to a login page"
+                          : "Login-wall text detected"}
+                        {g.snippet && <div className="text-muted-foreground">{g.snippet}</div>}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {g.times_seen}x · {new Date(g.last_detected_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={g.status === "pending" ? "secondary" : "default"}>
+                          {g.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-1">
+                        {g.status === "pending" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busy !== null}
+                              onClick={() => resolveGate(g.id, "registered")}
+                            >
+                              Registered
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={busy !== null}
+                              onClick={() => resolveGate(g.id, "not_needed")}
+                            >
+                              Not needed
+                            </Button>
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {Object.keys(TIER_LABEL).map((tier) => {
         const rows = byTier[tier] ?? [];
         if (!rows.length) return null;
