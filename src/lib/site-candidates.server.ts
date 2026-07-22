@@ -1,5 +1,3 @@
-import { gunzipSync } from "node:zlib";
-
 const DISCOVERY_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
@@ -171,46 +169,6 @@ async function fetchText(url: string, timeoutMs: number, accept: string): Promis
   }
 }
 
-/**
- * Sitemaps are sometimes served as literal gzip files (e.g. sitemap.xml.gz) without a
- * Content-Encoding header, so `fetch` never auto-decompresses them. Detect that case via the
- * gzip magic number (rather than trusting headers, which can't distinguish "the transport
- * already decompressed this" from "this body is genuinely gzip bytes") and gunzip manually.
- */
-async function fetchSitemapXml(url: string, timeoutMs: number): Promise<string | null> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      redirect: "follow",
-      headers: {
-        "User-Agent": DISCOVERY_UA,
-        Accept: "application/xml,text/xml,application/gzip;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-CA,en;q=0.9,fr-CA;q=0.5",
-      },
-    });
-    if (!res.ok) return null;
-
-    const buffer = Buffer.from(await res.arrayBuffer());
-    const isGzipMagic = buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b;
-    if (!isGzipMagic) return buffer.toString("utf-8");
-
-    try {
-      return gunzipSync(buffer).toString("utf-8");
-    } catch (err) {
-      console.warn(
-        `[site-candidates] failed to gunzip sitemap at ${url}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-      return null;
-    }
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 function decodeXml(value: string): string {
   return value
     .replace(/&amp;/g, "&")
@@ -308,49 +266,27 @@ export async function fetchCandidateLinksFromSitemaps(
     return [];
   }
 
-  // robots.txt-declared sitemaps are ground truth for this site; the two hardcoded guesses are
-  // only a fallback for sites with no (or unreadable) robots.txt, so they go to the back of the
-  // queue and never crowd out real entries.
+  const sitemapEntries = new Set<string>([`${origin}/sitemap.xml`, `${origin}/sitemap_index.xml`]);
+
   const robotsText = await fetchText(`${origin}/robots.txt`, 4_000, "text/plain,*/*");
-  const robotsSitemaps: string[] = [];
   if (robotsText) {
     const matches = robotsText.matchAll(/^sitemap:\s*(.+)$/gim);
     for (const match of matches) {
-      const url = match[1].trim();
-      if (url) robotsSitemaps.push(url);
+      sitemapEntries.add(match[1].trim());
     }
   }
-  const defaultGuesses = [`${origin}/sitemap.xml`, `${origin}/sitemap_index.xml`];
 
-  const queueSet = new Set<string>();
-  const queue: string[] = [];
-  for (const url of [...robotsSitemaps, ...defaultGuesses]) {
-    if (queueSet.has(url)) continue;
-    queueSet.add(url);
-    queue.push(url);
-  }
-
-  // Lightweight relevance scoring so a sitemap index with many category sitemaps (posts, news,
-  // programs, ...) visits the grant/program-shaped ones before the cap is hit, instead of
-  // whatever raw order the index XML happened to list them in.
-  const RELEVANT_SITEMAP_PATTERN = /(program|grant|fund|subvention|scholarship|award|service)/i;
-  const IRRELEVANT_SITEMAP_PATTERN = /(news|blog|press|event|author|tag|category)/i;
-  const sitemapRelevance = (url: string): number => {
-    if (RELEVANT_SITEMAP_PATTERN.test(url)) return 1;
-    if (IRRELEVANT_SITEMAP_PATTERN.test(url)) return -1;
-    return 0;
-  };
-
-  const MAX_SITEMAPS_FETCHED = 20;
   const seenUrls = new Set<string>(opts.seenUrls ?? []);
   const collected = new Map<string, OfficialCandidate>();
+  const queue = [...sitemapEntries].slice(0, 4);
 
-  let cursor = 0;
-  let fetchedCount = 0;
-  while (cursor < queue.length && fetchedCount < MAX_SITEMAPS_FETCHED) {
-    const sitemapUrl = queue[cursor++];
-    fetchedCount++;
-    const xml = await fetchSitemapXml(sitemapUrl, opts.timeoutMs ?? 10_000);
+  for (let i = 0; i < queue.length && i < 6; i++) {
+    const sitemapUrl = queue[i];
+    const xml = await fetchText(
+      sitemapUrl,
+      opts.timeoutMs ?? 10_000,
+      "application/xml,text/xml;q=0.9,*/*;q=0.8",
+    );
     if (!xml) continue;
 
     const candidates = extractSitemapCandidatesFromXml(xml, baseUrl, {
@@ -367,13 +303,9 @@ export async function fetchCandidateLinksFromSitemaps(
       }
     }
 
-    const children = childSitemapUrls(origin, xml)
-      .filter((child) => !queueSet.has(child))
-      .sort((a, b) => sitemapRelevance(b) - sitemapRelevance(a));
+    const children = childSitemapUrls(origin, xml);
     for (const child of children) {
-      if (queueSet.has(child)) continue;
-      queueSet.add(child);
-      queue.push(child);
+      if (!queue.includes(child) && queue.length < 6) queue.push(child);
     }
   }
 

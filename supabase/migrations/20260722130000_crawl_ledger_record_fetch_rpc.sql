@@ -62,10 +62,10 @@ begin
   -- (SELECT ... FOR UPDATE alone can't lock a not-yet-inserted row).
   perform pg_advisory_xact_lock(hashtext('crawl_ledger:' || p_url));
 
-  select content_hash, interval_hours, change_count, fetch_count, error_count
+  select cl.content_hash, cl.interval_hours, cl.change_count, cl.fetch_count, cl.error_count
     into v_row
-    from public.crawl_ledger
-   where url = p_url
+    from public.crawl_ledger cl
+   where cl.url = p_url
    for update;
 
   v_prev_hash := v_row.content_hash;
