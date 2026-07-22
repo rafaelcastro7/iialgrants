@@ -113,7 +113,12 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
     let risks: string[] = [];
     try {
       const llm = await callLlm({
-        model: "groq/llama-3.3-70b-versatile",
+        // A "groq/llama-3.3-70b-versatile" model override used to sit here,
+        // but callLlm's cloud path (the default, cloud-first) never forwards
+        // opts.model to callCloudLlm at all — it silently had zero effect and
+        // this call went through the normal Cerebras->Groq->Gemini chain
+        // regardless. Removed rather than wiring a new "pin to one provider"
+        // capability that no other call site uses or needs.
         agent: "strategist",
         runId,
         temperature: 0.2,
