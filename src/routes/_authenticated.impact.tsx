@@ -190,7 +190,9 @@ function ImpactMeasurementPageV2({
                   Impact documented
                 </span>
               </div>
-              <p className="mt-2 text-4xl font-semibold tabular-nums">{metrics.impactCoveragePct}%</p>
+              <p className="mt-2 text-4xl font-semibold tabular-nums">
+                {metrics.impactCoveragePct}%
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {metrics.withImpactDescription} of {metrics.totalWon} awards have a written impact
                 summary.
@@ -226,7 +228,9 @@ function ImpactMeasurementPageV2({
                         )}
                       </div>
                       {d.impactDescription ? (
-                        <p className="mt-2 rounded bg-muted/50 p-2 text-sm">{d.impactDescription}</p>
+                        <p className="mt-2 rounded bg-muted/50 p-2 text-sm">
+                          {d.impactDescription}
+                        </p>
                       ) : (
                         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />

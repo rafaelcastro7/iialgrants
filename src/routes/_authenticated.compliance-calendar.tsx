@@ -200,11 +200,7 @@ function ComplianceCalendarPage() {
 
   if (version === "v2") {
     return (
-      <ComplianceCalendarPageV2
-        items={items}
-        stats={stats}
-        completeMutation={completeMutation}
-      />
+      <ComplianceCalendarPageV2 items={items} stats={stats} completeMutation={completeMutation} />
     );
   }
 
@@ -629,8 +625,16 @@ function ComplianceCalendarPageV2({
             </Card>
           </div>
 
-          <DeadlineGroup title="This week" items={groups.thisWeek} completeMutation={completeMutation} />
-          <DeadlineGroup title="This month" items={groups.thisMonth} completeMutation={completeMutation} />
+          <DeadlineGroup
+            title="This week"
+            items={groups.thisWeek}
+            completeMutation={completeMutation}
+          />
+          <DeadlineGroup
+            title="This month"
+            items={groups.thisMonth}
+            completeMutation={completeMutation}
+          />
           <DeadlineGroup title="Later" items={groups.later} completeMutation={completeMutation} />
 
           {items.length === 0 && (

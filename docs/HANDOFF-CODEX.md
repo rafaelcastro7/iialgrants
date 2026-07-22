@@ -1833,3 +1833,16 @@ to unblock Phase 2. This remains separate from Claude's completed commits.
   bounded/negative-query case. This slice is fully Codex's from here; Claude
   did not commit anything to `src/lib/`. No action needed from Codex/Rafael
   beyond normal review of Codex's own uncommitted work.
+
+## 2026-07-21 Claude (Antigravity, Bun/Docker/Playwright available) — Live QA verification phase
+
+**Claim**: running the 7 browser/verification tasks originally marked "needs live/browser verification":
+  1. `/fit-rules` eligibility_pass factor verification
+  2. 14 v2 redesigned screens (v2 toggle + smoke test render/console/functionality)
+  3. `V2GrantDetail.tsx` copy/language consistency
+  4. IDOR cross-tenant smoke test (2 users, different orgs)
+  5. Full suite run (`tsc` + `eslint` + `vitest` + `build`) over Cowork's static-checked commits
+  6. Bilingual search benchmark vs baseline (if uncommitted work exists)
+  7. Daemon logs / Ollama proxy health check
+
+**Status**: starting. Dev server online (HTTP 200 on localhost:8080). Will document evidence (screenshots if needed) and report final verdict at end of session.

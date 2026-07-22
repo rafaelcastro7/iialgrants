@@ -254,8 +254,7 @@ function RenewalIntelligencePageV2({
                         {c.funderPrograms > 1
                           ? `This funder runs ${c.funderPrograms} programs`
                           : "This funder runs one known program"}
-                        {c.daysSinceDecision != null &&
-                          ` · Won ${c.daysSinceDecision} days ago`}
+                        {c.daysSinceDecision != null && ` · Won ${c.daysSinceDecision} days ago`}
                       </p>
                     </div>
                     <Button

@@ -340,7 +340,10 @@ function PrivacyCenterV2({
               const last = latestByType[tp];
               const granted = last?.action === "granted";
               return (
-                <li key={tp} className="flex items-center justify-between border-b pb-2 last:border-0">
+                <li
+                  key={tp}
+                  className="flex items-center justify-between border-b pb-2 last:border-0"
+                >
                   <div>
                     <div className="font-medium">{t(`privacy.types.${tp}`)}</div>
                     <div className="text-xs text-muted-foreground">

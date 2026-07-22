@@ -264,7 +264,9 @@ function FinancialTrackingPageV2({
                   <Calendar className="h-4 w-4" />
                   <p className="text-xs">On budget?</p>
                 </div>
-                <p className={`mt-1 text-2xl font-semibold ${onBudget ? "text-emerald-600" : "text-amber-600"}`}>
+                <p
+                  className={`mt-1 text-2xl font-semibold ${onBudget ? "text-emerald-600" : "text-amber-600"}`}
+                >
                   {budgets.length === 0 ? "—" : onBudget ? "Yes" : "Watch this"}
                 </p>
               </CardContent>
@@ -289,7 +291,8 @@ function FinancialTrackingPageV2({
                     <div className="flex items-center justify-between gap-3 text-sm">
                       <span className="min-w-0 truncate font-medium">{b.grantTitle}</span>
                       <span className="shrink-0 text-muted-foreground">
-                        Spent ${b.amountAwarded.toLocaleString()} of ${b.budgetTotal.toLocaleString()}
+                        Spent ${b.amountAwarded.toLocaleString()} of $
+                        {b.budgetTotal.toLocaleString()}
                       </span>
                     </div>
                     <div className="mt-1.5 h-2 rounded-full bg-muted">

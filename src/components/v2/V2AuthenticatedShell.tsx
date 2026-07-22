@@ -62,7 +62,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Every day",
     accent: "teal",
     items: [
-      { to: "/dashboard", label: "Home", description: "Today, priorities, intelligence", icon: Home },
+      {
+        to: "/dashboard",
+        label: "Home",
+        description: "Today, priorities, intelligence",
+        icon: Home,
+      },
       { to: "/grants", label: "Grant radar", description: "Discover and qualify", icon: Radar },
       { to: "/funders", label: "Funders", description: "CRA, history, patterns", icon: Landmark },
     ],

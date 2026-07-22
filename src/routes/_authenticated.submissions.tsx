@@ -252,7 +252,11 @@ function SubmissionsPageV2({
           <SubmissionStat icon={Send} label="Sent" value={submissions.length} />
           <SubmissionStat icon={Trophy} label="Won" value={won} />
           <SubmissionStat icon={Clock3} label="Waiting" value={waiting} />
-          <SubmissionStat icon={Percent} label="Win rate" value={decided > 0 ? `${winRate}%` : "—"} />
+          <SubmissionStat
+            icon={Percent}
+            label="Win rate"
+            value={decided > 0 ? `${winRate}%` : "—"}
+          />
         </div>
 
         {submissions.length === 0 ? (
@@ -265,7 +269,11 @@ function SubmissionsPageV2({
         ) : (
           <div className="space-y-3">
             {submissions.map((s) => {
-              const grant = s.grant as { id: string; title: string; title_fr: string | null } | null;
+              const grant = s.grant as {
+                id: string;
+                title: string;
+                title_fr: string | null;
+              } | null;
               const oc = (
                 s.outcome as Array<{
                   result: string;
@@ -291,7 +299,8 @@ function SubmissionsPageV2({
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Sent {new Date(s.submitted_at as string).toLocaleDateString("en-CA")}
-                        {oc?.amount_awarded_cad != null && ` · $${oc.amount_awarded_cad.toLocaleString()}`}
+                        {oc?.amount_awarded_cad != null &&
+                          ` · $${oc.amount_awarded_cad.toLocaleString()}`}
                         {oc?.decision_date && ` · Decided ${oc.decision_date}`}
                       </p>
                     </div>

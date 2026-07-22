@@ -157,14 +157,7 @@ function ProposalsPage() {
   ];
 
   if (version === "v2") {
-    return (
-      <ProposalsPageV2
-        ingesting={ingesting}
-        msg={msg}
-        rows={rows}
-        onIngest={onIngest}
-      />
-    );
+    return <ProposalsPageV2 ingesting={ingesting} msg={msg} rows={rows} onIngest={onIngest} />;
   }
 
   return (
@@ -257,7 +250,13 @@ function ProposalsPageV2({
                 Every draft in one place — pick up where you left off.
               </p>
             </div>
-            <Button size="sm" variant="secondary" className="gap-2" onClick={onIngest} disabled={ingesting}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-2"
+              onClick={onIngest}
+              disabled={ingesting}
+            >
               <Plus className="h-4 w-4" />
               {ingesting ? "Working…" : "New application"}
             </Button>
@@ -304,7 +303,9 @@ function ProposalsPageV2({
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-center gap-0.5">
-                      <span className={`text-xl font-bold tabular-nums ${grade.cls}`}>{grade.grade}</span>
+                      <span className={`text-xl font-bold tabular-nums ${grade.cls}`}>
+                        {grade.grade}
+                      </span>
                       <span className="text-[10px] font-semibold uppercase text-muted-foreground">
                         Quality
                       </span>
