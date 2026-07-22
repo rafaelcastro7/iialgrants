@@ -86,6 +86,7 @@ type V2GrantsWorkspaceProps = {
   onEvaluate: (grantId: string) => void;
   onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
   onJurisdictionChange: (next: string) => void;
+  onSectorChange: (next: string) => void;
   onOnlyWithDeadlineChange: (next: boolean) => void;
   onSearchChange: (next: string) => void;
   onSelectedFundersChange: (next: Set<string>) => void;
@@ -614,6 +615,7 @@ function FilterBar({
   totalCount: number;
   onEligibleOnlyChange: (next: boolean) => void;
   onJurisdictionChange: (next: string) => void;
+  onSectorChange: (next: string) => void;
   onOnlyWithDeadlineChange: (next: boolean) => void;
   onSearchChange: (next: string) => void;
   onSortKeyChange: (next: SortKey) => void;
