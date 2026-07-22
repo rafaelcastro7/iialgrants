@@ -200,15 +200,21 @@ const ROOT_INDEX_PATHS = new Set([
   "/produits",
   "/products",
 ]);
-function isRootIndex(url: string): boolean {
+// `extraPaths` are admin-added slugs from discovery_config (additive on top
+// of ROOT_INDEX_PATHS, never a replacement) — default empty keeps every
+// existing call site and test unaffected.
+function isRootIndex(url: string, extraPaths: string[] = []): boolean {
   try {
     const u = new URL(url);
     const path = u.pathname.replace(/\/+$/, "").toLowerCase();
     if (!path || path === "/") return true;
-    if (ROOT_INDEX_PATHS.has(path)) return true;
+    if (ROOT_INDEX_PATHS.has(path) || extraPaths.includes(path)) return true;
     // Single-segment path with one of the generic words → also reject.
     const segs = path.split("/").filter(Boolean);
-    if (segs.length === 1 && ROOT_INDEX_PATHS.has(`/${segs[0]}`)) return true;
+    if (segs.length === 1) {
+      const seg = `/${segs[0]}`;
+      if (ROOT_INDEX_PATHS.has(seg) || extraPaths.includes(seg)) return true;
+    }
     return false;
   } catch {
     return false;
