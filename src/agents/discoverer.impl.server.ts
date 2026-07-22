@@ -1015,6 +1015,19 @@ export async function discoverFunderImpl(
         runId,
         temperature: 0.1,
         responseFormat: "json",
+        // Schema guard (see the Path A callLlm above for the full rationale):
+        // this is the ACTIVE extraction loop — it runs on every real "Find
+        // new grants" click while Firecrawl is disabled — so a provider
+        // returning malformed JSON here used to mean the whole page's
+        // extraction failed instead of the chain advancing to a provider
+        // that could actually produce valid output.
+        validate: (text) => {
+          try {
+            return MultiPageOutput.safeParse(JSON.parse(text)).success;
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
