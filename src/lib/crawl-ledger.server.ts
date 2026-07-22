@@ -46,10 +46,6 @@ export function sha256(text: string): string {
   return createHash("sha256").update(text).digest("hex");
 }
 
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.min(Math.max(n, lo), hi);
-}
-
 export async function shouldFetch(url: string): Promise<LedgerDecision> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // crawl_ledger isn't in the generated types yet — cast through any.
