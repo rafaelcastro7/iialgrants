@@ -317,7 +317,9 @@ function PostAwardPageV2({
                       <Trophy className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-base font-semibold leading-snug">{g?.title ?? "Untitled grant"}</p>
+                      <p className="text-base font-semibold leading-snug">
+                        {g?.title ?? "Untitled grant"}
+                      </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {nextReport
                           ? `Next report: ${nextReport.type.replace(/_/g, " ")}`

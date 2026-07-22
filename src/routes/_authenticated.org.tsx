@@ -180,9 +180,7 @@ function OrgPageV2({
     { label: "Focus areas", filled: !!values.focus_areas },
     { label: "Annual budget", filled: !!values.annual_budget_cad },
   ];
-  const completePct = Math.round(
-    (fields.filter((f) => f.filled).length / fields.length) * 100,
-  );
+  const completePct = Math.round((fields.filter((f) => f.filled).length / fields.length) * 100);
 
   return (
     <PageTransition>
@@ -228,7 +226,10 @@ function OrgPageV2({
           <Card>
             <CardContent className="pt-6">
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField label="Organization name" error={form.formState.errors.org_name?.message}>
+                <FormField
+                  label="Organization name"
+                  error={form.formState.errors.org_name?.message}
+                >
                   <Input {...form.register("org_name")} required />
                 </FormField>
                 <FormField label="Sectors" description="Comma-separated: tech, retail">

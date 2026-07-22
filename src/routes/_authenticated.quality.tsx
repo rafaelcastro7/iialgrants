@@ -260,11 +260,18 @@ function overallGrade(metrics: QualityMetrics): { grade: string; note: string } 
   const pct = metrics.avgScore * 100;
   if (pct >= 80) return { grade: "A", note: "Your applications are in strong shape overall." };
   if (pct >= 60) return { grade: "B", note: "Solid, with room to tighten a few sections." };
-  if (pct >= 40) return { grade: "C", note: "Several applications need another pass before sending." };
+  if (pct >= 40)
+    return { grade: "C", note: "Several applications need another pass before sending." };
   return { grade: "D", note: "Most applications need real work before they're ready." };
 }
 
-function QualityDashboardV2({ metrics, trends }: { metrics: QualityMetrics; trends: QualityTrends }) {
+function QualityDashboardV2({
+  metrics,
+  trends,
+}: {
+  metrics: QualityMetrics;
+  trends: QualityTrends;
+}) {
   const overall = overallGrade(metrics);
   const distribution: Array<{ label: string; count: number; cls: string }> = [
     { label: "Excellent", count: metrics.distribution.excellent, cls: "bg-emerald-500" },
@@ -331,10 +338,14 @@ function QualityDashboardV2({ metrics, trends }: { metrics: QualityMetrics; tren
                     <div className="h-2 flex-1 rounded-full bg-muted">
                       <div
                         className={`h-2 rounded-full ${d.cls}`}
-                        style={{ width: `${metrics.scored ? (d.count / metrics.scored) * 100 : 0}%` }}
+                        style={{
+                          width: `${metrics.scored ? (d.count / metrics.scored) * 100 : 0}%`,
+                        }}
                       />
                     </div>
-                    <span className="w-6 text-right text-sm font-medium tabular-nums">{d.count}</span>
+                    <span className="w-6 text-right text-sm font-medium tabular-nums">
+                      {d.count}
+                    </span>
                   </div>
                 </div>
               ))}

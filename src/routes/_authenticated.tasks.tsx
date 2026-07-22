@@ -452,7 +452,10 @@ function TasksPageV2({
                         id="task-priority-v2"
                         value={form.priority}
                         onChange={(e) =>
-                          setForm((f) => ({ ...f, priority: e.target.value as TaskForm["priority"] }))
+                          setForm((f) => ({
+                            ...f,
+                            priority: e.target.value as TaskForm["priority"],
+                          }))
                         }
                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
                       >
@@ -523,11 +526,7 @@ function TasksPageV2({
             </Card>
           </div>
 
-          <TaskGroup
-            title="Due today"
-            tasks={groups.dueToday}
-            statusMutation={statusMutation}
-          />
+          <TaskGroup title="Due today" tasks={groups.dueToday} statusMutation={statusMutation} />
           <TaskGroup title="This week" tasks={groups.thisWeek} statusMutation={statusMutation} />
           <TaskGroup title="Later" tasks={groups.later} statusMutation={statusMutation} />
 
