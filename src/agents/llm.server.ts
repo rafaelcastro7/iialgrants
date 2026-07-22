@@ -364,6 +364,15 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       text = data?.message?.content ?? "";
       inputTokens = data?.prompt_eval_count;
       outputTokens = data?.eval_count;
+      // Local model may also return HTTP 200 with schema-invalid content — treat
+      // it like a failure and advance to the next local model rather than
+      // handing the caller unusable text.
+      if (opts.validate && !opts.validate(text)) {
+        const error = new Error(`ollama_output_failed_validation`);
+        recordModelFailure(usedModel, error);
+        if (switchToNextModel()) continue;
+        throw error;
+      }
       ok = true;
       return { text, inputTokens, outputTokens, runId, model: usedModel, provider: "ollama" };
     }
