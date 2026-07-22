@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { FormField } from "@/components/FormField";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
+import { useUiVersion } from "@/components/v2/ui-version";
+import { PageTransition } from "@/components/PageTransition";
 import "@/i18n";
 
 const orgQueryOptions = queryOptions({
@@ -44,6 +46,7 @@ type OrgFormValues = z.infer<typeof orgSchema>;
 
 function OrgPage() {
   const { t } = useTranslation();
+  const { version } = useUiVersion();
   const qc = useQueryClient();
   const { data } = useSuspenseQuery(orgQueryOptions);
   const save = useServerFn(saveOrgProfile);
@@ -100,6 +103,10 @@ function OrgPage() {
     });
   };
 
+  if (version === "v2") {
+    return <OrgPageV2 form={form} mut={mut} onSubmit={onSubmit} t={t} />;
+  }
+
   return (
     <div className="min-h-screen text-foreground">
       <AppTopBar title={t("org.title")} />
@@ -147,5 +154,115 @@ function OrgPage() {
         </Card>
       </PageContainer>
     </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// V2 — friendly redesign (presentation only; same form/mutation as v1)
+// -----------------------------------------------------------------------------
+
+function OrgPageV2({
+  form,
+  mut,
+  onSubmit,
+  t,
+}: {
+  form: ReturnType<typeof useForm<OrgFormValues>>;
+  mut: { isPending: boolean };
+  onSubmit: (values: OrgFormValues) => void;
+  t: (key: string) => string;
+}) {
+  const values = form.watch();
+  const fields: Array<{ label: string; filled: boolean }> = [
+    { label: "Organization name", filled: !!values.org_name },
+    { label: "Sectors", filled: !!values.sectors },
+    { label: "Jurisdictions", filled: !!values.jurisdictions },
+    { label: "Focus areas", filled: !!values.focus_areas },
+    { label: "Annual budget", filled: !!values.annual_budget_cad },
+  ];
+  const completePct = Math.round(
+    (fields.filter((f) => f.filled).length / fields.length) * 100,
+  );
+
+  return (
+    <PageTransition>
+      <div className="min-h-screen text-foreground">
+        <section className="mx-auto max-w-[720px] space-y-5 px-4 py-6 sm:px-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">About us</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This is what we use to match you to grants — the more complete, the better the match.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4 rounded-xl border bg-card p-5">
+            <div className="relative h-14 w-14 shrink-0">
+              <svg width="56" height="56" viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="18" fill="none" stroke="var(--muted)" strokeWidth="4" />
+                <circle
+                  cx="22"
+                  cy="22"
+                  r="18"
+                  fill="none"
+                  stroke={completePct >= 80 ? "#16a34a" : "var(--primary)"}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(completePct / 100) * 2 * Math.PI * 18} ${2 * Math.PI * 18}`}
+                  transform="rotate(-90 22 22)"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums">
+                {completePct}%
+              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">Profile completeness</p>
+              <p className="text-sm text-muted-foreground">
+                {completePct >= 100
+                  ? "Your profile is complete."
+                  : "Fill in the fields below so grant matches reflect who you really are."}
+              </p>
+            </div>
+          </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField label="Organization name" error={form.formState.errors.org_name?.message}>
+                  <Input {...form.register("org_name")} required />
+                </FormField>
+                <FormField label="Sectors" description="Comma-separated: tech, retail">
+                  <Input {...form.register("sectors")} placeholder="tech, retail" />
+                </FormField>
+                <FormField label="Where you operate" description="Comma-separated: CA, ON">
+                  <Input {...form.register("jurisdictions")} placeholder="CA, ON" />
+                </FormField>
+                <FormField label="Organization type">
+                  <select
+                    className="h-10 w-full rounded border bg-background px-3"
+                    {...form.register("stage")}
+                  >
+                    {STAGES.map((s) => (
+                      <option key={s} value={s}>
+                        {t(`org.stages.${s}`)}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Annual budget (CAD)">
+                  <Input type="number" min="0" {...form.register("annual_budget_cad")} />
+                </FormField>
+                <FormField label="What you focus on">
+                  <Textarea rows={3} {...form.register("focus_areas")} />
+                </FormField>
+                <Button type="submit" disabled={mut.isPending}>
+                  {mut.isPending ? "Saving…" : "Save profile"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </PageTransition>
   );
 }
