@@ -340,6 +340,108 @@ runs a zero-cloud-token sweep via Ollama. Expect heavy false-positive "race
 condition" labels from the 7B model — triage each finding against the actual
 code before acting.
 
+## Discovery Fetch Engine (2026-07-22)
+
+Grant discovery scrapes each known funder's own website for individual
+program pages. It is built as a homegrown, local-first equivalent of a
+commercial crawling API (Firecrawl) — before reaching for a paid service or
+building something new, check whether this stack already covers it.
+
+**The engine ladder** (`src/lib/web-fetch.server.ts`'s `scrapeWithFallback`,
+used by the discoverer, enricher, and evidence-gathering steps): each engine
+is tried in order until one returns enough content.
+
+| # | Engine | File | What it's for |
+| - | ------ | ---- | -------------- |
+| 1 | `scrape_engine` | `scrape-engine.server.ts` | Fast path: conditional GET (ETag/If-Modified-Since) + `linkedom` → `@mozilla/readability` (Firefox Reader algorithm) → `turndown` markdown. Robots.txt-aware, per-host throttled (≥1.5s). |
+| 2 | `browser_render` | `browser-render.server.ts` | Local headless Chromium (Playwright, already installed for e2e tests — no new infra). Real JS execution, and best-effort clicking of "Eligibility"/"How to apply" tabs/accordions before extraction. Shares the same robots/throttle state as #1. |
+| 3 | `jina_reader` | `web-fetch.server.ts` | Remote, free-tier markdownifier. Also handles JS but is third-party and rate-limited. |
+| 4 | `raw_html` | `web-fetch.server.ts` | Plain fetch with a realistic desktop Chrome UA. |
+| 5 | `raw_html_googlebot` | `web-fetch.server.ts` | Same, with a Googlebot UA — some gov/news sites whitelist it. |
+| 6 | `wayback` | `web-fetch.server.ts` | Internet Archive snapshot, for pages that 404/moved. |
+| 7 | `archive_today` | `web-fetch.server.ts` | archive.ph snapshot, same purpose, different archive. |
+
+Firecrawl itself (`firecrawl.server.ts`) is also wired in as an optional
+preferred path (`discoverFunderImpl`'s "Path A") but is **off by default**
+(`USE_FIRECRAWL=0`, empty `FIRECRAWL_API_KEY` in `.env`) — the ladder above is
+the active path ("Path B" / `engine: "fallback"` in `agent_runs.metadata`).
+Turning Firecrawl on requires no code change, just the env var + a real key
+(cloud) or self-hosting the open-source `firecrawl/firecrawl` repo (Docker
+Compose, ~8-12GB RAM) or a lighter alternative like Crawl4AI. Not yet done as
+of this writing — the local ladder above already covers most of what
+Firecrawl would add for this specific job.
+
+**Realistic User-Agent, not a self-identifying one.** The discoverer's
+funder-index-page fetch used to send `"IIAL/0.1 (+https://iial.ca)"` — a
+transparent bot string that gets 403'd by several government-site WAFs
+(confirmed empirically against tradecommissioner.gc.ca). Fixed to use the same
+realistic Chrome UA (`web-fetch.server.ts`'s exported `CHROME_UA`) already
+proven effective everywhere else in the ladder. Never use a self-identifying
+UA for a fetch that needs to actually succeed.
+
+**Registration/login walls are tracked, never auto-solved.**
+`src/lib/registration-gate.server.ts`'s `detectRegistrationWall` recognizes a
+login/signup wall (URL redirected to a `/login`, `/register`, etc. path, or
+page text like "sign in to view", "create an account to access", French
+equivalents) and — instead of the page silently vanishing into a generic
+"page too short" skip — records it in `discovery_registration_gates`
+(funder_id + url unique, `times_seen`/`last_detected_at` accumulate on repeat
+sightings). Surfaced on `/admin/sources` under "Needs manual sign-up" with
+Registered/Not needed actions. **This system never creates accounts on any
+external site** — detection and a visibility queue only; a human signs up
+and marks the row resolved.
+
+**Per-platform boilerplate filters.** `isNonGrantUrl` / `NON_GRANT_URL_PATTERNS`
+in `discoverer.impl.server.ts` reject known non-program pages by URL path.
+These were built incrementally from real false positives — most recently,
+Salesforce Experience Cloud's standard `/s/...` slugs (`email-verification`,
+check-your-email, `unsubscribe-desabonner`, `error500`, `dovdetail`) got
+extracted as fake "grant programs" from Innovation Canada's Salesforce
+Community site on 2026-07-22. When adding a new funder whose site runs on a
+recognizable platform (Salesforce Community, Drupal, WordPress, etc.), check
+whether that platform has its own standard utility-page slugs worth
+blocklisting up front rather than waiting for a false positive.
+
+**Known hard limits (not attempted to bypass):** Trade Commissioner Service
+(tradecommissioner.gc.ca) sits behind an Akamai WAF that returns 403/404
+inconsistently to curl, a realistic UA, and even real headless Chromium —
+including on its sitemap.xml. Innovation Canada's Salesforce Experience Cloud
+page never finishes rendering its grant listing client-side even after 11+
+seconds of headless-browser wait (stuck `aria-busy` state), independent of
+network/UA — a content-timing issue, not a fetch failure. Both are
+documented rather than chased with fingerprint-evasion techniques, since that
+crosses from legitimate resilience engineering into active anti-bot
+circumvention on sites that have deliberately chosen to block automated
+access.
+
+## Self-Improvement System
+
+Yes — a real one, with an explicit safety boundary. Daemon fleet in `scripts/`:
+
+- `self-eval-daemon.mjs` — computes a scorecard (grounding coverage, data
+  completeness, duplicate clusters, stuck-at-max-attempts grants, fake test
+  accounts, fabricated requirements) and detects regressions against the
+  previous cycle (`src/lib/autonomy-logic.ts`'s `detectRegressions` — pure,
+  unit-tested).
+- `live-audit-daemon.mjs` — continuous code/data audits.
+- `self-criticism-daemon.mjs` — self-critique pass.
+- `improvement-daemon.mjs` — synthesizes signal from the above (plus recent
+  commits) into a prioritized backlog at `scripts/improvement-queue.md`,
+  using the local coder model **only when the GPU is idle**
+  (`ollamaChatWhenIdle`). **It never edits code or data — it proposes; a
+  human or the `/loop` disposes.** That boundary is deliberate.
+- `daemon-watchdog.mjs` / `daemon-supervisor.mjs` — process supervision and
+  auto-restart.
+- `docs/TECHNIQUES.md` — a living list of reusable engineering patterns. Both
+  the improvement daemon and a `/loop` session append a bullet here when they
+  discover a technique worth repeating (see that file's own header comment).
+
+Surfaced in-app at `/autonomy` (daemon health, regressions, recent lessons).
+A daemon is only reported "healthy" if it is both alive (recent heartbeat)
+AND has actually emitted signal — a process that's running but has never
+logged a cycle is treated as `silent`, not healthy (`daemonHealth` in
+`autonomy-logic.ts`).
+
 ## Verification Standard
 
 Before calling work complete, run:
