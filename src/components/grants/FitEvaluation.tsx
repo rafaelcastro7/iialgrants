@@ -194,6 +194,8 @@ export function FitEvaluation(props: Props) {
   const t = e ? tier(e.fit_score) : null;
   const VerdictIcon = t?.icon;
   const [open, setOpen] = useState(false);
+  const cov = e ? coverage(e.axis_breakdown) : null;
+  const thinCoverage = cov !== null && cov.assessed / cov.total < 0.5;
 
   const stageTs: Record<Stage, string | null> = {
     discovered: props.discoveredAt,
