@@ -592,6 +592,8 @@ function FilterBar({
   filteredCount,
   jurisdiction,
   jurisdictions,
+  sector,
+  sectors,
   onlyWithDeadline,
   search,
   sortKey,
@@ -599,6 +601,7 @@ function FilterBar({
   totalCount,
   onEligibleOnlyChange,
   onJurisdictionChange,
+  onSectorChange,
   onOnlyWithDeadlineChange,
   onSearchChange,
   onSortKeyChange,
@@ -608,6 +611,8 @@ function FilterBar({
   filteredCount: number;
   jurisdiction: string;
   jurisdictions: string[];
+  sector: string;
+  sectors: string[];
   onlyWithDeadline: boolean;
   search: string;
   sortKey: SortKey;
