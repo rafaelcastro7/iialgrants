@@ -107,19 +107,19 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
 
     if (hardFails.length > 0) {
       verdict = "no_go";
-      reason = `Hard-fail en ${hardFails.length} filtro(s): ${hardFails.map((c) => c.label).join("; ")}`;
+      reason = `Hard fail on ${hardFails.length} filter(s): ${hardFails.map((c) => c.label).join("; ")}`;
     } else if (softFails.length > 0 || warnings.length > 0) {
       verdict = "go_conditional";
-      reason = `${softFails.length} fallo(s) soft + ${warnings.length} aviso(s); requiere validación de liderazgo`;
+      reason = `${softFails.length} soft fail(s) + ${warnings.length} warning(s); needs leadership review`;
       for (const c of [...softFails, ...warnings]) conditions.push(`${c.label}: ${c.detail}`);
     } else {
       verdict = "go";
-      reason = `${rr.checks.length} filtros pasados; rule_score=${rr.rule_score}/100`;
+      reason = `${rr.checks.length} filters passed; rule score ${rr.rule_score}/100`;
     }
 
     if (rr.cost_share_pct !== null && rr.cost_share_pct > 0 && rules.require_match_verification) {
       conditions.push(
-        `Verificar disponibilidad de cash match (~${rr.cost_share_pct}%) con liderazgo`,
+        `Confirm cash-match availability (~${rr.cost_share_pct}%) with leadership`,
       );
       if (verdict === "go") verdict = "go_conditional";
     }
