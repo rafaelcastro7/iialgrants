@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyGrantFilters, sortGrants } from "./grant-filters.utils";
+import { applyGrantFilters, collectSectors, sortGrants } from "./grant-filters.utils";
 
 const ranked = [
   { title: "Typo-relevant first", status: "discovered", fit_score: 0.1 },
