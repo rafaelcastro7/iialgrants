@@ -187,6 +187,7 @@ function Dashboard() {
         eligible={eligible}
         email={email}
         enrichedCount={enrichedCount}
+        funderCount={funderCount}
         grantsCount={grants.length}
         greeting={greeting}
         inPipeline={inPipeline}
