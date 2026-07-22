@@ -10,6 +10,24 @@ export const DiscoveredGrant = z
     summary_fr: z.string().max(4000).nullable().optional(),
     amount_cad_min: z.number().nonnegative().nullable().optional(),
     amount_cad_max: z.number().nonnegative().nullable().optional(),
+    // ISO 3166-1 alpha-2. Defaults to "CA" only as a fallback for sources that
+    // don't state a country (most current sources are Canadian) — the LLM
+    // prompt now asks it to detect the real country instead of assuming this.
+    country: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{2}$/)
+      .nullable()
+      .optional(),
+    // ISO 4217. Same fallback rationale as `country`.
+    currency: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{3}$/)
+      .nullable()
+      .optional(),
     deadline: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
