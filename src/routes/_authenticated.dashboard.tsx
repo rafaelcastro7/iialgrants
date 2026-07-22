@@ -492,7 +492,13 @@ function DashboardV2({
               icon={Search}
               label="Active opportunities"
               value={loading ? "-" : grantsCount}
-              detail={loading ? "Loading grants" : `${enrichedCount} enriched`}
+              detail={
+                loading
+                  ? "Loading grants"
+                  : funderCount != null
+                    ? `${enrichedCount} enriched · ${funderCount} funders watched`
+                    : `${enrichedCount} enriched`
+              }
               to="/grants"
             />
             <V2Metric
