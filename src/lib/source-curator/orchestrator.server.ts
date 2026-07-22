@@ -10,13 +10,8 @@
 // auto-promote + telemetry into source_ingest_runs and updates the registry.
 
 import { newRunId } from "@/lib/otel";
-import {
-  AUTO_APPROVE_THRESHOLD,
-  REVIEW_MIN_THRESHOLD,
-  findDuplicate,
-  scoreCandidate,
-  type RawCandidate,
-} from "./scoring.server";
+import { findDuplicate, scoreCandidate, type RawCandidate } from "./scoring.server";
+import type { DiscoveryConfig } from "@/lib/discovery-config.server";
 
 export type Tier = "A" | "B" | "C" | "scout" | "all";
 
