@@ -171,40 +171,11 @@ export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
 
             <Separator />
 
-            <section className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                IIAL role
-              </span>
-              <Badge
-                variant={b.iial_role === "unknown" ? "secondary" : "default"}
-                className="capitalize"
-              >
-                {b.iial_role}
-              </Badge>
-            </section>
-
             <section>
               <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Strategic angle
               </h4>
               <p className="text-xs leading-relaxed">{b.strategic_angle}</p>
-            </section>
-
-            <section>
-              <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Mandatory components
-              </h4>
-              {b.mandatory_components.length === 0 ? (
-                <p className="text-xs italic text-muted-foreground">
-                  No mandatory components detected.
-                </p>
-              ) : (
-                <ul className="list-disc space-y-0.5 pl-4 text-xs">
-                  {b.mandatory_components.map((x, i) => (
-                    <li key={i}>{x}</li>
-                  ))}
-                </ul>
-              )}
             </section>
 
             <section>
