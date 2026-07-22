@@ -112,123 +112,71 @@ export async function recordFetch(
     }
   })();
 
-  // Load current row (we need previous hash + interval to decide cadence).
-  const { data: prev } = await sb
-    .from("crawl_ledger")
-    .select("content_hash, interval_hours, change_count, fetch_count, error_count")
-    .eq("url", url)
-    .maybeSingle();
-  const prevRow = (prev ?? null) as {
-    content_hash: string | null;
-    interval_hours: number;
-    change_count: number;
-    fetch_count: number;
-    error_count: number;
-  } | null;
-  const prevInterval = prevRow?.interval_hours ?? opts.previousIntervalHours ?? 24;
-
-  let status: string;
-  let nextIntervalHours: number;
-  let contentHash: string | null = prevRow?.content_hash ?? null;
-  let changeCount = prevRow?.change_count ?? 0;
-  const fetchCount = (prevRow?.fetch_count ?? 0) + 1;
-  let errorCount = prevRow?.error_count ?? 0;
-  let changed = false;
+  let contentHash: string | null = null;
   let via: string | null = null;
   let httpStatus: number | null = null;
   let etag: string | null = null;
   let lastModified: string | null = null;
   let bytes: number | null = null;
   let title: string | null = null;
-  let lastError: string | null = null;
+  let errorReason: string | null = null;
 
   switch (outcome.kind) {
-    case "ok": {
+    case "ok":
       via = outcome.via;
       httpStatus = outcome.httpStatus ?? 200;
       etag = outcome.etag ?? null;
       lastModified = outcome.lastModified ?? null;
       bytes = outcome.bytes ?? outcome.markdown.length;
       title = outcome.title ?? null;
-      const newHash = sha256(outcome.markdown);
-      if (prevRow?.content_hash && prevRow.content_hash !== newHash) {
-        status = "changed";
-        changed = true;
-        changeCount += 1;
-        nextIntervalHours = clamp(Math.floor(prevInterval * 0.5), 6, 336);
-      } else if (prevRow?.content_hash === newHash) {
-        status = "unchanged";
-        nextIntervalHours = clamp(Math.floor(prevInterval * 1.5), 24, 336);
-      } else {
-        status = "ok";
-        nextIntervalHours = 24;
-      }
-      contentHash = newHash;
+      contentHash = sha256(outcome.markdown);
       break;
-    }
-    case "not_modified": {
+    case "not_modified":
       via = outcome.via;
-      httpStatus = 304;
       etag = outcome.etag ?? null;
       lastModified = outcome.lastModified ?? null;
-      status = "unchanged";
-      nextIntervalHours = clamp(Math.floor(prevInterval * 1.5), 24, 336);
       break;
-    }
-    case "gone": {
-      status = "gone";
+    case "gone":
       httpStatus = outcome.httpStatus;
-      nextIntervalHours = 720; // 30d sanity recheck
       break;
-    }
-    case "blocked": {
-      status = "blocked";
-      lastError = outcome.reason;
-      nextIntervalHours = 168; // 7d
+    case "blocked":
+      errorReason = outcome.reason;
       break;
-    }
-    case "error": {
-      status = "error";
+    case "error":
       httpStatus = outcome.httpStatus ?? null;
-      lastError = outcome.reason;
-      errorCount += 1;
-      nextIntervalHours = clamp(Math.floor(prevInterval * 2), 24, 168);
+      errorReason = outcome.reason;
       break;
-    }
   }
 
-  const nextFetchAt = new Date(Date.now() + nextIntervalHours * 3600_000).toISOString();
-  const row = {
-    url,
-    host,
-    funder_id: opts.funderId ?? null,
-    last_fetched_at: new Date().toISOString(),
-    next_fetch_at: nextFetchAt,
-    interval_hours: nextIntervalHours,
-    content_hash: contentHash,
-    etag,
-    last_modified: lastModified,
-    change_count: changeCount,
-    status,
-    http_status: httpStatus,
-    fetch_count: fetchCount,
-    error_count: errorCount,
-    last_error: lastError,
-    via,
-    bytes,
-    title,
-  };
+  // The read-modify-write (previous hash/interval → next cadence → upsert)
+  // happens atomically in the record_crawl_fetch() SQL function, guarded by
+  // an advisory lock keyed on the URL — closes the lost-update race that
+  // existed when two overlapping discovery runs hit the same URL.
+  const { data, error } = await sb
+    .rpc("record_crawl_fetch", {
+      p_url: url,
+      p_host: host,
+      p_funder_id: opts.funderId ?? null,
+      p_outcome_kind: outcome.kind,
+      p_content_hash: contentHash,
+      p_via: via,
+      p_http_status: httpStatus,
+      p_etag: etag,
+      p_last_modified: lastModified,
+      p_bytes: bytes,
+      p_title: title,
+      p_error_reason: errorReason,
+      p_default_interval: opts.previousIntervalHours ?? 24,
+    })
+    .single();
+  if (error) throw new Error(`ledger_record_fetch_failed: ${error.message}`);
 
-  // upsert
-  const { error } = await sb.from("crawl_ledger").upsert(row as never, { onConflict: "url" });
-  if (error) throw new Error(`ledger_upsert_failed: ${error.message}`);
-
-  return {
-    next_fetch_at: nextFetchAt,
-    status,
-    changed,
-    interval_hours: nextIntervalHours,
-    content_hash: contentHash,
+  return data as {
+    next_fetch_at: string;
+    status: string;
+    changed: boolean;
+    interval_hours: number;
+    content_hash: string | null;
   };
 }
 
