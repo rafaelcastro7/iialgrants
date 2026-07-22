@@ -100,6 +100,7 @@ function GrantsPage() {
   const [jurisdiction, setJurisdiction] = useState<string>(
     () => ss.get("grants.jurisdiction") ?? "all",
   );
+  const [sector, setSector] = useState<string>(() => ss.get("grants.sector") ?? "all");
   const [sortKey, setSortKey] = useState<SortKey>(
     () => (ss.get("grants.sort") as SortKey) ?? "fit",
   );
