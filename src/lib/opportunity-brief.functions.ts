@@ -203,6 +203,35 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
 
     const funderName = (g.funder as { name?: string } | null)?.name ?? null;
 
+    const partnerNote =
+      rr.detected_role === "partner"
+        ? `You'll likely need to apply alongside ${PARTNER_TYPE_LABEL[rr.detected_partner_type ?? "other"]} — the eligibility text implies IIAL can't apply alone.`
+        : rr.detected_role === "lead"
+          ? "IIAL can apply as the lead applicant — no partner appears to be required."
+          : "Role unclear from the eligibility text — confirm with the funder before applying.";
+
+    // Merge the LLM-drafted mandatory components with the grant's own
+    // extracted requirements into one de-duplicated checklist, so the reader
+    // sees a single "what do I need" list instead of two separate sections
+    // that may repeat or contradict each other.
+    type RequirementRow = { requirement?: string; category?: string; isCritical?: boolean };
+    const extractedRequirements = (
+      Array.isArray((g as { requirements?: unknown }).requirements)
+        ? ((g as { requirements: RequirementRow[] }).requirements ?? [])
+        : []
+    )
+      .filter((r) => typeof r.requirement === "string" && r.requirement.trim())
+      .map((r) => (r.isCritical ? `${r.requirement} (critical)` : r.requirement!));
+    const seenChecklist = new Set<string>();
+    const application_checklist = [...extractedRequirements, ...mandatory_components].filter(
+      (item) => {
+        const key = item.toLowerCase().trim();
+        if (!key || seenChecklist.has(key)) return false;
+        seenChecklist.add(key);
+        return true;
+      },
+    );
+
     const brief: Brief = {
       program_snapshot: {
         funder: funderName,
