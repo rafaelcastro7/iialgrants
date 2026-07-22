@@ -612,8 +612,8 @@ export async function discoverFunderImpl(
         if (!ierr) {
           inserted++;
         } else if (/duplicate key/i.test(ierr.message)) {
-          // Concurrent processOne calls (SCRAPE_CONCURRENCY) can both read
-          // existing=null for the same program before either inserts —
+          // Concurrent processOne calls (bounded by cfg.scrapeConcurrency) can
+          // both read existing=null for the same program before either inserts —
           // that's a benign dedup race, not a real failure.
           seenAgain++;
         } else {
