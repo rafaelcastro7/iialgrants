@@ -229,12 +229,13 @@ describe("crawl-ledger cadence", () => {
     // fetch_count/change_count — this is the exact race that was fixed by
     // moving the read-modify-write into an atomically-locked SQL function.
     //
-    // Resolve the dynamically-imported client module once, sequentially,
-    // before firing concurrently — otherwise two simultaneous first-time
-    // `await import(...)` calls for the same specifier can race in the
-    // module loader itself, which is a test-harness quirk unrelated to the
-    // production race this test targets.
-    await import("@/integrations/supabase/client.server");
+    // Warm up recordFetch's dynamically-imported client module via a real
+    // call first — Vitest's dynamic-import mock resolution can race when
+    // the exact same `await import(...)` call site inside
+    // crawl-ledger.server.ts is hit concurrently for the first time ever,
+    // which is a test-harness quirk unrelated to the production race this
+    // test targets (Node's real module cache has no such race).
+    await recordFetch("https://x.test/warmup", { kind: "ok", markdown: "warmup", via: "scrape_engine" });
     const [r1, r2] = await Promise.all([
       recordFetch("https://x.test/race", { kind: "ok", markdown: "version A", via: "scrape_engine" }),
       recordFetch("https://x.test/race", { kind: "ok", markdown: "version B", via: "scrape_engine" }),
