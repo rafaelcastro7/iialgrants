@@ -30,7 +30,11 @@ import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import type { GrantRowData } from "@/components/grants/GrantRow";
-import { SORT_LABELS, type SortKey } from "@/components/grants/grant-filters.utils";
+import {
+  collectSectors,
+  SORT_LABELS,
+  type SortKey,
+} from "@/components/grants/grant-filters.utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
