@@ -166,19 +166,5 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
     errors.push(`${model}:${lastErrMsg ?? "failed"}`);
   }
 
-  // Every local model failed even though Ollama was reachable — try cloud as a
-  // genuine last resort (no-op if GROQ_API_KEY is unset: it throws
-  // cloud_llm_unavailable and we surface the local failure instead).
-  try {
-    return await callCloudLlm({
-      agent: opts.agent,
-      messages: opts.messages,
-      temperature: opts.temperature,
-      maxOutputTokens: opts.maxOutputTokens,
-      responseFormat: opts.responseFormat,
-      runId,
-    });
-  } catch {
-    throw new Error(`all_local_models_failed: ${errors.join(" | ")}`);
-  }
+  throw new Error(`all_local_models_failed: ${errors.join(" | ")}`);
 }
