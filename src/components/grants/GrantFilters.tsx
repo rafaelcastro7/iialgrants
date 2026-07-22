@@ -102,6 +102,20 @@ export function GrantFilters({
         ))}
       </select>
 
+      <select
+        className="h-9 rounded-md border bg-background px-2 text-sm"
+        value={sector}
+        onChange={(e) => setSector(e.target.value)}
+        aria-label="Sector"
+      >
+        <option value="all">All sectors</option>
+        {sectors.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+
       <button
         type="button"
         onClick={() => setEligibleOnly(!eligibleOnly)}
