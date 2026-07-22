@@ -58,6 +58,19 @@ const GROQ_MODEL_MAP: Record<AgentName, string> = {
   critic: "llama-3.3-70b-versatile",
 };
 
+// Gemini — tertiary cloud source via Google's OpenAI-compatible endpoint.
+const GEMINI_MODEL_MAP: Record<AgentName, string> = {
+  discoverer: "gemini-2.0-flash-lite",
+  enricher: "gemini-2.0-flash-lite",
+  evaluator: "gemini-2.0-flash",
+  strategist: "gemini-2.0-flash",
+  writer: "gemini-2.0-flash",
+  critic: "gemini-2.0-flash",
+};
+
+// Cloud chain order: Cerebras -> Groq -> Gemini. Providers with no API key are
+// skipped. If the whole chain fails or has no keys, callLlm/callFreeLlm fall
+// back to local Ollama, so the system is hybrid cloud+local end to end.
 function cloudProviders(): CloudProvider[] {
   return [
     {
@@ -71,6 +84,12 @@ function cloudProviders(): CloudProvider[] {
       baseUrl: "https://api.groq.com/openai/v1",
       apiKey: process.env.GROQ_API_KEY,
       modelMap: GROQ_MODEL_MAP,
+    },
+    {
+      name: "gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      apiKey: process.env.GOOGLE_AI_STUDIO_KEY,
+      modelMap: GEMINI_MODEL_MAP,
     },
   ];
 }
