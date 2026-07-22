@@ -255,6 +255,7 @@ export async function evaluateGrantImpl(opts: {
         hard_fail: rulesResult.hard_fail,
         rule_score: rulesResult.rule_score,
         detected_role: rulesResult.detected_role,
+        detected_partner_type: rulesResult.detected_partner_type,
         cost_share_pct: rulesResult.cost_share_pct,
         rolling_intake: rulesResult.rolling_intake,
         threshold_fit_pass: rules.threshold_fit_pass,
