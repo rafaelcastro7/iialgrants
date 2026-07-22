@@ -906,8 +906,8 @@ export async function discoverFunderImpl(
   let ledgerFreshHits = 0;
   const pageFetchFailures: Array<{ url: string; reason: string }> = [];
   const pageSkipReasons: Record<string, number> = {};
-  for (let i = 0; i < links.length; i += SCRAPE_CONCURRENCY) {
-    const batch = links.slice(i, i + SCRAPE_CONCURRENCY);
+  for (let i = 0; i < links.length; i += cfg.scrapeConcurrency) {
+    const batch = links.slice(i, i + cfg.scrapeConcurrency);
     const results = await Promise.allSettled(
       batch.map(async (l) => {
         const decision = opts.forceRefresh
