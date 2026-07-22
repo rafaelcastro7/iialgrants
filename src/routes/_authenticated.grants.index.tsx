@@ -406,6 +406,7 @@ function GrantsPage() {
           filteredGrants={filtered}
           isAdmin={isAdmin}
           jurisdiction={jurisdiction}
+          sector={sector}
           onlyWithDeadline={onlyWithDeadline}
           pending={pending}
           search={search}
