@@ -227,6 +227,13 @@ describe("crawl-ledger cadence", () => {
     // previous row and one upsert would silently clobber the other's
     // fetch_count/change_count — this is the exact race that was fixed by
     // moving the read-modify-write into an atomically-locked SQL function.
+    //
+    // Resolve the dynamically-imported client module once, sequentially,
+    // before firing concurrently — otherwise two simultaneous first-time
+    // `await import(...)` calls for the same specifier can race in the
+    // module loader itself, which is a test-harness quirk unrelated to the
+    // production race this test targets.
+    await import("@/integrations/supabase/client.server");
     const [r1, r2] = await Promise.all([
       recordFetch("https://x.test/race", { kind: "ok", markdown: "version A", via: "scrape_engine" }),
       recordFetch("https://x.test/race", { kind: "ok", markdown: "version B", via: "scrape_engine" }),
