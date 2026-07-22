@@ -35,6 +35,27 @@ describe("deriveRulesFromOrg", () => {
     expect(new Set(fromString.required_sectors)).toEqual(new Set(["health", "climate", "ai"]));
   });
 
+  it("personalizes iial_capabilities from the org's own sectors/focus_areas instead of leaving DEFAULT_RULES' fixed keyword list for every org", () => {
+    // Before this fix, every org (regardless of profile) was screened for
+    // SOP F4 strategic fit against DEFAULT_RULES.iial_capabilities — a single
+    // fixed keyword list belonging to one specific tenant — because only
+    // required_sectors was derived here. A second org with a completely
+    // different declared profile must get its OWN capability keywords.
+    const rules = deriveRulesFromOrg({
+      sectors: ["fintech", "logistics"],
+      focus_areas: "cross-border payments",
+    });
+    expect(new Set(rules.iial_capabilities)).toEqual(
+      new Set(["fintech", "logistics", "cross-border payments"]),
+    );
+    expect(rules.iial_capabilities).not.toEqual(DEFAULT_RULES.iial_capabilities);
+  });
+
+  it("keeps DEFAULT_RULES.iial_capabilities as the fallback when the org declares no sectors/focus_areas", () => {
+    const rules = deriveRulesFromOrg({ jurisdictions: ["ON"] });
+    expect(rules.iial_capabilities).toEqual(DEFAULT_RULES.iial_capabilities);
+  });
+
   it("does not mutate the base rules object", () => {
     const before = JSON.stringify(DEFAULT_RULES);
     deriveRulesFromOrg({ jurisdictions: ["BC"], sectors: ["mining"] });
