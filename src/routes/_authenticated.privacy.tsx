@@ -14,6 +14,7 @@ import {
   exportMyData,
   requestAccountDeletion,
 } from "@/lib/compliance.functions";
+import { useUiVersion } from "@/components/v2/ui-version";
 import "@/i18n";
 
 export const Route = createFileRoute("/_authenticated/privacy")({
@@ -52,6 +53,7 @@ const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 function PrivacyCenter() {
   const { t, i18n } = useTranslation();
+  const { version } = useUiVersion();
   const lang: "en" | "fr" = "en"; // EN-only for now
 
   const [consents, setConsents] = useState<Consent[]>([]);
@@ -143,6 +145,23 @@ function PrivacyCenter() {
   const latestByType: Record<string, Consent | undefined> = {};
   for (const c of consents) if (!latestByType[c.consent_type]) latestByType[c.consent_type] = c;
 
+  if (version === "v2") {
+    return (
+      <PrivacyCenterV2
+        types={types}
+        latestByType={latestByType}
+        dsars={dsars}
+        msg={msg}
+        busy={busy}
+        t={t}
+        toggleConsent={toggleConsent}
+        doExport={doExport}
+        requestAccess={requestAccess}
+        doDelete={doDelete}
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground p-6 max-w-3xl mx-auto">
       <header className="flex items-center justify-between mb-6">
@@ -226,6 +245,157 @@ function PrivacyCenter() {
             <ul className="text-sm divide-y divide-border">
               {dsars.map((d) => (
                 <li key={d.id} className="py-2 flex items-center justify-between">
+                  <span>{t(`privacy.kinds.${d.kind}`)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {d.status} · {new Date(d.created_at).toLocaleDateString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// V2 — friendly redesign (presentation only; same consent/DSAR handlers as v1)
+// -----------------------------------------------------------------------------
+
+const LOCAL_FIRST_POINTS = [
+  {
+    title: "Your data stays local",
+    body: "The database and AI models run on your own infrastructure — nothing is sent to a third-party cloud LLM.",
+  },
+  {
+    title: "You control every consent",
+    body: "Turn any consent on or off below. Changes take effect immediately and are logged with a timestamp.",
+  },
+  {
+    title: "Export anytime",
+    body: "Download a complete copy of your data as a JSON file, whenever you want it.",
+  },
+  {
+    title: "Delete on request",
+    body: "Ask for your account to be deleted and we'll process it — no hidden retention.",
+  },
+];
+
+function PrivacyCenterV2({
+  types,
+  latestByType,
+  dsars,
+  msg,
+  busy,
+  t,
+  toggleConsent,
+  doExport,
+  requestAccess,
+  doDelete,
+}: {
+  types: readonly string[];
+  latestByType: Record<string, Consent | undefined>;
+  dsars: Dsar[];
+  msg: string | null;
+  busy: boolean;
+  t: (key: string) => string;
+  toggleConsent: (type: string, action: "granted" | "revoked") => void;
+  doExport: () => void;
+  requestAccess: (kind: "access" | "rectify") => void;
+  doDelete: () => void;
+}) {
+  return (
+    <main className="mx-auto min-h-screen max-w-3xl bg-background p-6 text-foreground">
+      <header className="mb-6 flex items-center justify-between">
+        <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
+          ← Home
+        </Link>
+        <LanguageSwitcher />
+      </header>
+
+      <h1 className="text-3xl font-semibold tracking-tight">Privacy</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        What we promise, and how to manage your own data.
+      </p>
+
+      {msg && <div className="mt-4 rounded border bg-muted p-2 text-sm">{msg}</div>}
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        {LOCAL_FIRST_POINTS.map((point) => (
+          <div key={point.title} className="rounded-xl border bg-card p-4">
+            <p className="text-sm font-semibold">{point.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{point.body}</p>
+          </div>
+        ))}
+      </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="text-base">Your consents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm">
+            {types.map((tp) => {
+              const last = latestByType[tp];
+              const granted = last?.action === "granted";
+              return (
+                <li key={tp} className="flex items-center justify-between border-b pb-2 last:border-0">
+                  <div>
+                    <div className="font-medium">{t(`privacy.types.${tp}`)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {last ? `${last.action} · v${last.policy_version}` : "Not recorded yet"}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={granted ? "outline" : "default"}
+                    disabled={busy}
+                    onClick={() => toggleConsent(tp, granted ? "revoked" : "granted")}
+                  >
+                    {granted ? "Turn off" : "Turn on"}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="text-base">Your data</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={doExport} disabled={busy}>
+              Download my data
+            </Button>
+            <Button variant="outline" onClick={() => requestAccess("access")} disabled={busy}>
+              Request a copy
+            </Button>
+            <Button variant="outline" onClick={() => requestAccess("rectify")} disabled={busy}>
+              Ask us to fix something
+            </Button>
+            <Button variant="destructive" onClick={doDelete} disabled={busy}>
+              Delete my account
+            </Button>
+          </div>
+          <p className="pt-2 text-xs text-muted-foreground">{t("privacy.dsarSla")}</p>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="text-base">Request history</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {dsars.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing requested yet.</p>
+          ) : (
+            <ul className="divide-y text-sm">
+              {dsars.map((d) => (
+                <li key={d.id} className="flex items-center justify-between py-2">
                   <span>{t(`privacy.kinds.${d.kind}`)}</span>
                   <span className="text-xs text-muted-foreground">
                     {d.status} · {new Date(d.created_at).toLocaleDateString()}
