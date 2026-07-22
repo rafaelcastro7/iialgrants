@@ -100,7 +100,9 @@ function coerceStrategistPlan(
     const h = hints.get(tsec.kind.toLowerCase()) ?? hints.get(tsec.heading_en.toLowerCase()) ?? {};
     let angle = (h.angle ?? "").trim();
     if (angle.length < 10) {
-      angle = `Make the case for ${tsec.heading_en} in "${grantTitle}", grounded in the grant's stated objectives and the organization's profile.`;
+      angle =
+        FALLBACK_ANGLE_BY_KIND[kind] ??
+        `Make the case for ${tsec.heading_en} in "${grantTitle}", grounded in the grant's stated objectives and the organization's profile.`;
     }
     return {
       kind,
