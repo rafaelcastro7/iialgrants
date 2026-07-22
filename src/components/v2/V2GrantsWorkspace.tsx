@@ -69,6 +69,7 @@ type V2GrantsWorkspaceProps = {
   filteredGrants: GrantRowData[];
   isAdmin: boolean;
   jurisdiction: string;
+  sector: string;
   onlyWithDeadline: boolean;
   pending: string | null;
   search: string;
