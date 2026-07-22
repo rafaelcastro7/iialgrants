@@ -110,6 +110,7 @@ export const runCritic = createServerFn({ method: "POST" })
         metadata: {
           critic_summary_en: parsed.summary_en,
           critic_summary_fr: parsed.summary_fr,
+          critic_rubric: parsed.rubric,
           critic_run: runId,
         } as never,
       })
