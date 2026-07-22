@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getOrgProfile } from "@/lib/org.functions";
 import { listGrants } from "@/lib/grants.functions";
+import { getFunderDashboardStats } from "@/lib/funder-dashboard.functions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
