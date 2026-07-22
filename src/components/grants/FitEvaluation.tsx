@@ -276,6 +276,13 @@ export function FitEvaluation(props: Props) {
                   {e.eligibility_pass ? L.eligiblePass : L.eligibleFail}
                 </span>
               </div>
+              {thinCoverage && cov && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-500">
+                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                  Based on {cov.assessed} of {cov.total} factors — the rest need more info to
+                  assess. Treat this score as preliminary.
+                </p>
+              )}
               <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {L.rationale}
               </p>
