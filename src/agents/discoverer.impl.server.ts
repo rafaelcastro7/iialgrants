@@ -10,10 +10,10 @@ import { z } from "zod";
 import { createHash } from "crypto";
 import { DiscoveredGrant, PROMPTS } from "@/agents/schemas";
 
-const MAX_PAGES_PER_RUN = 15;
+// Page/concurrency limits (maxPagesPerRun, scrapeConcurrency, fallbackMaxLinks)
+// moved to discovery-config.server.ts — admin-configurable via
+// /admin/discovery-config, defaulting to the same values these used to be.
 const MAX_MARKDOWN_LEN = 22_000;
-const SCRAPE_CONCURRENCY = 3;
-const FALLBACK_MAX_LINKS = 12;
 const FALLBACK_LLM_THROTTLE_MS = 2_200;
 
 // Hard title normalization for canonical dedup. Strips:
