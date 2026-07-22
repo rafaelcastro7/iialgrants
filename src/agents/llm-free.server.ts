@@ -7,7 +7,7 @@
 import { logGenAI, newRunId } from "@/lib/otel";
 import { resolveModel, resolveFallback } from "@/agents/model-router.server";
 import { timeoutFor } from "@/agents/llm-timeouts.server";
-import { callCloudLlm, isOllamaReachable } from "@/agents/llm-cloud.server";
+import { callCloudLlm } from "@/agents/llm-cloud.server";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 type Agent = "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";
