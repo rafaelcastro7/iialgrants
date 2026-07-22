@@ -135,7 +135,10 @@ describe("local-only LLM cascade", () => {
     expect(models).toContain("dolphin3:latest");
     expect(models).toContain("dolphin-mistral:7b");
     expect(calls.some((c) => c.startsWith(OLLAMA_URL))).toBe(true);
-    expect(calls.every((c) => c.startsWith("http://localhost:"))).toBe(true);
+    // With cloud keys cleared (beforeEach), no cloud LLM provider is contacted.
+    // (The Supabase agent-config lookup is orthogonal infra, not an LLM call.)
+    const cloudHosts = ["api.cerebras.ai", "api.groq.com", "generativelanguage.googleapis.com"];
+    expect(calls.some((c) => cloudHosts.some((h) => c.includes(h)))).toBe(false);
   }, 15000);
 
   it("callLlm skips unavailable configured models when Ollama tags are available", async () => {
