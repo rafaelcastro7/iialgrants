@@ -223,7 +223,15 @@ export async function callCloudLlm(opts: CloudLlmOptions): Promise<CloudLlmResul
   let lastErr: unknown;
   for (const provider of providers) {
     try {
-      return await callOpenAICompat(provider, opts, runId);
+      const result = await callOpenAICompat(provider, opts, runId);
+      if (opts.validate && !opts.validate(result.text)) {
+        lastErr = new Error(`${provider.name}_output_failed_validation`);
+        console.warn(
+          `[Cloud LLM] ${provider.name} returned 200 but output failed schema validation. Trying next provider...`,
+        );
+        continue;
+      }
+      return result;
     } catch (e) {
       lastErr = e;
       const msg = e instanceof Error ? e.message : String(e);
