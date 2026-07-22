@@ -160,7 +160,7 @@ async function runSource(
           bucket.held++;
           continue;
         }
-        const cStatus = score >= AUTO_APPROVE_THRESHOLD ? "approved" : "pending_review";
+        const cStatus = score >= cfg.candidateAutoApproveThreshold ? "approved" : "pending_review";
         const { data: inserted, error } = await supabaseAdmin
           .from("funder_candidates")
           .insert({
