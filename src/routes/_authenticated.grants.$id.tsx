@@ -584,6 +584,7 @@ function GrantDetailPage() {
                     rationale_en: string;
                     rationale_fr: string;
                     created_at: string;
+                    axis_breakdown?: AxisScore[] | null;
                   } | null
                 }
                 fr={false}
