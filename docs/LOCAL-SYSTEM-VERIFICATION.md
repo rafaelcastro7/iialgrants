@@ -201,9 +201,39 @@ confirmation `TEST-LOOP-001`, real timestamp), flipped `proposals.status` to
 entry with today's date and the Sent counter incrementing 1→2. No fabrication,
 no silent bypass — the low-readiness warning worked exactly as designed.
 
+### Sixth stage: "Find new grants" discovery — two real issues found, unfixed
+
+Every discovery run I could find in `agent_runs` history (00:07, 04:26, and
+10:32 UTC — spanning 10+ hours) inserted **0 new grants**, across all 5 active
+funders, every time:
+
+1. **Jina Search API key is expired/invalid** — every single search-seed
+   query (`jina_search_401`) fails, in every run, for every funder. Confirmed
+   by curling `s.jina.ai` directly with the key from `.env`: it returns 401 on
+   its own, independent of the app. This isn't a code bug — the code degrades
+   gracefully (sitemap-based crawling still runs), but the extra "search the
+   web for this funder's grant pages" channel has been silently dead for at
+   least the last 10+ hours. **Needs a new key from jina.ai** (external
+   credential, not something to fix in code) if full discovery is wanted.
+2. **Timeout regression on 3/5 funders** — NRC IRAP, Investissement Québec,
+   and Mitacs all succeeded earlier today (04:26-04:30 run: found 9/10/17
+   grants respectively) via sitemap-based crawling, but the 10:32 run timed
+   out on all three at the fixed 90s `funder_run_timeout_90000ms` ceiling with
+   zero grants found. Same funders, same code, different outcome a few hours
+   apart — likely load/timing sensitive (Ollama contention from the
+   session's other LLM-heavy tests, or slower page fetches) rather than a
+   pure regression, but worth a dedicated investigation with fresh
+   measurements. The other 2 funders (Trade Commissioner Service, Innovation
+   Canada) have failed with 404/fetch-failed on their index page in every run
+   observed — likely a stale source URL needing an update.
+
+Net effect right now: "Find new grants" runs, shows honest partial-failure
+telemetry (no fabricated success), but has not actually added a new grant to
+the catalog in any observed run today.
+
 ### Still to exercise (next loop iterations)
 
-Discovery "Find new grants", funder enrich.
+Funder enrich.
 
 ## Conclusion
 
