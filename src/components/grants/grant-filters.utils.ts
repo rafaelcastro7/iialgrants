@@ -13,6 +13,7 @@ export type GrantLite = {
   amount_cad_max?: number | null;
   discovered_at?: string | null;
   fit_score?: number | null;
+  sectors?: string[] | null;
   evaluation?: { eligibility_pass: boolean; fit_score?: number } | null;
 };
 
