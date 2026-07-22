@@ -45,9 +45,11 @@ function extractAgency(item: FeedItem, fallback?: string): string | null {
   }
 }
 
-export async function fetchRssGrantCandidates(): Promise<RawCandidate[]> {
+export async function fetchRssGrantCandidates(
+  extraFeeds: Array<{ key: string; url: string; defaultAgency?: string }> = [],
+): Promise<RawCandidate[]> {
   const seen = new Map<string, RawCandidate>();
-  for (const feed of GRANT_FEEDS) {
+  for (const feed of [...GRANT_FEEDS, ...extraFeeds]) {
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 12_000);
