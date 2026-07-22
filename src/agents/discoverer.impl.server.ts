@@ -973,9 +973,6 @@ export async function discoverFunderImpl(
   const insertErrors: Array<{ title: string; error: string }> = [];
   const perPage: Array<{ url: string; found: number; inserted: number; reason?: string }> = [];
 
-  const { detectRegistrationWall, recordRegistrationGate } =
-    await import("@/lib/registration-gate.server");
-
   // Ask LLM to extract ONE grant per program page (sequential + throttle to respect free-tier rate limits).
   for (let pi = 0; pi < pageDocs.length; pi++) {
     const doc = pageDocs[pi];
