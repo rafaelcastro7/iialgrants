@@ -53,7 +53,15 @@ export const DiscoveredGrant = z
       return [];
     }, z.array(z.string()).default([])),
 
-    language: z.enum(["en", "fr"]).default("en"),
+    // ISO 639-1. Not limited to en/fr — a Spanish or German source must not
+    // fail extraction just because its language isn't one of IIAL's two
+    // original bilingual (EN/FR) target languages.
+    language: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z]{2}$/)
+      .default("en"),
     url: z
       .string()
       .url()
