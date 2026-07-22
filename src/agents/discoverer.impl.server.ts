@@ -973,11 +973,30 @@ export async function discoverFunderImpl(
   const insertErrors: Array<{ title: string; error: string }> = [];
   const perPage: Array<{ url: string; found: number; inserted: number; reason?: string }> = [];
 
+  const { detectRegistrationWall, recordRegistrationGate } =
+    await import("@/lib/registration-gate.server");
+
   // Ask LLM to extract ONE grant per program page (sequential + throttle to respect free-tier rate limits).
   for (let pi = 0; pi < pageDocs.length; pi++) {
     const doc = pageDocs[pi];
     if (pi > 0) await sleep(FALLBACK_LLM_THROTTLE_MS);
     let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
+
+    // A login/registration wall on a candidate program page: track it for a
+    // human to sign up, and skip the LLM call entirely — extracting a
+    // "grant" from a login prompt would only produce noise or a hallucinated
+    // program.
+    const wall = detectRegistrationWall(doc.text, doc.url);
+    if (wall.blocked) {
+      await recordRegistrationGate(supabaseAdmin, {
+        funderId: F.id,
+        url: doc.url,
+        reason: wall.reason,
+        snippet: wall.snippet,
+      });
+      perPage.push({ url: doc.url, found: 0, inserted: 0, reason: `registration_wall:${wall.reason}` });
+      continue;
+    }
 
     try {
       const llmPage = await callLlm({
