@@ -494,6 +494,20 @@ export async function discoverFunderImpl(
           runId,
           temperature: 0.1,
           responseFormat: "json",
+          // Schema guard: without this, a provider whose JSON fails
+          // MultiPageOutput just gets caught below and the page is silently
+          // skipped, instead of the cloud/local chain advancing to a
+          // provider that can actually produce the requested shape — the
+          // same bug class fixed for critic.functions.ts, applied here since
+          // this path (and the two other discoverer callLlm sites) never
+          // got the same guard.
+          validate: (text) => {
+            try {
+              return MultiPageOutput.safeParse(JSON.parse(text)).success;
+            } catch {
+              return false;
+            }
+          },
           messages: [
             {
               role: "system",
