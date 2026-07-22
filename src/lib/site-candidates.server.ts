@@ -308,27 +308,49 @@ export async function fetchCandidateLinksFromSitemaps(
     return [];
   }
 
-  const sitemapEntries = new Set<string>([`${origin}/sitemap.xml`, `${origin}/sitemap_index.xml`]);
-
+  // robots.txt-declared sitemaps are ground truth for this site; the two hardcoded guesses are
+  // only a fallback for sites with no (or unreadable) robots.txt, so they go to the back of the
+  // queue and never crowd out real entries.
   const robotsText = await fetchText(`${origin}/robots.txt`, 4_000, "text/plain,*/*");
+  const robotsSitemaps: string[] = [];
   if (robotsText) {
     const matches = robotsText.matchAll(/^sitemap:\s*(.+)$/gim);
     for (const match of matches) {
-      sitemapEntries.add(match[1].trim());
+      const url = match[1].trim();
+      if (url) robotsSitemaps.push(url);
     }
   }
+  const defaultGuesses = [`${origin}/sitemap.xml`, `${origin}/sitemap_index.xml`];
 
+  const queueSet = new Set<string>();
+  const queue: string[] = [];
+  for (const url of [...robotsSitemaps, ...defaultGuesses]) {
+    if (queueSet.has(url)) continue;
+    queueSet.add(url);
+    queue.push(url);
+  }
+
+  // Lightweight relevance scoring so a sitemap index with many category sitemaps (posts, news,
+  // programs, ...) visits the grant/program-shaped ones before the cap is hit, instead of
+  // whatever raw order the index XML happened to list them in.
+  const RELEVANT_SITEMAP_PATTERN = /(program|grant|fund|subvention|scholarship|award|service)/i;
+  const IRRELEVANT_SITEMAP_PATTERN = /(news|blog|press|event|author|tag|category)/i;
+  const sitemapRelevance = (url: string): number => {
+    if (RELEVANT_SITEMAP_PATTERN.test(url)) return 1;
+    if (IRRELEVANT_SITEMAP_PATTERN.test(url)) return -1;
+    return 0;
+  };
+
+  const MAX_SITEMAPS_FETCHED = 20;
   const seenUrls = new Set<string>(opts.seenUrls ?? []);
   const collected = new Map<string, OfficialCandidate>();
-  const queue = [...sitemapEntries].slice(0, 4);
 
-  for (let i = 0; i < queue.length && i < 6; i++) {
-    const sitemapUrl = queue[i];
-    const xml = await fetchText(
-      sitemapUrl,
-      opts.timeoutMs ?? 10_000,
-      "application/xml,text/xml;q=0.9,*/*;q=0.8",
-    );
+  let cursor = 0;
+  let fetchedCount = 0;
+  while (cursor < queue.length && fetchedCount < MAX_SITEMAPS_FETCHED) {
+    const sitemapUrl = queue[cursor++];
+    fetchedCount++;
+    const xml = await fetchSitemapXml(sitemapUrl, opts.timeoutMs ?? 10_000);
     if (!xml) continue;
 
     const candidates = extractSitemapCandidatesFromXml(xml, baseUrl, {
@@ -345,9 +367,13 @@ export async function fetchCandidateLinksFromSitemaps(
       }
     }
 
-    const children = childSitemapUrls(origin, xml);
+    const children = childSitemapUrls(origin, xml)
+      .filter((child) => !queueSet.has(child))
+      .sort((a, b) => sitemapRelevance(b) - sitemapRelevance(a));
     for (const child of children) {
-      if (!queue.includes(child) && queue.length < 6) queue.push(child);
+      if (queueSet.has(child)) continue;
+      queueSet.add(child);
+      queue.push(child);
     }
   }
 
