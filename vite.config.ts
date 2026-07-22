@@ -17,6 +17,17 @@ export default defineConfig({
   server: {
     port: 8080,
     strictPort: true,
+    watch: {
+      // Background-task Claude sessions run in isolated git worktrees under
+      // .claude/worktrees/**, which sit inside this project's directory tree.
+      // Without this, Vite's default recursive watch picks up their file
+      // saves too, forcing spurious SSR "program reload"s and tsconfig
+      // cache-clears on THIS dev server that have nothing to do with the app
+      // actually running here — confirmed live: it left the client bundle in
+      // a broken state (blank page, no console error) after several reload
+      // storms triggered purely by another worktree's edits.
+      ignored: ["**/.claude/worktrees/**"],
+    },
   },
   build: {
     // Post-splitting budget: the entry chunk dropped from ~755 kB to ~523 kB
