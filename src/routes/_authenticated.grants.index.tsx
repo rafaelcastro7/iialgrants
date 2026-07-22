@@ -534,6 +534,8 @@ function GrantsPage() {
                   setSearch={setSearch}
                   jurisdiction={jurisdiction}
                   setJurisdiction={setJurisdiction}
+                  sector={sector}
+                  setSector={setSector}
                   sortKey={sortKey}
                   setSortKey={setSortKey}
                   eligibleOnly={eligibleOnly}
