@@ -39,13 +39,15 @@ type CloudProvider = {
 };
 
 // Cerebras — primary cloud source ("los cerebros"). OpenAI-compatible API.
+// Model IDs are account-specific; verify with `GET /v1/models`. This account
+// exposes gemma-4-31b, gpt-oss-120b, zai-glm-4.7 (the older llama* IDs 404).
 const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
-  discoverer: "llama3.1-8b",
-  enricher: "llama3.1-8b",
-  evaluator: "llama-3.3-70b",
-  strategist: "llama-3.3-70b",
-  writer: "llama-3.3-70b",
-  critic: "llama-3.3-70b",
+  discoverer: "gemma-4-31b",
+  enricher: "gemma-4-31b",
+  evaluator: "gpt-oss-120b",
+  strategist: "gpt-oss-120b",
+  writer: "gpt-oss-120b",
+  critic: "gpt-oss-120b",
 };
 
 // Groq — secondary cloud source (free tier) if Cerebras is unavailable.
