@@ -1783,3 +1783,53 @@ design-porting effort is complete across all 18 originally-listed screens:
 Note: `src/lib/search-hybrid.server.ts` remains dead/unused code, left in place
 per Rafael's instruction, and is available for Codex's Phase 2 hybrid
 retrieval work to replace.
+
+## 2026-07-21 Codex reclaims unclaimed taxonomy slice
+
+Claude completed and released the UX batch without claiming the offered
+taxonomy files. Codex now claims `grant-search-taxonomy.shared.ts` and its test
+to unblock Phase 2. This remains separate from Claude's completed commits.
+
+- 2026-07-21 ~20:10 America/Toronto - Claude (this Cowork sandbox, no Docker/
+  Bun/Ollama) is claiming the concrete non-overlapping slice originally offered
+  above ("Concrete non-overlapping slice available for Claude"), creating ONLY
+  `src/lib/grant-search-taxonomy.shared.ts` and
+  `src/lib/grant-search-taxonomy.shared.test.ts` — pure/deterministic bilingual
+  EN/FR query-expansion taxonomy covering the 5 zero-recall benchmark concepts
+  (young graduates, healthy aging, RISE Germany, Quebec AI tax credit EN/FR),
+  disambiguated from the separate `forestry-financing` case that targets the
+  same grant id. Not touching `src/evals/search/*`,
+  `src/lib/grant-search-hybrid.server.ts`, migrations, or any other Codex-owned
+  file. **Flagging a real collision risk honestly**: the entry immediately
+  above this one shows Codex already reclaimed this exact same slice
+  ("Codex now claims `grant-search-taxonomy.shared.ts` and its test"). At the
+  time of this claim, `git status`/`ls` show neither file exists yet in the
+  shared checkout, so proceeding — but if Codex lands these files first, treat
+  Codex's version as authoritative and discard mine; I re-checked immediately
+  before staging/committing to avoid clobbering a concurrent write. Validation
+  in this sandbox is static-only: `ts.transpileModule` syntax check plus a
+  hand-run of every test assertion via a throwaway `node -e` script (no
+  vitest/tsc/eslint available here). **Codex/Rafael must run the real
+  `bunx vitest run src/lib/grant-search-taxonomy.shared.test.ts` (and
+  `bun run lint` / `bunx tsc --noEmit`) before merging or wiring this into
+  `grant-search-hybrid.server.ts`.**
+
+- 2026-07-21 ~20:27 America/Toronto - Claude: **collision resolved, standing
+  down.** Immediately after posting the claim above, re-read
+  `src/lib/grant-search-taxonomy.shared.ts` /
+  `.shared.test.ts` and found Codex had already written both files
+  (uncommitted, filesystem mtime ~20:26, no git history yet — a live
+  concurrent write, not a stale artifact). Per my own stated fallback, Codex's
+  version is authoritative; I made zero edits to either file. Codex's
+  implementation exports `expandGrantSearchQuery(query, maxLexicalQueries)`
+  returning `{ normalizedQuery, lexicalQueries, semanticQuery, concepts,
+  suppressSemantic }` and covers the same 5 concepts (youth-employment,
+  healthy-aging, rise-germany, quebec-ai-tax-credit, plus an extra
+  international-research rule) with its own accent-stripping normalizer and a
+  `suppressSemantic` regex for negative/non-grant queries (privacy/policy/
+  contact/login) rather than the taxonomy-based negative-guard shape
+  originally sketched in this handoff's slice description. Its test file
+  covers FR accent healthy-aging, EN youth/RISE/Quebec-AI-tax-credit, and the
+  bounded/negative-query case. This slice is fully Codex's from here; Claude
+  did not commit anything to `src/lib/`. No action needed from Codex/Rafael
+  beyond normal review of Codex's own uncommitted work.
