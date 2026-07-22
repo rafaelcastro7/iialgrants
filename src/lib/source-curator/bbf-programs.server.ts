@@ -119,7 +119,8 @@ export async function fetchBbfPrograms(): Promise<RawCandidate[]> {
   const candidates = new Map<string, RawCandidate>();
   for (let rowNumber = 3; rowNumber <= sheet.rowCount; rowNumber++) {
     const values = sheet.getRow(rowNumber).values as ExcelJS.CellValue[];
-    const organization = specificOrganization(cellText(values[columns.org]));
+    const rawOrganization = cellText(values[columns.org]);
+    const organization = specificOrganization(rawOrganization);
     if (organization.length < 3) continue;
     const key = organization.toLowerCase();
     const title = cellText(values[columns.title]);
