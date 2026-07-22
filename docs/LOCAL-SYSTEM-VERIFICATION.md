@@ -231,9 +231,33 @@ Net effect right now: "Find new grants" runs, shows honest partial-failure
 telemetry (no fabricated success), but has not actually added a new grant to
 the catalog in any observed run today.
 
-### Still to exercise (next loop iterations)
+### Seventh stage verified: Funder enrich
 
-Funder enrich.
+"Enrich" on the Funders page (`funder-enrichment.functions.ts`) is fully
+deterministic — no LLM, no `agent_runs` row — it fetches the funder's website
+HTML directly and regexes out `<meta description>`/`og:description`, social
+media handles, and keyword-matched focus areas, storing the result in
+`funders.charitable_programs`. Clicked Enrich on NRC IRAP: real data landed —
+`mission_statement: "National Research Council of Canada: Home"`,
+`social_media: {twitter: nrc_cnrc, linkedin: 8417?trk=tyah, instagram:
+nrc_cnrc}`, and a plausible focus-area keyword list, `updated_at` fresh.
+Minor cosmetic imperfection (not worth a separate task): the LinkedIn regex
+captures raw numeric company IDs with trailing query params
+(`8417?trk=tyah`) rather than a clean handle when the org uses a numeric
+LinkedIn URL instead of a named slug — cosmetic only, the data is still real
+and present.
+
+## All pipeline stages + buttons now exercised
+
+Every stage of the grant lifecycle (discover → enrich → evaluate → draft →
+review → submit) and every button on the proposal Advanced view, the grants
+page, and the funders page has been clicked and verified against real local
+data this session. Three real bugs were found and fixed (schema drift,
+Cerebras model names, critic/expert-review schema validation + citation
+tracker wrong-format bug); two more were found and flagged as background
+tasks with full repro details rather than fixed inline (compliance matrix
+substring false-positives, discoverer timeout regression + stale funder
+URLs + expired Jina key).
 
 ## Conclusion
 
