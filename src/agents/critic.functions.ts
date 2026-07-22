@@ -42,6 +42,16 @@ export const runCritic = createServerFn({ method: "POST" })
         runId,
         temperature: 0.1,
         responseFormat: "json",
+        // Schema guard: if a provider returns 200 but JSON that fails the
+        // CriticOutput schema (e.g. Cerebras gemma-4-31b omitting overall_score),
+        // fall through to the next provider (Groq llama-3.3-70b) / local model.
+        validate: (text) => {
+          try {
+            return CriticOutput.safeParse(JSON.parse(text)).success;
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
