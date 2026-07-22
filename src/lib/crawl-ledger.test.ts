@@ -142,7 +142,6 @@ vi.mock("@/integrations/supabase/client.server", () => {
   };
   return {
     supabaseAdmin: {
-      __isMock: true,
       from: (t: string) => builder.from(t),
       rpc: (fn: string, params: Record<string, unknown>) => {
         if (fn !== "record_crawl_fetch") throw new Error(`unexpected rpc: ${fn}`);
