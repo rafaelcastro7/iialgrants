@@ -341,12 +341,13 @@ function GrantsPage() {
         applyGrantFilters(data.grants, {
           search: serverSearch.length >= 2 ? "" : search,
           jurisdiction,
+          sector,
           eligibleOnly,
           onlyWithDeadline,
         }),
         sortKey,
       ) as GrantRowData[],
-    [data.grants, search, serverSearch, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline],
+    [data.grants, search, serverSearch, jurisdiction, sector, sortKey, eligibleOnly, onlyWithDeadline],
   );
 
   // Search/jurisdiction/eligibleOnly/onlyWithDeadline live in GrantFilters,
