@@ -343,6 +343,8 @@ export function V2GrantsWorkspace({
         filteredCount={activeFiltered.length}
         jurisdiction={jurisdiction}
         jurisdictions={jurisdictions}
+        sector={sector}
+        sectors={sectorOptions}
         onlyWithDeadline={onlyWithDeadline}
         search={search}
         sortKey={sortKey}
@@ -350,6 +352,7 @@ export function V2GrantsWorkspace({
         totalCount={activeAll.length}
         onEligibleOnlyChange={onEligibleOnlyChange}
         onJurisdictionChange={onJurisdictionChange}
+        onSectorChange={onSectorChange}
         onOnlyWithDeadlineChange={onOnlyWithDeadlineChange}
         onSearchChange={onSearchChange}
         onSortKeyChange={onSortKeyChange}
