@@ -281,7 +281,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   // connection pool until the body is consumed or cancelled, so every
   // retried/superseded response must be explicitly cancelled here.
   const discard = (response: Response) => {
-    if (streamResponse) response.body?.cancel().catch(() => { });
+    if (streamResponse) response.body?.cancel().catch(() => {});
   };
 
   const recordModelFailure = (model: string, error: unknown) => {
