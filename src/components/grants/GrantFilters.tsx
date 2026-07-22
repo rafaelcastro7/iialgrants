@@ -1,6 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Search, X } from "lucide-react";
-import { funderOf, SORT_LABELS, type GrantLite, type SortKey } from "./grant-filters.utils";
+import {
+  collectSectors,
+  funderOf,
+  SORT_LABELS,
+  type GrantLite,
+  type SortKey,
+} from "./grant-filters.utils";
 
 export function GrantFilters({
   grants,
@@ -8,6 +14,8 @@ export function GrantFilters({
   setSearch,
   jurisdiction,
   setJurisdiction,
+  sector,
+  setSector,
   sortKey,
   setSortKey,
   eligibleOnly,
@@ -20,6 +28,8 @@ export function GrantFilters({
   setSearch: (v: string) => void;
   jurisdiction: string;
   setJurisdiction: (v: string) => void;
+  sector: string;
+  setSector: (v: string) => void;
   sortKey: SortKey;
   setSortKey: (v: SortKey) => void;
   eligibleOnly: boolean;
@@ -32,11 +42,18 @@ export function GrantFilters({
       grants.map((g) => funderOf(g)?.jurisdiction ?? null).filter((x): x is string => Boolean(x)),
     ),
   ).sort();
+  const sectors = collectSectors(grants);
 
-  const active = search.trim() !== "" || jurisdiction !== "all" || eligibleOnly || onlyWithDeadline;
+  const active =
+    search.trim() !== "" ||
+    jurisdiction !== "all" ||
+    sector !== "all" ||
+    eligibleOnly ||
+    onlyWithDeadline;
   const clearAll = () => {
     setSearch("");
     setJurisdiction("all");
+    setSector("all");
     setEligibleOnly(false);
     setOnlyWithDeadline(false);
   };
