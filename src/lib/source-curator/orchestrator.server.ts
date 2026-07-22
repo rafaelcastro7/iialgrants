@@ -112,7 +112,8 @@ async function runSource(
           }
           const merged = mergeCandidateEvidence(existing as RawCandidate, c);
           const mergedScore = scoreCandidate(merged);
-          const mergedStatus = mergedScore >= REVIEW_MIN_THRESHOLD ? "pending_review" : "candidate";
+          const mergedStatus =
+            mergedScore >= cfg.candidateReviewMinThreshold ? "pending_review" : "candidate";
           const { error: mergeError } = await supabaseAdmin
             .from("funder_candidates")
             .update({
