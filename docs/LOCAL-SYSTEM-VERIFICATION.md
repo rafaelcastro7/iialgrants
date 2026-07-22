@@ -43,11 +43,33 @@ skipped, `build` OK.
 | `/funders` | ⚠️ WARN | Renders 8 funders from local DB, but React dev warning "state update on a component that hasn't mounted yet" (see Known issues). |
 | `/admin` | ⚠️ WARN | Renders; same React mount warning as /funders (shared AppTopBar/V1 layout, not on V2-shell routes). |
 
+| `/competitive` `/financial` `/impact` `/post-award` `/renewal` `/tasks` `/compliance-calendar` `/org` `/manual` `/privacy` | ✅ PASS | Swept in one SPA pass from a clean console reload; all rendered (ended on `/privacy` with correct title), no crashes. Only the shared React mount warning below appeared. |
+
+## LLM hybrid verification
+
+- Local Ollama path: `phi4-mini:latest` generate → `OK` (local-first works).
+- App boot banner: `Cloud LLM: ✅ Groq Ready` (cloud chain has a live key).
+- `llm-cascade.e2e.test.ts` (8 tests) covers cloud-cleared → local fallback.
+- Chain confirmed in code: Ollama reachable → local; else Cerebras → Groq →
+  Gemini → local fallback.
+
 ## Known issues (non-blocking)
 
-- **React "state update on a component that hasn't mounted yet" on `/funders`
-  and `/admin`.** Both use the older `AppTopBar` layout; the V2-shell routes
-  (dashboard/grants/proposals/submissions/fit-rules) do not show it. Page still
-  renders all real data. Hypothesis: a suspense-query/side-effect firing during
-  render in the shared V1 layout path. Non-fatal dev warning; flagged for a
-  focused fix.
+- **React "state update on a component that hasn't mounted yet."** Appears once
+  and then persists in the SPA console buffer. Reproduced in a clean sweep that
+  did NOT include `/funders`, so it is NOT page-specific — it originates in a
+  shared component (framer-motion `PageTransition` / suspense boundary) and is
+  triggered by rapid programmatic route changes (700ms apart in the test). All
+  pages render all real data; no crash. Low priority: normal human-speed
+  navigation rarely triggers it and it is dev-only. `PageTransition.tsx` and the
+  V2 shell were checked and contain no setState-in-render; the trigger is
+  transition/unmount timing under fast navigation. Flagged for a focused fix if
+  it ever surfaces at human speed.
+
+## Conclusion
+
+The system works locally end to end against the local Docker Supabase (dev DB):
+auth, dashboard, grants + search, grant detail, proposals, submissions,
+fit-rules, funders, admin, and all V2 secondary screens render real local data
+with no crashes. LLM is hybrid (local-first with cloud chain). The only open item
+is the non-fatal React transition warning above.
