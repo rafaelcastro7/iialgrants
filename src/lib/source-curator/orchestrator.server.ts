@@ -241,12 +241,15 @@ async function runSource(
 }
 
 // Per-tier ingestor map. Lazy-imported so cold paths stay cheap.
-async function ingestorsForTier(tier: Tier): Promise<Array<{ key: string; fn: SourceFn }>> {
+async function ingestorsForTier(
+  tier: Tier,
+  cfg: DiscoveryConfig,
+): Promise<Array<{ key: string; fn: SourceFn }>> {
   const out: Array<{ key: string; fn: SourceFn }> = [];
 
   if (tier === "A" || tier === "all") {
     const { fetchRssGrantCandidates } = await import("./rss-grants.server");
-    out.push({ key: "rss_grants_bundle", fn: fetchRssGrantCandidates });
+    out.push({ key: "rss_grants_bundle", fn: () => fetchRssGrantCandidates(cfg.extraRssFeeds) });
   }
 
   if (tier === "B" || tier === "all") {
