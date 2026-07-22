@@ -243,8 +243,14 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
         intake,
       },
       iial_role: rr.detected_role,
+      partner: {
+        needed: rr.detected_role === "partner",
+        type: rr.detected_partner_type,
+        note: partnerNote,
+      },
       strategic_angle,
       mandatory_components,
+      application_checklist,
       money: {
         request_amount: (g.amount_cad_max ?? g.amount_cad_min ?? null) as number | null,
         match_required_pct: rr.cost_share_pct,
