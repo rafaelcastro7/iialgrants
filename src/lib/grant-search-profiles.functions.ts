@@ -76,10 +76,10 @@ export const recordGrantSearchFeedback = createServerFn({ method: "POST" })
       p_profile_id: data.profile_id,
       p_grant_id: data.grant_id,
       p_action: data.action,
-      p_reason: data.reason,
-      p_note: data.note,
-      p_query_text: data.query_text,
-      p_rank_position: data.rank_position,
+      p_reason: data.reason ?? undefined,
+      p_note: data.note ?? undefined,
+      p_query_text: data.query_text ?? undefined,
+      p_rank_position: data.rank_position ?? undefined,
       p_score_snapshot: data.score_snapshot as Json,
     });
     if (error) throw new Error(error.message);
