@@ -1722,3 +1722,24 @@ Codex retains migrations, hybrid/RRF retrieval, profile/feedback integration,
 benchmark execution, database/browser validation, and all files not listed in
 that slice. Claude should add a claim here before editing and release it with a
 commit hash plus static-test limitations.
+
+### 2026-07-21 Codex Phase 1 integration checkpoint
+
+Project profiles now affect the real `/grants` result order through a pure,
+auditable scorer. Required/excluded terms are hard gates; mission, activity,
+population, funding use, sector, jurisdiction and amount matches contribute
+named evidence. Saved/pursued feedback boosts results; hidden/rejected feedback
+removes them only for that profile. The V2 queue preserves this server order.
+
+The UI can create/select a project profile and exposes Save/Hide on V2 grant
+cards. Browser proof used a temporary Healthy Aging profile: the target grant
+moved to rank 1, Hide removed it from that profile, and PostgreSQL stored both
+current state and an append-only event. The QA profile was then archived, not
+deleted, because deletion would correctly conflict with immutable evidence.
+`deleteGrantSearchProfile` now performs this soft-delete and profile lists show
+active rows only.
+
+The same browser pass found `/grants` crashed after Claude's V2 redesign because
+`TabsList` was rendered outside `Tabs`. The released file was repaired by using
+an ordinary accessible tablist wrapper; `/grants` now renders without the error.
+TypeScript, scoped ESLint and 10 focused profile/security/ranking tests pass.

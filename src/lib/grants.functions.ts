@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "@/lib/admin-guard";
 import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-stages.shared";
+import { scoreGrantForProfile } from "@/lib/grant-search-profile-ranking.shared";
 
 // List grants from the public catalog, sorted by deadline asc / fit_score desc.
 // Also returns the calling user's per-grant evaluation (if any), so the UI can
@@ -27,16 +28,40 @@ export const listGrants = createServerFn({ method: "GET" })
           ])
           .optional(),
         search: z.string().trim().max(120).optional(),
+        profileId: z.string().uuid().optional(),
         limit: z.number().int().min(1).max(100).default(50),
       })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
+    const profilePromise = data.profileId
+      ? context.supabase
+          .from("grant_search_profiles")
+          .select("*")
+          .eq("id", data.profileId)
+          .eq("user_id", context.userId)
+          .eq("active", true)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+    const feedbackPromise = data.profileId
+      ? context.supabase
+          .from("grant_search_feedback")
+          .select("grant_id, action")
+          .eq("profile_id", data.profileId)
+          .eq("user_id", context.userId)
+      : Promise.resolve({ data: [], error: null });
+    const [{ data: searchProfile, error: profileError }, { data: feedback, error: feedbackError }] =
+      await Promise.all([profilePromise, feedbackPromise]);
+    if (profileError) throw new Error(profileError.message);
+    if (feedbackError) throw new Error(feedbackError.message);
+    if (data.profileId && !searchProfile) throw new Error("Search profile not found");
+
+    const feedbackByGrant = new Map((feedback ?? []).map((row) => [row.grant_id, row.action]));
     const rankById = new Map<string, { relevance: number; matched_on: string }>();
     if (data.search && data.search.length >= 2) {
       const { data: ranked, error: searchError } = await context.supabase.rpc(
         "search_grant_catalog",
-        { search_query: data.search, result_limit: data.limit },
+        { search_query: data.search, result_limit: 100 },
       );
       if (searchError) throw new Error(searchError.message);
       for (const row of ranked ?? []) {
@@ -52,17 +77,37 @@ export const listGrants = createServerFn({ method: "GET" })
       )
       .order("fit_score", { ascending: false, nullsFirst: false })
       .order("deadline", { ascending: true, nullsFirst: false })
-      .limit(data.limit);
+      .limit(100);
     if (data.status) q = q.eq("status", data.status);
     if (rankById.size > 0) q = q.in("id", [...rankById.keys()]);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    const grants = rows ?? [];
-    if (rankById.size > 0) {
-      grants.sort(
-        (a, b) => (rankById.get(b.id)?.relevance ?? 0) - (rankById.get(a.id)?.relevance ?? 0),
-      );
-    }
+    const grantsWithProfile = (rows ?? [])
+      .map((grant) => {
+        const profileMatch = searchProfile ? scoreGrantForProfile(grant, searchProfile) : null;
+        const feedbackAction = feedbackByGrant.get(grant.id) ?? null;
+        const feedbackBoost =
+          feedbackAction === "saved" ? 0.08 : feedbackAction === "pursued" ? 0.12 : 0;
+        const lexicalRelevance = rankById.get(grant.id)?.relevance ?? 0;
+        const profileRelevance = profileMatch ? profileMatch.score / 100 : 0;
+        const combinedRelevance = rankById.size
+          ? lexicalRelevance * (searchProfile ? 0.75 : 1) + profileRelevance * 0.25 + feedbackBoost
+          : profileRelevance + feedbackBoost;
+        return { grant, profileMatch, feedbackAction, combinedRelevance };
+      })
+      .filter(
+        ({ profileMatch, feedbackAction }) =>
+          feedbackAction !== "hidden" &&
+          feedbackAction !== "rejected" &&
+          profileMatch?.hardBlocked !== true,
+      )
+      .sort(
+        (a, b) =>
+          b.combinedRelevance - a.combinedRelevance ||
+          (b.grant.fit_score ?? 0) - (a.grant.fit_score ?? 0),
+      )
+      .slice(0, data.limit);
+    const grants = grantsWithProfile.map(({ grant }) => grant);
 
     const ids = grants.map((g) => g.id);
     const evalsByGrant = new Map<
@@ -113,13 +158,18 @@ export const listGrants = createServerFn({ method: "GET" })
     }
 
     return {
-      grants: grants.map((g) => ({
-        ...g,
-        searchMatch: rankById.get(g.id) ?? null,
-        evaluation: evalsByGrant.get(g.id) ?? null,
-        duplicateGroupSize:
-          groupCounts.get(`${g.funder_id ?? "none"}|${normalizeTitle(g.title)}`) ?? 1,
-      })),
+      grants: grantsWithProfile.map(
+        ({ grant: g, profileMatch, feedbackAction, combinedRelevance }) => ({
+          ...g,
+          searchMatch: rankById.get(g.id) ?? null,
+          profileMatch,
+          feedbackAction,
+          combinedRelevance,
+          evaluation: evalsByGrant.get(g.id) ?? null,
+          duplicateGroupSize:
+            groupCounts.get(`${g.funder_id ?? "none"}|${normalizeTitle(g.title)}`) ?? 1,
+        }),
+      ),
     };
   });
 

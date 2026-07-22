@@ -34,6 +34,14 @@ export type GrantRowData = {
   } | null;
   /** Present only for server-ranked text searches; score is ranking evidence, not confidence. */
   searchMatch?: { relevance: number; matched_on: string } | null;
+  profileMatch?: {
+    score: number;
+    hardBlocked: boolean;
+    matched: string[];
+    missing: string[];
+  } | null;
+  feedbackAction?: "saved" | "hidden" | "rejected" | "restored" | "pursued" | null;
+  combinedRelevance?: number;
   // >1 means other active grants share this funder + a near-identical title —
   // a real, recurring data-quality issue (contaminated test-seed rows, or
   // genuine re-discovery not yet deduped). UI-only signal, never merges data.

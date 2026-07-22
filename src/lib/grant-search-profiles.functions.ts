@@ -11,6 +11,7 @@ export const listGrantSearchProfiles = createServerFn({ method: "GET" })
       .from("grant_search_profiles")
       .select("*")
       .eq("user_id", context.userId)
+      .eq("active", true)
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { profiles: data ?? [] };
@@ -55,13 +56,16 @@ export const deleteGrantSearchProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { data: archived, error } = await context.supabase
       .from("grant_search_profiles")
-      .delete()
+      .update({ active: false })
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
-    return { ok: true };
+    if (!archived) throw new Error("Search profile not found");
+    return { ok: true, archived: true };
   });
 
 export const recordGrantSearchFeedback = createServerFn({ method: "POST" })
