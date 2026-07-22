@@ -51,3 +51,5 @@ scripts/.gpu.lock
 scripts/.pids/
 scripts/.supervisor.pid
 scripts/.watchdog-state.json
+[
+]+.env
