@@ -154,7 +154,9 @@ export async function evaluateGrantImpl(opts: {
       try {
         const raw = JSON.parse(text);
         if (raw && typeof raw === "object" && raw.eligibility_pass === undefined) {
-          raw.eligibility_pass = true; // mirror the real parse path's default below
+          // Mirror the real parse path's default exactly (below) — rulesResult
+          // is already in scope here, not a placeholder.
+          raw.eligibility_pass = !rulesResult.hard_fail;
         }
         return EvaluatorOutput.safeParse(raw).success;
       } catch {
