@@ -484,6 +484,8 @@ export function V2GrantDetail({
             )}
           </Panel>
 
+          {grant.status !== "discovered" && <OpportunityBriefPanel grantId={grant.id} />}
+
           <Panel
             icon={ShieldCheck}
             title="Eligibility evidence"
