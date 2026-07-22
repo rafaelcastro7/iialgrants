@@ -374,6 +374,11 @@ export async function discoverFunderImpl(
   const { scrapeWithFallback, jinaSearch, CHROME_UA } = await import("@/lib/web-fetch.server");
   const { shouldFetch, recordFetch } = await import("@/lib/crawl-ledger.server");
   const { fetchCandidateLinksFromSitemaps } = await import("@/lib/site-candidates.server");
+  const { resolveDiscoveryConfig } = await import("@/lib/discovery-config.server");
+
+  // Admin-configurable knobs (page/concurrency limits, extra noise filters,
+  // seed query) with hardcoded fallbacks — see discovery-config.server.ts.
+  const cfg = await resolveDiscoveryConfig();
 
   const runId = newRunId();
   const t0 = Date.now();
