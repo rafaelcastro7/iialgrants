@@ -229,17 +229,24 @@ describe("crawl-ledger cadence", () => {
     // fetch_count/change_count — this is the exact race that was fixed by
     // moving the read-modify-write into an atomically-locked SQL function.
     //
-    // Warm up recordFetch's dynamically-imported client module via a real
-    // call first — Vitest's dynamic-import mock resolution can race when
-    // the exact same `await import(...)` call site inside
-    // crawl-ledger.server.ts is hit concurrently for the first time ever,
-    // which is a test-harness quirk unrelated to the production race this
-    // test targets (Node's real module cache has no such race).
-    await recordFetch("https://x.test/warmup", { kind: "ok", markdown: "warmup", via: "scrape_engine" });
-    const [r1, r2] = await Promise.all([
-      recordFetch("https://x.test/race", { kind: "ok", markdown: "version A", via: "scrape_engine" }),
-      recordFetch("https://x.test/race", { kind: "ok", markdown: "version B", via: "scrape_engine" }),
-    ]);
+    // Start call A, then start call B before A has committed — B must still
+    // start strictly after A's own `await import(...)` has resolved (a
+    // setTimeout tick apart) so this exercises overlap in the actual
+    // read-modify-write critical section rather than two `import()` calls
+    // racing in the same microtask, which is a Vitest module-loader quirk
+    // unrelated to the production race this test targets.
+    const p1 = recordFetch("https://x.test/race", {
+      kind: "ok",
+      markdown: "version A",
+      via: "scrape_engine",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const p2 = recordFetch("https://x.test/race", {
+      kind: "ok",
+      markdown: "version B",
+      via: "scrape_engine",
+    });
+    const [r1, r2] = await Promise.all([p1, p2]);
 
     const final = store.get("https://x.test/race") as { fetch_count: number; change_count: number };
     // Both calls' increments must land — a lost update would leave this at 1.
