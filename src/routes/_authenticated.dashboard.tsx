@@ -232,7 +232,13 @@ function Dashboard() {
               icon={Search}
               value={loading ? "—" : grants.length}
               label="Active opportunities"
-              hint={loading ? "Live grants tracked" : `${enrichedCount} enriched so far`}
+              hint={
+                loading
+                  ? "Live grants tracked"
+                  : funderCount != null
+                    ? `${enrichedCount} enriched · ${funderCount} funders watched`
+                    : `${enrichedCount} enriched so far`
+              }
               to="/grants"
             />
             <StatTile
