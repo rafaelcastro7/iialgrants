@@ -1651,6 +1651,7 @@ export type Database = {
           language: string
           last_seen_at: string
           org_id: string | null
+          requirements: Json | null
           scored_at: string | null
           sectors: string[]
           source_hash: string
@@ -1683,6 +1684,7 @@ export type Database = {
           language?: string
           last_seen_at?: string
           org_id?: string | null
+          requirements?: Json | null
           scored_at?: string | null
           sectors?: string[]
           source_hash: string
@@ -1715,6 +1717,7 @@ export type Database = {
           language?: string
           last_seen_at?: string
           org_id?: string | null
+          requirements?: Json | null
           scored_at?: string | null
           sectors?: string[]
           source_hash?: string
@@ -1979,6 +1982,7 @@ export type Database = {
           feedback: string | null
           grant_id: string
           id: string
+          impact_description: string | null
           lessons_learned: string | null
           result: string
           submission_id: string
@@ -1992,6 +1996,7 @@ export type Database = {
           feedback?: string | null
           grant_id: string
           id?: string
+          impact_description?: string | null
           lessons_learned?: string | null
           result: string
           submission_id: string
@@ -2005,6 +2010,7 @@ export type Database = {
           feedback?: string | null
           grant_id?: string
           id?: string
+          impact_description?: string | null
           lessons_learned?: string | null
           result?: string
           submission_id?: string
@@ -2671,6 +2677,10 @@ export type Database = {
           promoted_id: string
         }[]
       }
+      bump_proposal_version: {
+        Args: { target_proposal_id: string }
+        Returns: number
+      }
       can_access_tenant_entity: {
         Args: { p_entity_id: string; p_entity_type: string }
         Returns: boolean
@@ -2705,10 +2715,50 @@ export type Database = {
         }[]
       }
       normalize_title_v2: { Args: { t: string }; Returns: string }
+      record_grant_search_feedback: {
+        Args: {
+          p_action: string
+          p_grant_id: string
+          p_note?: string
+          p_profile_id: string
+          p_query_text?: string
+          p_rank_position?: number
+          p_reason?: string
+          p_score_snapshot?: Json
+        }
+        Returns: {
+          action: string
+          created_at: string
+          grant_id: string
+          id: string
+          note: string | null
+          profile_id: string
+          query_text: string | null
+          rank_position: number | null
+          reason: string | null
+          score_snapshot: Json
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "grant_search_feedback"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       search_funder_catalog: {
         Args: { result_limit?: number; search_query: string }
         Returns: {
           funder_id: string
+          matched_on: string
+          relevance: number
+        }[]
+      }
+      search_grant_catalog: {
+        Args: { result_limit?: number; search_query: string }
+        Returns: {
+          grant_id: string
           matched_on: string
           relevance: number
         }[]
