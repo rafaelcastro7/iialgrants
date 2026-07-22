@@ -42,3 +42,26 @@ rules to the RPC is not acceptable.
 5. Review per-case metrics before changing weights.
 6. Use `bun run eval:search -- --enforce` only when the target thresholds are
    expected to pass.
+
+## Hybrid RRF checkpoint — 2026-07-21 20:27 America/Toronto
+
+After canonical bilingual documents, local `nomic-embed-text` embeddings,
+bounded taxonomy expansion, semantic pruning and lexical/semantic RRF fusion:
+
+| Metric | Lexical baseline | Hybrid RRF v1 | Target | Result |
+|---|---:|---:|---:|---|
+| Precision@10 | 0.693 | **0.756** | >= 0.75 | pass |
+| Recall@10 | 0.732 | **1.000** | >= 0.90 | pass |
+| MRR | 0.760 | **0.944** | tracked | improved |
+| nDCG@10 | 0.732 | **0.989** | >= 0.80 | pass |
+| Hard-fail leakage | 0 | **0** | 0 | pass |
+
+Command: `bun run eval:search --enforce` (exit 0).
+
+The active benchmark contains 18 executable cases. Seven positive cases are
+reported separately as `staleCaseIds` because every labeled relevant grant is
+currently archived; they are not silently converted into negative cases or
+counted as retrieval failures. They must be relabeled when equivalent active
+opportunities enter the catalog. Browser proof for the previous zero-recall
+French query `vieillissement en santé` returns only **Healthy Aging Community
+Living Lab Funding Opportunity** at rank 1, with no route error.

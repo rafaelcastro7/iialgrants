@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "@/lib/admin-guard";
 import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-stages.shared";
 import { scoreGrantForProfile } from "@/lib/grant-search-profile-ranking.shared";
+import { searchGrantCatalogHybrid } from "@/lib/grant-search-hybrid.server";
 
 // List grants from the public catalog, sorted by deadline asc / fit_score desc.
 // Also returns the calling user's per-grant evaluation (if any), so the UI can
@@ -57,17 +58,32 @@ export const listGrants = createServerFn({ method: "GET" })
     if (data.profileId && !searchProfile) throw new Error("Search profile not found");
 
     const feedbackByGrant = new Map((feedback ?? []).map((row) => [row.grant_id, row.action]));
-    const rankById = new Map<string, { relevance: number; matched_on: string }>();
-    if (data.search && data.search.length >= 2) {
-      const { data: ranked, error: searchError } = await context.supabase.rpc(
-        "search_grant_catalog",
-        { search_query: data.search, result_limit: 100 },
-      );
-      if (searchError) throw new Error(searchError.message);
-      for (const row of ranked ?? []) {
-        rankById.set(row.grant_id, { relevance: row.relevance, matched_on: row.matched_on });
+    const rankById = new Map<
+      string,
+      {
+        relevance: number;
+        matched_on: string;
+        lexical_score: number;
+        semantic_score: number;
+        retrieval_mode: "hybrid" | "lexical-fallback";
+        query_concepts: string[];
       }
-      if (rankById.size === 0) return { grants: [] };
+    >();
+    let searchDegradedReason: string | null = null;
+    if (data.search && data.search.length >= 2) {
+      const hybrid = await searchGrantCatalogHybrid(context.supabase, data.search, 100);
+      searchDegradedReason = hybrid.degradedReason;
+      for (const row of hybrid.matches) {
+        rankById.set(row.grantId, {
+          relevance: row.relevance,
+          matched_on: row.matchedOn,
+          lexical_score: row.lexicalScore,
+          semantic_score: row.semanticScore,
+          retrieval_mode: row.retrievalMode,
+          query_concepts: row.queryConcepts,
+        });
+      }
+      if (rankById.size === 0) return { grants: [], searchDegradedReason };
     }
 
     let q = context.supabase
@@ -158,6 +174,7 @@ export const listGrants = createServerFn({ method: "GET" })
     }
 
     return {
+      searchDegradedReason,
       grants: grantsWithProfile.map(
         ({ grant: g, profileMatch, feedbackAction, combinedRelevance }) => ({
           ...g,

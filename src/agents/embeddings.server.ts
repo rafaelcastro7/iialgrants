@@ -5,6 +5,7 @@ const EMB_URL = process.env.OLLAMA_BASE_URL
   : "http://localhost:11434/api/embeddings";
 export const EMBEDDING_MODEL = "nomic-embed-text";
 export const EMBEDDING_DIMS = 768;
+const EMBEDDING_TIMEOUT_MS = Number(process.env.OLLAMA_EMBEDDING_TIMEOUT_MS ?? 120_000);
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -17,9 +18,10 @@ export async function embedText(input: string | string[]): Promise<number[][]> {
   // the output array from the input order (result[i] always embeds texts[i]).
   for (const text of texts) {
     let embedded = false;
+    let lastError: unknown;
     for (let attempt = 0; attempt <= maxRetries && !embedded; attempt++) {
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 30_000);
+      const t = setTimeout(() => ctrl.abort(), EMBEDDING_TIMEOUT_MS);
       try {
         const res = await fetch(EMB_URL, {
           method: "POST",
@@ -38,9 +40,19 @@ export async function embedText(input: string | string[]): Promise<number[][]> {
         const json = await res.json();
         embeddings.push(json.embedding);
         embedded = true;
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxRetries) {
+          await sleep(1000 * Math.pow(2, attempt));
+          continue;
+        }
       } finally {
         clearTimeout(t);
       }
+    }
+    if (!embedded) {
+      const message = lastError instanceof Error ? lastError.message : String(lastError);
+      throw new Error(`embedding_failed_after_retries: ${message}`);
     }
   }
   return embeddings;

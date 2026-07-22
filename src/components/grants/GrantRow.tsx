@@ -33,7 +33,14 @@ export type GrantRowData = {
     created_at: string;
   } | null;
   /** Present only for server-ranked text searches; score is ranking evidence, not confidence. */
-  searchMatch?: { relevance: number; matched_on: string } | null;
+  searchMatch?: {
+    relevance: number;
+    matched_on: string;
+    lexical_score: number;
+    semantic_score: number;
+    retrieval_mode: "hybrid" | "lexical-fallback";
+    query_concepts: string[];
+  } | null;
   profileMatch?: {
     score: number;
     hardBlocked: boolean;
