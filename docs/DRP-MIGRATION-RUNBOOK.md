@@ -34,6 +34,61 @@ the `localhost` origins.
 | PostgREST direct  | `localhost:15434`        |
 | Ollama            | `http://localhost:11434` |
 
+## Environment architecture (dev vs prod)
+
+Two databases, one codebase:
+
+| Environment      | Database                              | Env source                                    |
+| ---------------- | ------------------------------------- | --------------------------------------------- |
+| Local dev        | Docker Supabase (`localhost:15435`)   | `.env.local` (overrides `.env`, gitignored)   |
+| Production        | Lovable Cloud Supabase (`*.supabase.co`) | Lovable dashboard env vars (NOT any repo file) |
+
+How the split works:
+
+- Both Bun and Vite load env files in order: `.env` first, then `.env.local`,
+  with later files winning **per key** (merge, not replace). So `.env.local`
+  only needs the Supabase local overrides; cloud LLM keys (`CEREBRAS_API_KEY`,
+  `GROQ_API_KEY`, `GOOGLE_AI_STUDIO_KEY`) defined in `.env` stay active.
+- `.env` and `.env.local` are BOTH gitignored, so nothing here reaches Lovable.
+  Production reads its own variables from the Lovable dashboard.
+- The server resolves the DB from `process.env.VITE_SUPABASE_URL`
+  (`src/integrations/supabase/client.server.ts`); the browser bundle resolves it
+  from `import.meta.env.VITE_SUPABASE_URL` (`client.ts`). `.env.local` must set
+  both the `SUPABASE_*` and `VITE_SUPABASE_*` variants to `localhost:15435`.
+- Global rule: never edit `.env` by hand to switch DBs. Point the dev machine at
+  local by creating/removing `.env.local`; that is the only file you touch.
+
+Gotcha — the dev server must run **non-elevated**. If `bun run dev` was started
+from an elevated shell/scheduled task, a non-admin session cannot kill it to
+restart it (needed after env changes). Restart it from an **admin** PowerShell:
+
+```powershell
+Get-NetTCPConnection -LocalPort 8080 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+Gotcha — local Supabase CORS allows only specific origins (`localhost:8080`).
+Run the dev server on port 8080, not an alternate port, or the browser gets
+`net::ERR_FAILED` on auth (the OPTIONS preflight passes but the POST is blocked).
+
+## LLM architecture (hybrid cloud + local)
+
+The LLM router (`src/agents/llm.server.ts`, `src/agents/llm-free.server.ts`) is
+hybrid and self-selecting by environment:
+
+1. **Ollama reachable** (dev machine) → local-first: routes each agent to its
+   optimal local model via `model-router.server.ts`, with a local fallback chain.
+2. **Ollama unreachable** (Lovable prod) → cloud chain in
+   `src/agents/llm-cloud.server.ts`, tried in order, skipping any provider whose
+   API key is unset:
+   - Cerebras (`CEREBRAS_API_KEY`) → Groq (`GROQ_API_KEY`) →
+     Gemini (`GOOGLE_AI_STUDIO_KEY`, via Google's OpenAI-compatible endpoint).
+3. If the whole cloud chain fails, it still falls back to local Ollama, so the
+   system degrades gracefully in both directions.
+
+Each provider maps the 6 agents (discoverer/enricher = fast model,
+evaluator/strategist/writer/critic = larger model). To run cloud-only for a test,
+make Ollama unreachable; to run local-only, unset the three cloud keys.
+
 ## Minimum prerequisites on a new machine
 
 Install:
