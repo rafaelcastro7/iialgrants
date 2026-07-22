@@ -149,9 +149,26 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
         {/* Transparent multi-axis breakdown — the "why" across named dimensions */}
         {axes && axes.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
-              Fit by dimension
-            </p>
+            {(() => {
+              const assessed = axes.filter((a) => a.status !== "na").length;
+              const thin = assessed / axes.length < 0.5;
+              return (
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase">
+                    Fit by dimension
+                  </p>
+                  <span
+                    className={
+                      thin
+                        ? "text-[11px] font-medium text-amber-700 dark:text-amber-500"
+                        : "text-[11px] text-muted-foreground"
+                    }
+                  >
+                    Assessed {assessed} of {axes.length}
+                  </span>
+                </div>
+              );
+            })()}
             <ul className="space-y-1.5">
               {axes.map((a) => (
                 <AxisBar key={a.axis} axis={a} />
