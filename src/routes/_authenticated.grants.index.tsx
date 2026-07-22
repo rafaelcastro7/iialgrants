@@ -430,6 +430,7 @@ function GrantsPage() {
               : undefined
           }
           onJurisdictionChange={setJurisdiction}
+          onSectorChange={setSector}
           onOnlyWithDeadlineChange={setOnlyWithDeadline}
           onSearchChange={setSearch}
           onSelectedFundersChange={setSelectedFunders}
