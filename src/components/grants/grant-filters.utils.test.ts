@@ -30,4 +30,27 @@ describe("grant catalog result handling", () => {
     );
     expect(result.map((grant) => grant.title)).toEqual(["Typo-relevant first"]);
   });
+
+  it("filters by sector, case-insensitively", () => {
+    const grants = [
+      { ...ranked[0], sectors: ["Clean Tech", "AI"] },
+      { ...ranked[1], sectors: ["Forestry"] },
+    ];
+    const result = applyGrantFilters(grants, {
+      search: "",
+      jurisdiction: "all",
+      sector: "ai",
+      eligibleOnly: false,
+      onlyWithDeadline: false,
+    });
+    expect(result.map((grant) => grant.title)).toEqual(["Typo-relevant first"]);
+  });
+
+  it("collects distinct, sorted sector values across grants", () => {
+    const grants = [
+      { ...ranked[0], sectors: ["ai", "Clean Tech"] },
+      { ...ranked[1], sectors: ["clean tech", "Forestry", null as unknown as string] },
+    ];
+    expect(collectSectors(grants)).toEqual(["ai", "Clean Tech", "clean tech", "Forestry"]);
+  });
 });
