@@ -1,8 +1,10 @@
-// Local-only LLM client — all cloud dependencies removed.
-// Routes each agent to its optimal local model via model-router.
+// Environment-aware LLM client.
+// Local (Ollama reachable) → routes to optimal local model via model-router.
+// Cloud (Ollama unreachable) → routes to Groq API (free tier, same interface).
 import { logGenAI, newRunId } from "@/lib/otel";
 import { resolveModel, resolveFallback } from "@/agents/model-router.server";
 import { timeoutFor, usesStreamingClient } from "@/agents/llm-timeouts.server";
+import { isOllamaReachable, callCloudLlm } from "@/agents/llm-cloud.server";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -211,6 +213,19 @@ async function prewarmModel(model: string, signal: AbortSignal): Promise<void> {
 }
 
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
+  // Auto-detect environment: if Ollama is not reachable, route to cloud.
+  const ollamaUp = await isOllamaReachable();
+  if (!ollamaUp) {
+    return callCloudLlm({
+      agent: opts.agent,
+      messages: opts.messages,
+      temperature: opts.temperature,
+      maxOutputTokens: opts.maxOutputTokens,
+      responseFormat: opts.responseFormat,
+      runId: opts.runId,
+    });
+  }
+
   const runId = opts.runId ?? newRunId();
   const t0 = Date.now();
   let ok = false;
@@ -259,7 +274,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   // connection pool until the body is consumed or cancelled, so every
   // retried/superseded response must be explicitly cancelled here.
   const discard = (response: Response) => {
-    if (streamResponse) response.body?.cancel().catch(() => {});
+    if (streamResponse) response.body?.cancel().catch(() => { });
   };
 
   const recordModelFailure = (model: string, error: unknown) => {
