@@ -203,6 +203,19 @@ function detectRole(hay: string): "lead" | "partner" | "unknown" {
   return "unknown";
 }
 
+// Which kind of partner the eligibility text implies — thrown away previously
+// (detectRole collapsed everything to a bare "partner" enum), but this is the
+// difference between "find a municipality" and "find a First Nation" as the
+// next concrete step, so it's worth a second, more specific pass.
+export function detectPartnerType(
+  hay: string,
+): "municipality" | "first_nation" | "co_applicant" | "other" {
+  if (/\b(first nation|indigenous|premi[eè]re nation|autochtone)\b/.test(hay)) return "first_nation";
+  if (/\b(municipal(ity|ities)?|city of|town of|municipalit[ée]s?)\b/.test(hay)) return "municipality";
+  if (/\b(co-?applicant|joint application|consortium)\b/.test(hay)) return "co_applicant";
+  return "other";
+}
+
 /**
  * Estimate the percentage the ORGANIZATION carries out of pocket. Two
  * semantically opposite phrasings appear in grant text, and they must NOT be
