@@ -632,14 +632,36 @@ export async function discoverFunderImpl(
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
+      // A self-identifying bot UA ("IIAL/0.1") gets blocked by WAFs several
+      // funder sites already run (confirmed: tradecommissioner.gc.ca 403s a
+      // generic UA); the same realistic browser UA already proven effective
+      // throughout web-fetch.server.ts/scrape-engine.server.ts is strictly
+      // better here and never worse.
       const res = await fetch(target, {
         signal: ctrl.signal,
-        headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
+        headers: { "User-Agent": CHROME_UA },
       });
       if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
       return (await res.text()).slice(0, 350_000);
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  // If the plain fetch fails outright (network error, WAF block, timeout),
+  // fall back to the local headless-browser engine before giving up on the
+  // index page entirely — some funder index pages are JS-rendered SPAs where
+  // a bare fetch() never sees real content even on HTTP 200. Only used for
+  // the length/degraded-run gate below; link extraction still needs raw HTML
+  // anchor tags, which this markdown-only fallback can't provide, so sitemap
+  // + search seeding (below) remain the link sources when this path is hit.
+  async function fetchIndexTextViaBrowser(target: string): Promise<string | null> {
+    try {
+      const { renderWithBrowser } = await import("@/lib/browser-render.server");
+      const r = await renderWithBrowser(target, { timeoutMs: 25_000, minContentChars: 0 });
+      return r.ok ? r.markdown : null;
+    } catch {
+      return null;
     }
   }
   function htmlToText(html: string, max = 30_000): string {
