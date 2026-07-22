@@ -641,6 +641,7 @@ export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date(
     combined_score,
     pass,
     detected_role,
+    detected_partner_type,
     cost_share_pct,
     rolling_intake,
   };
