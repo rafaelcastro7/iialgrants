@@ -24,6 +24,7 @@ import { EvidenceChip, EvidencePanel } from "@/components/grants/EvidencePanel";
 import { FetchTrailPanel } from "@/components/grants/FetchTrailPanel";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
 import type { AxisScore } from "@/agents/fit-rules.shared";
+// placeholder-noop (kept to avoid unrelated diff noise)
 import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
