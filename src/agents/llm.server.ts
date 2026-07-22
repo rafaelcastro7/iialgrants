@@ -213,12 +213,11 @@ async function prewarmModel(model: string, signal: AbortSignal): Promise<void> {
 }
 
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
-  // LOCAL FIRST: Ollama is the primary path everywhere it's reachable (dev
-  // machine, any self-hosted deployment). Cloud (Groq, see llm-cloud.server.ts)
-  // is only used when Ollama itself is unreachable — e.g. deployed to Lovable,
-  // which has no local Ollama — or as a last-resort fallback below if every
-  // local model attempt fails.
-  if (!(await isOllamaReachable())) {
+  // CLOUD FIRST: cloud chain is Cerebras -> Groq (see llm-cloud.server.ts).
+  // This is the initial source everywhere, including Lovable (no local Ollama).
+  // Local Ollama below is the last-resort fallback when no cloud key is set or
+  // every cloud provider fails — keeps the dev machine working fully offline.
+  try {
     return await callCloudLlm({
       agent: opts.agent,
       messages: opts.messages,
@@ -227,6 +226,11 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       responseFormat: opts.responseFormat,
       runId: opts.runId,
     });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("cloud_llm_unavailable")) {
+      console.warn(`[LLM Router] Cloud failed (${msg}). Falling back to local Ollama...`);
+    }
   }
 
   const runId = opts.runId ?? newRunId();
