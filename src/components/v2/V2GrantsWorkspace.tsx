@@ -232,6 +232,7 @@ export function V2GrantsWorkspace({
   const nextFocus = queue.find((g) => !["submitted", "won"].includes(g.status)) ?? queue[0];
   const riskItems = useMemo(() => activeFiltered.filter(hasOperationalRisk), [activeFiltered]);
   const jurisdictions = useMemo(() => collectJurisdictions(allGrants), [allGrants]);
+  const sectorOptions = useMemo(() => collectSectors(allGrants), [allGrants]);
 
   return (
     <section className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6">
