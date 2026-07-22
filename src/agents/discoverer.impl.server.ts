@@ -408,7 +408,7 @@ export async function discoverFunderImpl(
     const mapped = new Set<string>();
     // First pass: search-focused map (Firecrawl ranks results by relevance).
     for (const idx of indexUrls) {
-      const m = await firecrawlMap(idx, 100, "program funding grant subvention financement");
+      const m = await firecrawlMap(idx, 100, cfg.firecrawlSearchQuery);
       if (m.ok) m.links.forEach((l) => mapped.add(l));
     }
     // Fallback pass: plain map for any funder whose search returned nothing.
