@@ -1,7 +1,16 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, CheckCircle2, FileText, MinusCircle, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  ListChecks,
+  Loader2,
+  MinusCircle,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { generateOpportunityBrief, type Brief } from "@/lib/opportunity-brief.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
