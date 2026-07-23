@@ -56,6 +56,39 @@ describe("deriveRulesFromOrg", () => {
     expect(rules.iial_capabilities).toEqual(DEFAULT_RULES.iial_capabilities);
   });
 
+  it("derives opposite applicant-type profiles for a for-profit SME vs. a nonprofit", () => {
+    // A single hardcoded default here (the old DEFAULT_RULES shape) actively
+    // mis-screened whichever org-type didn't match it: it configured
+    // applicant_types_allowed as nonprofit-only while ALSO excluding
+    // for_profit_only grants — backwards for a for-profit SME, which is
+    // exactly what a "for-profit only" grant is for.
+    const sme = deriveRulesFromOrg({ stage: "sme" });
+    const nonprofit = deriveRulesFromOrg({ stage: "nonprofit" });
+
+    const smeGrant = { eligibility: "This program is restricted to for-profit businesses only." };
+    const charityGrant = { eligibility: "Applicants must be registered charities only." };
+
+    expect(evaluateRules(sme, smeGrant).checks.find((c) => c.id === "sop_filter_1_legal")?.status).toBe(
+      "pass",
+    );
+    expect(
+      evaluateRules(nonprofit, smeGrant).checks.find((c) => c.id === "sop_filter_1_legal")?.status,
+    ).toBe("fail");
+    expect(
+      evaluateRules(nonprofit, charityGrant).checks.find((c) => c.id === "sop_filter_1_legal")
+        ?.status,
+    ).toBe("pass");
+    expect(
+      evaluateRules(sme, charityGrant).checks.find((c) => c.id === "sop_filter_1_legal")?.status,
+    ).toBe("fail");
+  });
+
+  it("leaves applicant types empty (F1 skipped) for an unrecognized or unset stage", () => {
+    const rules = deriveRulesFromOrg({ jurisdictions: ["ON"] });
+    expect(rules.applicant_types_allowed).toEqual([]);
+    expect(rules.applicant_types_excluded).toEqual([]);
+  });
+
   it("does not mutate the base rules object", () => {
     const before = JSON.stringify(DEFAULT_RULES);
     deriveRulesFromOrg({ jurisdictions: ["BC"], sectors: ["mining"] });
