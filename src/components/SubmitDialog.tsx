@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -37,6 +38,7 @@ export function SubmitDialog({
 }: SubmitDialogProps) {
   const [method, setMethod] = useState("portal");
   const [confirmationNumber, setConfirmationNumber] = useState("");
+  const [reviewed, setReviewed] = useState(false);
 
   function handleSubmit() {
     onSubmit(method, confirmationNumber);
