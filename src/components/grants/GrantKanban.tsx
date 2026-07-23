@@ -640,10 +640,8 @@ function primaryCta({
   }
   // submitted
   return (
-    <Button asChild size="sm" variant="outline" className={baseCls}>
-      <a href={g.url} target="_blank" rel="noopener noreferrer">
-        Open funder page <ExternalLink className="h-3 w-3 ml-1 inline" />
-      </a>
-    </Button>
+    <ExternalLinkPreview url={g.url} className={buttonVariants({ size: "sm", variant: "outline", className: baseCls })}>
+      Open funder page
+    </ExternalLinkPreview>
   );
 }
