@@ -10,7 +10,12 @@
 //    Protection Act Compliance") entered the catalog as grants because their
 //    acronyms (NRC/IRAP/COI) tripped the escape hatch in isGenericTitle.
 import { describe, expect, it } from "vitest";
-import { canonicalKey, isGenericTitle, isNonGrantUrl } from "@/agents/discoverer.impl.server";
+import {
+  canonicalKey,
+  isGenericTitle,
+  isNonGrantUrl,
+  normalizeTitle,
+} from "@/agents/discoverer.impl.server";
 
 const FUNDER_ID = "00000000-0000-0000-0000-0000000000aa";
 const FUNDER_NAME = "National Research Council Canada (IRAP)";
