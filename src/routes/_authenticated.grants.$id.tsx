@@ -343,12 +343,9 @@ function GrantDetailPage() {
           {viewMode === "advanced" && (
             <div className="flex flex-wrap items-center gap-2">
               {g.url && (
-                <Button asChild size="sm">
-                  <a href={g.url} target="_blank" rel="noopener noreferrer">
-                    Open funder page
-                    <ExternalLink className="ml-1 h-4 w-4" />
-                  </a>
-                </Button>
+                <ExternalLinkPreview url={g.url} className={buttonVariants({ size: "sm" })}>
+                  Open funder page
+                </ExternalLinkPreview>
               )}
               <Button asChild variant="outline" size="sm">
                 <Link to="/grants/$id/audit" params={{ id }}>
