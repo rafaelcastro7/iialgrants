@@ -277,7 +277,11 @@ export async function evaluateGrantImpl(opts: {
   // already-notified grant doesn't spam the bell every time fit-rules change.
   if (eligibilityPass && combinedFit >= 80) {
     try {
-      const { data: already } = await userSupabase
+      // notifications has no INSERT policy for regular users (only
+      // read/update their own row) — same reason agent_runs writes in this
+      // file use supabaseAdmin. A user-scoped client silently RLS-fails here.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: already } = await supabaseAdmin
         .from("notifications")
         .select("id")
         .eq("user_id", userId)
@@ -286,7 +290,7 @@ export async function evaluateGrantImpl(opts: {
         .limit(1);
       if (!already || already.length === 0) {
         const grantTitle = (g as { title?: string }).title ?? "a grant";
-        await userSupabase.from("notifications").insert({
+        await supabaseAdmin.from("notifications").insert({
           user_id: userId,
           grant_id: g.id,
           kind: "strong_fit",
