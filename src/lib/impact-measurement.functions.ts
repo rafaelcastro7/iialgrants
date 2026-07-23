@@ -13,6 +13,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { getTenantPrincipal, type TenantPrincipal } from "./tenant-access.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { AUTHORSHIP_BUCKETS, computeAuthorshipBuckets } from "./authorship-correlation.shared";
 
 /**
  * Returns the submission IDs the caller is allowed to see: their own
