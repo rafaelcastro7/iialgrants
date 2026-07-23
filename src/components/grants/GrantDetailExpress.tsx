@@ -1144,14 +1144,11 @@ function RequirementList({
 
 function SourceLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <ExternalLinkPreview
+      url={href}
       className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 font-medium text-primary hover:bg-muted/40"
     >
       <span className="min-w-0 break-words">{children}</span>
-      <ExternalLink className="h-4 w-4 shrink-0" />
-    </a>
+    </ExternalLinkPreview>
   );
 }
