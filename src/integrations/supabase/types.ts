@@ -2246,6 +2246,7 @@ export type Database = {
           critic_notes: Json
           heading_en: string
           heading_fr: string | null
+          human_edited: boolean
           id: string
           kind: Database["public"]["Enums"]["section_kind"]
           ord: number
@@ -2261,6 +2262,7 @@ export type Database = {
           critic_notes?: Json
           heading_en: string
           heading_fr?: string | null
+          human_edited?: boolean
           id?: string
           kind: Database["public"]["Enums"]["section_kind"]
           ord?: number
@@ -2276,6 +2278,7 @@ export type Database = {
           critic_notes?: Json
           heading_en?: string
           heading_fr?: string | null
+          human_edited?: boolean
           id?: string
           kind?: Database["public"]["Enums"]["section_kind"]
           ord?: number
