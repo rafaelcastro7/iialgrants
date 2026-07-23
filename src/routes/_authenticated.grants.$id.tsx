@@ -525,26 +525,20 @@ function GrantDetailPage() {
                     <span className="font-medium text-muted-foreground">Official links</span>
                     <div className="flex flex-col gap-1.5">
                       {g.url && (
-                        <a
-                          href={g.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <ExternalLinkPreview
+                          url={g.url}
                           className="inline-flex w-fit items-center gap-1 underline"
                         >
                           Official grant page
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                        </ExternalLinkPreview>
                       )}
                       {g.funder?.source_url && g.funder.source_url !== g.url && (
-                        <a
-                          href={g.funder.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <ExternalLinkPreview
+                          url={g.funder.source_url}
                           className="inline-flex w-fit items-center gap-1 underline"
                         >
                           Funder website
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                        </ExternalLinkPreview>
                       )}
                     </div>
                   </div>
