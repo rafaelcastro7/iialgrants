@@ -593,11 +593,27 @@ export async function discoverFunderImpl(
           continue; // structural filter: skip landing-page / index / non-grant policy pages
         }
         const ck = canonicalKey(F.id, g.title, F.name);
-        const { data: existing } = await supabaseAdmin
-          .from("grants")
-          .select("id, times_seen")
-          .eq("canonical_key", ck)
-          .maybeSingle();
+        const grantUrl = g.url || url;
+        // canonical_key is derived from the (normalized, funder-name-stripped)
+        // TITLE words — an LLM re-paraphrasing the same program's title
+        // differently across discovery runs produces a different key even
+        // though it's the same real program. Confirmed live: the same NRC
+        // "Outreach Initiative" URL was discovered as 6 separate grants
+        // ("NRC Outreach Initiative", "Indigenous Outreach Stream", "Outreach
+        // Initiative by the NRC", ...) since none of their title wordings
+        // matched closely enough. A same-funder + exact-URL match is at
+        // least as strong evidence of duplication as the title-based key, so
+        // it's checked as a second, independent signal here.
+        const [{ data: existingByKey }, { data: existingByUrl }] = await Promise.all([
+          supabaseAdmin.from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle(),
+          supabaseAdmin
+            .from("grants")
+            .select("id, times_seen")
+            .eq("funder_id", F.id)
+            .eq("url", grantUrl)
+            .maybeSingle(),
+        ]);
+        const existing = existingByKey ?? existingByUrl;
         if (existing) {
           await supabaseAdmin
             .from("grants")
