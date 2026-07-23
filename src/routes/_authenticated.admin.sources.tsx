@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CrawlLedgerWidget } from "@/components/admin/CrawlLedgerWidget";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 export const Route = createFileRoute("/_authenticated/admin/sources")({
