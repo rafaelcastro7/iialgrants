@@ -257,14 +257,12 @@ function SourcesPage() {
                     <TableRow key={g.id} className={g.status !== "pending" ? "opacity-50" : ""}>
                       <TableCell>{g.funders?.name ?? "—"}</TableCell>
                       <TableCell className="max-w-xs">
-                        <a
-                          href={g.url}
-                          target="_blank"
-                          rel="noreferrer"
+                        <ExternalLinkPreview
+                          url={g.url}
                           className="text-xs truncate block hover:underline"
                         >
                           {g.url}
-                        </a>
+                        </ExternalLinkPreview>
                       </TableCell>
                       <TableCell className="text-xs max-w-xs truncate" title={g.snippet ?? ""}>
                         {g.reason === "redirected_to_login_url"
