@@ -593,26 +593,82 @@ function ProposalDetailPage() {
                   must_cover?: string[];
                   findings?: Array<{ severity: string; message_en: string; message_fr: string }>;
                 };
+                const editing = editingSectionId === s.id;
                 return (
                   <Card key={s.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between gap-4">
-                        <CardTitle className="text-base">{heading}</CardTitle>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={pending === s.id}
-                          onClick={() => onDraft(s.id)}
-                        >
-                          {pending === s.id ? t("app.loading") : t("proposals.draftSection")}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-base">{heading}</CardTitle>
+                          {s.human_edited ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              Human-edited
+                            </Badge>
+                          ) : content ? (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px]"
+                              title="Written by the AI writer, not yet edited by a human — read it before submitting."
+                            >
+                              AI-drafted
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className="flex gap-2">
+                          {!editing && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={pending === s.id}
+                              onClick={() => {
+                                setEditingSectionId(s.id);
+                                setEditDraft(content ?? "");
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={pending === s.id}
+                            onClick={() => onDraft(s.id)}
+                          >
+                            {pending === s.id ? t("app.loading") : t("proposals.draftSection")}
+                          </Button>
+                        </div>
                       </div>
                       {notes.angle && (
                         <p className="text-xs text-muted-foreground mt-1 italic">{notes.angle}</p>
                       )}
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {content ? (
+                      {editing ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            rows={8}
+                            className="text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              disabled={pending === s.id || editDraft.trim().length === 0}
+                              onClick={() => onSaveEdit(s.id)}
+                            >
+                              {pending === s.id ? t("app.loading") : "Save"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingSectionId(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : content ? (
                         <p className="text-sm whitespace-pre-wrap">{content}</p>
                       ) : (
                         <p className="text-sm text-muted-foreground">-</p>
