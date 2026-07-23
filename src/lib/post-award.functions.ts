@@ -154,7 +154,7 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
         .from("outcomes")
         .select(
           `
-          id, result, amount_awarded_cad, decision_date,
+          id, submission_id, result, amount_awarded_cad, decision_date,
           submission:submissions(
             id, submitted_at,
             grant:grants(id, title, funder_id),
@@ -171,6 +171,29 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
       const { data: outcomes, error } = await query;
       if (error) throw new Error(`Failed to fetch deadlines: ${error.message}`);
 
+      // Real reporting obligations, sourced from the same compliance_items
+      // table the Compliance Calendar tracks (see recordOutcome in
+      // submissions.functions.ts, which creates the standard-cadence ones
+      // when a grant is won). Previously this returned a hardcoded
+      // progress/financial/final list with due_date always null — it looked
+      // like real tracked data but wasn't connected to anything.
+      const wonSubmissionIds = (outcomes ?? []).map((o) => o.submission_id).filter(Boolean);
+      const { data: items, error: itemsError } =
+        wonSubmissionIds.length > 0
+          ? await supabase
+              .from("compliance_items")
+              .select("submission_id, type, frequency, due_date")
+              .in("submission_id", wonSubmissionIds)
+          : { data: [], error: null };
+      if (itemsError) throw new Error(`Failed to fetch compliance items: ${itemsError.message}`);
+
+      const itemsBySubmission = new Map<string, { type: string; frequency: string; due_date: string }[]>();
+      for (const item of items ?? []) {
+        const list = itemsBySubmission.get(item.submission_id) ?? [];
+        list.push(item);
+        itemsBySubmission.set(item.submission_id, list);
+      }
+
       const deadlines = (outcomes || []).map((o) => {
         const submission = Array.isArray(o.submission) ? o.submission[0] : o.submission;
         const grant = Array.isArray(submission?.grant) ? submission?.grant[0] : submission?.grant;
@@ -180,11 +203,11 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
           grantTitle: grant?.title || "Unknown",
           amountAwarded: o.amount_awarded_cad,
           decisionDate: o.decision_date,
-          reportingRequirements: [
-            { type: "progress_report", frequency: "quarterly", dueDate: null },
-            { type: "financial_report", frequency: "annual", dueDate: null },
-            { type: "final_report", frequency: "once", dueDate: null },
-          ],
+          reportingRequirements: (itemsBySubmission.get(o.submission_id) ?? []).map((item) => ({
+            type: item.type,
+            frequency: item.frequency,
+            dueDate: item.due_date,
+          })),
         };
       });
 
