@@ -57,9 +57,13 @@ export async function fetchRssGrantCandidates(
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 12_000);
+      // A self-identifying UA gets 403'd by WAFs some funder sites already
+      // run (confirmed elsewhere in this codebase — see web-fetch.server.ts);
+      // the same proven realistic browser UA is strictly better here too.
+      const { CHROME_UA } = await import("@/lib/web-fetch.server");
       const res = await fetch(feed.url, {
         signal: ctrl.signal,
-        headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
+        headers: { "User-Agent": CHROME_UA },
       });
       clearTimeout(t);
       if (!res.ok) continue;
