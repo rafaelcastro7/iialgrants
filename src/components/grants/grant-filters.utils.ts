@@ -53,12 +53,15 @@ export function applyGrantFilters<T extends GrantLite>(
     search: string;
     jurisdiction: string;
     sector?: string;
+    amountPreset?: AmountPresetKey;
     eligibleOnly: boolean;
     onlyWithDeadline: boolean;
   },
 ): T[] {
   const q = opts.search.trim().toLowerCase();
   const sector = opts.sector ?? "all";
+  const amountPreset = opts.amountPreset ?? "all";
+  const preset = AMOUNT_PRESETS.find((p) => p.key === amountPreset) ?? AMOUNT_PRESETS[0];
   return grants.filter((g) => {
     if (q) {
       const funder = funderOf(g);
@@ -70,6 +73,12 @@ export function applyGrantFilters<T extends GrantLite>(
     }
     if (sector !== "all") {
       if (!(g.sectors ?? []).some((s) => s.toLowerCase() === sector.toLowerCase())) return false;
+    }
+    if (preset.min != null || preset.max != null) {
+      const amt = g.amount_cad_max ?? g.amount_cad_min ?? null;
+      if (amt == null) return false;
+      if (preset.min != null && amt < preset.min) return false;
+      if (preset.max != null && amt > preset.max) return false;
     }
     if (opts.eligibleOnly && !g.evaluation?.eligibility_pass) return false;
     if (opts.onlyWithDeadline && !g.deadline) return false;
