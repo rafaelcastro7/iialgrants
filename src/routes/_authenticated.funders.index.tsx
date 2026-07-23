@@ -289,14 +289,14 @@ function FunderRow({
       </div>
       <div className="flex items-center gap-2">
         {funder.website && (
-          <a
-            href={funder.website}
-            target="_blank"
-            rel="noopener noreferrer"
+          <ExternalLinkPreview
+            url={funder.website}
+            showIcon={false}
+            title="Preview funder website"
             className="text-muted-foreground hover:text-foreground"
           >
             <Globe className="h-4 w-4" />
-          </a>
+          </ExternalLinkPreview>
         )}
         <Button variant="outline" size="sm" onClick={onEnrich} disabled={enriching}>
           {enriching ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Enrich"}
