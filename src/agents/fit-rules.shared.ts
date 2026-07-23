@@ -17,10 +17,11 @@ export type FitRules = {
   hard_fail_on_amount: boolean;
   hard_fail_on_deadline: boolean;
   auto_archive_on_fail: boolean;
-  // NOT read by evaluateRules() (fit-rules.server.ts) — only
-  // applicant_types_excluded drives the F1 legal-eligibility check. Stored/
-  // validated for a future positive-match check but has zero effect on
-  // screening today; not exposed in the Screening Rules UI either.
+  // Read by evaluateRules()'s F1 legal-eligibility check (fit-rules.server.ts)
+  // as "what applicant category IS this org" — when a grant explicitly
+  // restricts to a category, the org passes only if that category matches
+  // one of these. Not exposed in the Screening Rules UI; derived from the
+  // org profile's `stage` in deriveRulesFromOrg() below.
   applicant_types_allowed: string[];
   applicant_types_excluded: string[];
   lead_min_weeks: number | null;
