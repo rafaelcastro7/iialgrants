@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 function StatusIcon({ s }: { s: string }) {
   if (s === "pass") return <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />;
