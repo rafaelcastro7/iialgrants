@@ -53,6 +53,7 @@ let promoted = 0;
 let excludedNotAFunder = 0;
 let excludedArtifact = 0;
 let excludedAlreadyExists = 0;
+let excludedNoWebsite = 0;
 
 for (const c of candidates as Candidate[]) {
   if (MULTI_ENTITY_ARTIFACT.has(c.name)) {
@@ -67,6 +68,15 @@ for (const c of candidates as Candidate[]) {
   }
   if (existingNames.has(c.name.trim().toLowerCase())) {
     excludedAlreadyExists++;
+    continue;
+  }
+  if (!c.website || !c.website.trim()) {
+    // No source to crawl — promoting this would just be a dead entry in the
+    // funders directory forever. Left as a candidate (not discarded) so it's
+    // still visible in /admin/candidates for someone to attach a real
+    // website later, most of these are T3010 charity-registry rows, which
+    // don't carry a URL at all.
+    excludedNoWebsite++;
     continue;
   }
 
