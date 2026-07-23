@@ -65,6 +65,8 @@ function ProposalDetailPage() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [submitWarning, setSubmitWarning] = useState<string | null>(null);
   const [pendingForce, setPendingForce] = useState(false);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
   const [viewMode, setViewMode] = useState<"express" | "advanced">(() =>
     typeof window !== "undefined"
       ? ((window.sessionStorage.getItem("proposals.viewMode") as "express" | "advanced") ??
