@@ -11,7 +11,7 @@ import {
   exportProposalFile,
   confirmHumanReview,
 } from "@/lib/submissions.functions";
-import { draftSection } from "@/agents/writer.functions";
+import { draftSection, editSectionContent } from "@/agents/writer.functions";
 import { runCritic } from "@/agents/critic.functions";
 import { computeProposalReadiness, type ProposalRequirement } from "@/lib/proposal-readiness";
 import { scoreProposal, getReviewerArchetypes } from "@/lib/multi-expert-review.functions";
