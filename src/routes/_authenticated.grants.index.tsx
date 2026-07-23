@@ -347,6 +347,7 @@ function GrantsPage() {
           search: serverSearch.length >= 2 ? "" : search,
           jurisdiction,
           sector,
+          amountPreset,
           eligibleOnly,
           onlyWithDeadline,
         }),
