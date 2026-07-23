@@ -171,13 +171,16 @@ function ImpactMeasurementPage() {
 
 type ImpactMetrics = Awaited<ReturnType<typeof getImpactMetrics>>;
 type OutcomeDetails = Awaited<ReturnType<typeof getOutcomeDetails>>;
+type AuthorshipCorrelation = Awaited<ReturnType<typeof getAiAuthorshipOutcomeCorrelation>>;
 
 function ImpactMeasurementPageV2({
   metrics,
   details,
+  authorship,
 }: {
   metrics: ImpactMetrics;
   details: OutcomeDetails;
+  authorship: AuthorshipCorrelation;
 }) {
   return (
     <PageTransition>
