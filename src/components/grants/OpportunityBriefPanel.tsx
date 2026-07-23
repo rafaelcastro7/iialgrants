@@ -31,7 +31,17 @@ function VerdictBadge({ v }: { v: Brief["recommendation"]["verdict"] }) {
   return <Badge className="bg-amber-600 hover:bg-amber-700">GO-CONDITIONAL</Badge>;
 }
 
-export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
+export function OpportunityBriefPanel({
+  grantId,
+  showScreeningDetails = true,
+}: {
+  grantId: string;
+  // The screening-details breakdown (SOP rule codes, hard/soft flags) is the
+  // same technical language a "Simple" grant-detail view hides elsewhere —
+  // callers rendering this panel in a simplified context can suppress it
+  // here too, without losing the plain-language brief above it.
+  showScreeningDetails?: boolean;
+}) {
   const gen = useServerFn(generateOpportunityBrief);
   const m = useMutation({ mutationFn: () => gen({ data: { grantId } }) });
 
