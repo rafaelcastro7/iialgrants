@@ -53,4 +53,29 @@ describe("grant catalog result handling", () => {
     ];
     expect(collectSectors(grants)).toEqual(["ai", "clean tech", "Clean Tech", "Forestry"]);
   });
+
+  it("filters by amount preset, excluding grants with no known amount", () => {
+    const grants = [
+      { ...ranked[0], amount_cad_min: 10_000, amount_cad_max: 20_000 }, // under25k
+      { ...ranked[1], amount_cad_min: 50_000, amount_cad_max: 80_000 }, // 25k-100k
+      { title: "No amount", status: "discovered" }, // unknown amount
+    ];
+    const under25k = applyGrantFilters(grants, {
+      search: "",
+      jurisdiction: "all",
+      amountPreset: "under25k",
+      eligibleOnly: false,
+      onlyWithDeadline: false,
+    });
+    expect(under25k.map((g) => g.title)).toEqual(["Typo-relevant first"]);
+
+    const anyAmount = applyGrantFilters(grants, {
+      search: "",
+      jurisdiction: "all",
+      amountPreset: "all",
+      eligibleOnly: false,
+      onlyWithDeadline: false,
+    });
+    expect(anyAmount).toHaveLength(3);
+  });
 });
