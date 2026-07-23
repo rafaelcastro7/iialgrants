@@ -612,6 +612,7 @@ function FilterBar({
   jurisdictions,
   sector,
   sectors,
+  amountPreset,
   onlyWithDeadline,
   search,
   sortKey,
@@ -620,6 +621,7 @@ function FilterBar({
   onEligibleOnlyChange,
   onJurisdictionChange,
   onSectorChange,
+  onAmountPresetChange,
   onOnlyWithDeadlineChange,
   onSearchChange,
   onSortKeyChange,
@@ -631,6 +633,7 @@ function FilterBar({
   jurisdictions: string[];
   sector: string;
   sectors: string[];
+  amountPreset: AmountPresetKey;
   onlyWithDeadline: boolean;
   search: string;
   sortKey: SortKey;
@@ -639,6 +642,7 @@ function FilterBar({
   onEligibleOnlyChange: (next: boolean) => void;
   onJurisdictionChange: (next: string) => void;
   onSectorChange: (next: string) => void;
+  onAmountPresetChange: (next: AmountPresetKey) => void;
   onOnlyWithDeadlineChange: (next: boolean) => void;
   onSearchChange: (next: string) => void;
   onSortKeyChange: (next: SortKey) => void;
