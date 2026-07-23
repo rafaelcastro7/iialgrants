@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, ShieldCheck, Bot, Regex, FileCheck2, Calendar } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 type Span = {
   id: string;
