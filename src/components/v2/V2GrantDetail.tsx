@@ -210,12 +210,9 @@ export function V2GrantDetail({
             </Link>
           </Button>
           {grant.url && (
-            <Button asChild size="sm" className="gap-2">
-              <a href={grant.url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                Official page
-              </a>
-            </Button>
+            <ExternalLinkPreview url={grant.url} className={buttonVariants({ size: "sm" })}>
+              Official page
+            </ExternalLinkPreview>
           )}
         </div>
       </div>
