@@ -104,6 +104,22 @@ export const runCritic = createServerFn({ method: "POST" })
     const validIds = new Set((sections ?? []).map((s) => s.id));
     const findings = parsed.findings.filter((f) => validIds.has(f.section_id));
 
+    // Deterministic homogenization check, independent of the LLM's own
+    // judgment — an LLM can miss generic phrasing it would itself produce.
+    // Real reviewers name this as the #1 tell of an AI-drafted proposal, so
+    // it's checked with a fixed pattern list, not left to the model's mood.
+    for (const s of sections ?? []) {
+      const hits = detectAiCliches(s.content_en ?? "");
+      for (const hit of hits) {
+        findings.push({
+          section_id: s.id,
+          severity: "warn",
+          message_en: `Sounds AI-generic ("${hit.snippet}") — a reviewer who reads many proposals will recognize this pattern. Rewrite with a concrete, org-specific detail instead.`,
+          message_fr: "",
+        });
+      }
+    }
+
     const { error: ue } = await context.supabase
       .from("proposals")
       .update({
