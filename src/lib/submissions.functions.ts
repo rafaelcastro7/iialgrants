@@ -12,6 +12,7 @@ import {
   MIN_CRITIC_SCORE_TO_SUBMIT,
   type SubmitGateInput,
 } from "@/lib/submit-gate.shared";
+import { computeHumanEditedPct } from "@/lib/authorship-correlation.shared";
 
 export { canSubmit, MIN_CRITIC_SCORE_TO_SUBMIT, type SubmitGateInput };
 
