@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 import { MAX_ENRICH_ATTEMPTS, isTerminalGrantStatus } from "@/agents/pipeline-stages.shared";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 const DAY_MS = 86_400_000;
 
