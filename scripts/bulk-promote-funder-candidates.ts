@@ -16,7 +16,9 @@ import { createClient } from "@supabase/supabase-js";
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
-const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+const supabase = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const apply = process.argv.includes("--apply");
 
 const NOT_A_FUNDER = [
@@ -45,9 +47,7 @@ const { data: candidates, error } = await supabase
 if (error) throw new Error(error.message);
 
 const { data: existingFunders } = await supabase.from("funders").select("name");
-const existingNames = new Set(
-  (existingFunders ?? []).map((f) => f.name.trim().toLowerCase()),
-);
+const existingNames = new Set((existingFunders ?? []).map((f) => f.name.trim().toLowerCase()));
 
 let promoted = 0;
 let excludedNotAFunder = 0;

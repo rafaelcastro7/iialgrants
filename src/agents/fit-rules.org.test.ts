@@ -68,9 +68,9 @@ describe("deriveRulesFromOrg", () => {
     const smeGrant = { eligibility: "This program is restricted to for-profit businesses only." };
     const charityGrant = { eligibility: "Applicants must be registered charities only." };
 
-    expect(evaluateRules(sme, smeGrant).checks.find((c) => c.id === "sop_filter_1_legal")?.status).toBe(
-      "pass",
-    );
+    expect(
+      evaluateRules(sme, smeGrant).checks.find((c) => c.id === "sop_filter_1_legal")?.status,
+    ).toBe("pass");
     expect(
       evaluateRules(nonprofit, smeGrant).checks.find((c) => c.id === "sop_filter_1_legal")?.status,
     ).toBe("fail");
