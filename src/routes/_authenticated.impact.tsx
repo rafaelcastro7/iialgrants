@@ -3,11 +3,15 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getImpactMetrics, getOutcomeDetails } from "@/lib/impact-measurement.functions";
+import {
+  getImpactMetrics,
+  getOutcomeDetails,
+  getAiAuthorshipOutcomeCorrelation,
+} from "@/lib/impact-measurement.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
-import { Target, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
+import { Target, TrendingUp, Clock, CheckCircle2, Bot } from "lucide-react";
 import { useUiVersion } from "@/components/v2/ui-version";
 
 const metricsQO = queryOptions({
@@ -20,11 +24,17 @@ const detailsQO = queryOptions({
   queryFn: () => getOutcomeDetails({ data: { limit: 20 } }),
 });
 
+const authorshipQO = queryOptions({
+  queryKey: ["impact", "authorship-correlation"],
+  queryFn: () => getAiAuthorshipOutcomeCorrelation({ data: {} }),
+});
+
 export const Route = createFileRoute("/_authenticated/impact")({
   head: () => ({ meta: [{ title: "Impact Measurement — IIAL" }] }),
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(metricsQO);
     await context.queryClient.ensureQueryData(detailsQO);
+    await context.queryClient.ensureQueryData(authorshipQO);
   },
   component: ImpactMeasurementPage,
 });
@@ -43,8 +53,14 @@ function ImpactMeasurementPage() {
     queryFn: () => fetchDetails({ data: { limit: 20 } }),
   });
 
+  const fetchAuthorship = useServerFn(getAiAuthorshipOutcomeCorrelation);
+  const { data: authorship } = useSuspenseQuery({
+    queryKey: ["impact", "authorship-correlation"],
+    queryFn: () => fetchAuthorship({ data: {} }),
+  });
+
   if (version === "v2") {
-    return <ImpactMeasurementPageV2 metrics={metrics} details={details} />;
+    return <ImpactMeasurementPageV2 metrics={metrics} details={details} authorship={authorship} />;
   }
 
   return (
