@@ -611,12 +611,9 @@ export function GrantDetailExpress({
                   Review diagnostics
                 </Button>
               )}
-              <Button asChild variant="outline">
-                <a href={url} target="_blank" rel="noopener noreferrer">
-                  Official page
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
+              <ExternalLinkPreview url={url} className={buttonVariants({ variant: "outline" })}>
+                Official page
+              </ExternalLinkPreview>
             </div>
           </div>
         </div>
