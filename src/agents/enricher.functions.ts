@@ -415,7 +415,7 @@ export async function enrichGrantImpl(
     if (deepPages.length > 0) {
       const relevantDeepPages: typeof deepPages = [];
       for (const page of deepPages) {
-        if (pageLooksRelevantToGrant(page)) {
+        if (isRelevantPage(page)) {
           relevantDeepPages.push(page);
         } else {
           await trace("deep_crawl_filter", "Skipped low-relevance detail page", "warn", {
