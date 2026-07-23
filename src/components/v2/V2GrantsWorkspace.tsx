@@ -31,8 +31,10 @@ import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import {
+  AMOUNT_PRESETS,
   collectSectors,
   SORT_LABELS,
+  type AmountPresetKey,
   type SortKey,
 } from "@/components/grants/grant-filters.utils";
 import { Badge } from "@/components/ui/badge";
