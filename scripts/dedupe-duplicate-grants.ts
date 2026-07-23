@@ -29,7 +29,9 @@ function sharesTitleWord(a: string, b: string): boolean {
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
-const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+const supabase = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const apply = process.argv.includes("--apply");
 
 type Grant = {
