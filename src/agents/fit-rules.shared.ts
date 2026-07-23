@@ -325,5 +325,40 @@ export function deriveRulesFromOrg(
     rules.iial_capabilities = Array.from(new Set(sectors));
   }
 
+  // Org's legal/organizational type → SOP F1's applicant-type check. A
+  // for-profit SME and a nonprofit need opposite defaults here (a grant
+  // restricted to "for-profit only" should PASS a for-profit SME and FAIL a
+  // nonprofit, and vice versa for "charity only") — a single fixed default
+  // for every org, regardless of what they actually are, would silently
+  // mis-screen whichever org-types don't match that one hardcoded shape.
+  const stageTypes = STAGE_APPLICANT_TYPES[(org.stage ?? "").trim().toLowerCase()];
+  if (stageTypes) {
+    rules.applicant_types_allowed = stageTypes.allowed;
+    rules.applicant_types_excluded = stageTypes.excluded;
+  }
+
   return rules;
 }
+
+const STAGE_APPLICANT_TYPES: Record<string, { allowed: string[]; excluded: string[] }> = {
+  startup: {
+    allowed: ["business", "sme", "startup", "for-profit"],
+    excluded: ["charity_only", "municipality_only", "university_only", "individual_only"],
+  },
+  sme: {
+    allowed: ["business", "sme", "enterprise", "for-profit"],
+    excluded: ["charity_only", "municipality_only", "university_only", "individual_only"],
+  },
+  nonprofit: {
+    allowed: ["non-profit", "charity", "not-for-profit"],
+    excluded: ["for_profit_only", "municipality_only", "university_only", "individual_only"],
+  },
+  research: {
+    allowed: ["university", "research institution"],
+    excluded: ["for_profit_only", "charity_only", "municipality_only", "individual_only"],
+  },
+  public_sector: {
+    allowed: ["government", "municipality"],
+    excluded: ["for_profit_only", "charity_only", "university_only", "individual_only"],
+  },
+};
