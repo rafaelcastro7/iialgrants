@@ -467,47 +467,53 @@ export function V2GrantDetail({
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-4">
-          <section className="space-y-3">
-            <SectionHeading
-              actions={
-                evaluation ? (
-                  <EvidenceChip field="fit_score" label="Score evidence" onClick={onOpenEvidence} />
-                ) : undefined
-              }
-              description="The action recommendation, score, and rationale generated for this organization."
-              icon={ClipboardCheck}
-              title="Fit and eligibility"
-            />
-            <FitEvaluation
-              status={grant.status}
-              discoveredAt={grant.discovered_at}
-              enrichedAt={grant.enriched_at}
-              scoredAt={grant.scored_at}
-              evaluation={
-                evaluation
-                  ? {
-                      fit_score: evaluation.fit_score,
-                      eligibility_pass: evaluation.eligibility_pass,
-                      rationale_en: evaluation.rationale_en,
-                      rationale_fr: evaluation.rationale_fr ?? "",
-                      created_at: evaluation.created_at,
-                      axis_breakdown:
-                        (evaluation.axis_breakdown as AxisScore[] | null | undefined) ?? null,
-                    }
-                  : null
-              }
-              fr={false}
-            />
-          </section>
+          {isTechnical && (
+            <section className="space-y-3">
+              <SectionHeading
+                actions={
+                  evaluation ? (
+                    <EvidenceChip
+                      field="fit_score"
+                      label="Score evidence"
+                      onClick={onOpenEvidence}
+                    />
+                  ) : undefined
+                }
+                description="The action recommendation, score, and rationale generated for this organization."
+                icon={ClipboardCheck}
+                title="Fit and eligibility"
+              />
+              <FitEvaluation
+                status={grant.status}
+                discoveredAt={grant.discovered_at}
+                enrichedAt={grant.enriched_at}
+                scoredAt={grant.scored_at}
+                evaluation={
+                  evaluation
+                    ? {
+                        fit_score: evaluation.fit_score,
+                        eligibility_pass: evaluation.eligibility_pass,
+                        rationale_en: evaluation.rationale_en,
+                        rationale_fr: evaluation.rationale_fr ?? "",
+                        created_at: evaluation.created_at,
+                        axis_breakdown:
+                          (evaluation.axis_breakdown as AxisScore[] | null | undefined) ?? null,
+                      }
+                    : null
+                }
+                fr={false}
+              />
+            </section>
+          )}
 
-          {grant.enriched_at && <EvaluationDetail grantId={grant.id} />}
+          {isTechnical && grant.enriched_at && <EvaluationDetail grantId={grant.id} />}
 
           <Panel
             icon={FileCheck2}
             title="Application requirements"
             description="Critical asks first, then supporting requirements."
             actions={
-              requirements.length > 0 ? (
+              isTechnical && requirements.length > 0 ? (
                 <EvidenceChip
                   field="requirements"
                   label="Requirement evidence"
