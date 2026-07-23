@@ -649,70 +649,78 @@ export function V2GrantDetail({
             </div>
           </Panel>
 
-          <Panel
-            icon={History}
-            title="Lifecycle history"
-            description="Latest grant status changes."
-          >
-            {events.length === 0 ? (
-              <EmptyState
-                icon={History}
-                title="No status events"
-                body="Events will appear as enrichment, evaluation, and proposal work happens."
-              />
-            ) : (
-              <ol className="space-y-3">
-                {events.slice(0, 8).map((event, index) => (
-                  <li key={`${event.created_at}-${index}`} className="flex gap-3 text-sm">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                    <span className="min-w-0">
-                      <span className="block font-medium">
-                        {event.from_status ?? "none"} to {event.to_status}
+          {isTechnical && (
+            <Panel
+              icon={History}
+              title="Lifecycle history"
+              description="Latest grant status changes."
+            >
+              {events.length === 0 ? (
+                <EmptyState
+                  icon={History}
+                  title="No status events"
+                  body="Events will appear as enrichment, evaluation, and proposal work happens."
+                />
+              ) : (
+                <ol className="space-y-3">
+                  {events.slice(0, 8).map((event, index) => (
+                    <li key={`${event.created_at}-${index}`} className="flex gap-3 text-sm">
+                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      <span className="min-w-0">
+                        <span className="block font-medium">
+                          {event.from_status ?? "none"} to {event.to_status}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {formatDateTime(event.created_at)}
+                        </span>
                       </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {formatDateTime(event.created_at)}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </Panel>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </Panel>
+          )}
 
-          <SelfCheckBanner
-            grantId={grant.id}
-            retrying={busy === "enrich"}
-            onRetry={onFetchDetails}
-          />
-          <FetchTrailPanel
-            grantId={grant.id}
-            retrying={busy === "enrich"}
-            errorMsg={grant.enrich_last_error ?? null}
-            onRetry={onFetchDetails}
-          />
-
-          <Panel icon={NotebookText} title="Briefing tools" description="Human review outputs.">
-            {hasBriefingTools ? (
-              <div className="flex flex-wrap gap-2">
-                {isAdmin && grant.status === "scored" && (
-                  <Button size="sm" disabled={busy === "shortlist"} onClick={onShortlist}>
-                    Shortlist
-                  </Button>
-                )}
-                {traceRun && (
-                  <Badge variant="outline" className="rounded-md">
-                    Trace ready: {traceRun.agent || "agent"}
-                  </Badge>
-                )}
-              </div>
-            ) : (
-              <EmptyState
-                icon={NotebookText}
-                title="Briefing tools unlock after verification"
-                body="Fetch reliable details or resolve the source issue before generating proposal briefs."
+          {isTechnical && (
+            <>
+              <SelfCheckBanner
+                grantId={grant.id}
+                retrying={busy === "enrich"}
+                onRetry={onFetchDetails}
               />
-            )}
-          </Panel>
+              <FetchTrailPanel
+                grantId={grant.id}
+                retrying={busy === "enrich"}
+                errorMsg={grant.enrich_last_error ?? null}
+                onRetry={onFetchDetails}
+              />
+            </>
+          )}
+
+          {(isTechnical || (isAdmin && grant.status === "scored")) && (
+            <Panel icon={NotebookText} title="Briefing tools" description="Human review outputs.">
+              {hasBriefingTools ? (
+                <div className="flex flex-wrap gap-2">
+                  {isAdmin && grant.status === "scored" && (
+                    <Button size="sm" disabled={busy === "shortlist"} onClick={onShortlist}>
+                      Shortlist
+                    </Button>
+                  )}
+                  {isTechnical && traceRun && (
+                    <Badge variant="outline" className="rounded-md">
+                      Trace ready: {traceRun.agent || "agent"}
+                    </Badge>
+                  )}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={NotebookText}
+                  title="Briefing tools unlock after verification"
+                  body="Fetch reliable details or resolve the source issue before generating proposal briefs."
+                />
+              )}
+            </Panel>
+          )}
         </aside>
       </section>
     </section>
