@@ -147,16 +147,14 @@ export const listGrants = createServerFn({ method: "GET" })
         created_at: string;
       }
     >();
-    // A single `.in("grant_id", ids)` with ~100 UUIDs produces a query string
-    // long enough that the local Kong/PostgREST gateway intermittently returns
-    // "invalid response from upstream server" — and since only `data` was
-    // destructured here, that error was silently swallowed, leaving every
-    // grant's evaluation blank (frontend showed "Not checked yet" / "Need a
-    // look" even for grants the user had already scored). Chunking keeps each
-    // request's URL short enough to avoid the gateway limit.
-    const EVAL_FETCH_CHUNK_SIZE = 30;
-    for (let i = 0; i < ids.length; i += EVAL_FETCH_CHUNK_SIZE) {
-      const chunk = ids.slice(i, i + EVAL_FETCH_CHUNK_SIZE);
+    // Previously a single `.in("grant_id", ids)` call with ~100 UUIDs — and
+    // since only `data` was destructured, the resulting gateway error was
+    // silently swallowed, leaving every grant's evaluation blank (frontend
+    // showed "Not checked yet" / "Need a look" even for grants the user had
+    // already scored). Chunking (see chunkIds above) avoids the oversized
+    // request; checking `error` here surfaces any future failure instead of
+    // masking it.
+    for (const chunk of chunkIds(ids)) {
       const { data: evals, error: evalsError } = await context.supabase
         .from("grant_evaluations")
         .select("grant_id, fit_score, eligibility_pass, rationale_en, rationale_fr, created_at")
