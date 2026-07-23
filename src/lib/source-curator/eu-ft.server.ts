@@ -12,6 +12,17 @@
 // catch just marks the whole run "failed" with no visible symptom besides
 // that). An explicit EMPTY string satisfies "present" without narrowing
 // results: verified live, totalResults 21,128 vs erroring out entirely.
+//
+// Second regression found the same day, also silent (status stayed
+// "succeeded" — an empty array isn't an error): the API's `results[].language`
+// is essentially unfilterable from the *outside* — without a `text` term the
+// index returns same-language runs (confirmed live: 50/50 "bg" for several
+// pageNumbers straight) and a top-level `languages=en` query param is
+// silently ignored. The only thing that actually works is adding `language`
+// as its own `terms` clause INSIDE the bool query body, same shape as
+// `type`/`status` below (confirmed live: 1418 results, 50/50 "en"). Without
+// this the old post-fetch `hit.language !== "en"` filter just dropped every
+// row and produced a "succeeded" run with rows_in: 0, candidates_out: 0.
 
 import type { RawCandidate } from "./scoring.server";
 
