@@ -46,7 +46,8 @@ import type { AxisScore } from "@/agents/fit-rules.shared";
 import { SelfCheckBanner } from "@/components/grants/SelfCheckBanner";
 import { ValueBlock } from "@/components/grants/GrantDetailExpress";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { cn } from "@/lib/utils";
 
 type Requirement = {
