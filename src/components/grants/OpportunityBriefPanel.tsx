@@ -158,14 +158,12 @@ export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
                 </div>
               </dl>
               {b.program_snapshot.url && (
-                <a
-                  href={b.program_snapshot.url}
-                  target="_blank"
-                  rel="noreferrer"
+                <ExternalLinkPreview
+                  url={b.program_snapshot.url}
                   className="mt-1 inline-block text-xs text-primary hover:underline"
                 >
                   Authoritative URL
-                </a>
+                </ExternalLinkPreview>
               )}
             </section>
 
