@@ -2337,6 +2337,7 @@ export type Database = {
           created_at: string
           critic_score: number | null
           grant_id: string
+          human_reviewed_at: string | null
           id: string
           language: Database["public"]["Enums"]["app_lang"]
           metadata: Json
@@ -2352,6 +2353,7 @@ export type Database = {
           created_at?: string
           critic_score?: number | null
           grant_id: string
+          human_reviewed_at?: string | null
           id?: string
           language?: Database["public"]["Enums"]["app_lang"]
           metadata?: Json
@@ -2367,6 +2369,7 @@ export type Database = {
           created_at?: string
           critic_score?: number | null
           grant_id?: string
+          human_reviewed_at?: string | null
           id?: string
           language?: Database["public"]["Enums"]["app_lang"]
           metadata?: Json
