@@ -34,15 +34,23 @@ describe("fit-rule audit boundaries", () => {
     expect(check(result, "sop_filter_4_strategic")?.status).toBe("pass");
   });
 
+  // applicant_types_allowed/excluded are empty in DEFAULT_RULES itself (an
+  // unconfigured org gets no applicant-type screening rather than a wrong
+  // one — see fit-rules.shared.ts) and only populated once
+  // deriveRulesFromOrg() knows the org's actual `stage`. These three tests
+  // exercise the nonprofit-profile shape specifically, so they derive rules
+  // for a nonprofit org rather than reading DEFAULT_RULES directly.
+  const nonprofitRules = deriveRulesFromOrg({ stage: "nonprofit" }, DEFAULT_RULES);
+
   it("F1 passes an explicit nonprofit eligibility clause", () => {
-    const result = evaluateRules(DEFAULT_RULES, grant, new Date("2026-07-21T12:00:00Z"));
+    const result = evaluateRules(nonprofitRules, grant, new Date("2026-07-21T12:00:00Z"));
     expect(check(result, "sop_filter_1_legal")?.status).toBe("pass");
     expect(result.hard_fail).toBe(false);
   });
 
   it("F1 hard-blocks a municipality-only opportunity for the nonprofit profile", () => {
     const result = evaluateRules(
-      DEFAULT_RULES,
+      nonprofitRules,
       { ...grant, eligibility: "Applicants must be municipalities only." },
       new Date("2026-07-21T12:00:00Z"),
     );
@@ -52,7 +60,7 @@ describe("fit-rule audit boundaries", () => {
 
   it("F1 reads structured snake_case applicant types", () => {
     const result = evaluateRules(
-      DEFAULT_RULES,
+      nonprofitRules,
       { ...grant, eligibility: { for_profit: true } },
       new Date("2026-07-21T12:00:00Z"),
     );
