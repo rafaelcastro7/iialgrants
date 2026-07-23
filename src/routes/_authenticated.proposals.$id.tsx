@@ -55,6 +55,7 @@ function ProposalDetailPage() {
   const qc = useQueryClient();
   const fetchProposal = useServerFn(getProposal);
   const draft = useServerFn(draftSection);
+  const editContent = useServerFn(editSectionContent);
   const critic = useServerFn(runCritic);
   const submit = useServerFn(submitProposal);
   const confirmReview = useServerFn(confirmHumanReview);
