@@ -462,6 +462,8 @@ function PrivacyCenterV2({
           )}
         </CardContent>
       </Card>
+
+      <ComplianceAndTrustCard />
     </main>
   );
 }
