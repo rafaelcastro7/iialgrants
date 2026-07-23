@@ -255,6 +255,8 @@ function PrivacyCenter() {
           )}
         </CardContent>
       </Card>
+
+      <ComplianceAndTrustCard />
     </main>
   );
 }
