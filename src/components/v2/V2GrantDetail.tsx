@@ -211,6 +211,8 @@ export function V2GrantDetail({
   const canDraft = ["scored", "shortlisted", "in_proposal"].includes(grant.status);
   const actionDisabled = busy != null;
   const hasBriefingTools = (isAdmin && grant.status === "scored") || !!traceRun;
+  const [detailMode, setDetailMode] = useDetailMode();
+  const isTechnical = detailMode === "technical";
 
   return (
     <section className="mx-auto max-w-[1500px] space-y-5 px-4 py-5 sm:px-6 lg:py-6">
@@ -222,6 +224,36 @@ export function V2GrantDetail({
           </Link>
         </Button>
         <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex rounded-md border p-0.5 text-sm"
+            role="group"
+            aria-label="Detail level"
+          >
+            <button
+              type="button"
+              onClick={() => setDetailMode("simple")}
+              className={cn(
+                "rounded-[5px] px-3 py-1 font-medium transition-colors",
+                !isTechnical
+                  ? "bg-brand text-brand-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Simple
+            </button>
+            <button
+              type="button"
+              onClick={() => setDetailMode("technical")}
+              className={cn(
+                "rounded-[5px] px-3 py-1 font-medium transition-colors",
+                isTechnical
+                  ? "bg-brand text-brand-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Technical
+            </button>
+          </div>
           <Button asChild variant="outline" size="sm" className="gap-2">
             <Link to="/grants/$id/audit" params={{ id: grant.id }}>
               <History className="h-4 w-4" />
