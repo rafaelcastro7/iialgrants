@@ -8,7 +8,6 @@ import {
   Sliders,
   Activity,
   ShieldCheck,
-  Shield,
   Settings,
   Menu,
   BookOpen,
