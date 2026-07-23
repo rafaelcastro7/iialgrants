@@ -9,7 +9,6 @@ import {
   XCircle,
   MinusCircle,
   AlertTriangle,
-  ExternalLink,
   Brain,
   Gauge,
   Scale,
