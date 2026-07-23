@@ -76,6 +76,76 @@ export const getImpactMetrics = createServerFn({ method: "GET" })
     }
   });
 
+// Closes the feedback-loop gap an external audit flagged: the system had no
+// way to tell whether its own AI-drafted content helps or hurts win rate.
+// submissions.human_edited_pct (captured at submit time, see
+// submissions.functions.ts) is now correlated against outcomes.result —
+// this is the first report that can actually answer "does AI-verbatim
+// content perform worse than human-edited content."
+const AUTHORSHIP_BUCKETS = [
+  { key: "0", label: "100% AI-drafted (no human edits)", min: 0, max: 0 },
+  { key: "1-49", label: "Mostly AI, lightly edited", min: 1, max: 49 },
+  { key: "50-99", label: "Mostly human-edited", min: 50, max: 99 },
+  { key: "100", label: "Fully human-edited", min: 100, max: 100 },
+] as const;
+
+// Below this sample size per bucket, a win-rate percentage is noise, not
+// signal — same "honest empty state over confident zero" principle used
+// elsewhere in this codebase (fit trend, quality score).
+const MIN_SAMPLE_FOR_RATE = 5;
+
+export const getAiAuthorshipOutcomeCorrelation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({}))
+  .handler(async ({ context }) => {
+    const supabase = await createSupabaseAdmin();
+    const principal = await getTenantPrincipal(supabase, context.userId);
+
+    let subQuery = supabase.from("submissions").select("id, human_edited_pct");
+    subQuery = principal.orgId
+      ? subQuery.or(`user_id.eq.${principal.userId},org_id.eq.${principal.orgId}`)
+      : subQuery.eq("user_id", principal.userId);
+    const { data: subs, error: subErr } = await subQuery;
+    if (subErr) throw new Error(`Failed to load submissions: ${subErr.message}`);
+    const pctById = new Map((subs ?? []).map((s) => [s.id, s.human_edited_pct]));
+    const ids = [...pctById.keys()];
+    if (ids.length === 0) {
+      return {
+        buckets: AUTHORSHIP_BUCKETS.map((b) => ({
+          ...b,
+          won: 0,
+          decided: 0,
+          winRatePct: null as number | null,
+        })),
+        totalDecided: 0,
+      };
+    }
+
+    const { data: outcomes, error: outErr } = await supabase
+      .from("outcomes")
+      .select("submission_id, result")
+      .in("submission_id", ids)
+      .in("result", ["won", "lost"]);
+    if (outErr) throw new Error(`Failed to load outcomes: ${outErr.message}`);
+
+    const buckets = AUTHORSHIP_BUCKETS.map((b) => {
+      const inBucket = (outcomes ?? []).filter((o) => {
+        const pct = pctById.get(o.submission_id);
+        return pct != null && pct >= b.min && pct <= b.max;
+      });
+      const won = inBucket.filter((o) => o.result === "won").length;
+      const decided = inBucket.length;
+      return {
+        ...b,
+        won,
+        decided,
+        winRatePct: decided >= MIN_SAMPLE_FOR_RATE ? Math.round((won / decided) * 100) : null,
+      };
+    });
+
+    return { buckets, totalDecided: (outcomes ?? []).length };
+  });
+
 export const getOutcomeDetails = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ limit: z.number().min(1).max(100).default(20) }))
