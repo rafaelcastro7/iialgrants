@@ -191,6 +191,7 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
 
       const itemsBySubmission = new Map<string, { type: string; frequency: string; due_date: string }[]>();
       for (const item of items ?? []) {
+        if (!item.submission_id) continue;
         const list = itemsBySubmission.get(item.submission_id) ?? [];
         list.push(item);
         itemsBySubmission.set(item.submission_id, list);
