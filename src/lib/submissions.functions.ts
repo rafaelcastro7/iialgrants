@@ -30,6 +30,27 @@ const SubmitInput = z.object({
   force: z.boolean().default(false),
 });
 
+// Explicit human-accountability checkpoint, separate from the forceable
+// quality gate below. An external audit of AI grant-writing tools found
+// real, hardening funder policy risk here — e.g. NIH Notice NOT-OD-25-132
+// treats applications "substantially developed by AI" as not original to
+// the applicant, with cost-disallowance/suspension/termination on
+// detection — and this app previously had zero record that a human ever
+// looked at AI-drafted content before it reached a real funder. `force`
+// on submitProposal bypasses quality checks (low score, thin readiness);
+// it must NEVER bypass this one, since that would defeat its entire point.
+export const confirmHumanReview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ proposalId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("proposals")
+      .update({ human_reviewed_at: new Date().toISOString() })
+      .eq("id", data.proposalId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // Record a submission, advance grant state in_proposal → submitted,
 // and bump proposal.status to 'submitted' in one shot.
 export const submitProposal = createServerFn({ method: "POST" })
@@ -41,11 +62,18 @@ export const submitProposal = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: proposal, error: pe } = await supabase
       .from("proposals")
-      .select("id, grant_id, status, critic_score, grant:grants(requirements, status)")
+      .select(
+        "id, grant_id, status, critic_score, human_reviewed_at, grant:grants(requirements, status)",
+      )
       .eq("id", data.proposalId)
       .maybeSingle();
     if (pe) throw new Error(pe.message);
     if (!proposal) throw new Error("proposal_not_found");
+
+    // Never forceable — see confirmHumanReview above.
+    if (!proposal.human_reviewed_at) {
+      throw new Error("submit_blocked:human_review_not_confirmed");
+    }
 
     // Grant-status precondition, checked BEFORE any write so a mismatch can't
     // leave a submission row + submitted proposal behind a lagging grant (a
