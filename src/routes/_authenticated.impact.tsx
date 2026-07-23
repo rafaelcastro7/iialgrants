@@ -119,6 +119,8 @@ function ImpactMeasurementPage() {
             </Card>
           </div>
 
+          <AuthorshipCorrelationCard authorship={authorship} />
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Outcome Details</CardTitle>
