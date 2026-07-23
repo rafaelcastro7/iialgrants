@@ -84,10 +84,7 @@ describe("computeAuthorshipBuckets", () => {
 
   it("excludes outcomes whose submission has no recorded human_edited_pct", () => {
     const pctById = new Map<string, number | null>([["s1", null]]);
-    const result = computeAuthorshipBuckets(
-      [{ submission_id: "s1", result: "won" }],
-      pctById,
-    );
+    const result = computeAuthorshipBuckets([{ submission_id: "s1", result: "won" }], pctById);
     expect(result.every((b) => b.decided === 0)).toBe(true);
   });
 
