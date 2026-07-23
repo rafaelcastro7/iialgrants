@@ -823,15 +823,12 @@ function RequirementGroup({ requirements, title }: { requirements: Requirement[]
 
 function SourceLink({ href, label }: { href: string; label: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <ExternalLinkPreview
+      url={href}
       className="flex items-center justify-between gap-3 rounded-md border bg-background/70 px-3 py-2 transition-colors hover:bg-accent"
     >
       <span className="min-w-0 truncate">{label}</span>
-      <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-    </a>
+    </ExternalLinkPreview>
   );
 }
 
