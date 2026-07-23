@@ -34,6 +34,7 @@ type Hit = {
 export async function fetchEuCalls(limit = 50): Promise<RawCandidate[]> {
   const params = new URLSearchParams({
     apiKey: "SEDIA",
+    text: "",
     pageSize: String(limit),
     pageNumber: "1",
   });
