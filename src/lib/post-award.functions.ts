@@ -189,7 +189,10 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
           : { data: [], error: null };
       if (itemsError) throw new Error(`Failed to fetch compliance items: ${itemsError.message}`);
 
-      const itemsBySubmission = new Map<string, { type: string; frequency: string; due_date: string }[]>();
+      const itemsBySubmission = new Map<
+        string,
+        { type: string; frequency: string; due_date: string }[]
+      >();
       for (const item of items ?? []) {
         if (!item.submission_id) continue;
         const list = itemsBySubmission.get(item.submission_id) ?? [];
