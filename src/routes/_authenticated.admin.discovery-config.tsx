@@ -227,7 +227,9 @@ function DiscoveryConfigPage() {
         <CardHeader>
           <CardTitle className="text-base">Extra RSS feeds</CardTitle>
           <CardDescription>
-            Added on top of the built-in Grants.gov/tri-council feeds.
+            Added on top of the built-in IDRC feed. Grants.gov and NSERC/SSHRC/CIHR are covered by
+            dedicated ingesters (a REST API and curated seed funders respectively), not RSS — the
+            RSS feeds for those were retired by their publishers and removed from here.
           </CardDescription>
         </CardHeader>
         <CardContent>
