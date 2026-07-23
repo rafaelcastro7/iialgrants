@@ -83,18 +83,6 @@ export const getImpactMetrics = createServerFn({ method: "GET" })
 // submissions.functions.ts) is now correlated against outcomes.result —
 // this is the first report that can actually answer "does AI-verbatim
 // content perform worse than human-edited content."
-const AUTHORSHIP_BUCKETS = [
-  { key: "0", label: "100% AI-drafted (no human edits)", min: 0, max: 0 },
-  { key: "1-49", label: "Mostly AI, lightly edited", min: 1, max: 49 },
-  { key: "50-99", label: "Mostly human-edited", min: 50, max: 99 },
-  { key: "100", label: "Fully human-edited", min: 100, max: 100 },
-] as const;
-
-// Below this sample size per bucket, a win-rate percentage is noise, not
-// signal — same "honest empty state over confident zero" principle used
-// elsewhere in this codebase (fit trend, quality score).
-const MIN_SAMPLE_FOR_RATE = 5;
-
 export const getAiAuthorshipOutcomeCorrelation = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
