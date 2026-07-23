@@ -10,7 +10,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  ExternalLink,
   ArrowLeft,
   Award,
   BarChart3,
