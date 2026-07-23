@@ -75,10 +75,16 @@ export function ExternalLinkPreview({
   url,
   children,
   className,
+  showIcon = true,
+  title,
 }: {
   url: string | null | undefined;
   children: React.ReactNode;
   className?: string;
+  // Suppress the trailing indicator icon for icon-only triggers (e.g. a
+  // bare <Globe> button) where a second icon would look cluttered.
+  showIcon?: boolean;
+  title?: string;
 }) {
   const [open, setOpen] = useState(false);
   const fetchPreview = useServerFn(previewExternalUrl);
@@ -97,6 +103,7 @@ export function ExternalLinkPreview({
     <>
       <button
         type="button"
+        title={title}
         onClick={() => setOpen(true)}
         className={
           className ??
