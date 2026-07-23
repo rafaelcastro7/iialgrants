@@ -42,6 +42,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { AppTopBar } from "@/components/AppSidebar";
 import { toast } from "sonner";
