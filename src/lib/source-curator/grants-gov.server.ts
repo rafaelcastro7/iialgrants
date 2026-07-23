@@ -36,7 +36,10 @@ export async function fetchGrantsGovAgencies(limit = 100): Promise<RawCandidate[
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`grants_gov_http_${response.status}`);
-    const payload = (await response.json()) as { errorcode?: number; data?: { oppHits?: OppHit[] } };
+    const payload = (await response.json()) as {
+      errorcode?: number;
+      data?: { oppHits?: OppHit[] };
+    };
     if (payload.errorcode !== 0) throw new Error(`grants_gov_api_error_${payload.errorcode}`);
     const hits = payload.data?.oppHits;
     if (!Array.isArray(hits)) throw new Error("grants_gov_invalid_response");

@@ -65,8 +65,7 @@ function DiscoveryConfigPage() {
   const initial = useMemo(() => rowToForm(q.data), [q.data]);
   const [f, setF] = useState<FormState | null>(null);
   const form = f ?? initial;
-  const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
-    setF({ ...form, [k]: v });
+  const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF({ ...form, [k]: v });
 
   const dirty = f !== null && JSON.stringify(f) !== JSON.stringify(initial);
 
@@ -105,7 +104,9 @@ function DiscoveryConfigPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Crawl limits</CardTitle>
-          <CardDescription>Per-funder run bounds. Higher = more coverage, slower runs.</CardDescription>
+          <CardDescription>
+            Per-funder run bounds. Higher = more coverage, slower runs.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid sm:grid-cols-3 gap-4">
           <Field label="Max pages per run" hint="Pages scraped per funder per discovery run.">
@@ -205,8 +206,8 @@ function DiscoveryConfigPage() {
         <CardHeader>
           <CardTitle className="text-base">Funder-scout seed queries</CardTitle>
           <CardDescription>
-            Overrides the built-in 6 search seeds for the web-wide funder scout. Leave empty to
-            keep the defaults. To reach grants outside Canada: replace{" "}
+            Overrides the built-in 6 search seeds for the web-wide funder scout. Leave empty to keep
+            the defaults. To reach grants outside Canada: replace{" "}
             <code className="font-mono text-[11px]">site:.ca</code> with the target country's TLD
             (or drop it) and swap "Canada" for the target country/region in each query — combined
             with setting your org's jurisdictions in Org settings and adding funder sites manually,
@@ -225,13 +226,12 @@ function DiscoveryConfigPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Extra RSS feeds</CardTitle>
-          <CardDescription>Added on top of the built-in Grants.gov/tri-council feeds.</CardDescription>
+          <CardDescription>
+            Added on top of the built-in Grants.gov/tri-council feeds.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <RssFeedList
-            value={form.extraRssFeeds}
-            onChange={(v) => set("extraRssFeeds", v)}
-          />
+          <RssFeedList value={form.extraRssFeeds} onChange={(v) => set("extraRssFeeds", v)} />
         </CardContent>
       </Card>
 
@@ -239,8 +239,8 @@ function DiscoveryConfigPage() {
         <CardHeader>
           <CardTitle className="text-base">Candidate approval thresholds</CardTitle>
           <CardDescription>
-            Funder-candidate score (0-100) that decides auto-approve vs. hold for review vs.
-            discard as low-signal.
+            Funder-candidate score (0-100) that decides auto-approve vs. hold for review vs. discard
+            as low-signal.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid sm:grid-cols-2 gap-4">
@@ -286,7 +286,8 @@ function DiscoveryConfigPage() {
                 size="sm"
                 onClick={() => mut.mutate()}
                 disabled={
-                  mut.isPending || form.candidateReviewMinThreshold > form.candidateAutoApproveThreshold
+                  mut.isPending ||
+                  form.candidateReviewMinThreshold > form.candidateAutoApproveThreshold
                 }
               >
                 <Save className="h-4 w-4 mr-1.5" />
@@ -358,7 +359,11 @@ function TagList({
           <span className="text-xs text-muted-foreground italic self-center">none</span>
         )}
         {value.map((v) => (
-          <Badge key={v} variant="secondary" className="gap-1 pr-1 font-mono font-normal text-[11px]">
+          <Badge
+            key={v}
+            variant="secondary"
+            className="gap-1 pr-1 font-mono font-normal text-[11px]"
+          >
             {v}
             <button
               type="button"
@@ -430,7 +435,9 @@ function RssFeedList({
           <div className="flex-1 min-w-0">
             <div className="font-medium">{feed.key}</div>
             <div className="text-muted-foreground truncate">{feed.url}</div>
-            {feed.defaultAgency && <div className="text-muted-foreground">{feed.defaultAgency}</div>}
+            {feed.defaultAgency && (
+              <div className="text-muted-foreground">{feed.defaultAgency}</div>
+            )}
           </div>
           <Button
             type="button"

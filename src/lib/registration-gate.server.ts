@@ -38,10 +38,7 @@ export type RegistrationWallResult =
 // Pure and synchronous so it's trivially unit-testable — takes the already-
 // fetched content and the URL that was actually served (post-redirect), not
 // a live network call.
-export function detectRegistrationWall(
-  content: string,
-  finalUrl: string,
-): RegistrationWallResult {
+export function detectRegistrationWall(content: string, finalUrl: string): RegistrationWallResult {
   for (const re of WALL_URL_PATTERNS) {
     if (re.test(finalUrl)) {
       return { blocked: true, reason: "redirected_to_login_url", snippet: finalUrl };

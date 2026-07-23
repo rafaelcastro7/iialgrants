@@ -130,9 +130,7 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
     }
 
     if (rr.cost_share_pct !== null && rr.cost_share_pct > 0 && rules.require_match_verification) {
-      conditions.push(
-        `Confirm cash-match availability (~${rr.cost_share_pct}%) with leadership`,
-      );
+      conditions.push(`Confirm cash-match availability (~${rr.cost_share_pct}%) with leadership`);
       if (verdict === "go") verdict = "go_conditional";
     }
 

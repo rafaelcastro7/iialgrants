@@ -210,8 +210,10 @@ function detectRole(hay: string): "lead" | "partner" | "unknown" {
 export function detectPartnerType(
   hay: string,
 ): "municipality" | "first_nation" | "co_applicant" | "other" {
-  if (/\b(first nation|indigenous|premi[eè]re nation|autochtone)\b/.test(hay)) return "first_nation";
-  if (/\b(municipal(ity|ities)?|city of|town of|municipalit[ée]s?)\b/.test(hay)) return "municipality";
+  if (/\b(first nation|indigenous|premi[eè]re nation|autochtone)\b/.test(hay))
+    return "first_nation";
+  if (/\b(municipal(ity|ities)?|city of|town of|municipalit[ée]s?)\b/.test(hay))
+    return "municipality";
   if (/\b(co-?applicant|joint application|consortium)\b/.test(hay)) return "co_applicant";
   return "other";
 }

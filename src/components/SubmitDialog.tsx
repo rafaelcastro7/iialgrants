@@ -100,8 +100,8 @@ export function SubmitDialog({
               className="mt-0.5"
             />
             <span>
-              I have personally read every section of this proposal and take responsibility for
-              its content before it reaches the funder.
+              I have personally read every section of this proposal and take responsibility for its
+              content before it reaches the funder.
             </span>
           </label>
         </div>

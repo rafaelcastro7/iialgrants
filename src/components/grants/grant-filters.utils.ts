@@ -27,7 +27,12 @@ export type SortKey = "relevance" | "fit" | "deadline" | "amount" | "newest";
 // an unknown amount falls in range, so silently including it would be a
 // false positive, not a convenience.
 export type AmountPresetKey = "all" | "under25k" | "25k-100k" | "100k-500k" | "500k-plus";
-export const AMOUNT_PRESETS: Array<{ key: AmountPresetKey; label: string; min: number | null; max: number | null }> = [
+export const AMOUNT_PRESETS: Array<{
+  key: AmountPresetKey;
+  label: string;
+  min: number | null;
+  max: number | null;
+}> = [
   { key: "all", label: "Any amount", min: null, max: null },
   { key: "under25k", label: "Under $25K", min: null, max: 25_000 },
   { key: "25k-100k", label: "$25K – $100K", min: 25_000, max: 100_000 },

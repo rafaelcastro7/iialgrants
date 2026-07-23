@@ -466,8 +466,8 @@ function ProposalDetailPage() {
                 <CardHeader>
                   <CardTitle className="text-sm">Reviewer rubric</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Scored the way a real funder panel scores: need, approach, capacity,
-                    evaluation, sustainability, budget, compliance.
+                    Scored the way a real funder panel scores: need, approach, capacity, evaluation,
+                    sustainability, budget, compliance.
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-2.5">

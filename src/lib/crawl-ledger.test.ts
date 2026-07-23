@@ -27,7 +27,10 @@ function clamp(n: number, lo: number, hi: number): number {
 async function withUrlLock<T>(url: string, fn: () => Promise<T>): Promise<T> {
   const prev = locks.get(url) ?? Promise.resolve();
   const run = prev.then(fn, fn);
-  locks.set(url, run.catch(() => undefined));
+  locks.set(
+    url,
+    run.catch(() => undefined),
+  );
   return run;
 }
 

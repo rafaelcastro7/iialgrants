@@ -81,7 +81,10 @@ export async function resolveDiscoveryConfig(): Promise<DiscoveryConfig> {
     }
     const row = data as Record<string, unknown>;
     const value: DiscoveryConfig = {
-      maxPagesPerRun: asPositiveInt(row.max_pages_per_run, DISCOVERY_CONFIG_DEFAULTS.maxPagesPerRun),
+      maxPagesPerRun: asPositiveInt(
+        row.max_pages_per_run,
+        DISCOVERY_CONFIG_DEFAULTS.maxPagesPerRun,
+      ),
       scrapeConcurrency: asPositiveInt(
         row.scrape_concurrency,
         DISCOVERY_CONFIG_DEFAULTS.scrapeConcurrency,

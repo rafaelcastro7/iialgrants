@@ -345,7 +345,10 @@ const FIRECRAWL_JSON_SCHEMA = {
           deadline: { type: ["string", "null"], description: "ISO YYYY-MM-DD or null" },
           eligibility: { type: "object" },
           sectors: { type: "array", items: { type: "string" } },
-          language: { type: "string", description: "ISO 639-1 language code of the page, e.g. en, fr, es" },
+          language: {
+            type: "string",
+            description: "ISO 639-1 language code of the page, e.g. en, fr, es",
+          },
           url: { type: "string", description: "Canonical program URL" },
         },
         required: ["title", "language", "url"],
@@ -1062,7 +1065,12 @@ export async function discoverFunderImpl(
         reason: wall.reason,
         snippet: wall.snippet,
       });
-      perPage.push({ url: doc.url, found: 0, inserted: 0, reason: `registration_wall:${wall.reason}` });
+      perPage.push({
+        url: doc.url,
+        found: 0,
+        inserted: 0,
+        reason: `registration_wall:${wall.reason}`,
+      });
       continue;
     }
 
@@ -1278,7 +1286,7 @@ export async function discoverFunderImpl(
       funder_name: F.name,
       engine: "fallback",
       index_fetch_error: indexFetchError,
-        index_via_browser: indexViaBrowser,
+      index_via_browser: indexViaBrowser,
       links_extracted: links.length,
       pages_scraped: pageDocs.length,
       links_from_index: linksFromIndex.length,

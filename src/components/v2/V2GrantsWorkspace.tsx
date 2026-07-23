@@ -700,7 +700,10 @@ function FilterBar({
             ))}
           </SelectContent>
         </Select>
-        <Select value={amountPreset} onValueChange={(v) => onAmountPresetChange(v as AmountPresetKey)}>
+        <Select
+          value={amountPreset}
+          onValueChange={(v) => onAmountPresetChange(v as AmountPresetKey)}
+        >
           <SelectTrigger className="w-[160px]" aria-label="Filter by amount">
             <SelectValue placeholder="Amount" />
           </SelectTrigger>

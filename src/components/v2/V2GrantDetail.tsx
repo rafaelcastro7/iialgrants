@@ -443,7 +443,8 @@ export function V2GrantDetail({
                       rationale_en: evaluation.rationale_en,
                       rationale_fr: evaluation.rationale_fr ?? "",
                       created_at: evaluation.created_at,
-                      axis_breakdown: (evaluation.axis_breakdown as AxisScore[] | null | undefined) ?? null,
+                      axis_breakdown:
+                        (evaluation.axis_breakdown as AxisScore[] | null | undefined) ?? null,
                     }
                   : null
               }
