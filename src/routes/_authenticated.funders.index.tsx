@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { getFunderDashboardStats, getTopFunders } from "@/lib/funder-dashboard.functions";
 import { searchFunders } from "@/lib/funder-search.functions";
 import { enrichFunder } from "@/lib/funder-enrichment.functions";
