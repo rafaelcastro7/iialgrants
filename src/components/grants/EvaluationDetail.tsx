@@ -339,17 +339,13 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
               </>
             );
           })()}
-        {evidence.length > 0 && (
-          <div className="hidden">
-            {evidence.length > 8 && (
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Showing 8 of {evidence.length}.{" "}
-                <Link to="/grants/$id/audit" params={{ id: grantId }} className="underline">
-                  See all in audit →
-                </Link>
-              </p>
-            )}
-          </div>
+        {evidence.length > 8 && (
+          <p className="text-[11px] text-muted-foreground">
+            Showing 8 of {evidence.length} per list.{" "}
+            <Link to="/grants/$id/audit" params={{ id: grantId }} className="underline">
+              See all in audit →
+            </Link>
+          </p>
         )}
       </CardContent>
     </Card>
