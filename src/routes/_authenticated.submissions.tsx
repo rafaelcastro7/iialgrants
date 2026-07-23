@@ -277,13 +277,7 @@ function SubmissionsPageV2({
                 title: string;
                 title_fr: string | null;
               } | null;
-              const oc = (
-                s.outcome as Array<{
-                  result: string;
-                  amount_awarded_cad: number | null;
-                  decision_date: string | null;
-                }> | null
-              )?.[0];
+              const oc = getSubmissionOutcome(s);
               const pill = oc ? RESULT_PILL[oc.result] : null;
 
               return (
