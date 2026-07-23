@@ -49,6 +49,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+
+// Persistent (not per-tab) preference, same rationale as UI_VERSION_STORAGE_KEY
+// in ui-version.ts: which mode a person wants is a standing choice about how
+// THEY read grant pages, not transient session state.
+const DETAIL_MODE_STORAGE_KEY = "iial.ui.grantDetailMode";
+type DetailMode = "simple" | "technical";
+
+function useDetailMode(): [DetailMode, (m: DetailMode) => void] {
+  const [mode, setMode] = useState<DetailMode>("simple");
+  useEffect(() => {
+    const stored = window.localStorage.getItem(DETAIL_MODE_STORAGE_KEY);
+    if (stored === "simple" || stored === "technical") setMode(stored);
+  }, []);
+  const update = (next: DetailMode) => {
+    setMode(next);
+    window.localStorage.setItem(DETAIL_MODE_STORAGE_KEY, next);
+  };
+  return [mode, update];
+}
 
 type Requirement = {
   category: string;
