@@ -682,15 +682,12 @@ function GrantDetailPage() {
             </Card>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-              <a
-                href={g.url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <ExternalLinkPreview
+                url={g.url}
                 className="inline-flex items-center gap-1 text-sm underline"
               >
                 {t("grants.source")}
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+              </ExternalLinkPreview>
               <div className="flex flex-wrap gap-2">
                 {g.status !== "discovered" && (
                   <NotebookLMBridge grantId={id} label="Send to NotebookLM" />
