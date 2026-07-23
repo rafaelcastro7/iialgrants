@@ -137,6 +137,7 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
     // Narrative parts via single cheap LLM call (Groq llama-3.3-70b — free)
     const { callLlm } = await import("@/agents/llm.server");
     const { newRunId } = await import("@/lib/otel");
+    const orgName = org?.org_name?.trim() || "your organization";
     const runId = newRunId();
     let strategic_angle = "—";
     let mandatory_components: string[] = [];
