@@ -150,14 +150,9 @@ function CandidatesPage() {
               <CardContent className="flex items-center justify-between gap-4 text-sm">
                 <div className="text-muted-foreground truncate">
                   {c.website ? (
-                    <a
-                      href={c.website as string}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline"
-                    >
+                    <ExternalLinkPreview url={c.website as string} showIcon={false} className="underline">
                       {c.website as string}
-                    </a>
+                    </ExternalLinkPreview>
                   ) : (
                     <span>No website</span>
                   )}
