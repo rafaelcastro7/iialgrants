@@ -1535,7 +1535,13 @@ function hasOperationalRisk(grant: GrantRowData): boolean {
   return riskReasons(grant).length > 0;
 }
 
+// Once a grant has been submitted, the eligibility/deadline/fit checks below
+// describe a decision that already happened — flagging them as "needs a
+// look" is stale noise, not something the user can still act on.
+const DECIDED_GRANT_STATUSES = new Set(["submitted", "won", "lost"]);
+
 function riskReasons(grant: GrantRowData): string[] {
+  if (DECIDED_GRANT_STATUSES.has(grant.status)) return [];
   const reasons: string[] = [];
   const deadline = deadlineState(grant.deadline);
   if (deadline.days != null && deadline.days >= 0 && deadline.days <= 14)
