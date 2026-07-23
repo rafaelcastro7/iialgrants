@@ -12,7 +12,6 @@ import {
   ClipboardCheck,
   Clock3,
   DollarSign,
-  ExternalLink,
   FileCheck2,
   FileText,
   Fingerprint,
