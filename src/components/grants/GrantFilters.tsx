@@ -124,6 +124,19 @@ export function GrantFilters({
         ))}
       </select>
 
+      <select
+        className="h-9 rounded-md border bg-background px-2 text-sm"
+        value={amountPreset}
+        onChange={(e) => setAmountPreset(e.target.value as AmountPresetKey)}
+        aria-label="Amount"
+      >
+        {AMOUNT_PRESETS.map((p) => (
+          <option key={p.key} value={p.key}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+
       <button
         type="button"
         onClick={() => setEligibleOnly(!eligibleOnly)}
