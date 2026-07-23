@@ -22,6 +22,7 @@ import { SubmitDialog } from "@/components/SubmitDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { DocumentManager } from "@/components/DocumentManager";
 import { ArrowLeft } from "lucide-react";
