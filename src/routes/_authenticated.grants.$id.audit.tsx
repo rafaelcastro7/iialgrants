@@ -2,18 +2,12 @@
 // trace timeline, and final verdict. Linked from /grants/$id "Audit" button.
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
-  AlertTriangle,
-  ExternalLink,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, MinusCircle, AlertTriangle } from "lucide-react";
 import { getGrantAudit } from "@/lib/grant-audit.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 const auditQuery = (id: string) =>
   queryOptions({
