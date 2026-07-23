@@ -345,10 +345,12 @@ export const editSectionContent = createServerFn({ method: "POST" })
       .eq("id", section.id);
     if (ue) throw new Error(ue.message);
 
-    // Same reasoning as draftSection: the critic scored the OLD text.
+    // Same reasoning as draftSection: the critic scored the OLD text, and a
+    // stale human_reviewed_at from before this edit must not carry over —
+    // one explicit confirmation is required against the final content.
     await context.supabase
       .from("proposals")
-      .update({ critic_score: null })
+      .update({ critic_score: null, human_reviewed_at: null })
       .eq("id", section.proposal_id);
 
     await bumpProposalVersion(context.supabase, section.proposal_id);
