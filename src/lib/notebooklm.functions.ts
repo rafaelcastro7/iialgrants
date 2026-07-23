@@ -133,6 +133,17 @@ export async function buildNotebookBriefingImpl(opts: {
     if (error) throw new Error(error.message);
     const rows = (rowsRaw ?? []) as unknown as Row[];
 
+    const { data: org } = await supabase
+      .from("org_profiles")
+      .select("org_name, sectors, focus_areas")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const orgName = org?.org_name?.trim() || "your organization";
+    const orgCapabilities: string[] = [
+      ...(Array.isArray(org?.sectors) ? org.sectors : []),
+      ...(Array.isArray(org?.focus_areas) ? org.focus_areas : []),
+    ];
+
     if (rows.length === 0) {
       return {
         ok: false as const,
