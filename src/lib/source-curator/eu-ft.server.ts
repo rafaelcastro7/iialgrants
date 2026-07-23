@@ -51,7 +51,11 @@ export async function fetchEuCalls(limit = 50): Promise<RawCandidate[]> {
   });
   const query = {
     bool: {
-      must: [{ terms: { type: ["1", "2", "8"] } }, { terms: { status: OPEN_STATUSES } }],
+      must: [
+        { terms: { type: ["1", "2", "8"] } },
+        { terms: { status: OPEN_STATUSES } },
+        { terms: { language: ["en"] } },
+      ],
     },
   };
   const form = new FormData();
