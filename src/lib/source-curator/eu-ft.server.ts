@@ -4,6 +4,14 @@
 // filtered down to Canada-relevant calls only (a `text: "Canada"` search-term
 // filter used to sit here, which meant this was effectively a "Canada
 // mentions in EU calls" ingester rather than a real EU funding source).
+//
+// `text` is a REQUIRED query param (confirmed live 2026-07-23: omitting it
+// entirely — my first attempt at the fix above — gets HTTP 400 "Required
+// request parameter 'text'... is not present", which silently broke this
+// ingester until now, since fetchEuCalls has no catch and runSource's own
+// catch just marks the whole run "failed" with no visible symptom besides
+// that). An explicit EMPTY string satisfies "present" without narrowing
+// results: verified live, totalResults 21,128 vs erroring out entirely.
 
 import type { RawCandidate } from "./scoring.server";
 
