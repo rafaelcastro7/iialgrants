@@ -137,6 +137,7 @@ export const submitProposal = createServerFn({ method: "POST" })
         language: data.language,
         attachments: data.attachments,
         notes: data.notes ?? null,
+        human_edited_pct: humanEditedPct,
       })
       .select("id, submitted_at")
       .single();
