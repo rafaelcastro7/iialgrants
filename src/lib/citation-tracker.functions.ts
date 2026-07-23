@@ -32,6 +32,19 @@ export const extractCitations = createServerFn({ method: "POST" })
       const supabase = await createSupabaseAdmin();
       await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
+      // Self-citation = the "evidence" is actually the org's own name, not
+      // an independent source — a red flag the AI is circularly citing the
+      // applicant to support their own application. Must compare against
+      // THIS org's actual name, not a fixed string: a hardcoded demo-org
+      // check here would silently never flag self-citation for any real
+      // organization, defeating the check entirely.
+      const { data: org } = await supabase
+        .from("org_profiles")
+        .select("org_name")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      const orgNameLower = org?.org_name?.trim().toLowerCase() || null;
+
       const allCitations: Array<{
         id: string;
         proposalSectionId: string;
