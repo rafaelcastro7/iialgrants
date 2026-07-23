@@ -19,6 +19,22 @@ export type GrantLite = {
 
 export type SortKey = "relevance" | "fit" | "deadline" | "amount" | "newest";
 
+// Amount-range filter, as a fixed preset list rather than a two-input range —
+// every grant-database competitor (Instrumentl, Candid, GrantStation) offers
+// this and IIAL's /grants didn't; presets keep it a single dropdown instead
+// of a bulkier min/max pair. "all" = no filter. A grant with no known amount
+// is excluded once a preset narrower than "all" is picked — we can't verify
+// an unknown amount falls in range, so silently including it would be a
+// false positive, not a convenience.
+export type AmountPresetKey = "all" | "under25k" | "25k-100k" | "100k-500k" | "500k-plus";
+export const AMOUNT_PRESETS: Array<{ key: AmountPresetKey; label: string; min: number | null; max: number | null }> = [
+  { key: "all", label: "Any amount", min: null, max: null },
+  { key: "under25k", label: "Under $25K", min: null, max: 25_000 },
+  { key: "25k-100k", label: "$25K – $100K", min: 25_000, max: 100_000 },
+  { key: "100k-500k", label: "$100K – $500K", min: 100_000, max: 500_000 },
+  { key: "500k-plus", label: "$500K+", min: 500_000, max: null },
+];
+
 export const SORT_LABELS: Record<SortKey, string> = {
   relevance: "Search relevance",
   fit: "Best fit",
