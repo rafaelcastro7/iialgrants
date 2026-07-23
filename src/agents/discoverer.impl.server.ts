@@ -1256,7 +1256,14 @@ export async function discoverFunderImpl(
       // canonicalKey's call site above for the confirmed real case: the same
       // NRC "Outreach Initiative" URL discovered as 6 separate grants). A
       // same-funder + exact-URL match is checked as a third, independent
-      // signal, since it doesn't depend on title wording at all.
+      // signal — but requires at least one shared normalized title word
+      // before being trusted alone, since some funder pages are generic/
+      // broken fallback URLs that several genuinely DIFFERENT programs share
+      // (confirmed live: "Strategic Response Fund", "Grant for Nunavut
+      // Employers", "Aboriginal Business Financing Program" and "First
+      // Peoples Economic Growth Fund" are real, distinct programs that all
+      // shared one such fallback URL — merging by URL alone would have
+      // silently discarded three real grants).
       const [{ data: existingByKeyOrHash }, { data: existingByUrl }] = await Promise.all([
         supabaseAdmin
           .from("grants")
@@ -1265,12 +1272,17 @@ export async function discoverFunderImpl(
           .maybeSingle(),
         supabaseAdmin
           .from("grants")
-          .select("id, times_seen")
+          .select("id, times_seen, title")
           .eq("funder_id", F.id)
           .eq("url", effectiveUrl)
           .maybeSingle(),
       ]);
-      const existing = existingByKeyOrHash ?? existingByUrl;
+      const urlMatchSharesTitleWord =
+        existingByUrl &&
+        normalizeTitle((existingByUrl as { title?: string }).title ?? "")
+          .split(/\s+/)
+          .some((w) => w && normalizeTitle(g.title).split(/\s+/).includes(w));
+      const existing = existingByKeyOrHash ?? (urlMatchSharesTitleWord ? existingByUrl : null);
       if (existing) {
         await supabaseAdmin
           .from("grants")
