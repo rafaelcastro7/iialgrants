@@ -541,7 +541,9 @@ export function V2GrantDetail({
             )}
           </Panel>
 
-          {grant.status !== "discovered" && <OpportunityBriefPanel grantId={grant.id} />}
+          {grant.status !== "discovered" && (
+            <OpportunityBriefPanel grantId={grant.id} showScreeningDetails={isTechnical} />
+          )}
 
           <Panel
             icon={ShieldCheck}
