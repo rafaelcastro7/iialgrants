@@ -233,16 +233,7 @@ function SubmissionsPageV2({
   err: string | null;
   onSave: (subId: string) => void;
 }) {
-  const outcomes = submissions.map((s) => {
-    const oc = (
-      s.outcome as Array<{
-        result: string;
-        amount_awarded_cad: number | null;
-        decision_date: string | null;
-      }> | null
-    )?.[0];
-    return oc?.result ?? null;
-  });
+  const outcomes = submissions.map((s) => getSubmissionOutcome(s)?.result ?? null);
   const won = outcomes.filter((r) => r === "won").length;
   const waiting = outcomes.filter((r) => r == null).length;
   const decided = outcomes.filter((r) => r != null).length;
