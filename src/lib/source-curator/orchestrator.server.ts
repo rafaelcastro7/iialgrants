@@ -258,9 +258,11 @@ async function ingestorsForTier(
     const { fetchBbfPrograms } = await import("./bbf-programs.server");
     const { fetchEuCalls } = await import("./eu-ft.server");
     const { fetchTriCouncilFunders } = await import("./tri-council.server");
+    const { fetchRegionalDevelopmentFunders } = await import("./regional-development.server");
     out.push({ key: "bbf_programs", fn: fetchBbfPrograms });
     out.push({ key: "eu_ft_portal", fn: fetchEuCalls });
     out.push({ key: "tri_council", fn: fetchTriCouncilFunders });
+    out.push({ key: "regional_development", fn: fetchRegionalDevelopmentFunders });
   }
 
   if (tier === "scout" || tier === "all") {
