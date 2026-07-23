@@ -26,7 +26,9 @@ export function isSafeExternalUrl(raw: string): boolean {
     return false;
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") return false;
-  const host = u.hostname.toLowerCase();
+  // IPv6 literals keep their [brackets] in .hostname; strip them so
+  // "[::1]" matches the same blocklist entry as "::1".
+  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (BLOCKED_HOSTS.has(host)) return false;
   if (BLOCKED_HOST_PATTERNS.some((re) => re.test(host))) return false;
   return true;
