@@ -1231,11 +1231,26 @@ export async function discoverFunderImpl(
         .update(`${g.url && g.url !== F.source_url ? g.url : doc.url}|${g.title}`)
         .digest("hex");
       // Look up existing by canonical_key OR source_hash to absorb retries/dupes.
-      const { data: existing } = await supabaseAdmin
-        .from("grants")
-        .select("id, times_seen")
-        .or(`canonical_key.eq.${ck},source_hash.eq.${sourceHash}`)
-        .maybeSingle();
+      // Both of those are still title-derived, so an LLM re-paraphrasing the
+      // same program's title differently across runs slips past both (see
+      // canonicalKey's call site above for the confirmed real case: the same
+      // NRC "Outreach Initiative" URL discovered as 6 separate grants). A
+      // same-funder + exact-URL match is checked as a third, independent
+      // signal, since it doesn't depend on title wording at all.
+      const [{ data: existingByKeyOrHash }, { data: existingByUrl }] = await Promise.all([
+        supabaseAdmin
+          .from("grants")
+          .select("id, times_seen")
+          .or(`canonical_key.eq.${ck},source_hash.eq.${sourceHash}`)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("grants")
+          .select("id, times_seen")
+          .eq("funder_id", F.id)
+          .eq("url", effectiveUrl)
+          .maybeSingle(),
+      ]);
+      const existing = existingByKeyOrHash ?? existingByUrl;
       if (existing) {
         await supabaseAdmin
           .from("grants")
