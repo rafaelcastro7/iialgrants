@@ -19,6 +19,7 @@ import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import { StatCard, StatGrid } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 const DAY_MS = 86_400_000;
 
