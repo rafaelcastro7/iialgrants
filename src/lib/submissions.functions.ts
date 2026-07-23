@@ -97,15 +97,7 @@ export const submitProposal = createServerFn({ method: "POST" })
     const sectionsWithContent = (gateSections ?? []).filter(
       (s) => ((s as { content_en?: string | null }).content_en ?? "").trim().length > 0,
     );
-    const humanEditedPct =
-      sectionsWithContent.length > 0
-        ? Math.round(
-            (sectionsWithContent.filter((s) => (s as { human_edited?: boolean }).human_edited)
-              .length /
-              sectionsWithContent.length) *
-              100,
-          )
-        : null;
+    const humanEditedPct = computeHumanEditedPct(gateSections ?? []);
 
     // S3a reviewer-simulation gate: never submit a proposal that has not been
     // reviewed, scores poorly, has no drafted content, or leaves a critical
