@@ -448,6 +448,7 @@ function GrantsPage() {
           }
           onJurisdictionChange={setJurisdiction}
           onSectorChange={setSector}
+          onAmountPresetChange={setAmountPreset}
           onOnlyWithDeadlineChange={setOnlyWithDeadline}
           onSearchChange={setSearch}
           onSelectedFundersChange={setSelectedFunders}
