@@ -44,11 +44,22 @@ export const confirmHumanReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ proposalId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    // proposals RLS only grants UPDATE to the owning user_id — org-mates can
+    // SELECT (view) a colleague's proposal but not write to it. An update
+    // that matches 0 rows because of that is NOT an error to PostgREST (RLS
+    // filters rows silently, same class of bug as the notifications gap
+    // found earlier this session) — without .select().maybeSingle() here,
+    // a non-owner clicking "Confirm Review" would get a false {ok:true}
+    // and only discover nothing happened when submit later, confusingly,
+    // still blocks on "not confirmed."
+    const { data: updated, error } = await context.supabase
       .from("proposals")
       .update({ human_reviewed_at: new Date().toISOString() })
-      .eq("id", data.proposalId);
+      .eq("id", data.proposalId)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!updated) throw new Error("review_confirmation_not_authorized");
     return { ok: true };
   });
 
