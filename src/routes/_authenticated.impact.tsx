@@ -221,6 +221,8 @@ function ImpactMeasurementPageV2({
             </div>
           </div>
 
+          <AuthorshipCorrelationCard authorship={authorship} />
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
