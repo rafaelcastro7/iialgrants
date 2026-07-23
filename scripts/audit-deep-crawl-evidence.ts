@@ -4,12 +4,17 @@
 // result means this historical data point was captured by the same
 // cross-contamination bug fixed in enricher.functions.ts and needs review.
 import { createClient } from "@supabase/supabase-js";
-import { grantTitleTokens, pageLooksRelevantToGrant } from "../src/agents/deep-crawl-relevance.shared";
+import {
+  grantTitleTokens,
+  pageLooksRelevantToGrant,
+} from "../src/agents/deep-crawl-relevance.shared";
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
-const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+const supabase = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 const { data: rows, error } = await supabase
   .from("evidence_spans")
@@ -27,14 +32,13 @@ type Row = {
 };
 
 const mismatched = (rows as unknown as Row[]).filter((r) => r.source_url !== r.grants.url);
-console.log(`${mismatched.length} evidence span(s) sourced from a different page than the grant's own url\n`);
+console.log(
+  `${mismatched.length} evidence span(s) sourced from a different page than the grant's own url\n`,
+);
 
 for (const r of mismatched) {
   const tokens = grantTitleTokens(r.grants.title);
-  const relevant = pageLooksRelevantToGrant(
-    { url: r.source_url, markdown: r.snippet },
-    tokens,
-  );
+  const relevant = pageLooksRelevantToGrant({ url: r.source_url, markdown: r.snippet }, tokens);
   console.log(
     `${relevant ? "OK  " : "BAD "} grant="${r.grants.title}" field=${r.field} value=${JSON.stringify(r.value)}`,
   );
