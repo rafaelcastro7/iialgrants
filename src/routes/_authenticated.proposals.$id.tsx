@@ -209,6 +209,22 @@ function ProposalDetailPage() {
       setPending(null);
     }
   }
+  async function onSaveEdit(sectionId: string) {
+    setPending(sectionId);
+    setErr(null);
+    try {
+      await editContent({ data: { sectionId, contentEn: editDraft } });
+      await qc.invalidateQueries({ queryKey: ["proposal", id] });
+      setEditingSectionId(null);
+      toast.success("Section updated");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErr(msg);
+      toast.error(msg);
+    } finally {
+      setPending(null);
+    }
+  }
   async function onCritic() {
     setPending("critic");
     setErr(null);
