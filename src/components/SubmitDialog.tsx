@@ -86,6 +86,24 @@ export function SubmitDialog({
               onChange={(e) => setConfirmationNumber(e.target.value)}
             />
           </div>
+
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+            This proposal contains AI-drafted text. Some funders (e.g. NIH) restrict or require
+            disclosure of AI-substantially-authored content, with consequences up to
+            disqualification — check this funder's own policy before submitting.
+          </div>
+
+          <label className="flex items-start gap-2.5 text-sm">
+            <Checkbox
+              checked={reviewed}
+              onCheckedChange={(v) => setReviewed(v === true)}
+              className="mt-0.5"
+            />
+            <span>
+              I have personally read every section of this proposal and take responsibility for
+              its content before it reaches the funder.
+            </span>
+          </label>
         </div>
 
         <DialogFooter>
@@ -93,7 +111,7 @@ export function SubmitDialog({
             <Button
               variant="destructive"
               onClick={() => onForceSubmit(method, confirmationNumber)}
-              disabled={loading}
+              disabled={loading || !reviewed}
             >
               Submit Anyway
             </Button>
@@ -101,7 +119,7 @@ export function SubmitDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSubmit} disabled={loading || !reviewed}>
             {loading ? "Submitting..." : "Submit"}
           </Button>
         </DialogFooter>
