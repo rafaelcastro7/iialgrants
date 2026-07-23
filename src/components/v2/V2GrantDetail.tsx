@@ -548,7 +548,7 @@ export function V2GrantDetail({
             title="Eligibility evidence"
             description="Parsed eligibility fields from the funder source."
             actions={
-              eligibilityRows.length > 0 ? (
+              isTechnical && eligibilityRows.length > 0 ? (
                 <EvidenceChip
                   field="eligibility"
                   label="Eligibility evidence"
@@ -584,7 +584,7 @@ export function V2GrantDetail({
             title="Sectors and fit signals"
             description="Themes used for discovery, matching, and search."
             actions={
-              grant.sectors?.length ? (
+              isTechnical && grant.sectors?.length ? (
                 <EvidenceChip field="sectors" label="Sector evidence" onClick={onOpenEvidence} />
               ) : undefined
             }
