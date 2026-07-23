@@ -216,7 +216,17 @@ export async function enrichGrantImpl(
   );
   const pageLooksRelevantToGrant = (page: { url: string; markdown: string }) => {
     if (grantTitleTokens.length === 0) return true;
-    const hay = `${page.url}\n${page.markdown.slice(0, 2_500)}`
+    // Only the URL's own leaf path segment counts, not the full URL \u2014 a hub
+    // page's children commonly share a parent path segment (e.g. a Quebec
+    // tax-credit hub linking ".../attestations-de-credits-dimpots/<program>"
+    // for several unrelated sibling programs), and including the full URL
+    // let that shared parent segment alone satisfy the overlap check for a
+    // sub-page about a completely different program. Confirmed live: the
+    // "Tax Credit Attestations" grant picked up a deadline from a
+    // journalism/press tax-credit sibling page whose own content never
+    // mentions "credit" or "attestations" \u2014 only the shared parent slug did.
+    const leafSegment = page.url.replace(/\/+$/, "").split("/").pop() ?? "";
+    const hay = `${leafSegment}\n${page.markdown.slice(0, 2_500)}`
       .normalize("NFKD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
