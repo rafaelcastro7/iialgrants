@@ -110,6 +110,12 @@ for (const [key, members] of byCluster) {
   console.log(`\nCluster: ${key}`);
   console.log(`  KEEP    ${canonical.id} :: "${canonical.title}" (status=${canonical.status})`);
   for (const loser of losers) {
+    if (!sharesTitleWord(loser.title, canonical.title)) {
+      console.log(
+        `  DISTINCT ${loser.id} :: "${loser.title}" — no title word shared with canonical, likely a genuinely different program sharing a fallback URL. Leaving untouched.`,
+      );
+      continue;
+    }
     console.log(`  ARCHIVE ${loser.id} :: "${loser.title}" (status=${loser.status})`);
     if (hasSubmission.has(loser.id) || hasProposal.has(loser.id)) {
       console.log(
