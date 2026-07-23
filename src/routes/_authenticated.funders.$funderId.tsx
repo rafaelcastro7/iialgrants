@@ -330,16 +330,13 @@ function FunderProfilePage() {
                   </div>
                 )}
                 {funder.website && (
-                  <a
-                    href={funder.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <ExternalLinkPreview
+                    url={funder.website}
                     className="flex items-center gap-2 text-primary hover:underline"
                   >
                     <Globe className="h-4 w-4" />
                     Website
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  </ExternalLinkPreview>
                 )}
               </div>
             </CardContent>
