@@ -1,12 +1,16 @@
 // RSS-driven funder candidate generator. Polls feeds whose items are *grants*
-// (Grants.gov, IDRC, Tri-Council news) and extracts the issuing agency from
-// each item as a funder_candidate. Lightweight: pure regex parser, no deps.
+// (IDRC, Tri-Council news) and extracts the issuing agency from each item as
+// a funder_candidate. Lightweight: pure regex parser, no deps.
+//
+// Grants.gov (US federal) used to be a feed here too
+// (rss.grants.gov/rss/GG_NewOppByCategory.xml) but that URL now 200s with
+// the grants.gov website's HTML, not XML — silently zero real items forever.
+// Replaced by grants-gov.server.ts's real Search2 REST API ingester.
 
 import type { RawCandidate } from "./scoring.server";
 import { parseFeed, type FeedItem } from "@/lib/rss-ingestor.server";
 
 export const GRANT_FEEDS: Array<{ key: string; url: string; defaultAgency?: string }> = [
-  { key: "grants_gov", url: "https://www.grants.gov/rss/GG_NewOppByCategory.xml" },
   {
     key: "idrc_rss",
     url: "https://www.idrc.ca/en/rss.xml",
