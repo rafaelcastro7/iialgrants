@@ -78,6 +78,51 @@ describe("canonicalKey collapses same-funder title variants", () => {
   });
 });
 
+// The URL+funder_id dedup signal added alongside canonical_key (see
+// discoverer.impl.server.ts's insert loops) requires the two titles to share
+// at least one normalized word before trusting a shared URL as evidence of
+// duplication. Driven by two REAL cases found reviewing grants one by one on
+// 2026-07-23: the same NRC "Outreach Initiative" page was discovered as 6
+// separate grants (title-word overlap correctly collapses these), while a
+// broken/generic ISED community-group redirect URL was independently shared
+// by 4 genuinely DIFFERENT real Indigenous-business programs ("Strategic
+// Response Fund", "Grant for Nunavut Employers", "Aboriginal Business
+// Financing Program", "First Peoples Economic Growth Fund") that share no
+// title words at all — a URL-only check would have silently discarded three
+// real grants as "already seen."
+describe("title-word overlap gates the URL-based dedup signal", () => {
+  const sharesWord = (a: string, b: string) => {
+    const wordsA = normalizeTitle(a).split(/\s+/);
+    const wordsB = new Set(normalizeTitle(b).split(/\s+/));
+    return wordsA.some((w) => w && wordsB.has(w));
+  };
+
+  it("NRC Outreach Initiative variants share a title word (safe to trust a shared URL)", () => {
+    const variants = [
+      "NRC Outreach Initiative",
+      "Indigenous Outreach Stream",
+      "Outreach Initiative by the NRC",
+      "Indigenous Outreach Program",
+      "Outreach Initiative by NRC Canada",
+    ];
+    for (let i = 1; i < variants.length; i++) {
+      expect(sharesWord(variants[0], variants[i])).toBe(true);
+    }
+  });
+
+  it("genuinely different programs sharing a fallback URL share no title word", () => {
+    const distinctPrograms = [
+      "Strategic Response Fund",
+      "Grant for Nunavut Employers",
+      "Aboriginal Business Financing Program",
+      "First Peoples Economic Growth Fund",
+    ];
+    for (let i = 1; i < distinctPrograms.length; i++) {
+      expect(sharesWord(distinctPrograms[0], distinctPrograms[i])).toBe(false);
+    }
+  });
+});
+
 describe("isGenericTitle rejects administrative pages despite acronyms", () => {
   const adminTitles = [
     "National Research Council Canada (IRAP) COVID-19 Vaccination Policy",
