@@ -1,9 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Search, X } from "lucide-react";
 import {
+  AMOUNT_PRESETS,
   collectSectors,
   funderOf,
   SORT_LABELS,
+  type AmountPresetKey,
   type GrantLite,
   type SortKey,
 } from "./grant-filters.utils";
@@ -16,6 +18,8 @@ export function GrantFilters({
   setJurisdiction,
   sector,
   setSector,
+  amountPreset,
+  setAmountPreset,
   sortKey,
   setSortKey,
   eligibleOnly,
@@ -30,6 +34,8 @@ export function GrantFilters({
   setJurisdiction: (v: string) => void;
   sector: string;
   setSector: (v: string) => void;
+  amountPreset: AmountPresetKey;
+  setAmountPreset: (v: AmountPresetKey) => void;
   sortKey: SortKey;
   setSortKey: (v: SortKey) => void;
   eligibleOnly: boolean;
@@ -48,12 +54,14 @@ export function GrantFilters({
     search.trim() !== "" ||
     jurisdiction !== "all" ||
     sector !== "all" ||
+    amountPreset !== "all" ||
     eligibleOnly ||
     onlyWithDeadline;
   const clearAll = () => {
     setSearch("");
     setJurisdiction("all");
     setSector("all");
+    setAmountPreset("all");
     setEligibleOnly(false);
     setOnlyWithDeadline(false);
   };
