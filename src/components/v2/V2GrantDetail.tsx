@@ -34,7 +34,7 @@ import {
   Tags,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { MAX_ENRICH_ATTEMPTS, isTerminalGrantStatus } from "@/agents/pipeline-stages.shared";
 import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
 import { EvidenceChip } from "@/components/grants/EvidencePanel";
