@@ -605,7 +605,11 @@ export async function discoverFunderImpl(
         // least as strong evidence of duplication as the title-based key, so
         // it's checked as a second, independent signal here.
         const [{ data: existingByKey }, { data: existingByUrl }] = await Promise.all([
-          supabaseAdmin.from("grants").select("id, times_seen").eq("canonical_key", ck).maybeSingle(),
+          supabaseAdmin
+            .from("grants")
+            .select("id, times_seen")
+            .eq("canonical_key", ck)
+            .maybeSingle(),
           supabaseAdmin
             .from("grants")
             .select("id, times_seen")
