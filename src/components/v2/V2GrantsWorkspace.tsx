@@ -355,6 +355,7 @@ export function V2GrantsWorkspace({
         jurisdictions={jurisdictions}
         sector={sector}
         sectors={sectorOptions}
+        amountPreset={amountPreset}
         onlyWithDeadline={onlyWithDeadline}
         search={search}
         sortKey={sortKey}
