@@ -49,7 +49,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
 
 // Persistent (not per-tab) preference, same rationale as UI_VERSION_STORAGE_KEY
 // in ui-version.ts: which mode a person wants is a standing choice about how
