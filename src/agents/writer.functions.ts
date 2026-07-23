@@ -309,3 +309,43 @@ export const draftSection = createServerFn({ method: "POST" })
 
     return { ok: true, sectionId: section.id, citations: parsed.citations.length, runId };
   });
+
+// Manual section edit — previously content_en could ONLY ever be written by
+// the AI writer above; there was no path for a human to actually rewrite
+// what gets submitted, so "human review" could only ever mean "read it,"
+// never "took responsibility for it." Sets human_edited so submission-time
+// tracking can distinguish AI-verbatim content from human-touched content.
+export const editSectionContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        sectionId: z.string().uuid(),
+        contentEn: z.string().min(1).max(8000),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: section, error: se } = await context.supabase
+      .from("proposal_sections")
+      .select("id, proposal_id")
+      .eq("id", data.sectionId)
+      .maybeSingle();
+    if (se) throw new Error(se.message);
+    if (!section) throw new Error("section_not_found");
+
+    const { error: ue } = await context.supabase
+      .from("proposal_sections")
+      .update({ content_en: data.contentEn, human_edited: true })
+      .eq("id", section.id);
+    if (ue) throw new Error(ue.message);
+
+    // Same reasoning as draftSection: the critic scored the OLD text.
+    await context.supabase
+      .from("proposals")
+      .update({ critic_score: null })
+      .eq("id", section.proposal_id);
+
+    await bumpProposalVersion(context.supabase, section.proposal_id);
+    return { ok: true, sectionId: section.id };
+  });
