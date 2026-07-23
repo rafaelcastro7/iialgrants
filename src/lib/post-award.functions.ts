@@ -177,7 +177,9 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
       // when a grant is won). Previously this returned a hardcoded
       // progress/financial/final list with due_date always null — it looked
       // like real tracked data but wasn't connected to anything.
-      const wonSubmissionIds = (outcomes ?? []).map((o) => o.submission_id).filter(Boolean);
+      const wonSubmissionIds = (outcomes ?? [])
+        .map((o) => o.submission_id)
+        .filter((id): id is string => id != null);
       const { data: items, error: itemsError } =
         wonSubmissionIds.length > 0
           ? await supabase
