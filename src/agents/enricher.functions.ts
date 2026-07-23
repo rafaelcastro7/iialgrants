@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EnricherOutput, PROMPTS } from "@/agents/schemas";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { MAX_ENRICH_ATTEMPTS } from "@/agents/pipeline-stages.shared";
+import { grantTitleTokens, pageLooksRelevantToGrant } from "@/agents/deep-crawl-relevance.shared";
 
 export type EnricherResult = {
   ok: boolean;
