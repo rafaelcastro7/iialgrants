@@ -274,8 +274,13 @@ export const draftSection = createServerFn({ method: "POST" })
     // A prior critic run scored the OLD section content — once it's
     // rewritten, that score no longer describes what's actually on the page.
     // Left in place, canSubmit() would pass a proposal whose current text was
-    // never reviewed by the critic at all.
-    await context.supabase.from("proposals").update({ critic_score: null }).eq("id", proposal.id);
+    // never reviewed by the critic at all. Same reasoning for
+    // human_reviewed_at: a human's earlier confirmation was for the text
+    // that existed then, not for whatever the AI just rewrote it to.
+    await context.supabase
+      .from("proposals")
+      .update({ critic_score: null, human_reviewed_at: null })
+      .eq("id", proposal.id);
 
     // Append immutable citation rows.
     if (parsed.citations.length) {
