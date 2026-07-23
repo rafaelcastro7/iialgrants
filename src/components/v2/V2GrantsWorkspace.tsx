@@ -364,6 +364,7 @@ export function V2GrantsWorkspace({
         onEligibleOnlyChange={onEligibleOnlyChange}
         onJurisdictionChange={onJurisdictionChange}
         onSectorChange={onSectorChange}
+        onAmountPresetChange={onAmountPresetChange}
         onOnlyWithDeadlineChange={onOnlyWithDeadlineChange}
         onSearchChange={onSearchChange}
         onSortKeyChange={onSortKeyChange}
