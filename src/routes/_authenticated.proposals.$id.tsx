@@ -56,6 +56,7 @@ function ProposalDetailPage() {
   const draft = useServerFn(draftSection);
   const critic = useServerFn(runCritic);
   const submit = useServerFn(submitProposal);
+  const confirmReview = useServerFn(confirmHumanReview);
   const exportFile = useServerFn(exportProposalFile);
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
