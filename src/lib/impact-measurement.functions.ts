@@ -117,20 +117,7 @@ export const getAiAuthorshipOutcomeCorrelation = createServerFn({ method: "GET" 
       .in("result", ["won", "lost"]);
     if (outErr) throw new Error(`Failed to load outcomes: ${outErr.message}`);
 
-    const buckets = AUTHORSHIP_BUCKETS.map((b) => {
-      const inBucket = (outcomes ?? []).filter((o) => {
-        const pct = pctById.get(o.submission_id);
-        return pct != null && pct >= b.min && pct <= b.max;
-      });
-      const won = inBucket.filter((o) => o.result === "won").length;
-      const decided = inBucket.length;
-      return {
-        ...b,
-        won,
-        decided,
-        winRatePct: decided >= MIN_SAMPLE_FOR_RATE ? Math.round((won / decided) * 100) : null,
-      };
-    });
+    const buckets = computeAuthorshipBuckets(outcomes ?? [], pctById);
 
     return { buckets, totalDecided: (outcomes ?? []).length };
   });
