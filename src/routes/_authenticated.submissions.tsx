@@ -32,6 +32,24 @@ export const Route = createFileRoute("/_authenticated/submissions")({
 
 type SubmissionRow = Awaited<ReturnType<typeof listSubmissions>>["submissions"][number];
 
+type SubmissionOutcome = {
+  result: string;
+  amount_awarded_cad: number | null;
+  decision_date: string | null;
+};
+
+// outcomes.submission_id is unique (recordOutcome upserts on it), so
+// PostgREST returns this embed as a single object, not an array — reading it
+// as `s.outcome?.[0]` always resolved to undefined, which made every
+// already-decided submission render as if no outcome had been recorded yet
+// (no Won/Lost pill, "Record what happened" offered again, win-rate stuck
+// at 0%).
+function getSubmissionOutcome(s: SubmissionRow): SubmissionOutcome | null {
+  return (s.outcome as SubmissionOutcome | SubmissionOutcome[] | null) instanceof Array
+    ? ((s.outcome as SubmissionOutcome[])[0] ?? null)
+    : ((s.outcome as SubmissionOutcome | null) ?? null);
+}
+
 function SubmissionsPage() {
   const { t } = useTranslation();
   const { version } = useUiVersion();
