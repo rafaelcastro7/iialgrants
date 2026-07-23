@@ -6,7 +6,11 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getProposal } from "@/lib/proposals.functions";
-import { submitProposal, exportProposalFile } from "@/lib/submissions.functions";
+import {
+  submitProposal,
+  exportProposalFile,
+  confirmHumanReview,
+} from "@/lib/submissions.functions";
 import { draftSection } from "@/agents/writer.functions";
 import { runCritic } from "@/agents/critic.functions";
 import { computeProposalReadiness, type ProposalRequirement } from "@/lib/proposal-readiness";
