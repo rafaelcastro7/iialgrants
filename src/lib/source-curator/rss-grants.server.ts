@@ -81,7 +81,7 @@ export async function fetchRssGrantCandidates(
         }
         seen.set(key, {
           name: agency,
-          funder_type: feed.key === "grants_gov" ? "US Federal" : "Federal",
+          funder_type: "Federal",
           website: host || null,
           source_signals: [feed.key],
           raw_metadata: { sample_title: item.title.slice(0, 200), sample_link: item.link },
