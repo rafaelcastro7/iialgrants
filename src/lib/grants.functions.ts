@@ -6,32 +6,15 @@ import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-
 import { scoreGrantForProfile } from "@/lib/grant-search-profile-ranking.shared";
 import { searchGrantCatalogHybrid } from "@/lib/grant-search-hybrid.server";
 
-// A single `.in(column, ids)` with ~100 UUIDs produces a query string long
-// enough that the local Kong/PostgREST gateway intermittently returns
-// "invalid response from upstream server". Chunking keeps each request's URL
-// short enough to avoid that gateway limit; the caller still gets one merged
-// result set. Throws on the first chunk that errors rather than swallowing
-// it, since a partial/silent failure here previously masked every grant's
-// evaluation from the UI.
-async function fetchInChunks<T>(
-  supabase: unknown,
-  table: string,
-  select: string,
-  column: string,
-  ids: string[],
-  extra?: (q: any) => any,
-  chunkSize = 30,
-): Promise<T[]> {
-  const out: T[] = [];
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    const chunk = ids.slice(i, i + chunkSize);
-    let q = (supabase as any).from(table).select(select).in(column, chunk);
-    if (extra) q = extra(q);
-    const { data, error } = await q;
-    if (error) throw new Error(`${table}: ${error.message}`);
-    out.push(...((data ?? []) as T[]));
-  }
-  return out;
+// A single `.in("grant_id", ids)` with ~100 UUIDs produces a query string
+// long enough that the local Kong/PostgREST gateway intermittently returns
+// "invalid response from upstream server". Splitting ids into chunks keeps
+// each request's URL short enough to avoid that gateway limit.
+const EVAL_FETCH_CHUNK_SIZE = 30;
+function chunkIds(ids: string[], size = EVAL_FETCH_CHUNK_SIZE): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) chunks.push(ids.slice(i, i + size));
+  return chunks;
 }
 
 // List grants from the public catalog, sorted by deadline asc / fit_score desc.
