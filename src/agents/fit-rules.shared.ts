@@ -52,14 +52,14 @@ export const DEFAULT_RULES: FitRules = {
   hard_fail_on_amount: false,
   hard_fail_on_deadline: false,
   auto_archive_on_fail: true,
-  applicant_types_allowed: ["nonprofit", "non-profit", "not-for-profit"],
-  applicant_types_excluded: [
-    "charity_only",
-    "municipality_only",
-    "university_only",
-    "individual_only",
-    "for_profit_only",
-  ],
+  // Empty until deriveRulesFromOrg() sets these from the org's declared
+  // `stage` — a fixed "nonprofit"/exclude-for-profit default here would be
+  // wrong for the (very common) for-profit SME/startup case, and the F1
+  // check is skipped entirely when both lists are empty (see
+  // evaluateRules() in fit-rules.server.ts), so an unconfigured org gets no
+  // applicant-type screening rather than a wrong one.
+  applicant_types_allowed: [],
+  applicant_types_excluded: [],
   lead_min_weeks: 4,
   partner_min_weeks: 8,
   iial_capabilities: [
