@@ -216,9 +216,9 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
 
     const partnerNote =
       rr.detected_role === "partner"
-        ? `You'll likely need to apply alongside ${PARTNER_TYPE_LABEL[rr.detected_partner_type ?? "other"]} — the eligibility text implies IIAL can't apply alone.`
+        ? `You'll likely need to apply alongside ${PARTNER_TYPE_LABEL[rr.detected_partner_type ?? "other"]} — the eligibility text implies ${orgName} can't apply alone.`
         : rr.detected_role === "lead"
-          ? "IIAL can apply as the lead applicant — no partner appears to be required."
+          ? `${orgName} can apply as the lead applicant — no partner appears to be required.`
           : "Role unclear from the eligibility text — confirm with the funder before applying.";
 
     // Merge the LLM-drafted mandatory components with the grant's own
