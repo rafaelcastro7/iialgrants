@@ -271,8 +271,32 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
                 .filter((c) => c.status === "pass" || c.status === "fail")
                 .flatMap((c) => RULE_FIELD_MAP[c.id] ?? []),
             );
+            // Sector evidence needs finer-grained filtering than a field-name
+            // prefix: "sectors.ai" and "sectors.forestry" both start with
+            // "sectors", but only the sector tokens actually named in the
+            // strategic-fit rule's matched-overlap set drove the score.
+            // Without this, an unrelated extracted sector reads as if it
+            // were cited evidence for the match, undermining trust in the
+            // whole rationale.
+            const sectorCheck = rules.checks.find(
+              (c) =>
+                c.id === "sop_filter_4_strategic" && (c.status === "pass" || c.status === "fail"),
+            );
+            const sectorMatch = sectorCheck ? /\{([^}]*)\}/.exec(sectorCheck.detail) : null;
+            const matchedSectors = sectorMatch
+              ? new Set(
+                  sectorMatch[1]
+                    .split(",")
+                    .map((s) => s.trim().toLowerCase())
+                    .filter(Boolean),
+                )
+              : null;
             const isRelevant = (field: string) => {
               const f = (field ?? "").toLowerCase();
+              if (f.startsWith("sectors.") && matchedSectors) {
+                const val = f.slice("sectors.".length).replace(/_/g, " ");
+                return [...matchedSectors].some((m) => m.includes(val) || val.includes(m));
+              }
               return relevantFields.size === 0 || [...relevantFields].some((w) => f.includes(w));
             };
             const scoringEvidence = evidence.filter((e) => isRelevant(e.field));
