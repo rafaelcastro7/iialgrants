@@ -85,27 +85,41 @@ export const submitProposal = createServerFn({ method: "POST" })
       throw new Error(`grant_not_in_proposal:${grantStatus ?? "unknown"}`);
     }
 
+    // Fetched unconditionally (not just under !force) — human_edited_pct is
+    // captured as a submission-time snapshot regardless of whether the
+    // quality gate below was forced, since it answers a different question
+    // ("how much of this was AI-verbatim") than the gate does.
+    const { data: gateSections } = await supabase
+      .from("proposal_sections")
+      .select("id, kind, heading_en, content_en, citations, critic_notes, human_edited")
+      .eq("proposal_id", proposal.id);
+    const sectionsWithContent = (gateSections ?? []).filter(
+      (s) => ((s as { content_en?: string | null }).content_en ?? "").trim().length > 0,
+    );
+    const humanEditedPct =
+      sectionsWithContent.length > 0
+        ? Math.round(
+            (sectionsWithContent.filter((s) => (s as { human_edited?: boolean }).human_edited)
+              .length /
+              sectionsWithContent.length) *
+              100,
+          )
+        : null;
+
     // S3a reviewer-simulation gate: never submit a proposal that has not been
     // reviewed, scores poorly, has no drafted content, or leaves a critical
     // funder requirement uncovered — unless the caller explicitly forces it.
     if (!data.force) {
-      const { data: gateSections } = await supabase
-        .from("proposal_sections")
-        .select("id, kind, heading_en, content_en, citations, critic_notes")
-        .eq("proposal_id", proposal.id);
       const grant = proposal.grant as { requirements?: unknown } | null;
       const readiness = computeProposalReadiness({
         sections: (gateSections ?? []) as unknown as ProposalSectionForReadiness[],
         requirements: (grant?.requirements ?? []) as ProposalRequirement[],
       });
-      const draftedSections = (gateSections ?? []).filter(
-        (s) => ((s as { content_en?: string | null }).content_en ?? "").trim().length > 0,
-      ).length;
       const gate = canSubmit({
         criticScore: (proposal as { critic_score?: number | null }).critic_score ?? null,
         readinessScore: readiness.score,
         openCriticalRequirements: readiness.openCriticalRequirements.length,
-        draftedSections,
+        draftedSections: sectionsWithContent.length,
       });
       if (!gate.ok) {
         throw new Error(`submit_blocked:${gate.reasons.join(",")}`);
