@@ -189,51 +189,9 @@ export async function enrichGrantImpl(
   };
   const pageForQuote = (quote: string) =>
     pages.find((page) => snippetIsGrounded(quote, page.markdown)) ?? null;
-  const grantTitleTokens: string[] = Array.from(
-    new Set<string>(
-      g.title
-        .normalize("NFKD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim()
-        .split(/\s+/)
-        .filter(
-          (token: string) =>
-            token.length >= 4 &&
-            ![
-              "grant",
-              "grants",
-              "fund",
-              "funding",
-              "program",
-              "programme",
-              "award",
-              "awards",
-              "support",
-            ].includes(token),
-        ),
-    ),
-  );
-  const pageLooksRelevantToGrant = (page: { url: string; markdown: string }) => {
-    if (grantTitleTokens.length === 0) return true;
-    // Only the URL's own leaf path segment counts, not the full URL \u2014 a hub
-    // page's children commonly share a parent path segment (e.g. a Quebec
-    // tax-credit hub linking ".../attestations-de-credits-dimpots/<program>"
-    // for several unrelated sibling programs), and including the full URL
-    // let that shared parent segment alone satisfy the overlap check for a
-    // sub-page about a completely different program. Confirmed live: the
-    // "Tax Credit Attestations" grant picked up a deadline from a
-    // journalism/press tax-credit sibling page whose own content never
-    // mentions "credit" or "attestations" \u2014 only the shared parent slug did.
-    const leafSegment = page.url.replace(/\/+$/, "").split("/").pop() ?? "";
-    const hay = `${leafSegment}\n${page.markdown.slice(0, 2_500)}`
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-    const overlap = grantTitleTokens.filter((token: string) => hay.includes(token)).length;
-    return overlap >= Math.min(2, grantTitleTokens.length);
-  };
+  const titleTokens = grantTitleTokens(g.title);
+  const isRelevantPage = (page: { url: string; markdown: string }) =>
+    pageLooksRelevantToGrant(page, titleTokens);
 
   await trace("scrape", `Scraped ${scraped.markdown.length} chars via ${scraped.via}`, "done", {
     via: scraped.via,
