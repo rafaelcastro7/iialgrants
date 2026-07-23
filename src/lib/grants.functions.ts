@@ -137,11 +137,15 @@ export const listGrants = createServerFn({ method: "GET" })
       }
     >();
     if (ids.length > 0) {
-      const { data: evals } = await context.supabase
+      const { data: evals, error: evalsError } = await context.supabase
         .from("grant_evaluations")
         .select("grant_id, fit_score, eligibility_pass, rationale_en, rationale_fr, created_at")
         .eq("user_id", context.userId)
         .in("grant_id", ids);
+      console.error(
+        "[DEBUG listGrants]",
+        JSON.stringify({ userId: context.userId, idsCount: ids.length, firstIds: ids.slice(0, 3), evalsCount: evals?.length, evalsError }),
+      );
       for (const e of evals ?? []) {
         evalsByGrant.set(e.grant_id, {
           fit_score: Number(e.fit_score),
