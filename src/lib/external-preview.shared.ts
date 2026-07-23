@@ -6,7 +6,7 @@
 // server fetch internal infrastructure. http(s)-only, and rejects loopback /
 // private / link-local hosts, including the cloud metadata IP.
 
-const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "169.254.169.254"]);
+const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]", "169.254.169.254"]);
 
 const BLOCKED_HOST_PATTERNS = [
   /^127\./, // loopback
