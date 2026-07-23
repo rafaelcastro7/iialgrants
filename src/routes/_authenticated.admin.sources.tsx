@@ -259,6 +259,7 @@ function SourcesPage() {
                       <TableCell className="max-w-xs">
                         <ExternalLinkPreview
                           url={g.url}
+                          showIcon={false}
                           className="text-xs truncate block hover:underline"
                         >
                           {g.url}
