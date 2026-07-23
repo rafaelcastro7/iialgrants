@@ -230,27 +230,33 @@ export function OpportunityBriefPanel({
               )}
             </section>
 
-            <Separator />
+            {showScreeningDetails && (
+              <>
+                <Separator />
 
-            <section>
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Screening details
-              </h4>
-              <ul className="space-y-1 text-xs">
-                {b.filters.map((c) => (
-                  <li key={c.id} className="flex items-start gap-2">
-                    <StatusIcon s={c.status} />
-                    <span className="flex-1">
-                      <span className="font-medium">{c.label}</span>
-                      {c.hard && (
-                        <span className="ml-1 text-[10px] uppercase text-destructive">hard</span>
-                      )}
-                      <span className="block text-muted-foreground">{c.detail}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+                <section>
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Screening details
+                  </h4>
+                  <ul className="space-y-1 text-xs">
+                    {b.filters.map((c) => (
+                      <li key={c.id} className="flex items-start gap-2">
+                        <StatusIcon s={c.status} />
+                        <span className="flex-1">
+                          <span className="font-medium">{c.label}</span>
+                          {c.hard && (
+                            <span className="ml-1 text-[10px] uppercase text-destructive">
+                              hard
+                            </span>
+                          )}
+                          <span className="block text-muted-foreground">{c.detail}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            )}
           </>
         )}
       </CardContent>
