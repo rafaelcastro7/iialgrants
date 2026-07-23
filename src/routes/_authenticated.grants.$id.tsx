@@ -5,16 +5,7 @@ import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-
 import { useServerFn } from "@tanstack/react-start";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import {
-  Activity,
-  ArrowLeft,
-  Building2,
-  Calendar,
-  DollarSign,
-  ExternalLink,
-  Globe,
-  Tag,
-} from "lucide-react";
+import { Activity, ArrowLeft, Building2, Calendar, DollarSign, Globe, Tag } from "lucide-react";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
 import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
