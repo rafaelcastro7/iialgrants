@@ -76,7 +76,9 @@ export const extractCitations = createServerFn({ method: "POST" })
           verified: true,
           retracted: false,
           inlineRef: row.marker,
-          selfCitation: (row.snippet ?? "").toLowerCase().includes("iial demo co"),
+          selfCitation: Boolean(
+            orgNameLower && (row.snippet ?? "").toLowerCase().includes(orgNameLower),
+          ),
         });
       }
 
