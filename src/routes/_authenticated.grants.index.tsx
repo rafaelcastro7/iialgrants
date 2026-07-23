@@ -423,6 +423,7 @@ function GrantsPage() {
           isAdmin={isAdmin}
           jurisdiction={jurisdiction}
           sector={sector}
+          amountPreset={amountPreset}
           onlyWithDeadline={onlyWithDeadline}
           pending={pending}
           search={search}
