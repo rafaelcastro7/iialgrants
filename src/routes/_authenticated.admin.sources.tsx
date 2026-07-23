@@ -424,14 +424,12 @@ function SourcesPage() {
                     <TableCell>
                       <div className="font-medium">{f.funder_name}</div>
                       {f.source_url && (
-                        <a
-                          href={f.source_url}
-                          target="_blank"
-                          rel="noreferrer"
+                        <ExternalLinkPreview
+                          url={f.source_url}
                           className="text-xs text-muted-foreground hover:underline truncate block max-w-xs"
                         >
                           {f.source_url}
-                        </a>
+                        </ExternalLinkPreview>
                       )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{f.grants_total}</TableCell>
