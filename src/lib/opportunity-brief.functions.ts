@@ -172,10 +172,10 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              "You generate one section of an IIAL Opportunity Brief (SOP v2). " +
+              `You generate one section of an Opportunity Brief (SOP v2) for ${orgName}. ` +
               "Return strict JSON: {strategic_angle:string, mandatory_components:string[], risks:string[]}. " +
               "Output language: ENGLISH only. " +
-              "strategic_angle = 2-3 sentences explaining which IIAL capability this program leverages and what we gain. " +
+              `strategic_angle = 2-3 sentences explaining which of ${orgName}'s capabilities this program leverages and what they gain. ` +
               "mandatory_components = bullet list of required studies/assessments/deliverables explicitly named in the grant. " +
               "risks = bullet list of eligibility ambiguities, capacity constraints, or open questions. " +
               "Never invent: if unknown, return an empty array.",
