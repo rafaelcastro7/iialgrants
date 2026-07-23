@@ -74,6 +74,7 @@ type V2GrantsWorkspaceProps = {
   isAdmin: boolean;
   jurisdiction: string;
   sector: string;
+  amountPreset: AmountPresetKey;
   onlyWithDeadline: boolean;
   pending: string | null;
   search: string;
@@ -91,6 +92,7 @@ type V2GrantsWorkspaceProps = {
   onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
   onJurisdictionChange: (next: string) => void;
   onSectorChange: (next: string) => void;
+  onAmountPresetChange: (next: AmountPresetKey) => void;
   onOnlyWithDeadlineChange: (next: boolean) => void;
   onSearchChange: (next: string) => void;
   onSelectedFundersChange: (next: Set<string>) => void;
