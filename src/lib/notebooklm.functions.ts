@@ -368,9 +368,11 @@ export async function buildNotebookBriefingImpl(opts: {
       parts.push(
         `## Cross-grant questions for NotebookLM`,
         ``,
-        `- Which 3 grants offer the best risk-adjusted return for IIAL as **Lead**?`,
+        `- Which 3 grants offer the best risk-adjusted return for ${orgName} as **Lead**?`,
         `- Which grants fit better as **Partner** (lower lift, faster turnaround)?`,
-        `- Group the grants by IIAL capability (WCIS / micro-credentials / applied research / smart cities / climate / international dev).`,
+        orgCapabilities.length > 0
+          ? `- Group the grants by ${orgName}'s capabilities (${orgCapabilities.join(" / ")}).`
+          : `- Group the grants by capability area — add sectors/focus areas to the org profile to sharpen this.`,
         `- Flag any grant where eligibility is ambiguous and needs a phone call to the funder.`,
         `- Build a 90-day calendar of prep windows and submission dates.`,
         `- Which funders should we cultivate a long-term relationship with based on disbursement patterns?`,
