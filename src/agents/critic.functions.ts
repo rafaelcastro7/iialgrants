@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CriticOutput, PROMPTS } from "@/agents/schemas";
 import { bumpProposalVersion } from "@/lib/proposal-versioning";
+import { detectAiCliches } from "@/agents/genericity-check.shared";
 
 export const runCritic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
