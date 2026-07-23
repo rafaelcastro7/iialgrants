@@ -185,14 +185,12 @@ function AuditPage() {
                   <span className="text-muted-foreground">
                     conf {Math.round(Number(e.confidence) * 100)}%
                   </span>
-                  <a
-                    href={e.source_url}
-                    target="_blank"
-                    rel="noreferrer"
+                  <ExternalLinkPreview
+                    url={e.source_url}
                     className="ml-auto text-blue-600 hover:underline inline-flex items-center gap-1"
                   >
-                    source <ExternalLink className="h-3 w-3" />
-                  </a>
+                    source
+                  </ExternalLinkPreview>
                 </div>
                 <div className="text-muted-foreground italic truncate" title={e.snippet}>
                   "{e.snippet}"
