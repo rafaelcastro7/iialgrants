@@ -2494,6 +2494,7 @@ export type Database = {
           confirmation_number: string | null
           created_at: string
           grant_id: string
+          human_edited_pct: number | null
           id: string
           language: Database["public"]["Enums"]["app_lang"]
           method: string
@@ -2509,6 +2510,7 @@ export type Database = {
           confirmation_number?: string | null
           created_at?: string
           grant_id: string
+          human_edited_pct?: number | null
           id?: string
           language?: Database["public"]["Enums"]["app_lang"]
           method: string
@@ -2524,6 +2526,7 @@ export type Database = {
           confirmation_number?: string | null
           created_at?: string
           grant_id?: string
+          human_edited_pct?: number | null
           id?: string
           language?: Database["public"]["Enums"]["app_lang"]
           method?: string
