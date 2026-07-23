@@ -601,9 +601,20 @@ export async function discoverFunderImpl(
         // "Outreach Initiative" URL was discovered as 6 separate grants
         // ("NRC Outreach Initiative", "Indigenous Outreach Stream", "Outreach
         // Initiative by the NRC", ...) since none of their title wordings
-        // matched closely enough. A same-funder + exact-URL match is at
-        // least as strong evidence of duplication as the title-based key, so
-        // it's checked as a second, independent signal here.
+        // matched closely enough. A same-funder + exact-URL match is
+        // additional evidence, checked as a second, independent signal here
+        // — but NOT sufficient alone: some funder pages are generic/broken
+        // fallback URLs (e.g. a Salesforce community redirect) that several
+        // genuinely DIFFERENT programs share because the discoverer couldn't
+        // resolve each one's own specific page. Confirmed live: "Strategic
+        // Response Fund", "Grant for Nunavut Employers", "Aboriginal Business
+        // Financing Program" and "First Peoples Economic Growth Fund" are
+        // real, distinct Indigenous-business programs that all shared one
+        // such fallback URL — merging them by URL alone would have silently
+        // discarded three real grants. Requiring at least one shared
+        // normalized title word keeps the NRC Outreach case (all wordings
+        // share "outreach") while rejecting unrelated titles that merely
+        // happen to share a fallback URL.
         const [{ data: existingByKey }, { data: existingByUrl }] = await Promise.all([
           supabaseAdmin
             .from("grants")
@@ -612,12 +623,17 @@ export async function discoverFunderImpl(
             .maybeSingle(),
           supabaseAdmin
             .from("grants")
-            .select("id, times_seen")
+            .select("id, times_seen, title")
             .eq("funder_id", F.id)
             .eq("url", grantUrl)
             .maybeSingle(),
         ]);
-        const existing = existingByKey ?? existingByUrl;
+        const urlMatchSharesTitleWord =
+          existingByUrl &&
+          normalizeTitle((existingByUrl as { title?: string }).title ?? "")
+            .split(/\s+/)
+            .some((w) => w && normalizeTitle(g.title).split(/\s+/).includes(w));
+        const existing = existingByKey ?? (urlMatchSharesTitleWord ? existingByUrl : null);
         if (existing) {
           await supabaseAdmin
             .from("grants")
