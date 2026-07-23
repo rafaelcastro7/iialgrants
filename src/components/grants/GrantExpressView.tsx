@@ -360,14 +360,9 @@ function MatchCard({ g, mode }: { g: GrantRowData; mode: "progress" | "match" })
               <ArrowRight className="ml-1 h-3.5 w-3.5" />
             </Link>
           </Button>
-          <a
-            href={g.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:underline"
-          >
+          <ExternalLinkPreview url={g.url} className="text-xs text-muted-foreground hover:underline">
             Official page
-          </a>
+          </ExternalLinkPreview>
         </div>
       </div>
     </li>
