@@ -42,6 +42,10 @@ for (const g of candidates ?? []) {
       console.log(`  enrich error: ${enrichResult.error ?? "unknown"}`);
       continue;
     }
+    if (enrichResult.skipped) {
+      console.log(`  skipping evaluation: enrichment did not complete (${enrichResult.reason})`);
+      continue;
+    }
     const evalResult = await evaluateGrantImpl({ grantId: g.id, userId, userSupabase: supabase });
     console.log(`evaluate: ${JSON.stringify(evalResult).slice(0, 300)}`);
   } catch (e) {
