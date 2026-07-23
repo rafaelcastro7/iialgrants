@@ -121,13 +121,7 @@ function SubmissionsPage() {
         )}
         {data.submissions.map((s) => {
           const grant = s.grant as { id: string; title: string; title_fr: string | null } | null;
-          const oc = (
-            s.outcome as Array<{
-              result: string;
-              amount_awarded_cad: number | null;
-              decision_date: string | null;
-            }> | null
-          )?.[0];
+          const oc = getSubmissionOutcome(s);
           return (
             <Card key={s.id}>
               <CardHeader>
