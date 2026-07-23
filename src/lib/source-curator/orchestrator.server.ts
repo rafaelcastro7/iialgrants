@@ -249,7 +249,9 @@ async function ingestorsForTier(
 
   if (tier === "A" || tier === "all") {
     const { fetchRssGrantCandidates } = await import("./rss-grants.server");
+    const { fetchGrantsGovAgencies } = await import("./grants-gov.server");
     out.push({ key: "rss_grants_bundle", fn: () => fetchRssGrantCandidates(cfg.extraRssFeeds) });
+    out.push({ key: "grants_gov_api", fn: () => fetchGrantsGovAgencies() });
   }
 
   if (tier === "B" || tier === "all") {
