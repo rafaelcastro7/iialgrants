@@ -6,8 +6,9 @@
 // DB trigger.
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowUpRight, ExternalLink, ShieldCheck, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertTriangle, ArrowUpRight, ShieldCheck, X } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { cn } from "@/lib/utils";
 import { canTransition, isGrantStatus, type GrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "./GrantRow";
