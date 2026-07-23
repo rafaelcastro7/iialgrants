@@ -124,7 +124,11 @@ export function ExternalLinkPreview({
               {hostnameOf(url)}
             </div>
             <SheetTitle className="text-base leading-snug">
-              {isLoading ? <Skeleton className="h-5 w-3/4" /> : (data?.ok ? data.title : null) || "Preview"}
+              {isLoading ? (
+                <Skeleton className="h-5 w-3/4" />
+              ) : (
+                (data?.ok ? data.title : null) || "Preview"
+              )}
             </SheetTitle>
             <SheetDescription className="text-[11px] break-all font-mono">{url}</SheetDescription>
           </SheetHeader>

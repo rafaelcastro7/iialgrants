@@ -641,7 +641,10 @@ function primaryCta({
   }
   // submitted
   return (
-    <ExternalLinkPreview url={g.url} className={buttonVariants({ size: "sm", variant: "outline", className: baseCls })}>
+    <ExternalLinkPreview
+      url={g.url}
+      className={buttonVariants({ size: "sm", variant: "outline", className: baseCls })}
+    >
       Open funder page
     </ExternalLinkPreview>
   );
