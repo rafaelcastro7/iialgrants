@@ -353,7 +353,17 @@ function GrantsPage() {
         }),
         sortKey,
       ) as GrantRowData[],
-    [data.grants, search, serverSearch, jurisdiction, sector, sortKey, eligibleOnly, onlyWithDeadline],
+    [
+      data.grants,
+      search,
+      serverSearch,
+      jurisdiction,
+      sector,
+      amountPreset,
+      sortKey,
+      eligibleOnly,
+      onlyWithDeadline,
+    ],
   );
 
   // Search/jurisdiction/eligibleOnly/onlyWithDeadline live in GrantFilters,
