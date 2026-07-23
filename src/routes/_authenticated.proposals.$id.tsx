@@ -228,6 +228,7 @@ function ProposalDetailPage() {
     low_critic_score: "the quality review score is below the submit threshold",
     open_critical_requirements: "a critical funder requirement is not yet covered",
     low_readiness: "most sections are still too thin or missing citations",
+    human_review_not_confirmed: "the human-review confirmation was not recorded",
   };
 
   async function doSubmit(method: string, confirmationNumber: string, force = false) {
@@ -235,6 +236,10 @@ function ProposalDetailPage() {
     setErr(null);
     setSubmitDialogOpen(false);
     try {
+      // The dialog's checkbox is a client-side prompt; this is the real,
+      // server-recorded confirmation submitProposal requires and can never
+      // bypass, even with force — see confirmHumanReview's own comment.
+      await confirmReview({ data: { proposalId: id } });
       await submit({
         data: {
           proposalId: id,
