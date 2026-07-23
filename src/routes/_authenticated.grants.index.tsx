@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   applyGrantFilters,
   sortGrants,
+  type AmountPresetKey,
   type SortKey,
 } from "@/components/grants/grant-filters.utils";
 import { EventLog } from "@/components/grants/EventLog";
