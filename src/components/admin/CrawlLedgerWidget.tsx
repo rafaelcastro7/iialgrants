@@ -10,6 +10,7 @@ import {
 } from "@/lib/crawl-ledger.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—";
