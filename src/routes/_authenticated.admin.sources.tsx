@@ -427,6 +427,7 @@ function SourcesPage() {
                       {f.source_url && (
                         <ExternalLinkPreview
                           url={f.source_url}
+                          showIcon={false}
                           className="text-xs text-muted-foreground hover:underline truncate block max-w-xs"
                         >
                           {f.source_url}
