@@ -122,8 +122,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: SlidersHorizontal,
       },
       { to: "/manual", label: "Guide", description: "System guide", icon: BookOpen },
-      { to: "/compliance", label: "Governance", description: "Policy and assurance", icon: Shield },
-      { to: "/privacy", label: "Privacy", description: "Local-first posture", icon: Scale },
+      {
+        to: "/privacy",
+        label: "Privacy & governance",
+        description: "Consents, data rights, compliance",
+        icon: Scale,
+      },
     ],
   },
   {
