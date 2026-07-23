@@ -218,6 +218,54 @@ export const recordOutcome = createServerFn({ method: "POST" })
         .eq("status", "submitted");
       if (ge2) throw new Error(ge2.message);
     }
+
+    // Winning a grant creates real reporting obligations — without this, the
+    // Awards page's "Reporting Deadlines" panel had nothing real to show and
+    // fell back to a hardcoded placeholder list (progress/financial/final
+    // report, every due_date null) that looked real but wasn't. Only the two
+    // cadences a funder relationship reliably implies get auto-created here;
+    // a final report's due date depends on project length we don't track, so
+    // that one is left for the org to add manually via the Compliance
+    // Calendar once they know the real date. Guarded so re-recording an
+    // outcome (e.g. correcting a mistake) doesn't stack duplicate items.
+    if (data.result === "won") {
+      const { count: existingCount } = await supabase
+        .from("compliance_items")
+        .select("id", { count: "exact", head: true })
+        .eq("submission_id", sub.id);
+      if (!existingCount) {
+        const { orgId } = await assertEntityInUserOrg(supabase, userId, "submission", sub.id);
+        const baseDate = data.decision_date ? new Date(data.decision_date) : new Date();
+        const dueDate = (days: number) => {
+          const d = new Date(baseDate);
+          d.setDate(d.getDate() + days);
+          return d.toISOString().split("T")[0];
+        };
+        const { error: ciError } = await supabase.from("compliance_items").insert([
+          {
+            submission_id: sub.id,
+            type: "progress_report",
+            title: "Progress report",
+            due_date: dueDate(90),
+            frequency: "quarterly",
+            status: "pending",
+            org_id: orgId,
+            created_by: userId,
+          },
+          {
+            submission_id: sub.id,
+            type: "financial_report",
+            title: "Financial report",
+            due_date: dueDate(365),
+            frequency: "annual",
+            status: "pending",
+            org_id: orgId,
+            created_by: userId,
+          },
+        ]);
+        if (ciError) throw new Error(ciError.message);
+      }
+    }
     return { ok: true };
   });
 
