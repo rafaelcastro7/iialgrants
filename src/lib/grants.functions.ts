@@ -550,12 +550,16 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     const ids = (candidates ?? []).map((g) => g.id);
     if (ids.length === 0) return { ok: true, evaluated: 0, skipped: 0 };
 
-    const { data: existing } = await context.supabase
-      .from("grant_evaluations")
-      .select("grant_id")
-      .eq("user_id", context.userId)
-      .in("grant_id", ids);
-    const done = new Set((existing ?? []).map((e) => e.grant_id));
+    const done = new Set<string>();
+    for (const chunk of chunkIds(ids)) {
+      const { data: existing, error: existingError } = await context.supabase
+        .from("grant_evaluations")
+        .select("grant_id")
+        .eq("user_id", context.userId)
+        .in("grant_id", chunk);
+      if (existingError) throw new Error(`grant_evaluations: ${existingError.message}`);
+      for (const e of existing ?? []) done.add(e.grant_id);
+    }
     const todo = ids.filter((id) => !done.has(id)).slice(0, data.limit);
 
     if (todo.length === 0) return { ok: true, evaluated: 0, skipped: 0 };
