@@ -107,6 +107,6 @@ for (const c of candidates as Candidate[]) {
 }
 
 console.log(
-  `\n${promoted} ${apply ? "promoted" : "would be promoted"}, ${excludedNotAFunder} excluded (not a funder), ${excludedArtifact} excluded (multi-entity artifact), ${excludedAlreadyExists} excluded (name already in funders).`,
+  `\n${promoted} ${apply ? "promoted" : "would be promoted"}, ${excludedNotAFunder} excluded (not a funder), ${excludedArtifact} excluded (multi-entity artifact), ${excludedAlreadyExists} excluded (name already in funders), ${excludedNoWebsite} left as candidates (no website — not crawlable yet).`,
 );
 if (!apply) console.log("Dry run — re-run with --apply to actually write.");
