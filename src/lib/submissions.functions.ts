@@ -13,6 +13,7 @@ import {
   type SubmitGateInput,
 } from "@/lib/submit-gate.shared";
 import { computeHumanEditedPct } from "@/lib/authorship-correlation.shared";
+import { assertEntityInUserOrg } from "@/lib/tenant-access.server";
 
 export { canSubmit, MIN_CRITIC_SCORE_TO_SUBMIT, type SubmitGateInput };
 
