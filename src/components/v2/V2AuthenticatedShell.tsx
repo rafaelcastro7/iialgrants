@@ -24,7 +24,6 @@ import {
   Search,
   Send,
   Settings,
-  Shield,
   SlidersHorizontal,
   Sparkles,
   Target,
