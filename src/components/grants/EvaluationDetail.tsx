@@ -22,6 +22,7 @@ import { getGrantAudit } from "@/lib/grant-audit.functions";
 import type { AxisScore } from "@/agents/fit-rules.shared";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { Button } from "@/components/ui/button";
 
 const STATUS_ICON = {
