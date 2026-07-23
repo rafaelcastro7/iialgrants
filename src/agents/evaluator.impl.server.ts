@@ -269,6 +269,38 @@ export async function evaluateGrantImpl(opts: {
     throw new Error(`grant_evaluations_upsert_failed: ${upErr.message}`);
   }
 
+  // "Nothing missed" notification — competing tools (Grants.gov saved-search
+  // alerts, Submittable's "follow a funder") tell the user the moment a new
+  // match appears; this app previously only ever notified on deadlines. Uses
+  // the same ~80%-fit bar as the opportunity brief's cultivation heuristic.
+  // Only fires once per grant (checked before insert) so re-evaluating an
+  // already-notified grant doesn't spam the bell every time fit-rules change.
+  if (eligibilityPass && combinedFit >= 80) {
+    try {
+      const { data: already } = await userSupabase
+        .from("notifications")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("grant_id", g.id)
+        .eq("kind", "strong_fit")
+        .limit(1);
+      if (!already || already.length === 0) {
+        const grantTitle = (g as { title?: string }).title ?? "a grant";
+        await userSupabase.from("notifications").insert({
+          user_id: userId,
+          grant_id: g.id,
+          kind: "strong_fit",
+          title_en: `Strong match: ${combinedFit}% fit`,
+          title_fr: `Bonne correspondance : ${combinedFit}% de compatibilité`,
+          body_en: `"${grantTitle}" scored ${combinedFit}% against your organization profile.`,
+          body_fr: `« ${grantTitle} » a obtenu ${combinedFit}% par rapport à votre profil d'organisation.`,
+        });
+      }
+    } catch {
+      // Best-effort — a notification failure must never fail the evaluation itself.
+    }
+  }
+
   try {
     const { recordEvidence } = await import("@/agents/evidence.server");
     const grantUrl = (g as { url?: string }).url ?? "";
