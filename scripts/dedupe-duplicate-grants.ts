@@ -3,14 +3,28 @@
 // discovery runs produced multiple grant rows for the same underlying page
 // (confirmed live: 19 URL+funder clusters, up to 6 duplicates each). Fixed
 // going forward in discoverer.impl.server.ts (URL+funder_id is now an
-// independent dedup signal); this script resolves the rows that already
-// exist. Canonical choice per cluster: has a submission > has a proposal >
-// highest fit_score > most non-null enrichment fields > earliest discovered.
-// Losers are ARCHIVED (never deleted) with a note pointing at the canonical
-// row, so history stays intact and reversible.
+// independent dedup signal, gated on shared title words — see that file's
+// comments); this script resolves the rows that already exist, using the
+// SAME title-word-overlap gate so it never merges genuinely different
+// programs that happen to share a generic/broken fallback URL (confirmed
+// live: "Strategic Response Fund" / "Grant for Nunavut Employers" /
+// "Aboriginal Business Financing Program" / "First Peoples Economic Growth
+// Fund" are real, distinct programs sharing exactly such a URL). Canonical
+// choice per cluster: has a submission > has a proposal > highest fit_score
+// > most non-null enrichment fields > earliest discovered. Losers are
+// ARCHIVED (never deleted) with a note pointing at the canonical row, so
+// history stays intact and reversible.
 //
 // Usage: bun scripts/dedupe-duplicate-grants.ts [--apply]
 import { createClient } from "@supabase/supabase-js";
+import { normalizeTitle } from "../src/agents/discoverer.impl.server";
+
+function sharesTitleWord(a: string, b: string): boolean {
+  const wordsB = new Set(normalizeTitle(b).split(/\s+/));
+  return normalizeTitle(a)
+    .split(/\s+/)
+    .some((w) => w && wordsB.has(w));
+}
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
