@@ -193,6 +193,11 @@ export const getReportingDeadlines = createServerFn({ method: "GET" })
         list.push(item);
         itemsBySubmission.set(item.submission_id, list);
       }
+      // Sort each submission's items by due date so index [0] genuinely is
+      // the next one due, not just insertion order.
+      for (const list of itemsBySubmission.values()) {
+        list.sort((a, b) => a.due_date.localeCompare(b.due_date));
+      }
 
       const deadlines = (outcomes || []).map((o) => {
         const submission = Array.isArray(o.submission) ? o.submission[0] : o.submission;
