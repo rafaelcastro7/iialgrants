@@ -13,8 +13,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "@/lib/admin-guard";
 
-const AGENTS = ["discoverer", "enricher", "evaluator", "strategist", "writer", "critic"] as const;
-
 export const getRateLimitStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
