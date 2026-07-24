@@ -3,14 +3,10 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  getRateLimitStatus,
-  getCacheStats,
-  getBackgroundJobsStatus,
-} from "@/lib/platform-monitoring.functions";
+import { getRateLimitStatus, getCacheStats } from "@/lib/platform-monitoring.functions";
 import { PageTransition } from "@/components/PageTransition";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
-import { Shield, Database, Clock, Activity, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Shield, Database } from "lucide-react";
 
 const rateLimitQO = queryOptions({
   queryKey: ["monitoring", "rate-limit"],
@@ -22,17 +18,11 @@ const cacheQO = queryOptions({
   queryFn: () => getCacheStats({ data: {} }),
 });
 
-const jobsQO = queryOptions({
-  queryKey: ["monitoring", "jobs"],
-  queryFn: () => getBackgroundJobsStatus({ data: {} }),
-});
-
 export const Route = createFileRoute("/_authenticated/admin/monitoring")({
   head: () => ({ meta: [{ title: "Platform Monitoring — IIAL" }] }),
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(rateLimitQO);
     await context.queryClient.ensureQueryData(cacheQO);
-    await context.queryClient.ensureQueryData(jobsQO);
   },
   component: MonitoringPage,
 });
@@ -48,12 +38,6 @@ function MonitoringPage() {
   const { data: cache } = useSuspenseQuery({
     queryKey: ["monitoring", "cache"],
     queryFn: () => fetchCache({ data: {} }),
-  });
-
-  const fetchJobs = useServerFn(getBackgroundJobsStatus);
-  const { data: jobs } = useSuspenseQuery({
-    queryKey: ["monitoring", "jobs"],
-    queryFn: () => fetchJobs({ data: {} }),
   });
 
   return (
