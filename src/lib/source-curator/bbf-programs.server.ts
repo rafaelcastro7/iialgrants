@@ -5,12 +5,12 @@
 import ExcelJS from "exceljs";
 import type { RawCandidate } from "./scoring.server";
 
-const PACKAGE_URL =
+export const PACKAGE_URL =
   "https://open.canada.ca/data/api/3/action/package_show?id=4e75337e-70d0-4ed7-92d1-3b85192ec6b1";
 
 type CkanResource = { url?: string; format?: string; name?: string; last_modified?: string | null };
 
-async function findLatestWorkbook(): Promise<string> {
+export async function findLatestWorkbook(): Promise<string> {
   const response = await fetch(PACKAGE_URL);
   if (!response.ok) throw new Error(`bbf_package_http_${response.status}`);
   const payload = (await response.json()) as {
