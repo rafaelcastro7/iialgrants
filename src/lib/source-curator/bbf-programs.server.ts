@@ -8,7 +8,12 @@ import type { RawCandidate } from "./scoring.server";
 export const PACKAGE_URL =
   "https://open.canada.ca/data/api/3/action/package_show?id=4e75337e-70d0-4ed7-92d1-3b85192ec6b1";
 
-type CkanResource = { url?: string; format?: string; name?: string; last_modified?: string | null };
+export type CkanResource = {
+  url?: string;
+  format?: string;
+  name?: string;
+  last_modified?: string | null;
+};
 
 // Real bug, confirmed live: several older resources have `last_modified:
 // null` and only a human-readable name like "IC Programs and Services (2022
