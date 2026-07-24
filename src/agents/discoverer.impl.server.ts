@@ -208,7 +208,7 @@ const ROOT_INDEX_PATHS = new Set([
 // `extraPaths` are admin-added slugs from discovery_config (additive on top
 // of ROOT_INDEX_PATHS, never a replacement) — default empty keeps every
 // existing call site and test unaffected.
-function isRootIndex(url: string, extraPaths: string[] = []): boolean {
+export function isRootIndex(url: string, extraPaths: string[] = []): boolean {
   try {
     const u = new URL(url);
     const path = u.pathname.replace(/\/+$/, "").toLowerCase();
