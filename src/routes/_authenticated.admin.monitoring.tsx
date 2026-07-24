@@ -136,58 +136,13 @@ function MonitoringPage() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Activity className="h-4 w-4" />
-              Background Jobs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {jobs.agents.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                No agent runs recorded.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">Agent</th>
-                      <th className="pb-2 font-medium text-right">Running</th>
-                      <th className="pb-2 font-medium text-right">Completed</th>
-                      <th className="pb-2 font-medium text-right">Failed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jobs.agents.map((a) => (
-                      <tr key={a.agent} className="border-b last:border-0">
-                        <td className="py-2 font-medium">{a.agent}</td>
-                        <td className="py-2 text-right">
-                          {a.running > 0 ? (
-                            <Badge className="bg-blue-500/15 text-blue-700">{a.running}</Badge>
-                          ) : (
-                            "0"
-                          )}
-                        </td>
-                        <td className="py-2 text-right">
-                          <span className="text-emerald-600">{a.completed}</span>
-                        </td>
-                        <td className="py-2 text-right">
-                          {a.failed > 0 ? (
-                            <Badge className="bg-red-500/15 text-red-700">{a.failed}</Badge>
-                          ) : (
-                            <CheckCircle2 className="inline h-3 w-3 text-emerald-500" />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <p className="text-sm text-muted-foreground">
+          Looking for per-agent run history, error rates, or cost? See{" "}
+          <Link to="/ops" className="underline underline-offset-2">
+            Operations
+          </Link>
+          .
+        </p>
       </PageContainer>
     </PageTransition>
   );
