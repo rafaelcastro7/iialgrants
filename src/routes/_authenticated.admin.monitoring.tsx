@@ -49,7 +49,7 @@ function MonitoringPage() {
           description="Rate limiting, caching, and background job status."
         />
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -69,17 +69,6 @@ function MonitoringPage() {
               <p className="mt-1 text-2xl font-semibold">{cache.embeddings.totalEntries}</p>
               <p className="text-[10px] text-muted-foreground">
                 {cache.embeddings.validEntries} valid / {cache.embeddings.expiredEntries} expired
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <p className="text-xs">Agent Runs (recent)</p>
-              </div>
-              <p className="mt-1 text-2xl font-semibold">
-                {jobs.agents.reduce((s, a) => s + a.running + a.completed + a.failed, 0)}
               </p>
             </CardContent>
           </Card>
