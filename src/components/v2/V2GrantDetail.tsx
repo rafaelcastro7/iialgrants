@@ -257,7 +257,7 @@ export function V2GrantDetail({
           <Button asChild variant="outline" size="sm" className="gap-2">
             <Link to="/grants/$id/audit" params={{ id: grant.id }}>
               <History className="h-4 w-4" />
-              Audit
+              Scoring details
             </Link>
           </Button>
           {grant.url && (
