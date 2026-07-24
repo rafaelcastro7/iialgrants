@@ -341,7 +341,7 @@ function GrantDetailPage() {
               )}
               <Button asChild variant="outline" size="sm">
                 <Link to="/grants/$id/audit" params={{ id }}>
-                  Audit trail
+                  Scoring details
                 </Link>
               </Button>
               <Button variant="outline" size="sm" disabled={busy === "share"} onClick={onShare}>
