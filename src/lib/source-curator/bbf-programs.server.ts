@@ -10,6 +10,27 @@ export const PACKAGE_URL =
 
 type CkanResource = { url?: string; format?: string; name?: string; last_modified?: string | null };
 
+// Real bug, confirmed live: several older resources have `last_modified:
+// null` and only a human-readable name like "IC Programs and Services (2022
+// September)". Comparing that name string directly against a real resource's
+// ISO timestamp ("2025-07-17T...") is meaningless — 'I' (73) sorts after '2'
+// (50) in ASCII, so the untimestamped 2022 entry landed last and got picked
+// as "latest", silently feeding the whole pipeline (both this ingester and
+// any grant-level reader of the same workbook) 3-year-stale data. Parsing a
+// real date out of either field, and only comparing actual dates, fixes it.
+function resourceTimestamp(resource: CkanResource): number {
+  if (resource.last_modified) {
+    const parsed = Date.parse(resource.last_modified);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  const match = /\((\d{4})\s+([A-Za-z]+)\)/.exec(resource.name ?? "");
+  if (match) {
+    const parsed = Date.parse(`${match[2]} 1, ${match[1]}`);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return 0;
+}
+
 export async function findLatestWorkbook(): Promise<string> {
   const response = await fetch(PACKAGE_URL);
   if (!response.ok) throw new Error(`bbf_package_http_${response.status}`);
@@ -21,13 +42,7 @@ export async function findLatestWorkbook(): Promise<string> {
   const workbooks = (payload.result?.resources ?? []).filter(
     (resource) => resource.url && /xlsx/i.test(resource.format ?? ""),
   );
-  const latest = workbooks
-    .sort((a, b) =>
-      String(a.last_modified ?? a.name ?? "").localeCompare(
-        String(b.last_modified ?? b.name ?? ""),
-      ),
-    )
-    .at(-1);
+  const latest = workbooks.sort((a, b) => resourceTimestamp(a) - resourceTimestamp(b)).at(-1);
   if (!latest?.url) throw new Error("bbf_xlsx_resource_missing");
   return latest.url;
 }
