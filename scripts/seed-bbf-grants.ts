@@ -115,6 +115,14 @@ async function main() {
     `Scanned ${scanned} rows: ${filteredOut} filtered (generic/index/non-grant), ${noFunderMatch} skipped (funder not yet in our table), ${toInsert.length} candidates against known funders.`,
   );
 
+  if (process.argv.includes("--sample")) {
+    console.log("\nSample of 15 candidates:");
+    for (const c of toInsert.slice(0, 15)) {
+      console.log(`- [${c.funderName}] "${c.title}" -> ${c.grantUrl}`);
+    }
+    return;
+  }
+
   let inserted = 0;
   for (const cand of toInsert.slice(0, limit)) {
     const ck = canonicalKey(cand.funderId, cand.title, cand.funderName);
