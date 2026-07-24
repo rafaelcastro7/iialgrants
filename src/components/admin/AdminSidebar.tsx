@@ -8,6 +8,8 @@ import {
   ToggleLeft,
   Users,
   Globe,
+  Activity,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,8 @@ const items = [
   { title: "Discovery Sources", url: "/admin/sources", icon: Globe },
   { title: "Funder Candidates", url: "/admin/candidates", icon: Sparkles },
   { title: "Discovery History", url: "/admin/history", icon: History },
+  { title: "Monitoring", url: "/admin/monitoring", icon: Activity },
+  { title: "Audit Trail", url: "/admin/audit-trail", icon: ClipboardList },
 ];
 
 export function AdminSidebar() {
