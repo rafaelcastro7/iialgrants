@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { listAdminUsers } from "@/lib/admin-users.functions";
 import { listModuleFlags } from "@/lib/admin-modules.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PipelineAnalyticsCard } from "@/components/admin/PipelineAnalyticsCard";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 const usersQO = queryOptions({ queryKey: ["admin", "users"], queryFn: () => listAdminUsers() });
