@@ -32,7 +32,7 @@ export async function findLatestWorkbook(): Promise<string> {
   return latest.url;
 }
 
-function cellText(value: ExcelJS.CellValue): string {
+export function cellText(value: ExcelJS.CellValue): string {
   if (value == null) return "";
   if (typeof value === "object" && "text" in value) return String(value.text ?? "").trim();
   return String(value).trim();
