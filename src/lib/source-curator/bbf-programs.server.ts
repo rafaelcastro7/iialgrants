@@ -38,7 +38,7 @@ export function cellText(value: ExcelJS.CellValue): string {
   return String(value).trim();
 }
 
-function specificOrganization(value: string): string {
+export function specificOrganization(value: string): string {
   return value
     .trim()
     .replace(
