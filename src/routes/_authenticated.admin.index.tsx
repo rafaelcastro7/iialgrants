@@ -93,8 +93,6 @@ function AdminOverview() {
           </ul>
         </CardContent>
       </Card>
-
-      <PipelineAnalyticsCard />
     </PageContainer>
   );
 }
