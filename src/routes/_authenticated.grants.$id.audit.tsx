@@ -1,5 +1,8 @@
-// Per-grant audit page: shows the rule engine result, evidence used, agent
-// trace timeline, and final verdict. Linked from /grants/$id "Audit" button.
+// Per-grant scoring-explainability page: shows the rule engine result,
+// evidence used, agent trace timeline, and final verdict. Linked from
+// /grants/$id's "Scoring details" button — named that way (not "Audit
+// trail") to avoid colliding with the unrelated Admin "Audit Trail" page,
+// which is a generic CRUD change-log over a different table entirely.
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, XCircle, MinusCircle, AlertTriangle } from "lucide-react";
