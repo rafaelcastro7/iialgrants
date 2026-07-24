@@ -46,7 +46,7 @@ function MonitoringPage() {
         <PageHeader
           eyebrow="Admin"
           title="Platform Monitoring"
-          description="Rate limiting, caching, and background job status."
+          description="Rate limiting and embedding cache health."
         />
 
         <div className="grid gap-3 sm:grid-cols-2">
