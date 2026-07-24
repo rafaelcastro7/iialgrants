@@ -18,7 +18,7 @@ type CkanResource = { url?: string; format?: string; name?: string; last_modifie
 // as "latest", silently feeding the whole pipeline (both this ingester and
 // any grant-level reader of the same workbook) 3-year-stale data. Parsing a
 // real date out of either field, and only comparing actual dates, fixes it.
-function resourceTimestamp(resource: CkanResource): number {
+export function resourceTimestamp(resource: CkanResource): number {
   if (resource.last_modified) {
     const parsed = Date.parse(resource.last_modified);
     if (!Number.isNaN(parsed)) return parsed;
