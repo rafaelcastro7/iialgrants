@@ -35,9 +35,7 @@ describe("resourceTimestamp", () => {
     // Before the fix, sorting by raw string (`last_modified ?? name`) put the
     // 2022 entry LAST because its name starts with a letter that sorts after
     // digit characters — this assertion is the actual chronological order.
-    expect(resourceTimestamp(untimestamped2022)).toBeLessThan(
-      resourceTimestamp(timestamped2025),
-    );
+    expect(resourceTimestamp(untimestamped2022)).toBeLessThan(resourceTimestamp(timestamped2025));
   });
 
   it("falls back to 0 (oldest) for an unparseable resource instead of crashing", () => {

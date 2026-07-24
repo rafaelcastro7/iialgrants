@@ -78,7 +78,7 @@ async function main() {
   let noFunderMatch = 0;
   let filteredOut = 0;
   let alreadyExists = 0;
-  let toInsert: {
+  const toInsert: {
     funderId: string;
     funderName: string;
     title: string;
@@ -140,7 +140,9 @@ async function main() {
 
     inserted++;
     if (apply) {
-      const sourceHash = createHash("sha256").update(`${cand.grantUrl}|${cand.title}`).digest("hex");
+      const sourceHash = createHash("sha256")
+        .update(`${cand.grantUrl}|${cand.title}`)
+        .digest("hex");
       const { error: insErr } = await supabase.from("grants").insert({
         funder_id: cand.funderId,
         title: cand.title,
@@ -169,7 +171,9 @@ async function main() {
     `\n${inserted} ${apply ? "inserted" : "would be inserted"}, ${alreadyExists} already exist (canonical_key or url+title-word match).`,
   );
   if (toInsert.length > limit) {
-    console.log(`Note: ${toInsert.length - limit} more candidates beyond --limit=${limit} were not processed this run.`);
+    console.log(
+      `Note: ${toInsert.length - limit} more candidates beyond --limit=${limit} were not processed this run.`,
+    );
   }
   if (!apply) console.log("Dry run — re-run with --apply to actually write.");
 }
