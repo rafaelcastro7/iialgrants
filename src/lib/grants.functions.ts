@@ -515,7 +515,13 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     try {
       await assertAgentEnabled("evaluator", context.supabase as never);
-    } catch {
+    } catch (e) {
+      // Any assertAgentEnabled failure used to be reported as "the evaluator
+      // is disabled" — including transient DB errors unrelated to the
+      // agent-enabled flag, which then looked identical to an intentional
+      // admin toggle instead of a real failure worth surfacing.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.startsWith("agent_disabled:")) throw e;
       return { ok: true, evaluated: 0, skipped: 0, reason: "evaluator_disabled" as const };
     }
 
