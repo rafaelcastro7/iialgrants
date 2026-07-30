@@ -1,10 +1,8 @@
-tree 50bb37e375fb57fd4631c0161e839e46c031072c
-parent 1e934479d30c0701c9241f28b5f5ba6fda4ac3b5
-parent 644bd9c28ba58c55ae4bd0823ece8a18f4c5c289
-author gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com> 1781925888 +0000
-committer gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com> 1781925888 +0000
+tree 9054bd7616386aad09e1d15422ce08adf9e5c3e0
+parent 7d4d7b2e46f2cf118c7cf4f5b4e2427887a644e8
+author gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com> 1781947188 +0000
+committer gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com> 1781947188 +0000
 
-Eliminado hardcode de demo
+Changes
 
-X-Lovable-Edit-ID: edt-ed036524-6200-4d45-b58f-02a65d58d603
 Co-authored-by: rafaelcastro7 <54216779+rafaelcastro7@users.noreply.github.com>
