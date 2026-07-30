@@ -168,10 +168,11 @@ export const approveStep = createServerFn({ method: "POST" })
       if (stepError) throw new Error(`Failed to update step: ${stepError.message}`);
 
       if (data.decision === "rejected") {
-        await supabase
+        const { error: rejectError } = await supabase
           .from("approval_instances")
           .update({ status: "rejected" })
           .eq("id", data.instanceId);
+        if (rejectError) throw new Error(`Failed to reject instance: ${rejectError.message}`);
         return { status: "rejected" };
       }
 
