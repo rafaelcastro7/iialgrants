@@ -137,11 +137,9 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // "Reviewing…" / "Submitting…" (ProposalDetailExpress.tsx), and a filter
   // that only matches the at-rest text stops resolving to any element at all
   // the instant you click it.
-  const primaryAction = page
-    .getByRole("button")
-    .filter({
-      hasText: /^Draft "|^Drafting…|^Run quality review|^Reviewing…|^Submit proposal$|^Submitting…/,
-    });
+  const primaryAction = page.getByRole("button").filter({
+    hasText: /^Draft "|^Drafting…|^Run quality review|^Reviewing…|^Submit proposal$|^Submitting…/,
+  });
   for (let i = 0; i < 12; i++) {
     const label = await primaryAction.textContent();
     if (!label?.startsWith('Draft "')) break;
