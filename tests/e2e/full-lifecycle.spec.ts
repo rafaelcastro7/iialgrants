@@ -23,6 +23,25 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   await page.getByRole("button", { name: DEMO_ADMIN }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
+  // 1b. The Writer agent grounds every section in the org's RAG knowledge
+  // base (ragRetrieve in writer.functions.ts) and throws no_knowledge_chunks
+  // if it's empty — true for a fresh org with no profile saved yet. Fill in
+  // the profile and sync it in before touching any grant.
+  await page.goto("/org");
+  await page.locator('input[name="org_name"]').fill("IIAL Test Org");
+  await page.locator('input[name="sectors"]').fill("technology, clean-tech");
+  await page.locator('textarea[name="focus_areas"]').fill(
+    "We build AI-native software for Canadian small businesses and have delivered three prior applied-research projects with university partners.",
+  );
+  await page.getByRole("button", { name: /save profile/i }).click();
+  await expect(page.getByText(/profile completeness/i)).toBeVisible();
+
+  await page.goto("/proposals");
+  await page.getByRole("button", { name: /sync knowledge base/i }).click();
+  await expect(page.getByRole("button", { name: /sync knowledge base/i })).toBeEnabled({
+    timeout: AGENT_TIMEOUT,
+  });
+
   // 2. Search for the seeded grant.
   await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
