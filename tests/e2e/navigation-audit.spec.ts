@@ -62,9 +62,13 @@ test.describe("navigation audit - member", () => {
     await expect(firstGrantLink).toBeVisible();
     await firstGrantLink.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+$/);
-    await expect(page.getByRole("link", { name: "Audit", exact: true })).toBeVisible();
+    // Real bug, confirmed live: renamed to "Scoring details" (see
+    // src/routes/_authenticated.grants.$id.audit.tsx's own comment) precisely
+    // to avoid colliding with the unrelated Admin "Audit Trail" page — this
+    // test still looked for the old "Audit" label and never found it.
+    await expect(page.getByRole("link", { name: "Scoring details", exact: true })).toBeVisible();
 
-    const auditTrailLink = page.getByRole("link", { name: "Audit", exact: true });
+    const auditTrailLink = page.getByRole("link", { name: "Scoring details", exact: true });
     await auditTrailLink.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+\/audit$/);
     await expect(page.getByText(/rules evaluated/i)).toBeVisible();
