@@ -79,6 +79,22 @@ await expect(sheet).toBeHidden();
 await expect(page).not.toHaveURL(/[?&]run=/);
 ```
 
+## Ollama needs `nomic-embed-text`, not just a chat model
+
+Every `knowledge_chunks` insert (org-profile sync, document upload) calls
+`embedText()` (`src/agents/embeddings.server.ts`), which hits Ollama's
+`/api/embeddings` with model `nomic-embed-text` — a *separate* pull from
+whatever chat model (e.g. `phi4-mini:latest`) you set up for agent calls.
+Without it, "Sync knowledge base" silently no-ops (0 rows inserted, easy to
+miss since the button just re-enables) and every later `Draft "<section>"`
+click hangs on `no_knowledge_chunks` with zero LLM calls ever firing.
+```
+ollama pull nomic-embed-text
+```
+Verify with `docker exec docker-db-1 psql -U postgres -d postgres -c "select
+count(*) from knowledge_chunks;"` — 0 rows after a sync means the embedding
+model is missing, not that the RAG corpus is legitimately empty.
+
 ## The Writer agent needs org-profile knowledge chunks first
 
 Drafting any proposal section calls `ragRetrieve()`, which throws
