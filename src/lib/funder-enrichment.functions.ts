@@ -13,6 +13,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSafeExternalUrl } from "./external-preview.shared";
 import type { Database, Json } from "@/integrations/supabase/types";
 
 type FunderUpdate = Database["public"]["Tables"]["funders"]["Update"];
