@@ -416,6 +416,29 @@ names — `origin/main` was left untouched. **Reconciling the two histories
 manual decision for the user** — not something to auto-merge blindly given a
 month of parallel changes on both sides.
 
+### Misleading comment found while explaining the discovery/search pipeline to the user
+
+Asked (again) to "recorre el sistema y con total honestidad" explain how grant
+search works — this surfaced a real inaccuracy rather than a functional bug.
+`discoverer-orchestrator.server.ts`'s post-discovery auto-evaluate step built
+what its own comment called "a user-scoped client (RLS as the triggering
+user)" — but it constructed that client with `SUPABASE_SERVICE_ROLE_KEY`, the
+admin key, which bypasses RLS entirely. It was, in fact, a second, redundant
+instance of the same admin client already in scope as `supabaseAdmin`.
+
+Impact was low — `evaluateGrantImpl` (the only thing this client is passed
+to) filters every read/write with an explicit `.eq("user_id", userId)`
+rather than depending on RLS for isolation, and `userId` here is always the
+same `triggeringUserId` that kicked off the job — so no cross-user data
+exposure was possible in practice. But the comment was actively wrong, which
+is worse than no comment: it would mislead the next person into assuming a
+real RLS boundary exists here, and into copying the same pattern somewhere
+that lacks the explicit `user_id` filter safety net. Fixed by removing the
+fake client construction (reuse `supabaseAdmin` directly) and replacing the
+comment with the actual reasoning: no user JWT is available in this
+background-job context, so the admin client is used deliberately, and safety
+comes from `evaluateGrantImpl`'s explicit `user_id` filters, not from RLS.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
