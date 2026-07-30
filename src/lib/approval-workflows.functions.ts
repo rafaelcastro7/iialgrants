@@ -195,17 +195,19 @@ export const approveStep = createServerFn({ method: "POST" })
         .single();
 
       if (!nextStep) {
-        await supabase
+        const { error: approveError } = await supabase
           .from("approval_instances")
           .update({ status: "approved", current_step: instance.current_step + 1 })
           .eq("id", data.instanceId);
+        if (approveError) throw new Error(`Failed to approve instance: ${approveError.message}`);
         return { status: "approved" };
       }
 
-      await supabase
+      const { error: advanceError } = await supabase
         .from("approval_instances")
         .update({ current_step: instance.current_step + 1 })
         .eq("id", data.instanceId);
+      if (advanceError) throw new Error(`Failed to advance instance: ${advanceError.message}`);
 
       return { status: "pending", nextStepId: nextStep.id };
     } catch (e) {
