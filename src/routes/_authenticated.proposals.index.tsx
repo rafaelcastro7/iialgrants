@@ -250,6 +250,15 @@ function ProposalsPageV2({
                 Every draft in one place — pick up where you left off.
               </p>
             </div>
+            {/* Real bug, confirmed live: this button's onClick has always
+            called ingestOrgProfileAsKnowledge() — it re-syncs the org
+            profile into the RAG knowledge base the Writer agent retrieves
+            from — but was labeled "New application" with a Plus icon, which
+            promises a brand-new proposal that this click never creates.
+            There's no "start a new proposal" action on this page at all
+            (the empty state below correctly tells users to start one from a
+            grant's "Draft proposal" button instead); this control's label
+            just never matched what it does. */}
             <Button
               size="sm"
               variant="secondary"
@@ -257,8 +266,8 @@ function ProposalsPageV2({
               onClick={onIngest}
               disabled={ingesting}
             >
-              <Plus className="h-4 w-4" />
-              {ingesting ? "Working…" : "New application"}
+              <RefreshCw className="h-4 w-4" />
+              {ingesting ? "Syncing…" : "Sync knowledge base"}
             </Button>
           </div>
 
