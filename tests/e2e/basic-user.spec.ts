@@ -50,7 +50,9 @@ async function basicUserFlow(page: Page) {
   await expect(
     page.getByRole("link", { name: "Industrial Research Assistance Program (IRAP)", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/showing \d+ of \d+ active records/i)).toBeVisible();
+  // Same stale-copy issue as the heading above: the real component renders
+  // "active grants", not "active records".
+  await expect(page.getByText(/showing \d+ of \d+ active grants/i)).toBeVisible();
 
   await page.getByRole("button", { name: /open command palette/i }).click();
   const commandDialog = page.getByRole("dialog", { name: /command palette/i });
