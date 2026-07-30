@@ -42,7 +42,9 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     timeout: AGENT_TIMEOUT,
   });
 
-  // 2. Search for the seeded grant.
+  // 2. Search for the seeded grant. "Open radar" only exists on /dashboard —
+  // the sync step above leaves us on /proposals.
+  await page.goto("/dashboard");
   await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
   await page.getByRole("searchbox", { name: /search grants/i }).fill("IRAP");
