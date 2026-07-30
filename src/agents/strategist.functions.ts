@@ -263,11 +263,24 @@ export const runStrategist = createServerFn({ method: "POST" })
       );
     }
 
+    // Real bug, confirmed live: this never set org_id, and neither did
+    // submitProposal — profiles.org_id is the only thing
+    // can_access_tenant_entity()/assertEntityInUserOrg check for a teammate
+    // (not the creator) to see a proposal's tasks/comments/documents. With
+    // org_id always NULL here, Team Collaboration was unreachable by design
+    // regardless of whether a user ever joined an organization.
+    const { data: creatorProfile } = await context.supabase
+      .from("profiles")
+      .select("org_id")
+      .eq("id", context.userId)
+      .maybeSingle();
+
     // Persist proposal + sections.
     const { data: proposal, error: pe } = await context.supabase
       .from("proposals")
       .insert({
         user_id: context.userId,
+        org_id: creatorProfile?.org_id ?? null,
         grant_id: g.id,
         template_id: tpl.id,
         title: parsed.proposal_title,
