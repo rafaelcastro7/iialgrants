@@ -37,7 +37,9 @@ async function basicUserFlow(page: Page) {
   // focus today". A prior UI rewrite changed the copy and this test was never
   // updated to match, so it failed on every run regardless of app correctness.
   await expect(
-    page.getByRole("heading", { name: /here's where to focus today/i }),
+    // Match without the apostrophe: the source renders `&rsquo;` (U+2019 ’),
+    // not a straight quote, so a literal `'` in this regex would never match.
+    page.getByRole("heading", { name: /where to focus today/i }),
   ).toBeVisible();
   await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
   await expect(
