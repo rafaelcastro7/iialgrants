@@ -117,6 +117,12 @@ function ApprovalWorkflowsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["approval-workflows"] });
+      // Real bug, confirmed live: the individual step's own badge is fed by
+      // this separate query (stepsQuery below), not by ["approval-workflows"]
+      // — without this, "Step decision recorded" toasts and the aggregate
+      // instance list updates, but the just-decided step stays "pending"
+      // until the panel is collapsed and reopened.
+      queryClient.invalidateQueries({ queryKey: ["approval-steps"] });
       toast.success("Step decision recorded");
     },
     onError: (e: Error) => toast.error(e.message),
