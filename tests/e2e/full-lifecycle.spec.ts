@@ -52,9 +52,11 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   await page.goto("/org");
   await page.locator('input[name="org_name"]').fill("IIAL Test Org");
   await page.locator('input[name="sectors"]').fill("technology, clean-tech");
-  await page.locator('textarea[name="focus_areas"]').fill(
-    "We build AI-native software for Canadian small businesses and have delivered three prior applied-research projects with university partners.",
-  );
+  await page
+    .locator('textarea[name="focus_areas"]')
+    .fill(
+      "We build AI-native software for Canadian small businesses and have delivered three prior applied-research projects with university partners.",
+    );
   await page.getByRole("button", { name: /save profile/i }).click();
   await expect(page.getByText(/profile completeness/i)).toBeVisible();
 
@@ -137,7 +139,9 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // the instant you click it.
   const primaryAction = page
     .getByRole("button")
-    .filter({ hasText: /^Draft "|^Drafting…|^Run quality review|^Reviewing…|^Submit proposal$|^Submitting…/ });
+    .filter({
+      hasText: /^Draft "|^Drafting…|^Run quality review|^Reviewing…|^Submit proposal$|^Submitting…/,
+    });
   for (let i = 0; i < 12; i++) {
     const label = await primaryAction.textContent();
     if (!label?.startsWith('Draft "')) break;
