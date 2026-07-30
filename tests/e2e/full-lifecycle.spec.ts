@@ -130,7 +130,14 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // time" (see ProposalDetailExpress.tsx): a freshly-drafted proposal starts
   // with every section Empty, so the first action is `Draft "<heading>"`,
   // repeated per section, before quality review or submit ever appear.
-  const primaryAction = page.getByRole("button").filter({ hasText: /^Draft "|^Run quality review|^Submit proposal$/ });
+  // Must match every state the button's text cycles through, not just the
+  // at-rest labels — while a click is pending it swaps to "Drafting…" /
+  // "Reviewing…" / "Submitting…" (ProposalDetailExpress.tsx), and a filter
+  // that only matches the at-rest text stops resolving to any element at all
+  // the instant you click it.
+  const primaryAction = page
+    .getByRole("button")
+    .filter({ hasText: /^Draft "|^Drafting…|^Run quality review|^Reviewing…|^Submit proposal$|^Submitting…/ });
   for (let i = 0; i < 12; i++) {
     const label = await primaryAction.textContent();
     if (!label?.startsWith('Draft "')) break;
