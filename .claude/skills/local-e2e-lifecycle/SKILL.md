@@ -79,6 +79,24 @@ await expect(sheet).toBeHidden();
 await expect(page).not.toHaveURL(/[?&]run=/);
 ```
 
+## "TypeError: Failed to fetch" from `SupabaseAuthClient.getUser` mid-setup
+
+If your test does several `page.goto()` calls back to back (e.g. sign in →
+fill org profile → sync knowledge base → go to a grant), you'll sometimes
+see a console error like:
+```
+TypeError: Failed to fetch
+    at async SupabaseAuthClient.getUser (...@supabase_supabase-js.js...)
+```
+This is the browser correctly aborting an in-flight session check because
+the *next* navigation started before it resolved — not a real connectivity
+failure. Confirmed live: Docker/Kong/the app were all immediately healthy
+right after this fired. Don't chase it as an infra bug; filter this specific
+signature the same way as the known React warning below, and don't treat
+isolated occurrences of "Failed to fetch" as proof of an outage — a genuine
+one shows up as *sustained* failures across many requests, not one
+transient line right at a navigation boundary.
+
 ## Ollama needs `nomic-embed-text`, not just a chat model
 
 Every `knowledge_chunks` insert (org-profile sync, document upload) calls
