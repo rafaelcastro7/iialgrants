@@ -80,7 +80,10 @@ test.describe("navigation audit - member", () => {
 
     await page.goto("/dashboard");
     await clickAndAssert(page, "/proposals", /\/proposals\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /proposals/i }).first()).toBeVisible();
+      // Real bug, confirmed live: the V2 proposals page (this demo user's
+      // shell) renders "Your applications", not "Proposals" — a prior
+      // redesign renamed the heading and this test was never updated.
+      await expect(page.getByRole("heading", { name: /your applications/i }).first()).toBeVisible();
     });
 
     await page.goto("/dashboard");
