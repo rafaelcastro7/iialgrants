@@ -151,6 +151,29 @@ const primaryAction = page.getByRole("button")
 **Export** and the standalone **Submit** button only exist in the *Advanced*
 view — click "Show full details →" first to reach them.
 
+## A passing critic score doesn't guarantee "Submit proposal" appears next
+
+`canSubmit()` (`src/lib/submit-gate.shared.ts`) gates on four independent
+things: sections drafted, critic score ≥ `MIN_CRITIC_SCORE_TO_SUBMIT` (0.6),
+zero open critical requirements, and readiness score ≥
+`MIN_READINESS_SCORE_TO_SUBMIT` (45). A grant whose page lists something like
+"Financial statements required" surfaces as an **open critical
+requirement** that only a real document upload can clear — no amount of
+drafting sections or re-running the critic will ever satisfy it. When that's
+still open, the Express view's one-button ladder in
+`ProposalDetailExpress.tsx` correctly falls back to showing **Run quality
+review** again (there's no "ready to submit" and no "next empty section"),
+even with every section Ready and a critic score comfortably above 0.6 —
+this is the intended fallback branch, not a stuck UI.
+
+Don't assert the button's *text* changes after a critic run; assert the
+*action* happened (it goes disabled while pending, then enabled again), and
+head into the Advanced view for the real submit gate regardless — a
+`submit_blocked` / "Submit Anyway" force-path is a legitimate, by-design
+outcome here, not a failure (see docs/LOCAL-SYSTEM-VERIFICATION.md's own
+"Fifth stage verified: Submit" section, which validated exactly this force
+path).
+
 ## Re-running against the same seeded grant is not idempotent
 
 `V2GrantDetail.tsx` shows **Open proposal** (a link) instead of **Draft
