@@ -11,6 +11,7 @@ const AGENT_TIMEOUT = 90_000; // LLM calls (cloud or local) can take a while.
 test.describe.configure({ mode: "serial" });
 
 test("search → enrich → evaluate → draft → critic → export → submit", async ({ page }) => {
+  test.setTimeout(10 * 60_000); // several chained LLM calls — the config's 60s default isn't enough.
   const consoleErrors: string[] = [];
   page.on("pageerror", (error) => consoleErrors.push(error.message));
   page.on("console", (msg) => {
