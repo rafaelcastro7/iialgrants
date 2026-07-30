@@ -4,7 +4,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, FileText, Plus } from "lucide-react";
+import { ArrowRight, FileText, RefreshCw } from "lucide-react";
 import { listProposals, ingestOrgProfileAsKnowledge } from "@/lib/proposals.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
