@@ -129,10 +129,15 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     await expect(primaryAction).not.toHaveText(label, { timeout: AGENT_TIMEOUT });
   }
 
-  // 7. Run quality review (the critic) once every section is drafted.
+  // 7. Run quality review (the critic) once every section is drafted. Its
+  // schema is more complex than the evaluator's, and a provider whose output
+  // fails that schema makes the chain advance to the next one (see
+  // docs/LOCAL-SYSTEM-VERIFICATION.md) — comfortably slower than a single
+  // call, hence the longer allowance here specifically.
+  const CRITIC_TIMEOUT = 150_000;
   await expect(primaryAction).toHaveText(/run quality review/i, { timeout: AGENT_TIMEOUT });
   await primaryAction.click();
-  await expect(primaryAction).not.toHaveText(/run quality review/i, { timeout: AGENT_TIMEOUT });
+  await expect(primaryAction).not.toHaveText(/run quality review/i, { timeout: CRITIC_TIMEOUT });
   expect(consoleErrors, `Console errors after critic: ${consoleErrors.join("; ")}`).toEqual([]);
 
   // 8. Export + submit only exist in the Advanced view.
