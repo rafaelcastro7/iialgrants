@@ -56,3 +56,8 @@ scripts/.watchdog-state.json
 .env
 .env.*
 !.env.example
+
+# git filter-branch's own scratch directory — accidentally committed once by
+# the auto-sync script's `git add -A` while a prior filter-branch run was
+# mid-flight and left this behind in the working tree.
+.git-rewrite/
