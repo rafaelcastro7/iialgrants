@@ -69,9 +69,15 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   await expect(page).not.toHaveURL(/[?&]run=/);
   expect(consoleErrors, `Console errors after evaluate: ${consoleErrors.join("; ")}`).toEqual([]);
 
-  // 5. Draft a proposal.
+  // 5. Draft a proposal — or open the one a previous run already created for
+  // this grant (V2GrantDetail.tsx shows "Open proposal" instead of "Draft
+  // proposal" once existingProposalId is set; re-running this test against
+  // the same seeded grant hits that branch, not a fresh draft every time).
   const draftButton = page.getByRole("button", { name: /draft proposal/i });
-  if (await draftButton.isVisible().catch(() => false)) {
+  const openProposalLink = page.getByRole("link", { name: /open proposal/i });
+  if (await openProposalLink.isVisible().catch(() => false)) {
+    await openProposalLink.click();
+  } else {
     await expect(draftButton).toBeEnabled({ timeout: AGENT_TIMEOUT });
     await draftButton.click();
   }
