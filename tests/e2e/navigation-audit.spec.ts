@@ -107,16 +107,16 @@ test.describe("navigation audit - member", () => {
     });
 
     // Real bug, confirmed live: /compliance was retired 2026-07-23 (see
-    // src/routes/compliance.tsx's own comment) and now redirects to
-    // /privacy's "Compliance & frameworks" card instead of rendering its own
-    // page. This test still expected the URL to stay on /compliance and a
-    // "Compliance" *heading* — the final URL is /privacy, and the card title
-    // is a styled <div> (CardTitle), not a semantic heading, so
-    // getByRole("heading") could never match it either way.
-    await page.goto("/dashboard");
-    await clickAndAssert(page, "/compliance", /\/privacy\/?$/, async () => {
-      await expect(page.getByText(/compliance & frameworks/i)).toBeVisible();
-    });
+    // src/routes/compliance.tsx's own comment) — it now only exists as a
+    // redirect to /privacy's "Compliance & frameworks" card so old bookmarks
+    // keep working, and its nav link was removed along with the page (no
+    // `href="/compliance"` remains anywhere in src/). clickAndAssert's own
+    // first step (require a *visible* nav link before clicking) can no
+    // longer pass, through no fault of the app — there's nothing left to
+    // click. Testing the redirect directly is what's left to verify.
+    await page.goto("/compliance");
+    await expect(page).toHaveURL(/\/privacy\/?$/);
+    await expect(page.getByText(/compliance & frameworks/i)).toBeVisible();
 
     expect(errors).toEqual([]);
   });
