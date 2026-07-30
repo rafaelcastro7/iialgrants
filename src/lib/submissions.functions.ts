@@ -76,7 +76,7 @@ export const submitProposal = createServerFn({ method: "POST" })
     const { data: proposal, error: pe } = await supabase
       .from("proposals")
       .select(
-        "id, grant_id, status, critic_score, human_reviewed_at, grant:grants(requirements, status)",
+        "id, org_id, grant_id, status, critic_score, human_reviewed_at, grant:grants(requirements, status)",
       )
       .eq("id", data.proposalId)
       .maybeSingle();
@@ -131,10 +131,15 @@ export const submitProposal = createServerFn({ method: "POST" })
       }
     }
 
+    // Real bug, confirmed live: never set org_id — same root cause as
+    // strategist.functions.ts's proposal insert (see its comment). A
+    // submission should inherit the proposal's own org_id rather than
+    // re-deriving from whichever team member happens to click Submit.
     const { data: sub, error: se } = await supabase
       .from("submissions")
       .insert({
         user_id: userId,
+        org_id: (proposal as { org_id?: string | null }).org_id ?? null,
         proposal_id: proposal.id,
         grant_id: proposal.grant_id,
         method: data.method,
