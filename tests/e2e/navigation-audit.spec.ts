@@ -43,12 +43,17 @@ test.describe("navigation audit - member", () => {
     await signInDemo(page, DEMO_MEMBER);
 
     await clickAndAssert(page, "/grants", /\/grants\/?$/, async () => {
+      // Real bug, confirmed live: this asserted stale copy and a stale tab
+      // structure. The current V2GrantsWorkspace (src/components/v2/
+      // V2GrantsWorkspace.tsx) renders the heading "Here's where to focus
+      // today" and has no "Queue"/"Lifecycle" tabs at all — that grouping was
+      // removed in a prior redesign in favor of a flat filtered list, and this
+      // test was never updated, so it failed on every run regardless of app
+      // correctness.
       await expect(
-        page.getByRole("heading", { name: /prioritize every opportunity/i }),
+        page.getByRole("heading", { name: /here's where to focus today/i }),
       ).toBeVisible();
       await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
-      await expect(page.getByRole("tab", { name: "Queue" })).toBeVisible();
-      await expect(page.getByRole("tab", { name: "Lifecycle" })).toBeVisible();
     });
 
     const firstGrantLink = page.locator('a[href^="/grants/"]').first();
