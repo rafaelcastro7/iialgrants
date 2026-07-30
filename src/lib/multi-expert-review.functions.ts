@@ -326,9 +326,10 @@ export const getProposalReviews = createServerFn({ method: "GET" })
       proposalId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
       const { data: reviews, error } = await supabase
         .from("proposal_reviews")
