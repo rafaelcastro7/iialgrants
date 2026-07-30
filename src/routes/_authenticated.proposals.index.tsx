@@ -4,7 +4,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, FileText, Plus } from "lucide-react";
+import { ArrowRight, FileText, RefreshCw } from "lucide-react";
 import { listProposals, ingestOrgProfileAsKnowledge } from "@/lib/proposals.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -257,8 +257,12 @@ function ProposalsPageV2({
               onClick={onIngest}
               disabled={ingesting}
             >
-              <Plus className="h-4 w-4" />
-              {ingesting ? "Working…" : "New application"}
+              {/* onClick is ingestOrgProfileAsKnowledge (a re-sync of the RAG
+                  knowledge base), not proposal creation — the Plus icon and
+                  "New application" label told users this button did something
+                  it never did. */}
+              <RefreshCw className="h-4 w-4" />
+              {ingesting ? "Syncing…" : "Sync knowledge base"}
             </Button>
           </div>
 
