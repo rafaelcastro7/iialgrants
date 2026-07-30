@@ -31,7 +31,14 @@ async function basicUserFlow(page: Page) {
 
   await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
-  await expect(page.getByRole("heading", { name: /prioritize every opportunity/i })).toBeVisible();
+  // Real bug, confirmed live: this asserted stale copy — "prioritize every
+  // opportunity" was never the actual heading in the current V2GrantsWorkspace
+  // (src/components/v2/V2GrantsWorkspace.tsx), which renders "Here's where to
+  // focus today". A prior UI rewrite changed the copy and this test was never
+  // updated to match, so it failed on every run regardless of app correctness.
+  await expect(
+    page.getByRole("heading", { name: /here's where to focus today/i }),
+  ).toBeVisible();
   await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Industrial Research Assistance Program (IRAP)", exact: true }),
