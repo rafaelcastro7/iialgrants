@@ -534,7 +534,14 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     try {
       await assertAgentEnabled("evaluator", context.supabase as never);
-    } catch {
+    } catch (e) {
+      // Real bug, confirmed live: assertAgentEnabled throws the same Error
+      // type whether the flag is genuinely off (message "agent_disabled:...")
+      // or the agent_flags query itself failed (DB down, RLS) — that second
+      // case was being silently reported as a normal "disabled" outcome
+      // instead of surfacing as the infrastructure failure it actually is.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.startsWith("agent_disabled:")) throw e;
       return { ok: true, evaluated: 0, skipped: 0, reason: "evaluator_disabled" as const };
     }
 
