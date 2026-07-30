@@ -45,21 +45,29 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     await page.keyboard.press("Escape");
   }
 
-  // 4. Evaluate fit. This opens the "Chain of thought" trace Sheet, which
-  // stays open (and intercepts clicks on everything behind it) until
-  // dismissed — Escape is the standard Radix dismissal, not a workaround.
+  // 4. Evaluate fit. This opens the "Chain of thought" trace Sheet (its
+  // open/closed state is mirrored into the URL's ?run= param — see
+  // closeTrace() in _authenticated.grants.$id.tsx), which intercepts clicks
+  // on everything behind it until dismissed.
   const evaluateButton = page.getByRole("button", { name: /check fit|re-evaluate fit/i });
   await expect(evaluateButton).toBeVisible();
   await evaluateButton.click();
   await expect(page.getByRole("button", { name: /re-evaluate fit/i })).toBeVisible({
     timeout: AGENT_TIMEOUT,
   });
-  await page.keyboard.press("Escape");
+  const traceSheet = page.getByRole("dialog", { name: /chain of thought/i });
+  await traceSheet.getByRole("button", { name: /close/i }).click();
+  await expect(traceSheet).toBeHidden();
+  // closeTrace() clears the ?run= query param via an async navigate() — wait
+  // for it to actually land instead of racing it, otherwise a re-render can
+  // read the still-stale URL and reopen the sheet right under the next click.
+  await expect(page).not.toHaveURL(/[?&]run=/);
   expect(consoleErrors, `Console errors after evaluate: ${consoleErrors.join("; ")}`).toEqual([]);
 
   // 5. Draft a proposal.
   const draftButton = page.getByRole("button", { name: /draft proposal/i });
   if (await draftButton.isVisible().catch(() => false)) {
+    await expect(draftButton).toBeEnabled({ timeout: AGENT_TIMEOUT });
     await draftButton.click();
   }
   await expect(page).toHaveURL(/\/proposals\/[^/]+$/, { timeout: AGENT_TIMEOUT });
