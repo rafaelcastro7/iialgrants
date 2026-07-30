@@ -124,6 +124,7 @@ export const scoreProposal = createServerFn({ method: "POST" })
     const { callLlm } = await import("@/agents/llm.server");
     const { newRunId } = await import("@/lib/otel");
     const supabase = await createSupabaseAdmin();
+    await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
     const runId = newRunId();
     const t0 = Date.now();
 
