@@ -452,6 +452,62 @@ comment with the actual reasoning: no user JWT is available in this
 background-job context, so the admin client is used deliberately, and safety
 comes from `evaluateGrantImpl`'s explicit `user_id` filters, not from RLS.
 
+### Reconciliation, take two: port fixes onto main instead of merging histories
+
+Asked to "analiza lo que sirve, reconstruye y unifica el git" — actually do
+the reconciliation PR #1 only proposed. Cloned GitHub's `main` fresh into
+`E:\dev\iial-grants-github-main` (a fully separate repo, no shared objects
+with the local checkout) and audited it directly, file by file, against
+every fix listed above, instead of assuming the local diagnosis still
+applied:
+
+- **Every one of the 6 original security/logic bugs, plus the false-RLS-
+  comment fix, was confirmed to independently exist in `main` too** —
+  `main`'s own "Secured auth & RLS on tables" / "Fixed RLS security issues"
+  commits addressed different issues. Notably, `main` already has
+  `tenant-access.server.ts` wired into 12+ files — the infrastructure existed,
+  it just was never called from `multi-expert-review.functions.ts`.
+- **`src/lib/multi-tenant.functions.ts` is not dead in `main`** the way it
+  looked in the local checkout — it's part of a live, extensively-used
+  tenant-isolation system there. The local copy's version of this subsystem
+  had fallen behind, not main's.
+- Comparing `src/` wholesale (`diff -rq`) found local and `main` share
+  essentially the same file tree — 348 of 366 local files exist at the same
+  path in `main`, and **344 of those 348 shared files differ in content**.
+  Both sides independently rewrote nearly the entire codebase since the
+  2026-06-19 fork point, not just the areas each side's commit messages
+  advertise.
+- Given that, an early plan to wholesale-replace `main`'s
+  `discoverer.impl.server.ts` / `discoverer-orchestrator.server.ts` with
+  local's (more evolved on filters/ledger logic) was **reverted after
+  discovering `main`'s `src/lib/source-curator/` has 10+ funder-source
+  ingesters (Alberta/Canada CKAN, EU, GC Proactive, RSS, Tri-Council, T3010)
+  that don't exist locally at all** — swapping the core discoverer files
+  risked silently breaking real capability `main` has that local never built,
+  for a net-uncertain gain. Scoped down to exactly one confirmed, narrow fix
+  in that file (the false-RLS comment) and left the rest of the discovery
+  subsystem alone on both sides — flagged as needing dedicated reconciliation
+  effort, not a blind copy.
+- The remaining 9 fixes were re-applied **directly against `main`'s actual
+  current code** (not patched from a diff — each was re-read and re-written
+  by hand against what `main` has today), plus the one net-new local-only
+  file the SSRF fix depends on (`external-preview.shared.ts`).
+- Verified before pushing: `tsc --noEmit` clean, and the full Vitest suite —
+  **378 tests passing across 52 files, 0 failures** (2 skipped, expected —
+  they need live external services) — including `discoverer-orchestrator.test.ts`,
+  which still passes after editing that file.
+- Result: 10 atomic commits (one per fix) on branch `unify-2026-07-30`,
+  opened as [PR #2](https://github.com/rafaelcastro7/iialgrants/pull/2) —
+  **14 files changed, +188/-22, `mergeStateStatus: CLEAN`, `mergeable:
+  MERGEABLE`** (confirmed via `gh pr view`), a direct contrast to PR #1's
+  529 files / +288k / `CONFLICTING`. PR #1 was commented with a pointer to
+  #2 and left open as a historical record of the full divergence, not closed.
+
+This is deliberately a narrower result than "unify everything": the
+discovery/source-curator subsystem — where both sides have real,
+independent, unreconciled work — is explicitly **not** part of PR #2 and
+remains open work.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
@@ -463,14 +519,22 @@ enrich → evaluate → draft → review → export → submit) is covered by an
 automated human-style e2e test in addition to manual verification.
 
 Open items, in priority order:
-1. **GitHub `main` vs. local history reconciliation** — see the 2026-07-30
-   git section above. Local work (this session's security fixes + a month of
-   auto-sync commits) lives on `local-work-2026-07-30`; GitHub's `main` has
-   its own independent month of feature work. Needs a human decision on how
-   to merge, not an automated one.
-2. **Jina Search API key is invalid (401)** — needs manual renewal at
+1. **Merge [PR #2](https://github.com/rafaelcastro7/iialgrants/pull/2)** —
+   the 10 security/logic fixes, verified `MERGEABLE`/`CLEAN` against current
+   `main`. This is the one piece of the reconciliation that's actually ready
+   to land.
+2. **Discovery/source-curator subsystem reconciliation** — both `main` and
+   the local checkout evolved this independently and substantially (`main`:
+   CKAN/EU/RSS/Tri-Council/T3010 ingesters; local: genericity-check,
+   deep-crawl-relevance, discovery-config admin panel). Needs a dedicated,
+   focused pass — not something to fold into a general "unify the git" task.
+3. **The rest of `local-work-2026-07-30` vs. `main`** — PR #1 remains open as
+   a record of the full divergence (529 files) but should not be merged as-is;
+   whatever in it isn't covered by PR #2 or item 2 above needs its own,
+   case-by-case decision.
+4. **Jina Search API key is invalid (401)** — needs manual renewal at
    jina.ai; blocks one of the discoverer's two seeding paths (sitemap
    seeding still works without it).
-3. The non-fatal React transition warning noted above (dialog-close +
+5. The non-fatal React transition warning noted above (dialog-close +
    mutation-`onSuccess` pointer-events race) — mitigated with a defensive
    safety net, not root-caused per-dialog.
