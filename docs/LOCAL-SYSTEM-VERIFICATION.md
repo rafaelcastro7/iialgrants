@@ -290,10 +290,151 @@ tasks with full repro details rather than fixed inline (compliance matrix
 substring false-positives, discoverer timeout regression + stale funder
 URLs + expired Jina key).
 
+## 2026-07-30 session — security audit, human e2e walkthrough, git history purge
+
+### Security/logic audit (2-agent parallel review, every finding empirically re-verified before fixing)
+
+Six real, confirmed bugs found and fixed — not just flagged:
+
+1. **IDOR in `multi-expert-review.functions.ts`** — `scoreProposal` and
+   `getProposalReviews` never checked the calling user's org against the
+   target proposal's org. Fixed by calling
+   `assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId)`
+   in both handlers.
+2. **SSRF in `funder-enrichment.functions.ts`** — `scrapeFunderWebsite` was
+   called with a user/DB-supplied URL with no scheme/host allowlist check.
+   Fixed by gating the call behind the existing (but previously unused here)
+   `isSafeExternalUrl()` from `external-preview.shared.ts`.
+3. **Multi-tenancy was completely non-functional** — `profiles.org_id` was
+   never assigned anywhere in the app, so the `can_access_tenant_entity()` RLS
+   policy and every `assertEntityInUserOrg()` check silently passed for
+   everyone (org_id null == null). Fixed by having `saveOrgProfile`
+   (`org.functions.ts`) create/upsert an `organizations` row and backfill
+   `profiles.org_id` on first save, and propagating `org_id` through proposal
+   creation (`strategist.functions.ts`) and submission creation
+   (`submissions.functions.ts`).
+4. **Unchecked upsert error in `admin-users.functions.ts`** —
+   `inviteAdminUser`'s admin-role grant could fail silently (RLS, transient
+   DB error) while the audit log still recorded `as_admin: true`. Fixed by
+   checking the upsert's `error` and throwing.
+5. **3 unchecked updates in `approval-workflows.functions.ts`** —
+   `approveStep`'s reject/final-approve/advance-step branches didn't check
+   the `approval_instances` update's error, so a failed transition looked
+   identical to a successful one. Fixed by capturing and throwing on error
+   in all three branches.
+6. **Stale cache after workflow approval** —
+   `_authenticated.admin.workflows.tsx` only invalidated the
+   `["approval-workflows"]` query on approve, not `["approval-steps"]`, so
+   the step list could show stale state after an action that visibly
+   succeeded. Fixed by invalidating both.
+
+Also fixed: `autoEvaluatePending` in `grants.functions.ts` conflated *any*
+`assertAgentEnabled` failure with "evaluator disabled" instead of checking
+for the `agent_disabled:` prefix specifically; a mislabeled button on
+`/proposals` (`Plus` icon + "New application" text on what is actually the
+knowledge-base resync action) was relabeled to `RefreshCw` + "Sync knowledge
+base"; a `chromium.launch()` call in `browser-render.server.ts` had no
+timeout and could hang a request indefinitely — wrapped in a 15s
+`Promise.race`; and a `pointer-events: none` stuck-body bug (Radix dialog
+cleanup race — see the `/tasks` writeup above) got a defensive
+`usePointerEventsUnstickSafety()` MutationObserver safety net in
+`__root.tsx` rather than a per-dialog fix, since the pattern repeats in 14+
+files.
+
+Flagged but deliberately **not** fixed (out of scope / needs a design call,
+not a bug fix): 6-component fit-score tier threshold inconsistency, a dead
+`multi-tenant.functions.ts` module, and an unused duplicate scoring engine
+(`scoring-multi-axis.server.ts`).
+
+### Full human-walkthrough e2e test
+
+`tests/e2e/full-lifecycle.spec.ts` now exercises the entire real lifecycle in
+one serial Playwright test — sign in → save org profile → sync knowledge base
+→ search a real grant → enrich → evaluate fit → draft every proposal section
+→ run the critic → export Markdown → attempt submit (asserting it correctly
+hits the readiness gate, not a silent success) — and passes reliably against
+the live local Supabase stack and real cloud LLM calls. This caught the
+`Plus`-icon button bug above (a human clicking through the app would have
+been confused by "New application" resyncing an existing knowledge base
+instead of creating anything) and confirmed the "one primary action at a
+time" pattern in `ProposalDetailExpress.tsx` behaves correctly through a full
+12-section draft loop.
+
+### Grant discovery pipeline — verified against real, live behavior (not just code-reading)
+
+Asked to be "acidic and critical" and verify empirically rather than trust a
+code-reading explanation. Confirmed live:
+
+- **Firecrawl path is disabled** (`USE_FIRECRAWL=0`, empty
+  `FIRECRAWL_API_KEY` in `.env`) — the fallback path (Path B in
+  `discoverer.impl.server.ts`) is what actually runs for every funder today.
+- **Jina Search seeding is broken** — live call returns HTTP 401. The key in
+  `.env` is present but invalid/expired. **Needs the user to get a fresh key
+  from jina.ai** — not something fixable from code.
+- Despite both of the above, the **fallback path genuinely works**: index-page
+  link scoring + sitemap.xml seeding + per-page LLM extraction, deduped via
+  `crawl_ledger`'s `canonical_key` (sha256), correctly wired to the real
+  `funders` table (not a mock/self-built table that looked plausible but was
+  disconnected). Live test against NRC IRAP: 1 new grant inserted, 5 correctly
+  deduped as already-seen. Typical runtime ~137s/funder — well inside the
+  180s `LOCAL_TIMEOUT_MS` discoverer timeout floor.
+- Self-correction during this investigation: a discoverer test appeared to
+  "hang" past a 120s test timeout while an Ollama fallback call was in
+  flight. Initially misreported this as "Ollama fallback has no timeout" —
+  wrong. `llm-timeouts.server.ts` does give the discoverer a real 180s
+  timeout (`LOCAL_TIMEOUT_MS`); the test's own timeout was just shorter than
+  that. Re-run with a 280s test timeout, the real call completed in 97.7s.
+  Lesson generalized into the project skill (see `SKILL.md`): verify the
+  actual configured timeout before concluding something hangs forever.
+
+### Git: leaked secret purge, then a bigger discovery — GitHub already had a month of work the local copy never had
+
+`.env` (real `GROQ_API_KEY`) was present in 5 historical commits, tracked
+before `.gitignore` was corrected. GitHub's push protection (GH013) rejected
+the push. Purged via `git filter-branch --index-filter` across `main` + all 5
+`claude/*` branches, then `refs/original/*` backup refs deleted, then
+`git reflog expire --expire=now --all && git gc --prune=now --aggressive`.
+Verified clean: `git log --all --diff-filter=A -- .env` returns nothing, and
+`git count-objects -v` shows 0 loose/garbage objects.
+
+**Before pushing the cleaned history, `git push origin main` was rejected as
+non-fast-forward — investigated rather than force-pushed blindly.**
+`git fetch origin main` revealed GitHub's `main` already had 867 commits that
+never existed in this local copy (recovered from the network share's git
+clone): a full month of real work (2026-06-19 → 2026-07-21) — the V2 "friendly
+redesign" UX pass across nearly every screen, bilingual hybrid search,
+RLS/auth security fixes, and a cloud-LLM migration with its own independent
+secret cleanup, apparently done directly against GitHub (commit messages
+reference "Codex"). The two histories share a common ancestor at 2026-06-19
+and diverged from there — the local E: copy is not a superset of GitHub's
+`main`, and force-pushing would have destroyed that month of work.
+
+**Resolution**: pushed the cleaned local history to a new branch,
+`local-work-2026-07-30`, plus all 5 `claude/*` branches under their own
+names — `origin/main` was left untouched. **Reconciling the two histories
+(which likely both touch the same files independently) is an unresolved,
+manual decision for the user** — not something to auto-merge blindly given a
+month of parallel changes on both sides.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
 auth, dashboard, grants + search, grant detail, proposals, submissions,
 fit-rules, funders, admin, and all V2 secondary screens render real local data
-with no crashes. LLM is hybrid (local-first with cloud chain). The only open item
-is the non-fatal React transition warning above.
+with no crashes. LLM is hybrid (cloud-first: Cerebras → Groq → Gemini, with
+local Ollama as the final fallback). The full grant lifecycle (search →
+enrich → evaluate → draft → review → export → submit) is covered by an
+automated human-style e2e test in addition to manual verification.
+
+Open items, in priority order:
+1. **GitHub `main` vs. local history reconciliation** — see the 2026-07-30
+   git section above. Local work (this session's security fixes + a month of
+   auto-sync commits) lives on `local-work-2026-07-30`; GitHub's `main` has
+   its own independent month of feature work. Needs a human decision on how
+   to merge, not an automated one.
+2. **Jina Search API key is invalid (401)** — needs manual renewal at
+   jina.ai; blocks one of the discoverer's two seeding paths (sitemap
+   seeding still works without it).
+3. The non-fatal React transition warning noted above (dialog-close +
+   mutation-`onSuccess` pointer-events race) — mitigated with a defensive
+   safety net, not root-caused per-dialog.

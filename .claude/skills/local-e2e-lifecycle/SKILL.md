@@ -198,3 +198,89 @@ your own on top of Playwright's built-in one. Two real clicks on an
 agent-triggering button fire two real (paid, cloud) LLM calls. Prefer:
 explicit `await expect(button).toBeEnabled({timeout})` *before* a single
 `.click()`, not a click wrapped in your own retry.
+
+## Verify the actual configured timeout before calling something "a hang"
+
+A discoverer test looked hung past a 120s Vitest timeout while an Ollama
+fallback call was mid-flight. The tempting conclusion — "the local LLM
+fallback has no timeout, that's a bug" — was wrong, and was reported to the
+user before being caught. `src/agents/llm-timeouts.server.ts` defines a real
+per-agent timeout (`LOCAL_TIMEOUT_MS`, 180s by default via
+`OLLAMA_TIMEOUT_MS`, plus `SLOW_AGENT_TIMEOUT_FLOORS_MS` floors for
+writer/evaluator/strategist/critic/enricher). The discoverer *does* get the
+180s baseline. The test's own outer timeout was simply shorter than the
+thing it was waiting on. Re-run with a longer test timeout before concluding
+an agent call hangs forever — check `llm-timeouts.server.ts` for what the
+real configured allowance is first.
+
+## Grant discovery fallback path — what's actually live vs. what looks wired but isn't
+
+Verified empirically (live calls, not code-reading) in `discoverer.impl.server.ts`:
+- Firecrawl (Path A) is **disabled** in this env (`USE_FIRECRAWL=0`, empty
+  key) — everything goes through the fallback (Path B): index-page link
+  scoring + sitemap.xml seeding + per-page LLM extraction.
+- Jina Search seeding is **broken** (live 401 — the `.env` key is
+  present but expired/invalid; needs manual renewal at jina.ai). Sitemap
+  seeding still works without it, so discovery isn't fully dead, just
+  missing one of its two seeding sources.
+- The fallback path genuinely inserts into the real `funders`/`grants`
+  tables (confirmed via a live run against NRC IRAP: 1 inserted, 5 correctly
+  deduped via `crawl_ledger`'s `canonical_key` sha256 hash) — it is not a
+  disconnected/self-built table that looks plausible but isn't wired up.
+- Typical runtime is ~137s/funder — comfortably inside the discoverer's real
+  180s timeout (see above), not evidence of a hang.
+
+## Purging a leaked secret from git history (filter-branch, on Windows without Python)
+
+If `git push` is rejected by GitHub secret-scanning (GH013) for a real key
+committed in `.env` history, `git filter-repo` usually isn't available here
+(needs Python) — use `filter-branch` instead:
+```
+git filter-branch --force --index-filter \
+  "git rm --cached --ignore-unmatch .env" --prune-empty -- --all
+```
+Run this via a background task with a long explicit timeout (a full
+`--all` rewrite across 1000+ commits on several branches took several
+minutes and got killed by the tool's default 3-minute Bash timeout on the
+first attempt) — and stop any process that auto-commits (e.g. an
+`auto-sync.mjs` watcher) first, or it can commit `filter-branch`'s own
+`.git-rewrite/` scratch directory into history mid-rewrite if a run gets
+interrupted. If that happens, `.gitignore` it and commit its removal before
+re-running.
+
+After the rewrite, `git log --all --diff-filter=A -- .env` can still show
+hits — check whether those commits are actually **reachable** before
+assuming the purge failed:
+```
+git branch --all --contains <hash>          # empty = unreachable, just backup refs
+git merge-base --is-ancestor <hash> <branch> # authoritative per-branch check
+```
+`filter-branch` keeps the pre-rewrite state alive under `refs/original/*`
+specifically so you can recover from a bad rewrite — these are never pushed
+and don't affect `git push`, but delete them for real local hygiene once
+you've confirmed the rewrite is good:
+```
+git for-each-ref --format="%(refname)" refs/original/ | xargs -n1 -r git update-ref -d
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+```
+Confirm with `git count-objects -v` (0 loose, 0 garbage) before trusting a
+push won't get blocked again.
+
+## Before force-pushing a rewritten history, fetch and diff against the remote — don't assume you know which side is ahead
+
+A rewritten local `main` was ready to push after the secret purge above.
+`git push origin main` was rejected as non-fast-forward — instead of forcing
+it, `git fetch origin main` + `git log origin/main --not main` were checked
+first, and revealed GitHub already had 800+ commits (a full month of real
+UX/security/search work) that this local checkout never had — the local
+repo (recovered from a separate network-share clone) and GitHub's `main` had
+silently diverged from a shared point weeks earlier. A blind
+`git push --force` here would have destroyed a month of someone else's real
+work. When a push is rejected as non-fast-forward on a branch you just
+rewrote, always check `git log <remote>/<branch> --not <local-branch>
+--oneline` (commit count *and* a skim of messages/dates) before deciding
+force-push is safe — "I rewrote this so mine must be authoritative" does not
+follow. When the two sides both contain real independent work, push the
+local side to a new branch name instead of forcing, and leave reconciliation
+as an explicit human decision.
