@@ -77,21 +77,33 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   }
   await expect(page).toHaveURL(/\/proposals\/[^/]+$/, { timeout: AGENT_TIMEOUT });
 
-  // 6. Run the critic.
-  const criticButton = page.getByRole("button", { name: /run critic/i });
-  await expect(criticButton).toBeVisible({ timeout: AGENT_TIMEOUT });
-  await criticButton.click();
-  await expect(page.getByText(/\d+%/)).toBeVisible({ timeout: AGENT_TIMEOUT });
+  // 6. The Express proposal view is deliberately "ONE primary action at a
+  // time" (see ProposalDetailExpress.tsx): a freshly-drafted proposal starts
+  // with every section Empty, so the first action is `Draft "<heading>"`,
+  // repeated per section, before quality review or submit ever appear.
+  const primaryAction = page.getByRole("button").filter({ hasText: /^Draft "|^Run quality review|^Submit proposal$/ });
+  for (let i = 0; i < 12; i++) {
+    const label = await primaryAction.textContent();
+    if (!label?.startsWith('Draft "')) break;
+    await primaryAction.click();
+    await expect(primaryAction).not.toHaveText(label, { timeout: AGENT_TIMEOUT });
+  }
 
-  // 7. Export (Markdown — cheapest, deterministic format to verify the export
-  // pipeline fires a real request rather than every renderer variant).
+  // 7. Run quality review (the critic) once every section is drafted.
+  await expect(primaryAction).toHaveText(/run quality review/i, { timeout: AGENT_TIMEOUT });
+  await primaryAction.click();
+  await expect(primaryAction).not.toHaveText(/run quality review/i, { timeout: AGENT_TIMEOUT });
+  expect(consoleErrors, `Console errors after critic: ${consoleErrors.join("; ")}`).toEqual([]);
+
+  // 8. Export + submit only exist in the Advanced view.
+  await page.getByRole("button", { name: /show full details/i }).click();
   const [download] = await Promise.all([
     page.waitForEvent("download", { timeout: AGENT_TIMEOUT }),
     page.getByRole("button", { name: /export.*md|markdown/i }).click(),
   ]);
   expect(download.suggestedFilename()).toBeTruthy();
 
-  // 8. Submit — proposal is freshly drafted, so this should hit the
+  // 9. Submit — proposal is freshly drafted, so this should hit the
   // readiness gate (not silently succeed, not silently fail).
   await page.getByRole("button", { name: /^submit$/i }).click();
   const forceSubmit = page.getByRole("button", { name: /submit anyway/i });
