@@ -41,7 +41,7 @@ export const submitProposal = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: proposal, error: pe } = await supabase
       .from("proposals")
-      .select("id, grant_id, status, critic_score, grant:grants(requirements, status)")
+      .select("id, org_id, grant_id, status, critic_score, grant:grants(requirements, status)")
       .eq("id", data.proposalId)
       .maybeSingle();
     if (pe) throw new Error(pe.message);
@@ -88,6 +88,10 @@ export const submitProposal = createServerFn({ method: "POST" })
       .from("submissions")
       .insert({
         user_id: userId,
+        // Same root cause as proposals never setting org_id (see
+        // org.functions.ts) — the submission should inherit the proposal's
+        // own org_id rather than always persisting null.
+        org_id: (proposal as { org_id?: string | null }).org_id ?? null,
         proposal_id: proposal.id,
         grant_id: proposal.grant_id,
         method: data.method,

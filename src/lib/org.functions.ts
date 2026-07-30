@@ -1,6 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createSupabaseAdmin } from "./supabase-admin";
+
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64) || "org"
+  );
+}
 
 export const getOrgProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -31,6 +42,35 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
       .from("org_profiles")
       .upsert({ user_id: context.userId, ...data }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
+
+    // profiles.org_id was never assigned anywhere in the app — every
+    // tenant-scoping check in tenant-access.server.ts that compares org_id
+    // (getTenantPrincipal/assertEntityInUserOrg) fell back to per-row
+    // user_id ownership only, so cross-user sharing within the same org
+    // never worked; this is the org's actual creation point. Best-effort:
+    // first save of an org profile creates/finds an `organizations` row by
+    // slug and backfills `profiles.org_id` if it's still unset.
+    const { data: profile, error: profileErr } = await context.supabase
+      .from("profiles")
+      .select("org_id")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (profileErr) throw new Error(profileErr.message);
+    if (!profile?.org_id) {
+      const admin = await createSupabaseAdmin();
+      const slug = slugify(data.org_name);
+      const { data: org, error: orgErr } = await admin
+        .from("organizations")
+        .upsert({ name: data.org_name, slug }, { onConflict: "slug", ignoreDuplicates: false })
+        .select("id")
+        .single();
+      if (orgErr) throw new Error(orgErr.message);
+      const { error: linkErr } = await admin
+        .from("profiles")
+        .update({ org_id: org.id })
+        .eq("id", context.userId);
+      if (linkErr) throw new Error(linkErr.message);
+    }
     return { ok: true };
   });
 
