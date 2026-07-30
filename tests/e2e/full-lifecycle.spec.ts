@@ -44,18 +44,20 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     });
   }
 
-  // 4. Evaluate fit.
+  // 4. Evaluate fit. This opens the "Chain of thought" trace Sheet, which
+  // stays open (and intercepts clicks on everything behind it) until
+  // dismissed — Escape is the standard Radix dismissal, not a workaround.
   const evaluateButton = page.getByRole("button", { name: /check fit|re-evaluate fit/i });
   await expect(evaluateButton).toBeVisible();
   await evaluateButton.click();
   await expect(page.getByRole("button", { name: /re-evaluate fit/i })).toBeVisible({
     timeout: AGENT_TIMEOUT,
   });
+  await page.keyboard.press("Escape");
   expect(consoleErrors, `Console errors after evaluate: ${consoleErrors.join("; ")}`).toEqual([]);
 
   // 5. Draft a proposal.
   const draftButton = page.getByRole("button", { name: /draft proposal/i });
-  const openProposal = page.getByRole("link", { name: /open proposal/i });
   if (await draftButton.isVisible().catch(() => false)) {
     await draftButton.click();
   }
