@@ -416,6 +416,19 @@ names — `origin/main` was left untouched. **Reconciling the two histories
 manual decision for the user** — not something to auto-merge blindly given a
 month of parallel changes on both sides.
 
+**Follow-up**: opened
+[PR #1](https://github.com/rafaelcastro7/iialgrants/pull/1) from
+`local-work-2026-07-30` into `main` so the reconciliation goes through
+GitHub's normal review UI instead of a silent local merge. Confirmed via
+`gh pr view`: 529 changed files, +288,446/-331 lines, `mergeStateStatus:
+DIRTY`, `mergeable: CONFLICTING` — GitHub itself cannot auto-merge this, which
+matches the "a month of independent architecture on both sides" assessment
+above. Recommendation left on the PR: instead of resolving that conflict
+wholesale, re-apply just this session's 6 security fixes (listed above) by
+hand on top of current `main`, since `main` has an entire month of UX/schema
+work this local checkout never saw, and the security fixes are small,
+self-contained, and already fully documented here.
+
 ### Misleading comment found while explaining the discovery/search pipeline to the user
 
 Asked (again) to "recorre el sistema y con total honestidad" explain how grant
