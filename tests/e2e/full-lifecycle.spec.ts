@@ -156,7 +156,8 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   const CRITIC_TIMEOUT = 150_000;
   await expect(primaryAction).toHaveText(/run quality review/i, { timeout: AGENT_TIMEOUT });
   await primaryAction.click();
-  await expect(primaryAction).toBeEnabled({ timeout: CRITIC_TIMEOUT });
+  await expect(primaryAction).toBeDisabled({ timeout: 5_000 }); // mutation started
+  await expect(primaryAction).toBeEnabled({ timeout: CRITIC_TIMEOUT }); // mutation finished
   expect(consoleErrors, `Console errors after critic: ${consoleErrors.join("; ")}`).toEqual([]);
 
   // 8. Export + submit only exist in the Advanced view.
