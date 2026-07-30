@@ -64,14 +64,20 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
       .maybeSingle();
     if (profileErr) throw new Error(profileErr.message);
     if (!profile?.org_id) {
+      // organizations has no INSERT policy (SELECT-only — see "Users can
+      // view their own organization" / org_member_r), so this one step needs
+      // the admin client; the profiles update right after is scoped to the
+      // caller's own row (profiles_self_update) and would work under RLS too,
+      // but sharing one client keeps this block's error handling uniform.
+      const admin = await createSupabaseAdmin();
       const slug = slugify(data.org_name);
-      const { data: org, error: orgErr } = await context.supabase
+      const { data: org, error: orgErr } = await admin
         .from("organizations")
         .upsert({ name: data.org_name, slug }, { onConflict: "slug", ignoreDuplicates: false })
         .select("id")
         .single();
       if (orgErr) throw new Error(orgErr.message);
-      const { error: linkErr } = await context.supabase
+      const { error: linkErr } = await admin
         .from("profiles")
         .update({ org_id: org.id })
         .eq("id", context.userId);
