@@ -42,6 +42,7 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     await expect(page.getByRole("button", { name: /fetch details/i })).toBeEnabled({
       timeout: AGENT_TIMEOUT,
     });
+    await page.keyboard.press("Escape");
   }
 
   // 4. Evaluate fit. This opens the "Chain of thought" trace Sheet, which
