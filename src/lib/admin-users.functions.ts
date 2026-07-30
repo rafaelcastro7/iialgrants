@@ -122,9 +122,14 @@ export const inviteAdminUser = createServerFn({ method: "POST" })
     const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     if (error) throw new Error(error.message);
     if (data.asAdmin && invited.user) {
-      await supabaseAdmin
+      // Unlike setUserAdminRole (same upsert, same table), this never checked
+      // the error — a failed grant (RLS, transient DB error) silently left
+      // the invited user without the admin role while the audit log below
+      // still recorded `as_admin: true`, as if it had succeeded.
+      const { error: roleError } = await supabaseAdmin
         .from("user_roles")
         .upsert({ user_id: invited.user.id, role: "admin" }, { onConflict: "user_id,role" });
+      if (roleError) throw new Error(roleError.message);
     }
     await audit({
       user_id: context.userId,
