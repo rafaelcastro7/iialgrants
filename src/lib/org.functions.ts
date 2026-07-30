@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createSupabaseAdmin } from "./supabase-admin";
 
 export const getOrgProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
