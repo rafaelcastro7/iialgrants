@@ -11,6 +11,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertEntityInUserOrg } from "./tenant-access.server";
 import { z } from "zod";
 
 const REVIEWER_ARCHETYPES = [
@@ -114,11 +115,14 @@ export const scoreProposal = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
+    const supabase = await createSupabaseAdmin();
+    // IDOR: any authenticated user could score/read any other org's proposal
+    // by guessing its UUID — nothing here checked ownership before this fix.
+    await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     await assertAgentEnabled("critic");
     const { callLlm } = await import("@/agents/llm.server");
     const { newRunId } = await import("@/lib/otel");
-    const supabase = await createSupabaseAdmin();
     const runId = newRunId();
     const t0 = Date.now();
 
@@ -308,9 +312,10 @@ export const getProposalReviews = createServerFn({ method: "GET" })
       proposalId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
       const supabase = await createSupabaseAdmin();
+      await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
       const { data: reviews, error } = await supabase
         .from("proposal_reviews")
