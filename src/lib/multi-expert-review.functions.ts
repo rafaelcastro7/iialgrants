@@ -12,6 +12,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { assertEntityInUserOrg } from "./tenant-access.server";
 
 // Lens wording tracks the most common, evidence-backed reasons real grant
 // proposals lose points (funder misalignment, unmeasurable objectives, weak
