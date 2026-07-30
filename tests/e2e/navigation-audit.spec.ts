@@ -103,9 +103,16 @@ test.describe("navigation audit - member", () => {
       await expect(page.getByRole("heading", { name: /privacy/i }).first()).toBeVisible();
     });
 
+    // Real bug, confirmed live: /compliance was retired 2026-07-23 (see
+    // src/routes/compliance.tsx's own comment) and now redirects to
+    // /privacy's "Compliance & frameworks" card instead of rendering its own
+    // page. This test still expected the URL to stay on /compliance and a
+    // "Compliance" *heading* — the final URL is /privacy, and the card title
+    // is a styled <div> (CardTitle), not a semantic heading, so
+    // getByRole("heading") could never match it either way.
     await page.goto("/dashboard");
-    await clickAndAssert(page, "/compliance", /\/compliance\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /compliance/i }).first()).toBeVisible();
+    await clickAndAssert(page, "/compliance", /\/privacy\/?$/, async () => {
+      await expect(page.getByText(/compliance & frameworks/i)).toBeVisible();
     });
 
     expect(errors).toEqual([]);
