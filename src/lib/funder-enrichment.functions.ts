@@ -13,6 +13,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSafeExternalUrl } from "./external-preview.shared";
 import type { Database, Json } from "@/integrations/supabase/types";
 
 type FunderUpdate = Database["public"]["Tables"]["funders"]["Update"];
@@ -116,9 +117,14 @@ export const enrichFunder = createServerFn({ method: "POST" })
         return { success: false, error: "Funder not found" };
       }
 
+      // SSRF: scrapeFunderWebsite made a server-side fetch to whatever URL was
+      // stored on the funder row or passed in — nothing stopped that from
+      // being an internal address (169.254.169.254 cloud metadata, RFC1918
+      // ranges, etc.) before this check.
+      const targetUrl = funder.website || data.website;
       let websiteData = null;
-      if (funder.website || data.website) {
-        websiteData = await scrapeFunderWebsite(funder.website || data.website!);
+      if (targetUrl && isSafeExternalUrl(targetUrl)) {
+        websiteData = await scrapeFunderWebsite(targetUrl);
       }
 
       const updates: FunderUpdate = {
