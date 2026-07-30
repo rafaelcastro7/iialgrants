@@ -123,8 +123,40 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+// Real bug, confirmed live (docs/LOCAL-SYSTEM-VERIFICATION.md): closing a
+// Radix Dialog from a mutation's `onSuccess` (state update from an async
+// callback, not a direct user gesture like Escape/overlay-click) can leave
+// `document.body.style.pointerEvents` stuck at "none" forever — every dialog
+// element is already `data-state="closed"`/unmounted, but Radix's own
+// scroll-lock cleanup effect never runs to release the lock it set on open.
+// Result: every click on the page silently does nothing until a hard reload.
+// At least 14 files close a Dialog this way, so this is a global safety net
+// rather than a per-dialog patch: whenever the lock is on but no dialog is
+// actually open, release it. The timeout (not a single rAF) gives Radix's
+// real close-animation cleanup a fair chance to finish on its own first, so
+// this only fires for the actual stuck case, not a normal close-in-progress.
+function usePointerEventsUnstickSafety() {
+  useEffect(() => {
+    const OPEN_OVERLAY_SELECTOR =
+      '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]';
+
+    const clearIfStuck = () => {
+      if (document.body.style.pointerEvents !== "none") return;
+      if (document.querySelector(OPEN_OVERLAY_SELECTOR)) return;
+      document.body.style.removeProperty("pointer-events");
+    };
+
+    const observer = new MutationObserver(() => {
+      setTimeout(clearIfStuck, 100);
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ["style"] });
+    return () => observer.disconnect();
+  }, []);
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  usePointerEventsUnstickSafety();
 
   return (
     <QueryClientProvider client={queryClient}>
