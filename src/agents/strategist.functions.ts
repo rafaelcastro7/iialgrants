@@ -128,6 +128,13 @@ export const runStrategist = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
+    // Two independent kill-switches, same as grants_discovery/discoverer:
+    // the module flag gates the "Proposal drafting workspace" feature area,
+    // the agent flag gates this specific LLM agent's execution regardless
+    // of caller. Previously only the agent flag existed here -- toggling
+    // "Proposals" off in /admin/modules did nothing.
+    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+    await assertModuleEnabled("proposals");
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     await assertAgentEnabled("strategist", context.supabase as never);
     const { callLlm } = await import("@/agents/llm.server");

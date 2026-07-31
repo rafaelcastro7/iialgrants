@@ -38,6 +38,12 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => OrgInput.parse(input))
   .handler(async ({ data, context }) => {
+    // Matches the submissions/submitProposal convention: gate the write
+    // action, not reads (getOrgProfile stays open). Previously nothing
+    // checked this -- toggling "Organization profile and RAG knowledge"
+    // off in /admin/modules did nothing.
+    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+    await assertModuleEnabled("org_profile");
     const { error } = await context.supabase
       .from("org_profiles")
       .upsert({ user_id: context.userId, ...data }, { onConflict: "user_id" });
