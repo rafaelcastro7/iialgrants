@@ -22,8 +22,10 @@ import {
 // driftable copy that would silently stop matching production behavior the
 // moment an admin changed the configured threshold.
 import { DISCOVERY_CONFIG_DEFAULTS } from "@/lib/discovery-config.server";
-const { candidateAutoApproveThreshold: AUTO_APPROVE_THRESHOLD, candidateReviewMinThreshold: REVIEW_MIN_THRESHOLD } =
-  DISCOVERY_CONFIG_DEFAULTS;
+const {
+  candidateAutoApproveThreshold: AUTO_APPROVE_THRESHOLD,
+  candidateReviewMinThreshold: REVIEW_MIN_THRESHOLD,
+} = DISCOVERY_CONFIG_DEFAULTS;
 
 describe("normalizeName", () => {
   it("lowercases and strips common legal-entity suffixes", () => {

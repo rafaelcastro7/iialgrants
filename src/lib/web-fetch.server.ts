@@ -179,7 +179,10 @@ export async function jinaReader(
       // exact same header it had just gotten a 401 for, so it always failed
       // identically on the retry — this is what made Reader look fully dead
       // when only the *keyed* request was.
-      res = await fetch(`${JINA_READER_BASE}${url}`, { headers: { Accept: "application/json" }, signal });
+      res = await fetch(`${JINA_READER_BASE}${url}`, {
+        headers: { Accept: "application/json" },
+        signal,
+      });
       ctx.httpStatus = res.status;
     }
     if (!res.ok) return { ok: false, error: `jina_reader_${res.status}` };

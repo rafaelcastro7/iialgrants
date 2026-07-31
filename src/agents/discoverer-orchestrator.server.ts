@@ -267,7 +267,11 @@ export async function runDiscoveryJob(
       // redundant time.)
       for (const g of pending ?? []) {
         try {
-          await evaluateGrantImpl({ grantId: g.id, userId: triggeringUserId, userSupabase: supabaseAdmin });
+          await evaluateGrantImpl({
+            grantId: g.id,
+            userId: triggeringUserId,
+            userSupabase: supabaseAdmin,
+          });
           evaluated++;
         } catch (e) {
           evalErrors.push({ grantId: g.id, error: e instanceof Error ? e.message : String(e) });
