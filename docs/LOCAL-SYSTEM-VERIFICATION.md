@@ -560,6 +560,46 @@ Then actually wired it end to end rather than stopping at the registry fix:
   than auto-approved, but worth a product decision on whether that's desired
   for a Canada-focused app.
 
+### Jina Search eliminated (dead), Jina Reader fixed (was never actually dead)
+
+Asked directly "jina funciona? sino eliminalo y crea un sistema local igual y
+mejor" — verified both Jina endpoints live rather than assuming from the
+earlier 401s seen mid-session:
+- **Jina Search** (`s.jina.ai`): 401 `AuthenticationRequiredError` even with
+  **no** API key sent — its free/anonymous tier has been removed entirely,
+  not just "our key expired." No fix short of a paid key was possible, so it
+  was eliminated as asked.
+- **Jina Reader** (`r.jina.ai`): 200 with real content, **fully anonymous**,
+  no key needed at all. It looked dead all session because of a real bug in
+  `web-fetch.server.ts`'s own 401-retry: on a 401/402 it rebuilt the retry
+  request's headers from `process.env.JINA_API_KEY` again — the exact same
+  invalid key that had just been rejected — so the "fallback" always failed
+  identically instead of ever trying anonymously. Fixed to drop the
+  Authorization header entirely on retry. This restored a working, free
+  capability rather than deleting something that actually works.
+
+Replacement for Search: a self-hosted **SearXNG** instance added to the
+Docker stack (`supabase/docker/docker-compose.yml`'s `searxng` service,
+`http://localhost:15436`) — aggregates Google CSE + DuckDuckGo (+ others per
+SearXNG's default engine set), runs entirely on this machine, no API key, no
+externally-imposed rate limit. `jinaSearch` renamed to `localWebSearch`
+(same `{ok, hits}` contract) across every real call site
+(`discoverer.impl.server.ts`'s fallback-path seeding,
+`source-curator/funder-scout.server.ts`).
+
+Verified live, not just typechecked: `funder_scout` — which had failed
+**100% of the time** with `jina_search_401` in every run this session —
+succeeded in a fresh Tier B trigger: 14 hits, 10 new real Canadian funder
+candidates (Global Affairs Canada, IDRC, Environment and Climate Change
+Canada, Canada Foundation for Innovation, several municipal climate-grant
+programs). Also confirmed SearXNG correctly passes through `site:`-qualified
+queries (the exact query shape the discoverer's fallback path uses) with
+relevant, on-target results. `tsc --noEmit` clean; full suite still
+440 passed / 4 skipped. Same fix independently confirmed and ported to
+[PR #2](https://github.com/rafaelcastro7/iialgrants/pull/2) — main's
+`web-fetch.server.ts` was 99% byte-identical to this checkout's pre-fix
+version, same bug, same result after porting (379 passed / 4 skipped there).
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
@@ -591,10 +631,10 @@ Open items, in priority order:
    a record of the full divergence (529 files) but should not be merged as-is;
    whatever in it isn't covered by PR #2 or item 2 above needs its own,
    case-by-case decision.
-4. **Jina Search API key is invalid (401)** — needs manual renewal at
-   jina.ai; blocks one of the discoverer's two seeding paths (sitemap
-   seeding still works without it) AND the source-curator's `funder_scout`
-   tier (confirmed failing on `jina_search_401` in the live Tier B run above).
+4. ~~Jina Search API key is invalid (401)~~ — **resolved**: Jina Search
+   eliminated entirely (dead, no anonymous tier), replaced by a self-hosted
+   local SearXNG instance; Jina Reader's real retry bug fixed instead of
+   needing a key at all. See the "Jina Search eliminated" section above.
 5. **Review the 22 `pending_review` + 621 `candidate` rows in
    `/admin/candidates`** now that the pipeline actually ran — mostly US
    federal agencies from Grants.gov, correctly held at low score rather than

@@ -219,10 +219,17 @@ Verified empirically (live calls, not code-reading) in `discoverer.impl.server.t
 - Firecrawl (Path A) is **disabled** in this env (`USE_FIRECRAWL=0`, empty
   key) — everything goes through the fallback (Path B): index-page link
   scoring + sitemap.xml seeding + per-page LLM extraction.
-- Jina Search seeding is **broken** (live 401 — the `.env` key is
-  present but expired/invalid; needs manual renewal at jina.ai). Sitemap
-  seeding still works without it, so discovery isn't fully dead, just
-  missing one of its two seeding sources.
+- Jina Search seeding was **broken and has been replaced** (2026-07-30): its
+  free/anonymous tier is gone entirely (live 401 `AuthenticationRequiredError`
+  even with NO key sent — this isn't just "our key expired," don't waste time
+  renewing it). Discovery's search-seeding now calls `localWebSearch()`
+  (`web-fetch.server.ts`), backed by a self-hosted SearXNG instance
+  (`supabase/docker/docker-compose.yml`'s `searxng` service,
+  `http://localhost:15436`) — free, local, no key, no external rate limit.
+  Separately: Jina *Reader* (`r.jina.ai`, used for page content extraction,
+  a different endpoint) turned out to still work completely anonymously —
+  it only looked dead because its own 401-retry bug resent the same invalid
+  key. Fixed in place rather than replaced, since it already worked for free.
 - The fallback path genuinely inserts into the real `funders`/`grants`
   tables (confirmed via a live run against NRC IRAP: 1 inserted, 5 correctly
   deduped via `crawl_ledger`'s `canonical_key` sha256 hash) — it is not a
