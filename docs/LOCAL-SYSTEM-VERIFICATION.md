@@ -675,6 +675,40 @@ because it has no such overlap — no agent_flags equivalent gates the
 webhook routes. The remaining 6 modules need this same overlap check done
 per-module before wiring, not a blind copy of the `public_webhooks` pattern.
 
+### Verifying `docs/PRODUCT-DIFFERENTIATION.md`'s competitive claims against real code, not just trusting the doc
+
+`docs/PRODUCT-DIFFERENTIATION.md` (dated 2026-07-04, 3+ weeks stale)
+compares this app against Instrumentl/Grantable/Granter.ai/FundRobin/Candid
+and lists 12 specific differentiator claims. Spot-checked the "Shareable fit
+report" claim (#6) — worth checking specifically because the previous
+session's V2 redesign rewrote most of the UI, and a differentiator claim
+tied to a specific button is exactly the kind of thing a UI rewrite could
+have silently dropped.
+
+- First pass: grepped `V2GrantDetail.tsx` for the share button and got no
+  hits — looked like the claimed feature was unreachable in the actual
+  default UI (V2 is the default per `readInitialUiVersion()`), only present
+  in the legacy v1 route nobody sees by default. Almost reported this as a
+  "marketed feature that doesn't exist for real users" bug.
+- **Caught it before reporting**: re-checked more carefully and found the
+  button genuinely is there (`V2GrantDetail.tsx:437-447`, an unconditional
+  "Share" button in the grant-detail sidebar) — the first grep just missed
+  it. Verified live rather than trusting either the doc's claim or my own
+  first (wrong) grep result: signed in, opened a real grant, clicked Share,
+  confirmed the clipboard URL opens a working, unauthenticated public report
+  page. It's genuinely true. Added `tests/e2e/share-report.spec.ts` — this
+  claimed differentiator had 0 rows ever in `shared_fit_reports` and zero
+  test coverage before this.
+- Lesson for future audits of this doc: don't stop at the first grep result
+  when it contradicts a specific, falsifiable claim — re-verify before
+  reporting a "the marketing is lying" finding, the same rigor demanded of
+  the claim itself.
+
+Remaining claims in that doc (deadline reminder notifications, pipeline
+analytics, evidence-backed extraction, Express/Advanced parity) are not yet
+individually re-verified this pass — flagged as follow-up, not assumed true
+just because one claim checked out.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
