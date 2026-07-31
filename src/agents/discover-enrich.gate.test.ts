@@ -111,7 +111,7 @@ vi.mock("@/lib/web-fetch.server", () => ({
             : [],
     },
   }),
-  jinaSearch: async () => ({ ok: true, hits: [] }),
+  localWebSearch: async () => ({ ok: true, hits: [] }),
 }));
 
 vi.mock("@/agents/llm.server", () => ({

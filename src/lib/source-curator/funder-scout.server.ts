@@ -1,5 +1,5 @@
 import { callLlm } from "@/agents/llm.server";
-import { jinaSearch } from "@/lib/web-fetch.server";
+import { localWebSearch } from "@/lib/web-fetch.server";
 import type { RawCandidate } from "./scoring.server";
 
 const QUERIES = [
@@ -23,7 +23,7 @@ export async function runFunderScout(): Promise<RawCandidate[]> {
   const candidates: RawCandidate[] = [];
   const failures: string[] = [];
   for (const query of QUERIES) {
-    const search = await jinaSearch(query, 6);
+    const search = await localWebSearch(query, 6);
     if (!search.ok) {
       failures.push(`search:${search.error ?? "unknown"}`);
       continue;

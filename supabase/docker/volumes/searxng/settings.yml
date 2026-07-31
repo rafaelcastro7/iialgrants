@@ -1,0 +1,18 @@
+# Minimal override merged onto SearXNG's built-in defaults
+# (use_default_settings: true) — see https://docs.searxng.org/admin/settings/settings.html
+# JSON output is disabled by default (abuse prevention for public instances);
+# this instance is local-only (bound to localhost:15436), so enabling it for
+# our own server-side callers is safe.
+use_default_settings: true
+
+general:
+  instance_name: "iial-grants-local-search"
+
+server:
+  secret_key: "e1d7282eefe4ea2ba8e1a8d0a33ca518d3e791d4ea2716f87adc0d2966239e04"
+  limiter: false
+
+search:
+  formats:
+    - html
+    - json
