@@ -394,7 +394,7 @@ export async function discoverFunderImpl(
   const { newRunId } = await import("@/lib/otel");
   const { firecrawlAvailable, firecrawlMap, filterProgramUrls } =
     await import("@/lib/firecrawl.server");
-  const { scrapeWithFallback, jinaSearch, CHROME_UA } = await import("@/lib/web-fetch.server");
+  const { scrapeWithFallback, localWebSearch, CHROME_UA } = await import("@/lib/web-fetch.server");
   const { shouldFetch, recordFetch } = await import("@/lib/crawl-ledger.server");
   const { fetchCandidateLinksFromSitemaps } = await import("@/lib/site-candidates.server");
   const { resolveDiscoveryConfig } = await import("@/lib/discovery-config.server");
@@ -885,9 +885,10 @@ export async function discoverFunderImpl(
     });
   }
 
-  // Seed extra candidates via Jina Search so we never depend on the funder's
-  // own navigation surfacing every program. This makes discovery resilient on
-  // sites that hide programs behind JS menus, filters, or pagination.
+  // Seed extra candidates via the local search engine (SearXNG) so we never
+  // depend on the funder's own navigation surfacing every program. This
+  // makes discovery resilient on sites that hide programs behind JS menus,
+  // filters, or pagination.
   const seedHost = new URL(F.source_url).host;
   const seeded: Array<{ url: string; text: string; score: number }> = [];
   const searchSeeds: Array<{ query: string; ok: boolean; hits: number; error?: string }> = [];
@@ -897,7 +898,7 @@ export async function discoverFunderImpl(
       `site:${seedHost} eligibility deadline application`,
     ];
     for (const q of queries) {
-      const r = await jinaSearch(q, 15);
+      const r = await localWebSearch(q, 15);
       searchSeeds.push({
         query: q,
         ok: r.ok,

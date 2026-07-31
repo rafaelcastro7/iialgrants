@@ -1,5 +1,5 @@
 import { callLlm } from "@/agents/llm.server";
-import { jinaSearch } from "@/lib/web-fetch.server";
+import { localWebSearch } from "@/lib/web-fetch.server";
 import type { RawCandidate } from "./scoring.server";
 
 // Default seed queries — used unless discovery_config.funder_scout_queries
@@ -25,7 +25,7 @@ export async function runFunderScout(queries: string[] = DEFAULT_QUERIES): Promi
   const candidates: RawCandidate[] = [];
   const failures: string[] = [];
   for (const query of queries) {
-    const search = await jinaSearch(query, 6);
+    const search = await localWebSearch(query, 6);
     if (!search.ok) {
       failures.push(`search:${search.error ?? "unknown"}`);
       continue;
