@@ -644,6 +644,37 @@ in full for the first time this session:
 440/4-skipped and 379/4-skipped) re-verified after every change in this
 section.
 
+### Full e2e re-verification after this session's changes, one real test flake fixed
+
+After the fixes above (Jina/SearXNG, module-flag enforcement, dead-code
+removal, tier fix), re-ran the whole local e2e suite to confirm no
+regression — not assumed from the unit suite alone:
+- `full-lifecycle.spec.ts` (search → enrich → evaluate → draft → critic →
+  export → submit): passed, 40s.
+- `basic-user.spec.ts` + `proposal-export.spec.ts`: passed.
+- `navigation-audit.spec.ts` (member flow): **failed once** with 4
+  `SupabaseAuthClient.getUser ... Failed to fetch` errors, then **passed
+  reliably in isolation** on immediate re-run — confirmed via repeated runs,
+  not assumed benign. Same root cause as the already-documented
+  `full-lifecycle.spec.ts` pattern (rapid programmatic navigation aborting
+  an in-flight session check under load), just never filtered here. Applied
+  the identical filter; re-ran the full 5-test e2e batch afterward — 5/5
+  passed.
+
+**`module_flags` vs `agent_flags` (deliberately NOT touched this pass):**
+attempted to wire the `proposals` module next and stopped after finding
+`runStrategist` (the actual proposal-creation call) already gates on
+`assertAgentEnabled("strategist", ...)` — a separate, existing kill-switch
+for the same real feature. Adding `assertModuleEnabled("proposals")` on top
+would create two independent, possibly-conflicting admin controls for one
+capability, which is exactly the unresolved architectural question this
+project's own `docs/HANDOFF-CODEX.md` already flagged ("untangling whether
+module_flags and agent_flags should merge into one mechanism is a real but
+separate architectural question"). `public_webhooks` was safe to fix
+because it has no such overlap — no agent_flags equivalent gates the
+webhook routes. The remaining 6 modules need this same overlap check done
+per-module before wiring, not a blind copy of the `public_webhooks` pattern.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
