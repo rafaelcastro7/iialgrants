@@ -600,6 +600,50 @@ relevant, on-target results. `tsc --noEmit` clean; full suite still
 `web-fetch.server.ts` was 99% byte-identical to this checkout's pre-fix
 version, same bug, same result after porting (379 passed / 4 skipped there).
 
+### Loop audit: eslint clean, one dead AI-generated file removed, one real UI inconsistency fixed
+
+Continuing the "sin humo, sin deuda tecnica, sin bugs" system audit — ran
+this project's own documented Verification Protocol (`docs/HANDOFF-CODEX.md`)
+in full for the first time this session:
+
+- `eslint .` — 4 formatting issues, all in files edited earlier this
+  session, no real logic/quality findings. Fixed with `--fix`.
+- **Removed `src/agents/scoring-multi-axis.server.ts`** — a complete,
+  schema-validated, LLM-based 5-axis grant scorer (relevance/budget_fit/
+  timeline/capability/winning_probability) with its own neutral-score
+  fallback. Confirmed via `grep` across the entire codebase: zero callers,
+  zero test references. A fully-built feature that was never wired to
+  anything — the app's real fit-scoring path is `fit-rules.server.ts`'s
+  `evaluateRules()` + the evaluator agent, not this. Deleted rather than
+  left as dead weight implying a capability that doesn't run.
+- **Fixed a real, live fit-score display inconsistency.** Six components
+  each hardcode their own copy of the fit-score tier boundaries
+  (strong/partial/poor). `GrantDetailExpress.tsx`, `V2GrantDetail.tsx`, and
+  `GrantExpressView.tsx` agree on 0.7 / 0.45. `FitEvaluation.tsx` — actively
+  rendered on both the legacy grant-detail route and inside
+  `V2GrantDetail.tsx` — used 0.4 for its second boundary instead of 0.45.
+  Net effect: the same grant, same `fit_score`, in the 0.40–0.449 range,
+  showed a **different fit tier depending on which component rendered it**
+  on the same page. Aligned to 0.45. `GrantKanban.tsx`'s separate 4-bucket
+  scheme (0.8/0.6/0.4) serves a different, deliberately finer board-overview
+  granularity — left alone rather than force-unified into the 2-boundary
+  scheme the other four share.
+- Both fixes independently confirmed present in `main` too (same dead file,
+  same 0.4-vs-0.45 mismatch) and ported to
+  [PR #2](https://github.com/rafaelcastro7/iialgrants/pull/2).
+- Also found and fixed (separately documented in `docs/HANDOFF-CODEX.md`,
+  not duplicated here in full): 7 of 9 `/admin/modules` toggles
+  (`analytics`, `compliance`, `grants`, `org_profile`, `privacy`,
+  `proposals`, and `public_webhooks`) did nothing when flipped off — no code
+  anywhere checked them. Fixed `public_webhooks` (gates all 7 cron-triggered
+  `/api/public/hooks/*` routes), verified live by disabling the flag and
+  confirming a real 503. The other 6 remain open, tracked work — each needs
+  its own gate location decided, not a blind copy of the same one-liner.
+
+`tsc --noEmit` clean and full suite (440 local / 379 main, both
+440/4-skipped and 379/4-skipped) re-verified after every change in this
+section.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
@@ -643,3 +687,8 @@ Open items, in priority order:
 6. The non-fatal React transition warning noted above (dialog-close +
    mutation-`onSuccess` pointer-events race) — mitigated with a defensive
    safety net, not root-caused per-dialog.
+7. **6 of 9 `/admin/modules` toggles are still unenforced** (`analytics`,
+   `compliance`, `grants`, `org_profile`, `privacy`, `proposals`) —
+   `public_webhooks` was fixed this pass; these need their own gate
+   locations decided (see `docs/HANDOFF-CODEX.md`'s 2026-07-31 entry for
+   where each likely belongs).
