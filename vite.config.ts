@@ -17,6 +17,11 @@ export default defineConfig({
   server: {
     port: 8080,
     strictPort: true,
+    // The local Supabase stack's pg_cron jobs run inside Docker and reach
+    // this dev server via the Docker Desktop hostname, not "localhost" — Vite
+    // rejects unrecognized Host headers by default (DNS-rebinding
+    // protection), which silently 403'd every pg_net-triggered webhook call.
+    allowedHosts: ["host.docker.internal"],
     watch: {
       // Background-task Claude sessions run in isolated git worktrees under
       // .claude/worktrees/**, which sit inside this project's directory tree.
