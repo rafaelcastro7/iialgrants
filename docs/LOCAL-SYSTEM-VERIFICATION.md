@@ -704,10 +704,25 @@ have silently dropped.
   reporting a "the marketing is lying" finding, the same rigor demanded of
   the claim itself.
 
-Remaining claims in that doc (deadline reminder notifications, pipeline
-analytics, evidence-backed extraction, Express/Advanced parity) are not yet
-individually re-verified this pass — flagged as follow-up, not assumed true
-just because one claim checked out.
+Remaining claims in that doc (pipeline analytics, evidence-backed
+extraction, Express/Advanced parity) are not yet individually re-verified
+this pass — flagged as follow-up, not assumed true just because two claims
+checked out.
+
+**Claim #12, deadline reminder notifications, also checked out — but only
+after manually forcing qualifying data.** `notifications` had 0 `kind =
+'deadline'` rows before this: none of the seeded grants had a near-term
+deadline on a proposal in a qualifying pipeline stage, so the daily cron
+had nothing to ever act on — not evidence of a broken feature, just no
+test data that would exercise it. Set the seeded IRAP grant's deadline to
+`current_date + 5`, constructed a correctly HMAC-signed request (matching
+`webhook-auth.server.ts`'s `${ts}.${nonce}.${rawBody}` scheme) and POSTed
+it directly to `/api/public/hooks/deadlines` — created a real "Deadline in
+5 day(s)" notification. Confirmed the bell UI genuinely surfaces it
+(unread count + deep-linked detail) for the owning user. Added
+`tests/e2e/notification-bell.spec.ts`, documented as depending on that
+seed-state mutation (matching this suite's existing pattern of assuming
+specific seeded grants rather than each spec re-seeding its own data).
 
 ## Conclusion
 
