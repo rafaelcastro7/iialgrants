@@ -3,11 +3,26 @@ import { expect, test, type Page } from "@playwright/test";
 const DEMO_MEMBER = "Member A";
 const DEMO_ADMIN = "Admin";
 
+// Rapid programmatic navigation (exactly what this spec does) aborts an
+// in-flight SupabaseAuthClient.getUser() session check when the *next*
+// navigation starts before it resolves — the browser correctly cancelling
+// work for a document that's going away, not a real connectivity failure.
+// Confirmed live and flaky-reproduced: this test passes reliably in
+// isolation and only intermittently shows this exact signature when run
+// back-to-back with other specs under more system load. Same known-benign
+// pattern already filtered in tests/e2e/full-lifecycle.spec.ts.
+const KNOWN_NONBLOCKING_WARNING =
+  /Failed to fetch.*SupabaseAuthClient\.getUser|SupabaseAuthClient\.getUser.*Failed to fetch/is;
+
 function captureBrowserErrors(page: Page) {
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("pageerror", (error) => {
+    if (!KNOWN_NONBLOCKING_WARNING.test(error.message)) errors.push(error.message);
+  });
   page.on("console", (msg) => {
-    if (msg.type() === "error") errors.push(msg.text());
+    if (msg.type() === "error" && !KNOWN_NONBLOCKING_WARNING.test(msg.text())) {
+      errors.push(msg.text());
+    }
   });
   return errors;
 }
