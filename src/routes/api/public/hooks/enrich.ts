@@ -10,6 +10,16 @@ export const Route = createFileRoute("/api/public/hooks/enrich")({
         const { result } = await verifyWebhookRequest(request, "enrich");
         if (!result.ok) return new Response(result.reason, { status: result.status });
 
+        const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+        try {
+          await assertModuleEnabled("public_webhooks");
+        } catch (e) {
+          return Response.json(
+            { ok: false, error: e instanceof Error ? e.message : String(e) },
+            { status: 503 },
+          );
+        }
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { enrichGrantImpl } = await import("@/agents/enricher.functions");
 

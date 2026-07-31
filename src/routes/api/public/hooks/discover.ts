@@ -11,6 +11,19 @@ export const Route = createFileRoute("/api/public/hooks/discover")({
         const { result } = await verifyWebhookRequest(request, "discover");
         if (!result.ok) return new Response(result.reason, { status: result.status });
 
+        // The `public_webhooks` module flag was toggleable from /admin/modules
+        // but nothing checked it — every one of these 7 routes ran regardless
+        // of the flag's state.
+        const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+        try {
+          await assertModuleEnabled("public_webhooks");
+        } catch (e) {
+          return Response.json(
+            { ok: false, error: e instanceof Error ? e.message : String(e) },
+            { status: 503 },
+          );
+        }
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { discoverFunderImpl } = await import("@/agents/discoverer.impl.server");
 

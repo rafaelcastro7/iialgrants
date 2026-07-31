@@ -6,14 +6,24 @@
 // search quality (missed funders, or noisy duplicate funders).
 import { describe, expect, it } from "vitest";
 import {
-  AUTO_APPROVE_THRESHOLD,
-  REVIEW_MIN_THRESHOLD,
   findDuplicateInRows,
   nameSimilarity,
   normalizeName,
   scoreCandidate,
   type RawCandidate,
 } from "./scoring.server";
+// Thresholds live in discovery-config.server.ts (admin-configurable at
+// /admin/discovery-config), not as constants here — scoring.server.ts
+// previously re-exported its own AUTO_APPROVE_THRESHOLD/REVIEW_MIN_THRESHOLD
+// that nothing but this test read; the real orchestrator has always compared
+// against cfg.candidateAutoApproveThreshold/candidateReviewMinThreshold
+// instead. Importing the actual defaults here means this test tracks
+// whatever the real system's default actually is, rather than a second,
+// driftable copy that would silently stop matching production behavior the
+// moment an admin changed the configured threshold.
+import { DISCOVERY_CONFIG_DEFAULTS } from "@/lib/discovery-config.server";
+const { candidateAutoApproveThreshold: AUTO_APPROVE_THRESHOLD, candidateReviewMinThreshold: REVIEW_MIN_THRESHOLD } =
+  DISCOVERY_CONFIG_DEFAULTS;
 
 describe("normalizeName", () => {
   it("lowercases and strips common legal-entity suffixes", () => {
