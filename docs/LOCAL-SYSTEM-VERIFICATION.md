@@ -508,6 +508,58 @@ discovery/source-curator subsystem — where both sides have real,
 independent, unreconciled work — is explicitly **not** part of PR #2 and
 remains open work.
 
+### Funders module audit — the funder-candidate pipeline had never run
+
+Asked to review the funders module end to end and confirm everything is
+"integrated and wired." It's more built than it looked from the outside:
+11 source-curator ingesters (Grants.gov API, RSS bundle, BBF, EU Funding &
+Tenders, Tri-Council, regional development, CRA T3010, OTF, Alberta CKAN,
+PFC, LLM-driven funder-scout), with dedup + scoring + auto-promote logic and
+a full admin console at `/admin/sources` + `/admin/candidates`, properly
+linked from `AdminSidebar`.
+
+But checked against the live local DB, not just the code:
+- `funder_candidates` and `source_ingest_runs` both had **0 rows** — this
+  pipeline had never executed once, despite being fully built.
+- `cron.job` (the real table, not migration files) has jobs for the
+  discoverer, enricher, deadlines, decay, archive, and RSS-poll — **none**
+  for `source-tier-a`, `source-tier-b`, or `source-curator`, even though all
+  three webhook routes exist and work.
+- Root cause for why it was invisible on `/admin/sources` even for manual
+  runs: the ingester that actually executes under the key
+  `rss_grants_bundle` had **no row** in `discovery_sources_registry` — the
+  registry only had two vestigial rows (`grants_gov`, `idrc_rss`) pointing at
+  feeds the real code no longer polls under those keys. Fixed via migration
+  `20260730180000_register_rss_grants_bundle_source.sql`, applied to both
+  this checkout and (independently confirmed to have the identical bug)
+  ported into [PR #2](https://github.com/rafaelcastro7/iialgrants/pull/2).
+
+Then actually wired it end to end rather than stopping at the registry fix:
+- Added `20260730190000_schedule_source_curator_cron_jobs.sql` — daily Tier A,
+  weekly Tier B + scout, monthly Tier C, matching the tiering already
+  documented in `orchestrator.server.ts`'s own header comment.
+- Getting this to work locally surfaced a real, separate gap: pg_net
+  (running inside the Docker Postgres container) couldn't reach the Vite dev
+  server running natively on Windows at all. Two things were blocking it —
+  Windows Firewall's default inbound block (opened with a narrow rule for
+  TCP 8080 only) and Vite's own `allowedHosts` DNS-rebinding protection
+  rejecting the `host.docker.internal` Host header (added to
+  `vite.config.ts`). Local DB settings (`app.hook_base_url`,
+  `app.hook_apikey`) point the cron jobs at the local dev server instead of
+  their production fallback — set directly via `ALTER DATABASE`, not
+  committed, since these are environment secrets/config, not migration
+  content.
+- Verified by firing the exact command pg_cron will run for Tier B: all of
+  `bbf_programs`, `eu_ft_portal`, `tri_council`, `regional_development`
+  succeeded; `funder_scout` failed on the already-known expired Jina key
+  without taking down the run. **643 new funder_candidates** now sit in
+  review (22 `pending_review`, 621 low-score `candidate`) across the Tier A
+  + Tier B runs — up from 0.
+- Noted, not acted on: almost all of Tier A's new candidates are US federal
+  agencies (Grants.gov is a US API) — correctly held at low score rather
+  than auto-approved, but worth a product decision on whether that's desired
+  for a Canada-focused app.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
@@ -523,18 +575,31 @@ Open items, in priority order:
    the 10 security/logic fixes, verified `MERGEABLE`/`CLEAN` against current
    `main`. This is the one piece of the reconciliation that's actually ready
    to land.
-2. **Discovery/source-curator subsystem reconciliation** — both `main` and
-   the local checkout evolved this independently and substantially (`main`:
-   CKAN/EU/RSS/Tri-Council/T3010 ingesters; local: genericity-check,
-   deep-crawl-relevance, discovery-config admin panel). Needs a dedicated,
-   focused pass — not something to fold into a general "unify the git" task.
+2. **Discovery/source-curator subsystem reconciliation** — correction to the
+   note originally here: the two sides are NOT as divergent as first assumed.
+   Both have essentially the same 11-ingester source-curator pipeline
+   (confirmed the `rss_grants_bundle` registry bug is identical on both
+   sides — see the funders-module audit above). The genuine local-only
+   additions are narrower than first thought: `grants-gov.server.ts`
+   (Grants.gov REST API, replacing a dead RSS feed) and
+   `regional-development.server.ts`, neither of which exists in `main`.
+   Porting just those two (plus the genericity-check/deep-crawl-relevance/
+   discovery-config files noted earlier, which sit in the discoverer/enricher
+   path, not source-curator) is a much smaller, well-scoped task than a full
+   subsystem reconciliation.
 3. **The rest of `local-work-2026-07-30` vs. `main`** — PR #1 remains open as
    a record of the full divergence (529 files) but should not be merged as-is;
    whatever in it isn't covered by PR #2 or item 2 above needs its own,
    case-by-case decision.
 4. **Jina Search API key is invalid (401)** — needs manual renewal at
    jina.ai; blocks one of the discoverer's two seeding paths (sitemap
-   seeding still works without it).
-5. The non-fatal React transition warning noted above (dialog-close +
+   seeding still works without it) AND the source-curator's `funder_scout`
+   tier (confirmed failing on `jina_search_401` in the live Tier B run above).
+5. **Review the 22 `pending_review` + 621 `candidate` rows in
+   `/admin/candidates`** now that the pipeline actually ran — mostly US
+   federal agencies from Grants.gov, correctly held at low score rather than
+   auto-approved, but a human should decide whether US-federal is in scope
+   for this app before approving any of them into `funders`.
+6. The non-fatal React transition warning noted above (dialog-close +
    mutation-`onSuccess` pointer-events race) — mitigated with a defensive
    safety net, not root-caused per-dialog.
