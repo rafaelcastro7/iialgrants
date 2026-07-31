@@ -724,6 +724,29 @@ it directly to `/api/public/hooks/deadlines` — created a real "Deadline in
 seed-state mutation (matching this suite's existing pattern of assuming
 specific seeded grants rather than each spec re-seeding its own data).
 
+**Claims #11 (pipeline analytics) and #3 (evidence-backed extraction),
+also verified true:**
+- `/ops` genuinely renders a live "Pipeline analytics" card reading
+  "Derived from the grant event timeline. Deterministic, no estimates." —
+  confirmed real numbers matching the actual `grant_events` rows (5 total
+  grants, funnel counts, "100% Scored to shortlist" / "100% Shortlist to
+  draft" conversion, win rate correctly shown as "-" rather than a fake 0%
+  since no grant has been won or lost yet). Not just "the route loads" —
+  the specific claimed content is genuinely there and genuinely computed
+  from real data, not a placeholder. (`tests/e2e/routes.spec.ts` already
+  smoke-tests that `/ops` loads; didn't add a second dedicated spec for the
+  analytics content specifically, lower priority than the two features
+  that had zero coverage.)
+- `evidence_spans` has real rows across 6 distinct field types
+  (`amount_cad_min`, `amount_cad_max`, `eligibility_pass`,
+  `eligibility.for_profit`, `sectors.technology`, `fit_score`) — the
+  anti-hallucination evidence trail is genuinely populated by the live
+  pipeline, not an empty table backing an unused UI panel.
+
+4 of ~12 `PRODUCT-DIFFERENTIATION.md` claims now empirically verified true
+this pass (#3, #6, #11, #12). Remaining unverified: #1, #2, #4, #5, #7, #8,
+#9, #10 — not assumed true or false, just not yet individually re-checked.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
