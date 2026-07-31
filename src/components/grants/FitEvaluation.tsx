@@ -82,7 +82,12 @@ function tier(score: number) {
       bg: "bg-emerald-50 dark:bg-emerald-950/40",
       icon: Trophy,
     };
-  if (score >= 0.4)
+  // 0.45, not 0.4 — must match GrantDetailExpress.tsx/V2GrantDetail.tsx/
+  // GrantExpressView.tsx's "possible/partial fit" boundary. This one was
+  // out of sync (0.4): the same grant at a 0.40-0.449 fit_score showed
+  // "partial fit" here but the lower "poor fit" tier in every sibling
+  // component that also renders a fit badge for the same grant.
+  if (score >= 0.45)
     return {
       key: "partial",
       color: "text-amber-600",
