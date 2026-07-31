@@ -1917,3 +1917,37 @@ local SearXNG instance and fixed a real bug in Jina Reader's 401-retry (it
 resent the same invalid key instead of dropping it) — see
 `docs/LOCAL-SYSTEM-VERIFICATION.md`'s "Jina Search eliminated" section for
 full detail; not duplicated here.
+
+### Follow-up same day: `proposals` and `org_profile` module flags wired
+
+Resolved the module_flags/agent_flags overlap question above rather than
+leaving it stuck: `grants_discovery`/`discoverer` (the one pre-existing
+enforced pair) already has BOTH a module-level gate
+(`discoverer-orchestrator.server.ts`'s `runDiscoveryJob`) AND a separate
+agent-level gate (`grants.functions.ts:257`'s single-grant re-discovery
+call to `assertAgentEnabled("discoverer")`) — this is an established,
+already-shipped pattern, not something new I'd be introducing. Module
+flags gate "is this feature area enabled at all"; agent flags gate "is
+this specific LLM agent allowed to run regardless of caller." Different,
+complementary admin concerns, not true redundancy.
+
+Wired `proposals` (`strategist.functions.ts`'s `runStrategist`, alongside
+its existing `assertAgentEnabled("strategist", ...)`) and `org_profile`
+(`org.functions.ts`'s `saveOrgProfile` — gating the write, not
+`getOrgProfile`'s read, matching the existing `submitProposal` convention
+of gating writes only). Verified live: disabled both flags, confirmed
+`saveOrgProfile` returns `module_disabled:org_profile` in the real UI
+(the /org page's error banner), re-enabled, ran the full unit suite
+(440 passed / 4 skipped) and `full-lifecycle.spec.ts` end to end — passed.
+
+Still open, deliberately not attempted: `analytics`, `compliance`,
+`grants`, `privacy`. These don't fit the "gate one write action" pattern —
+they're read-only admin/info surfaces (dashboards, compliance center,
+privacy center) with no single obvious action to gate, and `grants` is
+confusingly similarly-named to the already-enforced `grants_discovery`
+(a 2026-06-20 migration seeded both `grants_discovery` — "Automated grant
+discovery agent" — and `grants` — "Grants discovery and catalog" —
+separately; possibly two flags for a never-fully-differentiated concept,
+worth a product decision rather than a guess). Gating a whole route/page
+rather than one serverFn write is a different shape of fix and needs its
+own design pass.
