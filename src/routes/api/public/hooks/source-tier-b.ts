@@ -15,6 +15,8 @@ export const Route = createFileRoute("/api/public/hooks/source-tier-b")({
           });
         }
         try {
+          const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+          await assertModuleEnabled("public_webhooks");
           const { runSourceCurator } = await import("@/lib/source-curator/orchestrator.server");
           const tierB = await runSourceCurator("B");
           const scout = await runSourceCurator("scout");
