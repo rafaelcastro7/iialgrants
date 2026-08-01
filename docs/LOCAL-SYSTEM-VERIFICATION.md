@@ -747,6 +747,77 @@ also verified true:**
 this pass (#3, #6, #11, #12). Remaining unverified: #1, #2, #4, #5, #7, #8,
 #9, #10 — not assumed true or false, just not yet individually re-checked.
 
+### 2026-08-01 — full local stack recovery after an external Docker reset wiped every volume
+
+A Docker Desktop cleanup done for a *different* project on this machine
+removed every container **and every volume** on the shared Docker daemon —
+confirmed via `docker volume ls` returning empty and `docker ps -a` showing
+only the other project's containers. This meant the entire local Postgres
+data directory (every grant, funder, proposal, demo user, cron job, and the
+`app.hook_base_url`/`app.hook_apikey` settings from the 2026-07-30 session)
+was gone, not just stopped.
+
+**Rebuilt from scratch, verified at each step, not assumed:**
+1. `docker compose up -d` in `supabase/docker` — rebuilt the custom
+   `docker-db` image (pg_cron/pg_net compiled in) since the image cache was
+   gone too, ~4 minutes.
+2. Created `_supabase_migrations` tracking table (didn't exist on the fresh
+   DB) and ran `apply-migrations.cjs` — **98 migrations applied cleanly**,
+   restoring schema, the 8 seed funders, all 9 `module_flags`, and (thanks
+   to this session's earlier fix) the correct 14-row
+   `discovery_sources_registry`.
+3. `scripts/demo-seed.mjs` confirmed/repaired the 3 demo users' passwords
+   (a migration had already created the auth.users rows with today's
+   timestamp — demo-seed.mjs is idempotent, so running it regardless was
+   the safe move rather than trusting a raw SQL insert's password hash).
+4. Re-applied `ALTER DATABASE postgres SET app.hook_base_url/app.hook_apikey`
+   (deliberately not migration content — see the 2026-07-30 entry above)
+   and re-ran `20260730190000_schedule_source_curator_cron_jobs.sql` in a
+   fresh session so the 3 source-curator cron jobs' stored commands picked
+   up the local URL instead of baking in the production fallback again.
+5. Restarted the Vite dev server bound to `0.0.0.0` (needed for the
+   Docker→host cron path from the 2026-07-30 session).
+
+**Real bugs found and fixed while re-verifying end to end** (not just
+"things happened to work" — each traced to a root cause):
+- **PostgREST schema cache staleness** — same documented class of issue as
+  earlier sessions, now hit for the first time on a genuine from-scratch
+  rebuild: `docker-rest-1` started before/without awareness of the final
+  migrated schema, so `proposals ↔ grants` embedding failed with "Could not
+  find a relationship." Fixed with the documented
+  `docker restart docker-rest-1 docker-meta-1`.
+- **`tests/e2e/full-lifecycle.spec.ts` was too tightly coupled to specific
+  live external content** — see that file's own commit message for the
+  full chain (hardcoded exact grant title → hardcoded funder name → both
+  broke against real, changing discovery/enrichment results). Fixed by
+  making the grant selection funder-agnostic.
+- **Two test timeout constants were shorter than the app's own real
+  configured ceilings** — `AGENT_TIMEOUT` (90s) and `CRITIC_TIMEOUT` (150s)
+  were both below `llm-timeouts.server.ts`'s actual 300s/600s floors. Same
+  "verify the configured timeout before calling something a hang" lesson
+  this project already learned once with Ollama — recurring with a
+  shorter margin this time. Raised both to match reality.
+- **`DEFAULT_RULES.auto_archive_on_fail = true`** silently archived every
+  grant the demo account's own tests touched the moment it failed a real
+  fit evaluation — correct, intentional behavior, but self-defeating for
+  a demo account being used for repeated manual verification. Set
+  `auto_archive_on_fail = false` specifically for `demo-admin` (a DB
+  config change, not a code change) rather than touching the default new
+  users get.
+
+**Verified before calling it done:** full unit suite re-run clean after
+every fix (440 passed / 4 skipped, unchanged from before the incident).
+
+**Left open, not silently dropped:** one e2e run, after all four fixes
+above, still failed waiting for "Fetch details" to re-enable — but
+`agent_runs` showed the underlying enrichment succeeding twice in ~12s
+each, ruling out both a timeout and an external-site issue. This looks
+like a client-side busy-state/re-render race (possibly two real clicks
+firing — the exact failure mode this project's own e2e-lifecycle skill
+already warns about) and needs focused debugging of the enrich button's
+state management specifically, not another full end-to-end re-run. Not
+claimed as fixed.
+
 ## Conclusion
 
 The system works locally end to end against the local Docker Supabase (dev DB):
