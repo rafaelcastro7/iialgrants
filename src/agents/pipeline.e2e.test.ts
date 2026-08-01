@@ -49,7 +49,7 @@ vi.mock("@/lib/web-fetch.server", () => ({
     title: "Innovation Boost Program",
     attempts: [],
   }),
-  jinaSearch: async () => ({ ok: true, hits: [] }),
+  localWebSearch: async () => ({ ok: true, hits: [] }),
   searchWeb: async () => [],
 }));
 vi.mock("@/lib/firecrawl.server", () => ({

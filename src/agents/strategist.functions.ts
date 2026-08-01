@@ -107,6 +107,13 @@ export const runStrategist = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
+    // Two independent kill-switches, same as grants_discovery/discoverer:
+    // the module flag gates the "Proposal drafting workspace" feature area,
+    // the agent flag gates this specific LLM agent's execution regardless
+    // of caller. Previously only the agent flag existed here -- toggling
+    // "Proposals" off in /admin/modules did nothing.
+    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+    await assertModuleEnabled("proposals");
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     await assertAgentEnabled("strategist", context.supabase as never);
     const { callLlm } = await import("@/agents/llm.server");
@@ -242,11 +249,24 @@ export const runStrategist = createServerFn({ method: "POST" })
       );
     }
 
+    // This never set org_id, and neither did submitProposal — profiles.org_id
+    // is the only thing can_access_tenant_entity()/assertEntityInUserOrg
+    // check for a teammate (not the creator) to see a proposal's tasks/
+    // comments/documents. With org_id always NULL here, cross-teammate access
+    // was unreachable by design regardless of whether a user ever joined an
+    // organization (see the org_id backfill added in org.functions.ts).
+    const { data: creatorProfile } = await context.supabase
+      .from("profiles")
+      .select("org_id")
+      .eq("id", context.userId)
+      .maybeSingle();
+
     // Persist proposal + sections.
     const { data: proposal, error: pe } = await context.supabase
       .from("proposals")
       .insert({
         user_id: context.userId,
+        org_id: creatorProfile?.org_id ?? null,
         grant_id: g.id,
         template_id: tpl.id,
         title: parsed.proposal_title,

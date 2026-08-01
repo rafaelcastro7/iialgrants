@@ -29,6 +29,11 @@ const MAX_REVEAL_CLICKS = 6;
 
 let browserPromise: Promise<Browser> | null = null;
 
+// chromium.launch() had no timeout of its own — a stuck launch (missing
+// system deps, a wedged sandbox) hung whatever request called getBrowser()
+// indefinitely instead of failing over to the next extraction engine.
+const LAUNCH_TIMEOUT_MS = 15_000;
+
 async function getBrowser(): Promise<Browser> {
   if (browserPromise) {
     try {
@@ -41,7 +46,12 @@ async function getBrowser(): Promise<Browser> {
   }
   browserPromise = (async () => {
     const { chromium } = await import("playwright");
-    return chromium.launch({ headless: true });
+    return Promise.race([
+      chromium.launch({ headless: true }),
+      new Promise<Browser>((_, reject) =>
+        setTimeout(() => reject(new Error(`chromium_launch_timeout_${LAUNCH_TIMEOUT_MS}ms`)), LAUNCH_TIMEOUT_MS),
+      ),
+    ]);
   })();
   return browserPromise;
 }

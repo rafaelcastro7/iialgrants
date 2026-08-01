@@ -103,7 +103,7 @@ vi.mock("@/lib/web-fetch.server", () => ({
     },
     attempts: [],
   }),
-  jinaSearch: async () => ({ ok: true, hits: [] }),
+  localWebSearch: async () => ({ ok: true, hits: [] }),
 }));
 
 // ---------- LLM (shouldn't be hit on JSON path, but stub anyway) ----------

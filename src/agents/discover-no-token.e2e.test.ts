@@ -75,7 +75,7 @@ vi.mock("@/lib/web-fetch.server", () => ({
     json: null,
     attempts: [],
   }),
-  jinaSearch: async () => ({ ok: true, hits: [] }),
+  localWebSearch: async () => ({ ok: true, hits: [] }),
 }));
 
 vi.mock("@/lib/otel", () => ({ newRunId: () => "run_no_token", logGenAI: vi.fn() }));

@@ -347,7 +347,7 @@ export async function discoverFunderImpl(
   const { newRunId } = await import("@/lib/otel");
   const { firecrawlAvailable, firecrawlMap, filterProgramUrls } =
     await import("@/lib/firecrawl.server");
-  const { scrapeWithFallback, jinaSearch } = await import("@/lib/web-fetch.server");
+  const { scrapeWithFallback, localWebSearch } = await import("@/lib/web-fetch.server");
   const { shouldFetch, recordFetch } = await import("@/lib/crawl-ledger.server");
   const { fetchCandidateLinksFromSitemaps } = await import("@/lib/site-candidates.server");
 
@@ -722,7 +722,7 @@ export async function discoverFunderImpl(
       `site:${seedHost} eligibility deadline application`,
     ];
     for (const q of queries) {
-      const r = await jinaSearch(q, 15);
+      const r = await localWebSearch(q, 15);
       searchSeeds.push({
         query: q,
         ok: r.ok,

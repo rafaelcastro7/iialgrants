@@ -123,8 +123,34 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+// Radix Dialog's body-lock cleanup can race a state update fired from an
+// async mutation's onSuccess (rather than a direct Escape/overlay-click) —
+// the dialog closes but `pointer-events: none` is left on <body>, freezing
+// every click on the page behind it. At least 14 files close a dialog this
+// way (setDialogOpen(false)/setOpen(false) next to a mutation onSuccess), so
+// this is a defensive net rather than a fix for one specific dialog.
+function usePointerEventsUnstickSafety() {
+  useEffect(() => {
+    const OPEN_OVERLAY_SELECTOR =
+      '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]';
+
+    const clearIfStuck = () => {
+      if (document.body.style.pointerEvents !== "none") return;
+      if (document.querySelector(OPEN_OVERLAY_SELECTOR)) return;
+      document.body.style.removeProperty("pointer-events");
+    };
+
+    const observer = new MutationObserver(() => {
+      setTimeout(clearIfStuck, 100);
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ["style"] });
+    return () => observer.disconnect();
+  }, []);
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  usePointerEventsUnstickSafety();
 
   return (
     <QueryClientProvider client={queryClient}>

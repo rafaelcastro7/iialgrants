@@ -18,6 +18,8 @@ export const Route = createFileRoute("/api/public/hooks/rss-poll")({
           });
         }
         try {
+          const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+          await assertModuleEnabled("public_webhooks");
           const { ingestRssFeeds } = await import("@/lib/rss-ingestor.server");
           const result = await ingestRssFeeds();
           return new Response(JSON.stringify({ ok: true, ...result }), {

@@ -117,6 +117,10 @@ function ApprovalWorkflowsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["approval-workflows"] });
+      // Only the workflows list was invalidated here — the expanded step list
+      // (["approval-steps", wfId], queried separately below) kept showing the
+      // pre-decision state after an approve/reject that visibly succeeded.
+      queryClient.invalidateQueries({ queryKey: ["approval-steps"] });
       toast.success("Step decision recorded");
     },
     onError: (e: Error) => toast.error(e.message),

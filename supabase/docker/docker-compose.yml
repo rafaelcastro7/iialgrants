@@ -108,5 +108,40 @@ services:
       PG_META_DB_USER: postgres
       PG_META_DB_PASSWORD: your-super-secret-and-long-postgres-password
 
+  # ── SearXNG (local metasearch — replaces Jina Search) ───────────────
+  # Jina Search (s.jina.ai) requires a paid API key as of 2026-07 — its
+  # anonymous tier was removed and the project's key is expired/invalid
+  # (verified live: 401 AuthenticationFailedError with the key,
+  # AuthenticationRequiredError without one). SearXNG aggregates several
+  # real search engines (Google, Bing, DuckDuckGo, Brave, ...), runs
+  # entirely on this machine, has no API key, no rate limit we don't
+  # control, and no recurring cost — a strict improvement for this app's
+  # use case (funder-scout LLM queries, discoverer fallback seeding).
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    ports:
+      - "15436:8080"
+    volumes:
+      - ./volumes/searxng:/etc/searxng:rw
+    environment:
+      SEARXNG_BASE_URL: http://localhost:15436/
+      UWSGI_WORKERS: "2"
+      UWSGI_THREADS: "2"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+
 volumes:
   db-data:
