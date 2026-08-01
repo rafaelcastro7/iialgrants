@@ -6,12 +6,20 @@
 import { expect, test } from "@playwright/test";
 
 const DEMO_ADMIN = "Admin";
-const AGENT_TIMEOUT = 90_000; // LLM calls (cloud or local) can take a while.
+// Must be >= the real configured ceiling, not a guess: llm-timeouts.server.ts's
+// SLOW_AGENT_TIMEOUT_FLOORS_MS gives enricher/evaluator/strategist/critic a
+// real 300s floor (writer gets 600s). This was 90_000 and intermittently
+// failed waiting on a legitimately slow-but-working live enrichment call
+// (scraping a real external funder site, not a hang) -- confirmed live
+// 2026-08-01 against a freshly rebuilt stack: the same "verify the actual
+// configured timeout before calling something a hang" lesson this project
+// already learned once with Ollama, recurring here with a shorter margin.
+const AGENT_TIMEOUT = 320_000;
 
 test.describe.configure({ mode: "serial" });
 
 test("search → enrich → evaluate → draft → critic → export → submit", async ({ page }) => {
-  test.setTimeout(10 * 60_000); // several chained LLM calls — the config's 60s default isn't enough.
+  test.setTimeout(20 * 60_000); // several chained slow-agent-floor LLM calls in series.
   // Pre-existing, documented, non-blocking known issue (see "Known issues"
   // in docs/LOCAL-SYSTEM-VERIFICATION.md): rapid programmatic route changes
   // — exactly what this test does — trigger a React "state update on a
@@ -66,16 +74,26 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     timeout: AGENT_TIMEOUT,
   });
 
-  // 2. Search for the seeded grant. "Open radar" only exists on /dashboard —
-  // the sync step above leaves us on /proposals.
+  // 2. Open a real discovered grant, unfiltered. "Open radar" only exists
+  // on /dashboard — the sync step above leaves us on /proposals.
+  //
+  // Deliberately NOT scoped to any one funder/program title: real discovery
+  // runs against live external pages, and both a specific program's title
+  // and whether it survives evaluation (auto-archived on a failed fit
+  // re-evaluation) can change between runs. Confirmed live 2026-08-01, in
+  // order: (a) a grant hard-pinned to one exact title got auto-archived by
+  // a real, correct auto_archive_on_fail evaluation after unrelated manual
+  // DB surgery gave it mismatched content; (b) switching to search
+  // "Mitacs" just moved the fragility to one funder whose real page
+  // produces malformed JSON on enrichment (a live-site scraping issue, not
+  // an app bug) -- repeated runs kept re-attempting enrichment on the same
+  // stuck grant until it exhausted MAX_ENRICH_ATTEMPTS. Taking whatever the
+  // catalog's default ordering surfaces first removes the dependency on
+  // any single external funder's site behaving today.
   await page.goto("/dashboard");
   await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
-  await page.getByRole("searchbox", { name: /search grants/i }).fill("IRAP");
-  const grantLink = page.getByRole("link", {
-    name: "Industrial Research Assistance Program (IRAP)",
-    exact: true,
-  });
+  const grantLink = page.locator('a[href^="/grants/"]').first();
   await expect(grantLink).toBeVisible();
   await grantLink.click();
   await expect(page).toHaveURL(/\/grants\/[^/]+$/);
@@ -140,11 +158,16 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   const primaryAction = page.getByRole("button").filter({
     hasText: /^Draft "|^Drafting…|^Run quality review|^Reviewing…|^Submit proposal$|^Submitting…/,
   });
+  // writer's real configured floor is 600s (vs. 300s for the other slow
+  // agents) -- give each section draft that same real ceiling rather than
+  // AGENT_TIMEOUT, for the same "match the actual configured allowance"
+  // reason AGENT_TIMEOUT itself was raised above.
+  const WRITER_TIMEOUT = 620_000;
   for (let i = 0; i < 12; i++) {
     const label = await primaryAction.textContent();
     if (!label?.startsWith('Draft "')) break;
     await primaryAction.click();
-    await expect(primaryAction).not.toHaveText(label, { timeout: AGENT_TIMEOUT });
+    await expect(primaryAction).not.toHaveText(label, { timeout: WRITER_TIMEOUT });
   }
 
   // 7. Run quality review (the critic) once every section is drafted. Its
@@ -162,7 +185,10 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // nor a next-empty-section applies), not a bug. Assert the review actually
   // ran by its side effect (pending flag clearing), not by which button text
   // comes next, then head to Advanced for the real submit gate regardless.
-  const CRITIC_TIMEOUT = 150_000;
+  // critic's real configured floor is 300s, same as evaluator -- was
+  // 150_000 (half of that), the same class of too-short test patience
+  // fixed for AGENT_TIMEOUT above.
+  const CRITIC_TIMEOUT = 320_000;
   await expect(primaryAction).toHaveText(/run quality review/i, { timeout: AGENT_TIMEOUT });
   await primaryAction.click();
   await expect(primaryAction).toBeDisabled({ timeout: 5_000 }); // mutation started
