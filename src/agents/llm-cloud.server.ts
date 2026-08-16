@@ -86,11 +86,12 @@ export const GROQ_MODEL_MAP: Record<AgentName, string> = {
 // Pinned rather than tracking the -latest aliases so behaviour is stable;
 // `bun run scripts/check-cloud-llm.ts` catches the next retirement.
 //
-// One model for every role here, unlike the Groq map's fast-8B/70B split:
-// gemini-2.5-flash-lite is listed by GET /models but answers 404 "no longer
-// available to new users" on this account, so listing a model is not evidence
-// it can be called. This is the last rung before local Ollama anyway, so a
-// single known-good model beats a faster one that might not answer.
+// One model for every role here, unlike the Groq map's fast-8B/70B split.
+// Both gemini-2.5-flash-lite and gemini-2.5-pro are listed by GET /models but
+// answer 404 ("no longer available to new users" / "no longer available") on
+// this account, so being listed is not evidence a model can be called —
+// measure, don't assume. This is the last rung before local Ollama anyway, so
+// one known-good model beats a nominally better one that might not answer.
 export const GEMINI_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "gemini-2.5-flash",
   enricher: "gemini-2.5-flash",
