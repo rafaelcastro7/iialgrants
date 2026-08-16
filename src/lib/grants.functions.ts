@@ -69,11 +69,30 @@ export const listGrants = createServerFn({ method: "GET" })
           .eq("profile_id", data.profileId)
           .eq("user_id", context.userId)
       : Promise.resolve({ data: [], error: null });
-    const [{ data: searchProfile, error: profileError }, { data: feedback, error: feedbackError }] =
-      await Promise.all([profilePromise, feedbackPromise]);
+    // The org's own jurisdictions, used to rank locally-applicable programs
+    // above ones the org can never win. Ranking previously used text relevance
+    // plus a Canada-first nudge only, so an Ontario/Quebec company searching
+    // "small business innovation" got province-locked programs from the other
+    // side of the country at the top — the evaluator then correctly failed
+    // them on jurisdiction, after the user had already spent a click.
+    const orgProfilePromise = context.supabase
+      .from("org_profiles")
+      .select("jurisdictions")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    const [
+      { data: searchProfile, error: profileError },
+      { data: feedback, error: feedbackError },
+      { data: orgProfile },
+    ] = await Promise.all([profilePromise, feedbackPromise, orgProfilePromise]);
     if (profileError) throw new Error(profileError.message);
     if (feedbackError) throw new Error(feedbackError.message);
     if (data.profileId && !searchProfile) throw new Error("Search profile not found");
+
+    const orgJurisdictions = new Set(
+      ((orgProfile?.jurisdictions as string[] | null) ?? []).map((j) => j.toUpperCase()),
+    );
 
     const feedbackByGrant = new Map((feedback ?? []).map((row) => [row.grant_id, row.action]));
     const rankById = new Map<
