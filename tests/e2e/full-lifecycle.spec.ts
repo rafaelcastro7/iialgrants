@@ -292,15 +292,34 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // otherwise), and offers "Submit Anyway" only on a blocked proposal — a
   // freshly drafted one legitimately hits that path (submit-gate.shared.ts
   // also requires zero open critical requirements).
-  await submitDialog.getByRole("checkbox").check();
+  //
+  // Submitting is a TWO-phase flow, and missing that is what made this hang:
+  // "Submit Anyway" does not exist on the first pass. The plain Submit posts,
+  // the server answers submit_blocked:<reasons>, and _authenticated.proposals
+  // .$id.tsx then re-opens the same dialog carrying a warning — only that
+  // second render offers the force button. Waiting for the dialog to close
+  // after one click therefore sat there for the full timeout while the dialog
+  // was sitting right in front of it saying why. Confirmed live 2026-08-16:
+  // "This proposal isn't ready to submit: the proposal has not been run
+  // through the quality review".
   const forceSubmit = submitDialog.getByRole("button", { name: /submit anyway/i });
   const plainSubmit = submitDialog.getByRole("button", { name: /^submit$/i });
-  if (await forceSubmit.isVisible().catch(() => false)) {
-    await expect(forceSubmit).toBeEnabled();
-    await forceSubmit.click();
-  } else {
-    await expect(plainSubmit).toBeEnabled();
-    await plainSubmit.click();
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    // The checkbox resets with the dialog's re-render, so re-tick each pass.
+    await submitDialog.getByRole("checkbox").check();
+    const button = (await forceSubmit.isVisible().catch(() => false))
+      ? forceSubmit
+      : plainSubmit;
+    await expect(button).toBeEnabled();
+    await button.click();
+    // Either it went through (dialog closes) or it came back with the warning
+    // and the force button; give the round-trip a moment to settle.
+    if (await submitDialog.isHidden({ timeout: 60_000 }).catch(() => false)) break;
+    await expect(
+      forceSubmit,
+      "submit was blocked but no 'Submit Anyway' escape hatch appeared",
+    ).toBeVisible({ timeout: 30_000 });
   }
   await expect(submitDialog).toBeHidden({ timeout: AGENT_TIMEOUT });
 
