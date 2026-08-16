@@ -360,10 +360,27 @@ function V2TopBar({
             </kbd>
           </Button>
 
-          <Badge variant="outline" className="hidden gap-1.5 rounded-md px-2.5 py-1 md:inline-flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Local only
-          </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge
+                variant="outline"
+                className="hidden cursor-help gap-1.5 rounded-md px-2.5 py-1 md:inline-flex"
+              >
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    llmRoute.localOnly ? "bg-emerald-500" : "bg-amber-500",
+                  )}
+                />
+                {llmRoute.localOnly ? "Local only" : `Cloud + local`}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72 text-xs">
+              {llmRoute.localOnly
+                ? "No cloud AI key is set, so every prompt is answered by Ollama on this machine."
+                : `Prompts go to ${llmRoute.cloudProviders.join(" → ")} first, and only fall back to local Ollama if all of them fail. Grant text and your organization profile leave this machine.`}
+            </TooltipContent>
+          </Tooltip>
 
           <UiVersionToggle className="hidden sm:inline-flex" compact />
           <ThemeToggle />
