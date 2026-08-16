@@ -45,19 +45,26 @@ type CloudProvider = {
 };
 
 // Cerebras — primary cloud source ("los cerebros"). OpenAI-compatible API.
-// Model IDs are account-specific; verify with `GET /v1/models`. This account
-// exposes gemma-4-31b, gpt-oss-120b, zai-glm-4.7 (the older llama* IDs 404).
-// Only gemma-4-31b returns valid structured JSON via the OpenAI-compat endpoint:
-// gpt-oss-120b truncates (harmony/reasoning tokens) → "Unexpected end of JSON
-// input"; zai-glm-4.7 returns empty content. So all agents use gemma-4-31b here;
-// heavier reasoning falls through to Groq llama-3.3-70b next in the chain.
+// Model IDs are account-specific; verify with `GET /v1/models`.
+//
+// Every agent used to be pinned to gemma-4-31b on the strength of a note that
+// gpt-oss-120b "truncates (harmony/reasoning tokens)" and zai-glm-4.7 "returns
+// empty content". Re-measured 2026-08-16 with
+// `bun run scripts/benchmark-cloud-models.ts`, which asks for the same shape of
+// structured JSON the evaluator does: all three now return valid, complete
+// objects (gemma-4-31b 451ms, gpt-oss-120b 1255ms, zai-glm-4.7 1854ms). The
+// note was stale, and it was costing every judgement call a 31B model.
+//
+// Split by what each role needs: discovery and enrichment are high-volume
+// extraction where latency compounds, while evaluation, criticism, strategy
+// and drafting are the outputs a person reads and acts on.
 export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "gemma-4-31b",
   enricher: "gemma-4-31b",
-  evaluator: "gemma-4-31b",
-  strategist: "gemma-4-31b",
-  writer: "gemma-4-31b",
-  critic: "gemma-4-31b",
+  evaluator: "gpt-oss-120b",
+  strategist: "gpt-oss-120b",
+  writer: "gpt-oss-120b",
+  critic: "gpt-oss-120b",
 };
 
 // Groq — secondary cloud source (free tier) if Cerebras is unavailable.
