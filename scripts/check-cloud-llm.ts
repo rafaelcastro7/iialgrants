@@ -170,7 +170,17 @@ for (const p of PROVIDERS) {
   // different models per agent role, so a dead 70B model behind a healthy 8B
   // one would otherwise pass unnoticed.
   for (const model of mapped) {
-    report.chat.push(await probeChat(p, model));
+    const plain = await probeChat(p, model, false);
+    const json = await probeChat(p, model, true);
+    // A model is usable if it answers in at least one mode; the label says
+    // which, because the role it is mapped to determines the mode it needs.
+    const modes = [plain.ok ? "plain" : null, json.ok ? "json" : null].filter(Boolean).join("+");
+    report.chat.push({
+      model,
+      ok: plain.ok || json.ok,
+      ms: Math.max(plain.ms, json.ms),
+      detail: modes ? `modes: ${modes}` : `plain: ${plain.detail} | json: ${json.detail}`,
+    });
   }
   if (report.keyValid === null) report.keyValid = report.chat.some((c) => c.ok);
   reports.push(report);
