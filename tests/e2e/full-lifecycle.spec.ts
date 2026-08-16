@@ -113,12 +113,18 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // the lifecycle unreachable (confirmed live 2026-08-16). Searching a term
   // aligned with the seeded org profile (SME, technology, R&D) picks a grant
   // the org can plausibly win, without hardcoding which one that is.
+  //
+  // The query has to carry the profile's *jurisdiction* too, not just its
+  // sector: grant search ranks on text relevance plus a Canada-first nudge and
+  // never consults org_profiles.jurisdictions, so a bare "small business
+  // innovation" search put "Innovation PEI Small Business Assistance" first
+  // and the evaluator rightly failed it for an org registered in CA/ON/QC.
   await page.goto("/dashboard");
   await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
   const grantSearch = page.getByRole("searchbox", { name: /search grants/i });
   await expect(grantSearch).toBeVisible();
-  await grantSearch.fill("innovation research and development for small business");
+  await grantSearch.fill("Southern Ontario innovation growth for technology companies");
   const grantLink = page.locator('a[href^="/grants/"]').first();
   await expect(grantLink).toBeVisible({ timeout: 60_000 });
   await grantLink.click();
