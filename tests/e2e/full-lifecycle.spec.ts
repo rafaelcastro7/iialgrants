@@ -50,6 +50,20 @@ test("search → enrich → evaluate → draft → critic → export → submit"
 
   // 1. Sign in.
   await page.goto("/auth");
+  // Fail fast on a crashed page. Without this, a route that renders the error
+  // boundary (e.g. right after a Vite dep-optimizer cache clear, when the dev
+  // server is mid-recompile) burns the entire 20-minute test budget inside
+  // locator.click() waiting for a button that is never going to exist, and
+  // reports it as "waiting for getByRole('button', {name: 'Admin'})" -- which
+  // says nothing about the actual failure. Confirmed live 2026-08-16.
+  await expect(
+    page.getByRole("heading", { name: /this page didn't load/i }),
+    "the app rendered its error boundary instead of the sign-in page - check the dev server log",
+  ).toBeHidden({ timeout: 15_000 });
+  await expect(
+    page.getByRole("button", { name: DEMO_ADMIN }),
+    "demo autologin buttons are DEV-only (import.meta.env.DEV in auth.tsx) - is the app running via `bun run dev`?",
+  ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: DEMO_ADMIN }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
