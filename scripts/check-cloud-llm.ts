@@ -94,7 +94,12 @@ async function probeChat(p: ProviderSpec, model: string) {
     });
     const ms = Date.now() - started;
     if (!res.ok) {
-      return { model, ok: false, ms, detail: `HTTP ${res.status}: ${(await res.text()).slice(0, 160)}` };
+      return {
+        model,
+        ok: false,
+        ms,
+        detail: `HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`,
+      };
     }
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
