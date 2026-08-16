@@ -205,7 +205,12 @@ export function V2AuthenticatedShell({ children }: { children: ReactNode }) {
     <TooltipProvider delayDuration={150}>
       <div data-ui-version="v2" className="min-h-screen bg-background text-foreground">
         <div className="fixed inset-y-0 left-0 z-40 hidden w-[292px] border-r border-white/10 bg-[oklch(0.2_0.026_218)] text-white lg:flex lg:flex-col">
-          <V2DesktopNav activePath={currentPath} groups={visibleGroups} onSignOut={signOut} />
+          <V2DesktopNav
+            activePath={currentPath}
+            groups={visibleGroups}
+            onSignOut={signOut}
+            llmRoute={llmRoute}
+          />
         </div>
 
         <div className="min-h-screen lg:pl-[292px]">
@@ -226,10 +231,12 @@ function V2DesktopNav({
   activePath,
   groups,
   onSignOut,
+  llmRoute,
 }: {
   activePath: string;
   groups: NavGroup[];
   onSignOut: () => void;
+  llmRoute: LlmRouteStatus;
 }) {
   return (
     <>
@@ -345,7 +352,7 @@ function V2TopBar({
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between gap-3 px-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <V2MobileNav activePath={activePath} groups={groups} onSignOut={onSignOut} />
+          <V2MobileNav activePath={activePath} groups={groups} onSignOut={onSignOut} llmRoute={llmRoute} />
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-card text-primary shadow-sm">
             <Icon className="h-4 w-4" />
           </div>
@@ -461,7 +468,7 @@ function V2MobileNav({
         className="w-[320px] max-w-[86vw] border-white/10 bg-[oklch(0.2_0.026_218)] p-0 text-white"
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
-        <V2DesktopNav activePath={activePath} groups={groups} onSignOut={onSignOut} />
+        <V2DesktopNav activePath={activePath} groups={groups} onSignOut={onSignOut} llmRoute={llmRoute} />
       </SheetContent>
     </Sheet>
   );
