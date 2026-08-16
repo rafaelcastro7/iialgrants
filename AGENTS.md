@@ -11,12 +11,29 @@
 
 # IialGrants — AI-native Grant Intelligence for Canada
 
-> **100% local. 0 cloud tokens. Best-in-class patterns.**
-> Supabase local + Ollama local + PostgreSQL local + RAG local. Self-hosted, sovereign, auditable.
+> **Best model wins, local always works.**
+> Cloud LLM chain for quality, self-hosted Supabase + Ollama underneath so the
+> system still runs with every provider down.
 
-## Local-First Architecture (Manifesto)
+## Architecture: quality-first, with a local floor
 
-IialGrants runs entirely on local infrastructure — no cloud API calls, no external LLM providers, no data leaving the machine. This is not a limitation; it is the **architectural superpower**.
+Inference is **cloud-first**. Agents call Cerebras / Groq / Gemini and fall back
+to local Ollama only when the whole chain fails. Storage stays entirely local
+(self-hosted Supabase + pgvector), and embeddings are local too.
+
+> This file used to state "100% local, 0 cloud tokens, no external LLM
+> providers, no data leaving the machine". That had not been true for some
+> time — `llm-free.server.ts` is explicitly CLOUD FIRST — and the claim was
+> also mirrored in the UI. Both were corrected on 2026-08-16 after the priority
+> was set as *optimal search and result quality*, not data locality.
+
+**Verify before trusting any of this:**
+
+```bash
+bun run scripts/check-cloud-llm.ts        # keys valid + every mapped model answers
+bun run scripts/benchmark-cloud-models.ts # structured-JSON quality per candidate model
+bun run scripts/startup-validate.ts       # all 10 layers, cloud chain included
+```
 
 ### Best-in-Class Patterns We Adopt
 
