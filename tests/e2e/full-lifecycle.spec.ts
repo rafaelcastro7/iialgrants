@@ -308,9 +308,7 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   for (let attempt = 0; attempt < 2; attempt++) {
     // The checkbox resets with the dialog's re-render, so re-tick each pass.
     await submitDialog.getByRole("checkbox").check();
-    const button = (await forceSubmit.isVisible().catch(() => false))
-      ? forceSubmit
-      : plainSubmit;
+    const button = (await forceSubmit.isVisible().catch(() => false)) ? forceSubmit : plainSubmit;
     await expect(button).toBeEnabled();
     await button.click();
     // Either it went through (dialog closes) or it came back with the warning
