@@ -129,6 +129,10 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   await expect(grantLink).toBeVisible({ timeout: 60_000 });
   await grantLink.click();
   await expect(page).toHaveURL(/\/grants\/[^/]+$/);
+  // Held for the final assertion, so "submitted" is verified against the grant
+  // this run actually walked through rather than whatever sorts first later.
+  const grantTitle = (await page.getByRole("heading", { level: 1 }).first().innerText()).trim();
+  expect(grantTitle.length, "could not read the grant title").toBeGreaterThan(0);
 
   // 3. Enrich (if the action is offered — grant starts as "discovered").
   const fetchDetails = page.getByRole("button", { name: /fetch details/i });
