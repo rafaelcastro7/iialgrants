@@ -77,8 +77,16 @@ async function listModels(p: ProviderSpec): Promise<string[]> {
   return (body.data ?? []).map((m) => m.id ?? "").filter(Boolean);
 }
 
-/** One real round trip, so a valid key with a dead model still gets caught. */
-async function probeChat(p: ProviderSpec, model: string) {
+/**
+ * One real round trip, so a valid key with a dead model still gets caught.
+ *
+ * Probed in both modes because they are not equivalent: Cerebras gpt-oss-120b
+ * answers correctly with response_format=json_object and returns HTTP 200 with
+ * empty content without it. Agents differ too — evaluator/critic/discoverer/
+ * enricher ask for JSON, writer/strategist do not — so a model is only safe
+ * for a role whose mode it actually supports.
+ */
+async function probeChat(p: ProviderSpec, model: string, jsonMode: boolean) {
   const started = Date.now();
   try {
     const res = await fetch(`${p.baseUrl}/chat/completions`, {
@@ -86,9 +94,17 @@ async function probeChat(p: ProviderSpec, model: string) {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.apiKey}` },
       body: JSON.stringify({
         model,
-        messages: [{ role: "user", content: "Reply with the single word: ready" }],
-        max_tokens: 16,
+        messages: [
+          {
+            role: "user",
+            content: jsonMode
+              ? 'Reply with only this JSON object: {"status":"ready"}'
+              : "Reply with the single word: ready",
+          },
+        ],
+        max_tokens: 64,
         temperature: 0,
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
       }),
       signal: AbortSignal.timeout(60_000),
     });
