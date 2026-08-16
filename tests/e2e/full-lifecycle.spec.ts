@@ -122,106 +122,132 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   await page.goto("/dashboard");
   await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
-  const grantSearch = page.getByRole("searchbox", { name: /search grants/i });
-  await expect(grantSearch).toBeVisible();
-  await grantSearch.fill("Southern Ontario innovation growth for technology companies");
-  const grantLink = page.locator('a[href^="/grants/"]').first();
-  await expect(grantLink).toBeVisible({ timeout: 60_000 });
-  await grantLink.click();
-  await expect(page).toHaveURL(/\/grants\/[^/]+$/);
+
+  const SEARCH_QUERY = "Southern Ontario innovation growth for technology companies";
+  // "Not eligible" is a *correct* evaluator answer, not a failure — and which
+  // grant sorts first shifts between runs as earlier ones get scored, archived
+  // or submitted. Betting the whole lifecycle on candidate #0 therefore passed
+  // or failed by luck. Walk candidates in order until one is actually
+  // draftable, and report every rejection with the evaluator's own reasoning
+  // if none of them are.
+  const MAX_CANDIDATES = 3;
+
+  async function openCandidate(index: number): Promise<string> {
+    await page.goto("/grants");
+    const search = page.getByRole("searchbox", { name: /search grants/i });
+    await expect(search).toBeVisible();
+    await search.fill(SEARCH_QUERY);
+    const link = page.locator('a[href^="/grants/"]').nth(index);
+    await expect(link).toBeVisible({ timeout: 60_000 });
+    await link.click();
+    await expect(page).toHaveURL(/\/grants\/[^/]+$/);
+    return (await page.getByRole("heading", { level: 1 }).first().innerText()).trim();
+  }
+
   // Held for the final assertion, so "submitted" is verified against the grant
   // this run actually walked through rather than whatever sorts first later.
-  const grantTitle = (await page.getByRole("heading", { level: 1 }).first().innerText()).trim();
-  expect(grantTitle.length, "could not read the grant title").toBeGreaterThan(0);
+  let grantTitle = "";
+  const rejections: string[] = [];
 
-  // 3. Enrich (if the action is offered — grant starts as "discovered").
-  const fetchDetails = page.getByRole("button", { name: /fetch details/i });
-  if (await fetchDetails.isVisible().catch(() => false)) {
-    await fetchDetails.click();
-    // Same modal-dialog ordering as the evaluate step below: close the trace
-    // Sheet first, because while it is open the button behind it is
-    // aria-hidden and no assertion against it can ever pass.
-    const enrichSheet = page.getByRole("dialog", { name: /chain of thought/i });
-    if (await enrichSheet.isVisible({ timeout: 30_000 }).catch(() => false)) {
-      await enrichSheet.getByRole("button", { name: /close/i }).click();
-      await expect(enrichSheet).toBeHidden();
+  for (let candidate = 0; candidate < MAX_CANDIDATES; candidate++) {
+    grantTitle = await openCandidate(candidate);
+    expect(grantTitle.length, "could not read the grant title").toBeGreaterThan(0);
+
+    // 3. Enrich (if the action is offered — grant starts as "discovered").
+    const fetchDetails = page.getByRole("button", { name: /fetch details/i });
+    if (await fetchDetails.isVisible().catch(() => false)) {
+      await fetchDetails.click();
+      // Same modal-dialog ordering as the evaluate step below: close the trace
+      // Sheet first, because while it is open the button behind it is
+      // aria-hidden and no assertion against it can ever pass.
+      const enrichSheet = page.getByRole("dialog", { name: /chain of thought/i });
+      if (await enrichSheet.isVisible({ timeout: 30_000 }).catch(() => false)) {
+        await enrichSheet.getByRole("button", { name: /close/i }).click();
+        await expect(enrichSheet).toBeHidden();
+        await expect(page).not.toHaveURL(/[?&]run=/);
+      }
+      // Deliberately no assertion on "Fetch details" here. On a *successful*
+      // enrichment the grant leaves "discovered", canFetch goes false and the
+      // button is unmounted entirely — so waiting for it to re-enable fails
+      // with "element(s) not found" precisely when enrichment worked. The step
+      // below waits for "Check fit" to become enabled, which is the state
+      // enrichment was run to reach, and covers the scrape-failed path too.
+    }
+
+    // 4. Evaluate fit. Already-evaluated candidates show "Re-evaluate fit";
+    // spending another LLM call on them adds nothing, so only run the agent
+    // when this grant has no verdict yet.
+    const alreadyEvaluated = await page
+      .getByRole("button", { name: /re-evaluate fit/i })
+      .isVisible()
+      .catch(() => false);
+
+    if (!alreadyEvaluated) {
+      const evaluateButton = page.getByRole("button", { name: /check fit/i });
+      await expect(evaluateButton).toBeVisible();
+      // Assert enabled *before* clicking. Enrichment legitimately fails on
+      // grants whose recorded page has moved (scrape_failed: http_404 is a
+      // live outcome, not a bug), and a click on a disabled button just sits
+      // in Playwright's actionability wait until the whole test times out —
+      // 22 minutes for "waiting for element to be visible, enabled and
+      // stable", which says nothing about why. Confirmed live 2026-08-16.
+      await expect(
+        evaluateButton,
+        "Check fit stayed disabled - the grant has no summary and its page could not be fetched",
+      ).toBeEnabled({ timeout: AGENT_TIMEOUT });
+      await evaluateButton.click();
+
+      // Dismiss the trace Sheet BEFORE waiting for the button label to flip.
+      // The Sheet is a modal Radix dialog: while it is open the rest of the
+      // page is aria-hidden, so "Re-evaluate fit" is not just covered but
+      // absent from the accessibility tree, and toBeVisible() can never
+      // succeed. Waiting first burned the full 320s agent timeout and reported
+      // only "waiting for getByRole('button', {name: /re-evaluate fit/i})" —
+      // confirmed live 2026-08-16 from the failure snapshot, which contained
+      // nothing but the dialog itself. The agent keeps running server-side
+      // after the Sheet closes, so the assertion below still covers the wait.
+      const traceSheet = page.getByRole("dialog", { name: /chain of thought/i });
+      await expect(traceSheet).toBeVisible({ timeout: 60_000 });
+      await traceSheet.getByRole("button", { name: /close/i }).click();
+      await expect(traceSheet).toBeHidden();
+      // closeTrace() clears the ?run= query param via an async navigate() —
+      // wait for it to land instead of racing it, otherwise a re-render can
+      // read the stale URL and reopen the sheet under the next click.
       await expect(page).not.toHaveURL(/[?&]run=/);
+      await expect(page.getByRole("button", { name: /re-evaluate fit/i })).toBeVisible({
+        timeout: AGENT_TIMEOUT,
+      });
     }
-    // Deliberately no assertion on "Fetch details" here. On a *successful*
-    // enrichment the grant leaves "discovered", canFetch goes false and the
-    // button is unmounted entirely — so waiting for it to re-enable fails with
-    // "element(s) not found" precisely when enrichment worked. The step below
-    // waits for "Check fit" to become enabled, which is the state enrichment
-    // was run to reach, and covers both the success and the scrape-failed path.
-  }
+    expect(consoleErrors, `Console errors after evaluate: ${consoleErrors.join("; ")}`).toEqual([]);
 
-  // 4. Evaluate fit. This opens the "Chain of thought" trace Sheet (its
-  // open/closed state is mirrored into the URL's ?run= param — see
-  // closeTrace() in _authenticated.grants.$id.tsx), which intercepts clicks
-  // on everything behind it until dismissed.
-  const evaluateButton = page.getByRole("button", { name: /check fit|re-evaluate fit/i });
-  await expect(evaluateButton).toBeVisible();
-  // Assert enabled *before* clicking. Enrichment legitimately fails on grants
-  // whose recorded page has moved (scrape_failed: http_404 is a live outcome,
-  // not a bug), and a click on a disabled button just sits in Playwright's
-  // actionability wait until the whole test times out — 22 minutes for the
-  // message "waiting for element to be visible, enabled and stable", which
-  // says nothing about why. Confirmed live 2026-08-16.
-  await expect(
-    evaluateButton,
-    "Check fit stayed disabled - the grant has no summary and its page could not be fetched",
-  ).toBeEnabled({ timeout: AGENT_TIMEOUT });
-  await evaluateButton.click();
+    // 5. Draft a proposal — or open the one a previous run already created for
+    // this grant (V2GrantDetail.tsx shows "Open proposal" instead of "Draft
+    // proposal" once existingProposalId is set; re-running this test against
+    // the same grant hits that branch, not a fresh draft every time).
+    const openProposalLink = page.getByRole("link", { name: /open proposal/i });
+    if (await openProposalLink.isVisible().catch(() => false)) {
+      await openProposalLink.click();
+      break;
+    }
 
-  // Dismiss the trace Sheet BEFORE waiting for the button label to flip. The
-  // Sheet is a modal Radix dialog: while it is open the rest of the page is
-  // aria-hidden, so "Re-evaluate fit" is not just covered but absent from the
-  // accessibility tree, and toBeVisible() can never succeed. Waiting first
-  // burned the full 320s agent timeout and reported only "waiting for
-  // getByRole('button', {name: /re-evaluate fit/i})" — confirmed live
-  // 2026-08-16 from the failure snapshot, which contained nothing but the
-  // dialog itself. The agent keeps running server-side after the Sheet
-  // closes, so the label assertion below still covers the real wait.
-  const traceSheet = page.getByRole("dialog", { name: /chain of thought/i });
-  await expect(traceSheet).toBeVisible({ timeout: 60_000 });
-  await traceSheet.getByRole("button", { name: /close/i }).click();
-  await expect(traceSheet).toBeHidden();
-  // closeTrace() clears the ?run= query param via an async navigate() — wait
-  // for it to actually land instead of racing it, otherwise a re-render can
-  // read the still-stale URL and reopen the sheet right under the next click.
-  await expect(page).not.toHaveURL(/[?&]run=/);
-  await expect(page.getByRole("button", { name: /re-evaluate fit/i })).toBeVisible({
-    timeout: AGENT_TIMEOUT,
-  });
-  expect(consoleErrors, `Console errors after evaluate: ${consoleErrors.join("; ")}`).toEqual([]);
+    const draftButton = page.getByRole("button", { name: /draft proposal/i });
+    if (await draftButton.isEnabled().catch(() => false)) {
+      await draftButton.click();
+      break;
+    }
 
-  // 5. Draft a proposal — or open the one a previous run already created for
-  // this grant (V2GrantDetail.tsx shows "Open proposal" instead of "Draft
-  // proposal" once existingProposalId is set; re-running this test against
-  // the same seeded grant hits that branch, not a fresh draft every time).
-  const draftButton = page.getByRole("button", { name: /draft proposal/i });
-  const openProposalLink = page.getByRole("link", { name: /open proposal/i });
-  if (await openProposalLink.isVisible().catch(() => false)) {
-    await openProposalLink.click();
-  } else {
-    // An honest "not eligible" verdict is a legitimate evaluator outcome, and
-    // it leaves this button disabled permanently: evaluator.impl.server.ts
-    // only promotes a grant to "scored" (which is what canDraft requires) when
-    // eligibility_pass is true. Detect that here instead of sitting in
-    // toBeEnabled() for the full agent timeout and then reporting nothing more
-    // useful than "unexpected value disabled" — confirmed live 2026-08-16,
-    // where it burned 320s on a grant scored 0.30 / eligibility_pass=false.
+    // Not draftable: record why (the page now states it — see
+    // draftBlockedReason in V2GrantDetail.tsx) and move to the next candidate.
     const blockedReason = page.getByText(/assessed as not eligible|drafting unlocks once/i);
-    if (await blockedReason.isVisible().catch(() => false)) {
-      const reason = await blockedReason.innerText();
-      throw new Error(
-        `Grant is not draftable, so the rest of the lifecycle cannot run: "${reason}". ` +
-          `Seed or pick a grant the evaluator passes (eligibility_pass=true) for this test.`,
-      );
-    }
-    await expect(draftButton).toBeEnabled({ timeout: AGENT_TIMEOUT });
-    await draftButton.click();
+    const reason = (await blockedReason.innerText().catch(() => "")) || "no reason rendered";
+    rejections.push(`"${grantTitle}": ${reason}`);
+    expect(
+      candidate < MAX_CANDIDATES - 1,
+      `None of the ${MAX_CANDIDATES} candidate grants for "${SEARCH_QUERY}" were draftable, ` +
+        `so the rest of the lifecycle could not run:\n  - ${rejections.join("\n  - ")}`,
+    ).toBe(true);
   }
+
   await expect(page).toHaveURL(/\/proposals\/[^/]+$/, { timeout: AGENT_TIMEOUT });
 
   // 6. The Express proposal view is deliberately "ONE primary action at a
