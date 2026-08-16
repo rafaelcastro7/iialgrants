@@ -154,6 +154,16 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // on everything behind it until dismissed.
   const evaluateButton = page.getByRole("button", { name: /check fit|re-evaluate fit/i });
   await expect(evaluateButton).toBeVisible();
+  // Assert enabled *before* clicking. Enrichment legitimately fails on grants
+  // whose recorded page has moved (scrape_failed: http_404 is a live outcome,
+  // not a bug), and a click on a disabled button just sits in Playwright's
+  // actionability wait until the whole test times out — 22 minutes for the
+  // message "waiting for element to be visible, enabled and stable", which
+  // says nothing about why. Confirmed live 2026-08-16.
+  await expect(
+    evaluateButton,
+    "Check fit stayed disabled - the grant has no summary and its page could not be fetched",
+  ).toBeEnabled({ timeout: AGENT_TIMEOUT });
   await evaluateButton.click();
 
   // Dismiss the trace Sheet BEFORE waiting for the button label to flip. The
