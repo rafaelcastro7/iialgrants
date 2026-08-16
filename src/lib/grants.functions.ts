@@ -222,12 +222,25 @@ export const listGrants = createServerFn({ method: "GET" })
         // unweighted ranking buries domestic programs. Boost Canadian grants
         // unless the user explicitly asked for another country.
         const canadaBoost = !data.country && grant.country === "CA" ? CANADA_PRIORITY_BOOST : 0;
+        const funderRecord = Array.isArray(grant.funder) ? grant.funder[0] : grant.funder;
+        const jurisdictionFit = classifyJurisdictionFit(
+          (funderRecord as { jurisdiction?: string | null } | null)?.jurisdiction,
+          orgJurisdictions,
+        );
+        const jurisdictionAdjustment =
+          jurisdictionFit === "match"
+            ? JURISDICTION_MATCH_BOOST
+            : jurisdictionFit === "mismatch"
+              ? -JURISDICTION_MISMATCH_PENALTY
+              : 0;
         const combinedRelevance =
           (rankById.size
             ? lexicalRelevance * (searchProfile ? 0.75 : 1) +
               profileRelevance * 0.25 +
               feedbackBoost
-            : profileRelevance + feedbackBoost) + canadaBoost;
+            : profileRelevance + feedbackBoost) +
+          canadaBoost +
+          jurisdictionAdjustment;
         return { grant, profileMatch, feedbackAction, combinedRelevance };
       })
       .filter(
