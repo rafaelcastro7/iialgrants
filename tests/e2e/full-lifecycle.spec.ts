@@ -147,9 +147,12 @@ test("search → enrich → evaluate → draft → critic → export → submit"
       await expect(enrichSheet).toBeHidden();
       await expect(page).not.toHaveURL(/[?&]run=/);
     }
-    await expect(page.getByRole("button", { name: /fetch details/i })).toBeEnabled({
-      timeout: AGENT_TIMEOUT,
-    });
+    // Deliberately no assertion on "Fetch details" here. On a *successful*
+    // enrichment the grant leaves "discovered", canFetch goes false and the
+    // button is unmounted entirely — so waiting for it to re-enable fails with
+    // "element(s) not found" precisely when enrichment worked. The step below
+    // waits for "Check fit" to become enabled, which is the state enrichment
+    // was run to reach, and covers both the success and the scrape-failed path.
   }
 
   // 4. Evaluate fit. This opens the "Chain of thought" trace Sheet (its
