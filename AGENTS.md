@@ -260,29 +260,51 @@ Tasks: `tasks`, `comments`
 Logic Model: `logic_models`
 Multi-tenant: `organizations` + `org_id` on core tables
 
-## Environment (Local-Only)
+## Environment
+
+`.env` holds the base values; `.env.local` overrides per key and points dev at
+the local stack. **Both Bun and Vite load `.env` then `.env.local`** — never
+hand-edit `.env` to switch backends, create or remove `.env.local` instead.
 
 | Variable | Purpose |
 |----------|---------|
-| `SUPABASE_URL`, `SUPABASE_*` | Local Supabase (`localhost:15435`) |
+| `SUPABASE_URL`, `SUPABASE_*` | Supabase — local stack is `localhost:15435` |
 | `OLLAMA_BASE_URL` | Local Ollama (`localhost:11434`) |
-| `OLLAMA_MODEL` | Default model (`phi4-mini:latest`) |
+| `OLLAMA_MODEL` | Default local model (`phi4-mini:latest`) |
 | `OLLAMA_TIMEOUT_MS` | 3 min timeout for cold starts |
-| `DISABLE_CLOUD_LLM=1` | Hard flag: no cloud LLMs ever |
-| `JINA_API_KEY` | Web fetch (Jina Reader) — only external call |
+| `CEREBRAS_API_KEY` | Cloud rung 1 — leads for discoverer/enricher |
+| `GROQ_API_KEY` | Cloud rung 1 for evaluator/critic/strategist/writer |
+| `GOOGLE_AI_STUDIO_KEY` | Cloud rung 3 (`gemini-2.5-flash`) |
+| `JINA_API_KEY` | Web fetch (Jina Reader) |
 
-No cloud LLM keys configured. No Lovable AI Gateway. No Groq, Google AI Studio, Cerebras. All inference runs on Ollama localhost.
+A provider with no key is skipped by the chain rather than failing it.
 
 ## Scripts
 
 ```bash
-bun run dev          # Vite dev server (:8080)
+bun run dev          # Vite dev server (:8080) + auto-sync watcher
 bun run build        # Production build
-bun run build:dev    # Development build
 bun run lint         # ESLint
-bun run format       # Prettier
-bunx vitest run      # Unit tests (232 tests)
+bun run test         # Unit tests (452)
+bun run test:e2e     # Playwright e2e (39) — real Node, never `bunx`
+
+bun run scripts/startup-validate.ts        # 10 live checks; non-zero on failure
+bun run scripts/check-cloud-llm.ts         # keys + every mapped model, both modes
+bun run scripts/benchmark-cloud-models.ts  # structured-JSON quality per model
+bun run scripts/ingestion-daemon.mjs       # continuous catalog refresh (6h cycle)
 ```
+
+## Startup
+
+`scripts/start-system.ps1` brings up Docker → Supabase containers → Ollama
+(pulling any missing model) → web app → ingestion daemon, then runs
+`startup-validate.ts` and **fails loudly rather than degrading quietly**.
+`scripts/install-autostart-windows.ps1` registers it at logon.
+
+The validation exists because degradation here is silent by nature: a missing
+`nomic-embed-text` drops search to lexical-only, a missing `phi4-mini` pushes
+agents to the cloud, and a retired cloud model 404s inside an agent run. Each
+was a real incident, not a hypothetical.
 
 ## Conventions
 
