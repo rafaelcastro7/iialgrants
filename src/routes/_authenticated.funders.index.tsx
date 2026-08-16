@@ -383,6 +383,7 @@ type FunderRowData = {
   province: string | null;
   total_revenue: number | null;
   disbursed_annual?: number | null;
+  openGrants?: number;
   website: string | null;
 };
 

@@ -128,7 +128,29 @@ export const listFunders = createServerFn({ method: "GET" })
       .range(data.offset, data.offset + data.limit - 1);
     if (error) throw new Error(error.message);
 
-    return { funders: rows ?? [], total: count ?? 0 };
+    // Attach how many live opportunities each funder actually has. 83 of the
+    // 699 funders (Gates, IDB, CONACYT, FAPESP and the rest of the manually
+    // seeded directory) have none, so search can never surface them — without
+    // this the directory renders them identically to a funder with 40 open
+    // calls.
+    const ids = (rows ?? []).map((f) => f.id);
+    const openByFunder = new Map<string, number>();
+    if (ids.length) {
+      const { data: grantRows, error: grantError } = await context.supabase
+        .from("grants")
+        .select("funder_id")
+        .in("funder_id", ids)
+        .not("status", "in", "(archived,expired,lost)");
+      if (grantError) throw new Error(grantError.message);
+      for (const row of grantRows ?? []) {
+        openByFunder.set(row.funder_id, (openByFunder.get(row.funder_id) ?? 0) + 1);
+      }
+    }
+
+    return {
+      funders: (rows ?? []).map((f) => ({ ...f, openGrants: openByFunder.get(f.id) ?? 0 })),
+      total: count ?? 0,
+    };
   });
 
 /**
