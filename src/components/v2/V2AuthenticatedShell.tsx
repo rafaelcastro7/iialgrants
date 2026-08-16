@@ -306,8 +306,8 @@ function V2DesktopNav({
               </TooltipTrigger>
               <TooltipContent className="max-w-64 text-xs">
                 {llmRoute.localOnly
-                  ? "Local models trade some output quality and reliability for $0 cost and data sovereignty — always read AI-drafted text before submitting, never take it as final."
-                  : `Agents call ${llmRoute.cloudProviders.join(" → ")} before local Ollama, so prompts leave this machine — always read AI-drafted text before submitting, never take it as final.`}
+                  ? "Local models trade output quality for $0 cost — always read AI-drafted text before submitting, never take it as final."
+                  : `Agents call ${llmRoute.cloudProviders.join(" → ")} before local Ollama — always read AI-drafted text before submitting, never take it as final.`}
               </TooltipContent>
             </Tooltip>
           </div>
