@@ -407,8 +407,8 @@ function V2TopBar({
             </TooltipTrigger>
             <TooltipContent className="max-w-72 text-xs">
               {llmRoute.localOnly
-                ? "No cloud AI key is set, so every prompt is answered by Ollama on this machine."
-                : `Prompts go to ${llmRoute.cloudProviders.join(" → ")} first, and only fall back to local Ollama if all of them fail. Grant text and your organization profile leave this machine.`}
+                ? "No cloud AI key is set, so every prompt is answered by Ollama on this machine — smaller models, lower quality."
+                : `Judgement and drafting run on the strongest available model (${llmRoute.cloudProviders.join(" → ")}), falling back to local Ollama only if every provider fails.`}
             </TooltipContent>
           </Tooltip>
 
