@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  CEREBRAS_MODEL_MAP,
-  GROQ_MODEL_MAP,
-  GEMINI_MODEL_MAP,
-} from "./llm-cloud.server";
+import { CEREBRAS_MODEL_MAP, GROQ_MODEL_MAP, GEMINI_MODEL_MAP } from "./llm-cloud.server";
 
 // Guards the routing decisions that were made from live measurement, so a
 // future edit that silently reverts them fails here instead of quietly
@@ -39,7 +35,12 @@ describe("cloud model maps", () => {
   it("does not reference Gemini models this account cannot call", () => {
     // gemini-2.0-* were retired outright; 2.5-pro and 2.5-flash-lite answer 404
     // "no longer available" here despite being listed by GET /models.
-    const retired = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-pro", "gemini-2.5-flash-lite"];
+    const retired = [
+      "gemini-2.0-flash",
+      "gemini-2.0-flash-lite",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash-lite",
+    ];
     for (const agent of AGENTS) {
       expect(retired, `${agent} points at a retired Gemini model`).not.toContain(
         GEMINI_MODEL_MAP[agent],
