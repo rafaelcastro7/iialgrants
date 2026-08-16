@@ -128,15 +128,18 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   const fetchDetails = page.getByRole("button", { name: /fetch details/i });
   if (await fetchDetails.isVisible().catch(() => false)) {
     await fetchDetails.click();
-    await expect(page.getByRole("button", { name: /fetch details/i })).toBeEnabled({
-      timeout: AGENT_TIMEOUT,
-    });
+    // Same modal-dialog ordering as the evaluate step below: close the trace
+    // Sheet first, because while it is open the button behind it is
+    // aria-hidden and no assertion against it can ever pass.
     const enrichSheet = page.getByRole("dialog", { name: /chain of thought/i });
-    if (await enrichSheet.isVisible().catch(() => false)) {
+    if (await enrichSheet.isVisible({ timeout: 30_000 }).catch(() => false)) {
       await enrichSheet.getByRole("button", { name: /close/i }).click();
       await expect(enrichSheet).toBeHidden();
       await expect(page).not.toHaveURL(/[?&]run=/);
     }
+    await expect(page.getByRole("button", { name: /fetch details/i })).toBeEnabled({
+      timeout: AGENT_TIMEOUT,
+    });
   }
 
   // 4. Evaluate fit. This opens the "Chain of thought" trace Sheet (its
