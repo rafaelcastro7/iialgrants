@@ -270,21 +270,25 @@ function V2DesktopNav({
         <div className="rounded-md border border-white/10 bg-white/[0.055] p-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-white">
             <Bot className="h-4 w-4 text-teal-200" />
-            Local AI stack
+            {llmRoute.localOnly ? "Local AI stack" : "AI stack"}
           </div>
           <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px] text-white/62">
             <span className="rounded-[6px] bg-white/[0.07] px-2 py-1">Ollama</span>
             <span className="rounded-[6px] bg-white/[0.07] px-2 py-1">Supabase</span>
             <span className="rounded-[6px] bg-white/[0.07] px-2 py-1">RLS</span>
+            {/* Derived, never hardcoded: this claimed "0 cloud tokens" while the
+                gateway was already cloud-first, telling users their data stayed
+                on the machine when it did not. */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="cursor-help rounded-[6px] bg-white/[0.07] px-2 py-1 underline decoration-dotted underline-offset-2">
-                  0 cloud tokens
+                  {llmRoute.localOnly ? "0 cloud tokens" : llmRoute.cloudProviders[0]}
                 </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-64 text-xs">
-                Local models trade some output quality and reliability for $0 cost and data
-                sovereignty — always read AI-drafted text before submitting, never take it as final.
+                {llmRoute.localOnly
+                  ? "Local models trade some output quality and reliability for $0 cost and data sovereignty — always read AI-drafted text before submitting, never take it as final."
+                  : `Agents call ${llmRoute.cloudProviders.join(" → ")} before local Ollama, so prompts leave this machine — always read AI-drafted text before submitting, never take it as final.`}
               </TooltipContent>
             </Tooltip>
           </div>
