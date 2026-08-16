@@ -168,9 +168,8 @@ await check("ollama agent models", true, async () => {
 // Provider model IDs rot: Gemini's mapped gemini-2.0-* pair had been retired
 // outright, so the whole tertiary rung was dead without anything reporting it.
 await check("cloud llm chain", false, async () => {
-  const { CEREBRAS_MODEL_MAP, GROQ_MODEL_MAP, GEMINI_MODEL_MAP } = await import(
-    "../src/agents/llm-cloud.server"
-  );
+  const { CEREBRAS_MODEL_MAP, GROQ_MODEL_MAP, GEMINI_MODEL_MAP } =
+    await import("../src/agents/llm-cloud.server");
   const providers = [
     {
       name: "cerebras",
