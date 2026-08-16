@@ -55,22 +55,21 @@ type CloudProvider = {
 // objects (gemma-4-31b 451ms, gpt-oss-120b 1255ms, zai-glm-4.7 1854ms). The
 // note was stale, and it was costing every judgement call a 31B model.
 //
-// Split by role, but constrained by one measured quirk: gpt-oss-120b returns
-// HTTP 200 with EMPTY content unless response_format=json_object is set, and
-// returns clean structured JSON when it is. So it is safe only for the agents
-// that always ask for JSON — evaluator and critic (and discoverer/enricher,
-// which stay on the faster model because they are high-volume extraction).
-// writer and strategist generate prose with no response_format, so they must
-// stay on gemma-4-31b, which answers correctly in both modes.
+// gemma-4-31b for every role, deliberately: it is the only model on this
+// account that answered correctly in BOTH plain and json modes across repeated
+// probes. gpt-oss-120b is larger but inconsistent — one run returned valid
+// structured JSON and empty plain text, the next the reverse — and zai-glm-4.7
+// is slower without being more reliable. A model that intermittently returns
+// nothing is worse than a smaller one that always answers, because the caller
+// pays a full provider timeout before falling through.
 //
-// That distinction is what the old "gpt-oss-120b truncates" note was really
-// seeing. Verify with `bun run scripts/check-cloud-llm.ts`, which now probes
-// each model with and without JSON mode.
+// Quality for the reasoning agents comes from provider ORDER instead: they try
+// Groq's 70B first (see agentProviderOrder below).
 export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "gemma-4-31b",
   enricher: "gemma-4-31b",
-  evaluator: "gpt-oss-120b",
-  critic: "gpt-oss-120b",
+  evaluator: "gemma-4-31b",
+  critic: "gemma-4-31b",
   strategist: "gemma-4-31b",
   writer: "gemma-4-31b",
 };
