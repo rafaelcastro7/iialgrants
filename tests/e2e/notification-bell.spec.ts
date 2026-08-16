@@ -103,9 +103,10 @@ test("Notification bell surfaces a real deadline reminder with unread count", as
     `deadlines webhook rejected the signed request: ${hookResponse.status()} ${await hookResponse.text()}`,
   ).toBe(true);
   const hookBody = (await hookResponse.json()) as { ok: boolean; created: number };
-  expect(hookBody.created, "the webhook created no reminder for the seeded deadline").toBeGreaterThan(
-    0,
-  );
+  expect(
+    hookBody.created,
+    "the webhook created no reminder for the seeded deadline",
+  ).toBeGreaterThan(0);
 
   // Now the part that matters: does the owner actually see it?
   await page.goto("/auth");
