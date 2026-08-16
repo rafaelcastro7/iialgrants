@@ -124,7 +124,7 @@ for (const p of PROVIDERS) {
     available: [],
     mapped,
     missing: [],
-    chat: null,
+    chat: [],
   };
 
   if (!p.apiKey) {
@@ -136,16 +136,22 @@ for (const p of PROVIDERS) {
   try {
     report.available = await listModels(p);
     report.keyValid = true;
-    report.missing = mapped.filter((m) => !report.available.includes(m));
+    const bare = new Set(report.available.map(bareId));
+    report.missing = mapped.filter((m) => !bare.has(bareId(m)));
     report.detail = `${report.available.length} models on this account`;
   } catch (error) {
-    // Gemini's OpenAI-compat surface does not always expose /models; a chat
-    // probe below is the authoritative check either way.
+    // Gemini's OpenAI-compat surface does not always expose /models; the chat
+    // probes below are the authoritative check either way.
     report.detail = `model list unavailable (${error instanceof Error ? error.message : String(error)})`;
   }
 
-  report.chat = await probeChat(p, mapped[0]);
-  if (report.keyValid === null) report.keyValid = report.chat.ok;
+  // Probe every distinct mapped model, not just the first: the maps assign
+  // different models per agent role, so a dead 70B model behind a healthy 8B
+  // one would otherwise pass unnoticed.
+  for (const model of mapped) {
+    report.chat.push(await probeChat(p, model));
+  }
+  if (report.keyValid === null) report.keyValid = report.chat.some((c) => c.ok);
   reports.push(report);
 }
 
@@ -157,19 +163,16 @@ if (JSON_OUT) {
     const status = !r.keyPresent ? "NO KEY" : r.keyValid ? "OK" : "FAIL";
     console.log(`\n[${status}] ${r.provider}`);
     console.log(`  ${r.detail}`);
-    if (r.chat) {
-      console.log(
-        `  chat ${r.chat.model}: ${r.chat.ok ? "ok" : "FAILED"} (${r.chat.ms}ms) ${r.chat.detail}`,
-      );
+    for (const c of r.chat) {
+      console.log(`  chat ${c.model}: ${c.ok ? "ok" : "FAILED"} (${c.ms}ms) ${c.detail}`);
     }
     if (r.missing.length) {
       console.log(`  MAPPED BUT NOT ON ACCOUNT: ${r.missing.join(", ")}`);
     }
-    if (r.available.length) {
-      console.log(`  available: ${r.available.slice(0, 12).join(", ")}`);
-    }
   }
-  const usable = reports.filter((r) => r.keyPresent && r.keyValid && !r.missing.length);
+  const usable = reports.filter(
+    (r) => r.keyPresent && r.keyValid && !r.missing.length && r.chat.every((c) => c.ok),
+  );
   console.log("\n" + "=".repeat(64));
   console.log(
     usable.length
