@@ -365,24 +365,25 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // was sitting right in front of it saying why. Confirmed live 2026-08-16:
   // "This proposal isn't ready to submit: the proposal has not been run
   // through the quality review".
-  const forceSubmit = submitDialog.getByRole("button", { name: /submit anyway/i });
-  const plainSubmit = submitDialog.getByRole("button", { name: /^submit$/i });
+    const forceSubmit = submitDialog.getByRole("button", { name: /submit anyway/i });
+    const plainSubmit = submitDialog.getByRole("button", { name: /^submit$/i });
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    // The checkbox resets with the dialog's re-render, so re-tick each pass.
-    await submitDialog.getByRole("checkbox").check();
-    const button = (await forceSubmit.isVisible().catch(() => false)) ? forceSubmit : plainSubmit;
-    await expect(button).toBeEnabled();
-    await button.click();
-    // Either it went through (dialog closes) or it came back with the warning
-    // and the force button; give the round-trip a moment to settle.
-    if (await submitDialog.isHidden({ timeout: 60_000 }).catch(() => false)) break;
-    await expect(
-      forceSubmit,
-      "submit was blocked but no 'Submit Anyway' escape hatch appeared",
-    ).toBeVisible({ timeout: 30_000 });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      // The checkbox resets with the dialog's re-render, so re-tick each pass.
+      await submitDialog.getByRole("checkbox").check();
+      const button = (await forceSubmit.isVisible().catch(() => false)) ? forceSubmit : plainSubmit;
+      await expect(button).toBeEnabled();
+      await button.click();
+      // Either it went through (dialog closes) or it came back with the warning
+      // and the force button; give the round-trip a moment to settle.
+      if (await submitDialog.isHidden({ timeout: 60_000 }).catch(() => false)) break;
+      await expect(
+        forceSubmit,
+        "submit was blocked but no 'Submit Anyway' escape hatch appeared",
+      ).toBeVisible({ timeout: 30_000 });
+    }
+    await expect(submitDialog).toBeHidden({ timeout: AGENT_TIMEOUT });
   }
-  await expect(submitDialog).toBeHidden({ timeout: AGENT_TIMEOUT });
 
   // Verify it was recorded, not just that the dialog closed. Matching on a
   // distinctive prefix rather than the whole heading: grant titles here run
