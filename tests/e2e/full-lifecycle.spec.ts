@@ -293,10 +293,20 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // 150_000 (half of that), the same class of too-short test patience
   // fixed for AGENT_TIMEOUT above.
   const CRITIC_TIMEOUT = 320_000;
-  await expect(primaryAction).toHaveText(/run quality review/i, { timeout: AGENT_TIMEOUT });
-  await primaryAction.click();
-  await expect(primaryAction).toBeDisabled({ timeout: 5_000 }); // mutation started
-  await expect(primaryAction).toBeEnabled({ timeout: CRITIC_TIMEOUT }); // mutation finished
+  // Follow the ladder, don't assume its next rung. Re-running against a
+  // proposal an earlier run already reviewed lands straight on "Submit
+  // proposal" — a correct state, since ProposalDetailExpress only offers the
+  // review when one is actually outstanding. Asserting "Run quality review"
+  // unconditionally spent the full 320s watching a button that already said
+  // "Submit proposal" (confirmed live 2026-08-16).
+  await expect(primaryAction).toHaveText(/run quality review|submit proposal/i, {
+    timeout: AGENT_TIMEOUT,
+  });
+  const needsReview = /run quality review/i.test((await primaryAction.textContent()) ?? "");
+  if (needsReview) {
+    await primaryAction.click();
+    await expect(primaryAction).toBeDisabled({ timeout: 5_000 }); // mutation started
+    await expect(primaryAction).toBeEnabled({ timeout: CRITIC_TIMEOUT }); // mutation finished
   // "The mutation finished" is not "the review succeeded". onCritic() surfaces
   // a failure as a toast and leaves proposals.critic_score NULL, so the run
   // sails on and only dies later at the submit gate reporting "not reviewed" —
