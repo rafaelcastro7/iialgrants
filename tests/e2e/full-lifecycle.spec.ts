@@ -277,7 +277,33 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // 9. Submit — proposal is freshly drafted, so this should hit the
   // readiness gate (not silently succeed, not silently fail).
   await page.getByRole("button", { name: /^submit$/i }).click();
-  const forceSubmit = page.getByRole("button", { name: /submit anyway/i });
-  const submitForm = page.getByRole("dialog");
-  await expect(forceSubmit.or(submitForm)).toBeVisible({ timeout: 15_000 });
+  const submitDialog = page.getByRole("dialog");
+  await expect(submitDialog).toBeVisible({ timeout: 15_000 });
+
+  // Actually go through with it. This used to stop at "the gate appeared",
+  // which passed while `submissions` stayed empty — the test's name promised
+  // "→ submit" but the submit leg was never exercised end to end. SubmitDialog
+  // keeps both buttons disabled until the human-review checkbox is ticked
+  // (submitProposal rejects with submit_blocked:human_review_not_confirmed
+  // otherwise), and offers "Submit Anyway" only on a blocked proposal — a
+  // freshly drafted one legitimately hits that path (submit-gate.shared.ts
+  // also requires zero open critical requirements).
+  await submitDialog.getByRole("checkbox").check();
+  const forceSubmit = submitDialog.getByRole("button", { name: /submit anyway/i });
+  const plainSubmit = submitDialog.getByRole("button", { name: /^submit$/i });
+  if (await forceSubmit.isVisible().catch(() => false)) {
+    await expect(forceSubmit).toBeEnabled();
+    await forceSubmit.click();
+  } else {
+    await expect(plainSubmit).toBeEnabled();
+    await plainSubmit.click();
+  }
+  await expect(submitDialog).toBeHidden({ timeout: AGENT_TIMEOUT });
+
+  // Verify it was recorded, not just that the dialog closed.
+  await page.goto("/submissions");
+  await expect(page.getByText(grantTitle, { exact: false }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  expect(consoleErrors, `Console errors after submit: ${consoleErrors.join("; ")}`).toEqual([]);
 });
