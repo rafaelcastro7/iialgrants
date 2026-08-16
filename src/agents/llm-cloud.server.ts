@@ -55,16 +55,24 @@ type CloudProvider = {
 // objects (gemma-4-31b 451ms, gpt-oss-120b 1255ms, zai-glm-4.7 1854ms). The
 // note was stale, and it was costing every judgement call a 31B model.
 //
-// Split by what each role needs: discovery and enrichment are high-volume
-// extraction where latency compounds, while evaluation, criticism, strategy
-// and drafting are the outputs a person reads and acts on.
+// Split by role, but constrained by one measured quirk: gpt-oss-120b returns
+// HTTP 200 with EMPTY content unless response_format=json_object is set, and
+// returns clean structured JSON when it is. So it is safe only for the agents
+// that always ask for JSON — evaluator and critic (and discoverer/enricher,
+// which stay on the faster model because they are high-volume extraction).
+// writer and strategist generate prose with no response_format, so they must
+// stay on gemma-4-31b, which answers correctly in both modes.
+//
+// That distinction is what the old "gpt-oss-120b truncates" note was really
+// seeing. Verify with `bun run scripts/check-cloud-llm.ts`, which now probes
+// each model with and without JSON mode.
 export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "gemma-4-31b",
   enricher: "gemma-4-31b",
   evaluator: "gpt-oss-120b",
-  strategist: "gpt-oss-120b",
-  writer: "gpt-oss-120b",
   critic: "gpt-oss-120b",
+  strategist: "gemma-4-31b",
+  writer: "gemma-4-31b",
 };
 
 // Groq — secondary cloud source (free tier) if Cerebras is unavailable.
