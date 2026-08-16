@@ -111,7 +111,8 @@ await check("funders linked to grants", true, async () => {
   const { data, error } = await supabase.from("grants").select("funder_id").limit(2000);
   if (error) throw new Error(error.message);
   const linked = new Set((data ?? []).map((row) => row.funder_id)).size;
-  if (linked < 2) throw new Error(`only ${linked} funder(s) have grants — search cannot reach them`);
+  if (linked < 2)
+    throw new Error(`only ${linked} funder(s) have grants — search cannot reach them`);
   return `${linked} funders have at least one grant`;
 });
 
