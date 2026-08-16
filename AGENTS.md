@@ -87,13 +87,12 @@ IIAL (Institute for Innovation in Applied Learning) grant discovery and proposal
 
 - **Frontend**: React 19 + TanStack Start (file-based SSR) + Tailwind v4 + shadcn/ui (new-york style)
 - **Backend**: TanStack Server Functions (`createServerFn`) + Supabase (PostgreSQL + Auth + RLS)
-- **AI Gateway**: LOCAL-ONLY — all cloud dependencies removed. Hardware-aware model router
-- **Model Router**: `src/agents/model-router.server.ts` — per-agent optimal model assignment
-- **Default LLM**: `phi4-mini:latest` (fast, 2.5GB, fits VRAM) — configurable per agent via DB
-- **Local AI**: Ollama (phi4-mini, dolphin3, qwen3:14b, nomic-embed-text) — zero-cost, zero-cloud-tokens
+- **AI Gateway**: cloud-first chain (`llm-cloud.server.ts`) → local Ollama fallback
+- **Model Router**: `src/agents/model-router.server.ts` — per-agent local model assignment
+- **Local models**: `phi4-mini` + `dolphin3` (agents), `nomic-embed-text` (embeddings). All three are required — a missing agent model fails as `ollama_prewarm_404` mid-run and silently pushes work to the cloud fallback
 - **Validation**: Zod schemas for all inputs/outputs
 - **Build**: Vite 8 + Lovable TanStack config plugin
-- **Testing**: Vitest (unit + jsdom) — **232 tests passing**
+- **Testing**: Vitest (unit + jsdom) + Playwright e2e — **452 unit / 39 e2e passing**
 - **Linting**: ESLint 9 + Prettier
 - **Package manager**: Bun
 
