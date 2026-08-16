@@ -146,16 +146,27 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   const evaluateButton = page.getByRole("button", { name: /check fit|re-evaluate fit/i });
   await expect(evaluateButton).toBeVisible();
   await evaluateButton.click();
-  await expect(page.getByRole("button", { name: /re-evaluate fit/i })).toBeVisible({
-    timeout: AGENT_TIMEOUT,
-  });
+
+  // Dismiss the trace Sheet BEFORE waiting for the button label to flip. The
+  // Sheet is a modal Radix dialog: while it is open the rest of the page is
+  // aria-hidden, so "Re-evaluate fit" is not just covered but absent from the
+  // accessibility tree, and toBeVisible() can never succeed. Waiting first
+  // burned the full 320s agent timeout and reported only "waiting for
+  // getByRole('button', {name: /re-evaluate fit/i})" — confirmed live
+  // 2026-08-16 from the failure snapshot, which contained nothing but the
+  // dialog itself. The agent keeps running server-side after the Sheet
+  // closes, so the label assertion below still covers the real wait.
   const traceSheet = page.getByRole("dialog", { name: /chain of thought/i });
+  await expect(traceSheet).toBeVisible({ timeout: 60_000 });
   await traceSheet.getByRole("button", { name: /close/i }).click();
   await expect(traceSheet).toBeHidden();
   // closeTrace() clears the ?run= query param via an async navigate() — wait
   // for it to actually land instead of racing it, otherwise a re-render can
   // read the still-stale URL and reopen the sheet right under the next click.
   await expect(page).not.toHaveURL(/[?&]run=/);
+  await expect(page.getByRole("button", { name: /re-evaluate fit/i })).toBeVisible({
+    timeout: AGENT_TIMEOUT,
+  });
   expect(consoleErrors, `Console errors after evaluate: ${consoleErrors.join("; ")}`).toEqual([]);
 
   // 5. Draft a proposal — or open the one a previous run already created for
