@@ -108,9 +108,36 @@ export const GEMINI_MODEL_MAP: Record<AgentName, string> = {
   critic: "gemini-2.5-flash",
 };
 
-// Cloud chain order: Cerebras -> Groq -> Gemini. Providers with no API key are
-// skipped. If the whole chain fails or has no keys, callLlm/callFreeLlm fall
-// back to local Ollama, so the system is hybrid cloud+local end to end.
+/**
+ * Which provider each agent should try first.
+ *
+ * A single fixed order optimises for the wrong thing. Discovery and enrichment
+ * run over the whole catalog, so their cost is latency × volume and Cerebras's
+ * 31B model is the right lead. Evaluation, criticism, strategy and drafting
+ * produce the judgements and prose a person acts on, and there the best
+ * available model wins: Groq's llama-3.3-70b-versatile is more than twice the
+ * parameters, answered reliably in both plain and JSON modes, and is not
+ * slower in practice (~110ms vs ~300ms to first response on these probes).
+ *
+ * Every agent still traverses the whole chain — this only decides the order,
+ * so a provider outage degrades rather than breaks.
+ */
+const QUALITY_FIRST_AGENTS: ReadonlySet<AgentName> = new Set([
+  "evaluator",
+  "critic",
+  "strategist",
+  "writer",
+]);
+
+function agentProviderOrder(agent: AgentName): Array<"cerebras" | "groq" | "gemini"> {
+  return QUALITY_FIRST_AGENTS.has(agent)
+    ? ["groq", "cerebras", "gemini"]
+    : ["cerebras", "groq", "gemini"];
+}
+
+// Providers with no API key are skipped. If the whole chain fails or has no
+// keys, callLlm/callFreeLlm fall back to local Ollama, so the system is hybrid
+// cloud+local end to end.
 function cloudProviders(): CloudProvider[] {
   return [
     {
@@ -239,7 +266,10 @@ async function callOpenAICompat(
  */
 export async function callCloudLlm(opts: CloudLlmOptions): Promise<CloudLlmResult> {
   const runId = opts.runId ?? newRunId();
-  const providers = cloudProviders().filter((p) => !!p.apiKey);
+  const order = agentProviderOrder(opts.agent);
+  const providers = cloudProviders()
+    .filter((p) => !!p.apiKey)
+    .sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
 
   if (providers.length === 0) {
     throw new Error(
