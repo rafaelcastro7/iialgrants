@@ -57,10 +57,13 @@ $Action = New-ScheduledTaskAction `
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User "$Domain\$User"
 $Trigger.Delay = "PT45S"
 
+# Limited, not Highest: registering an elevated task needs an elevated shell,
+# and nothing in the startup path requires admin - Docker Desktop, Ollama, bun
+# and node all run as the logged-in user.
 $Principal = New-ScheduledTaskPrincipal `
   -UserID "$Domain\$User" `
   -LogonType Interactive `
-  -RunLevel Highest
+  -RunLevel Limited
 
 $Settings = New-ScheduledTaskSettingsSet `
   -AllowStartIfOnBatteries `
@@ -79,7 +82,14 @@ Register-ScheduledTask `
   -Settings $Settings `
   -Description "Starts the IIAL Grants stack at logon and validates every layer end to end." | Out-Null
 
-Write-Host "Task registered." -ForegroundColor Green
+# Verify rather than assume: Register-ScheduledTask surfaces permission errors
+# as non-terminating, so the previous version printed "Task registered" even
+# when registration had been denied.
+if (-not (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
+  throw "Registration failed - '$TaskName' is not present in Task Scheduler."
+}
+
+Write-Host "Task registered and verified." -ForegroundColor Green
 Write-Host ""
 Write-Host "Run it now:      Start-ScheduledTask -TaskName '$TaskName'"
 Write-Host "Boot report:     Get-Content '$LogPath' -Tail 60"
