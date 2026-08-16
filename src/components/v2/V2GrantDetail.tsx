@@ -207,7 +207,20 @@ export function V2GrantDetail({
     enrichAttempts: grant.enrich_attempts,
   });
   const canFetch = grant.status === "discovered" && !verdict.enrichmentFailed;
-  const canEvaluate = grant.status !== "discovered" || !!evaluation;
+  // Evaluation used to require leaving "discovered", i.e. a successful scrape.
+  // That made every grant whose source page 404s a permanent dead end: 1341
+  // catalog entries arrive from open data (Innovation Canada's Business
+  // Benefits Finder) already carrying a real description, and their recorded
+  // URL is the administering organization's page, which frequently moves. The
+  // evaluator only needs enough text to judge fit, and a summary is enough —
+  // so offer the action whenever we actually have something to evaluate.
+  const hasEvaluableContent = (grant.summary ?? "").trim().length > 0;
+  const canEvaluate = grant.status !== "discovered" || !!evaluation || hasEvaluableContent;
+  const evaluateBlockedReason = canEvaluate
+    ? null
+    : verdict.enrichmentFailed
+      ? "We couldn't read this grant's page, so there's nothing to assess yet. Open the official page to check it by hand."
+      : "Fetch the details first so there's something to assess.";
   const canDraft = ["scored", "shortlisted", "in_proposal"].includes(grant.status);
   // Why drafting is unavailable, in the user's terms. The evaluator only
   // promotes a grant to "scored" when eligibility passes, so an honest
