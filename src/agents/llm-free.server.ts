@@ -1,6 +1,13 @@
-// Local-first LLM gateway — cloud providers removed.
-// Cascades: primary model → fallback model (both Ollama local).
-// Re-enable cloud: add provider configs + API keys back.
+// Hybrid LLM gateway. NOTE the order, because this header used to claim the
+// opposite ("local-first, cloud providers removed") while the code below has
+// been cloud-first for some time:
+//
+//   Cerebras -> Groq -> Gemini (llm-cloud.server.ts) -> local Ollama
+//
+// Whenever a cloud key is set, prompts leave the machine — grant text and the
+// organization profile included. Local Ollama is the last resort, not the
+// default, so anything user-facing that describes this as an on-device stack
+// has to be gated on there being no cloud key (see getLlmRouteStatus).
 //
 // All providers expose an OpenAI-compatible chat-completions endpoint.
 
