@@ -431,6 +431,16 @@ function FunderRow({
               {formatRevenue(funder.total_revenue ?? funder.disbursed_annual ?? null)}
             </span>
           )}
+          {funder.openGrants != null &&
+            (funder.openGrants > 0 ? (
+              <span className="font-medium text-foreground">
+                {funder.openGrants} open call{funder.openGrants === 1 ? "" : "s"}
+              </span>
+            ) : (
+              <span title="This funder is in the directory, but no open opportunities have been ingested for it yet, so grant search cannot surface it.">
+                Directory only
+              </span>
+            ))}
         </div>
       </div>
       <div className="flex items-center gap-2">
