@@ -70,8 +70,17 @@ export async function evaluateGrantImpl(opts: {
     "ok",
   );
 
-  if (g.status === "discovered") {
-    await trace("gate", 'Refusing to evaluate - grant is still in "discovered" state', "error");
+  // "discovered" used to be an unconditional refusal, which made every grant
+  // whose source page 404s unusable forever: 1341 catalog entries come from
+  // open data already carrying a real description, and the URL recorded for
+  // them is the administering organization's page, which often moves. Gate on
+  // whether there is actually something to judge, not on the status label.
+  if (g.status === "discovered" && !(g.summary ?? "").trim()) {
+    await trace(
+      "gate",
+      'Refusing to evaluate - grant is still in "discovered" state with no summary to assess',
+      "error",
+    );
     throw new Error("grant_not_enriched_yet");
   }
   // Terminal states never need a fresh fit score — evaluating them still
