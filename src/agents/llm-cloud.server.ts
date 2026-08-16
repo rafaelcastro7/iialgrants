@@ -51,7 +51,7 @@ type CloudProvider = {
 // gpt-oss-120b truncates (harmony/reasoning tokens) → "Unexpected end of JSON
 // input"; zai-glm-4.7 returns empty content. So all agents use gemma-4-31b here;
 // heavier reasoning falls through to Groq llama-3.3-70b next in the chain.
-const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
+export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "gemma-4-31b",
   enricher: "gemma-4-31b",
   evaluator: "gemma-4-31b",
