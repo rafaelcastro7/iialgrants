@@ -61,7 +61,7 @@ export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
 };
 
 // Groq — secondary cloud source (free tier) if Cerebras is unavailable.
-const GROQ_MODEL_MAP: Record<AgentName, string> = {
+export const GROQ_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "llama-3.1-8b-instant",
   enricher: "llama-3.1-8b-instant",
   evaluator: "llama-3.3-70b-versatile",
@@ -71,7 +71,7 @@ const GROQ_MODEL_MAP: Record<AgentName, string> = {
 };
 
 // Gemini — tertiary cloud source via Google's OpenAI-compatible endpoint.
-const GEMINI_MODEL_MAP: Record<AgentName, string> = {
+export const GEMINI_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "gemini-2.0-flash-lite",
   enricher: "gemini-2.0-flash-lite",
   evaluator: "gemini-2.0-flash",
