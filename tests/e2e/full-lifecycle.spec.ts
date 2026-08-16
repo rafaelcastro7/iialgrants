@@ -36,8 +36,16 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // not a real connectivity failure (confirmed live: Docker/Kong/app all
   // healthy immediately after this fired). A genuine outage would show up
   // as sustained request failures well beyond just this one signature.
+  // Third instance of the same class, added 2026-08-16: the candidate walk in
+  // step 2 navigates back to /grants between candidates, which aborts whatever
+  // server-function RPC that page still had in flight. It surfaces as "Failed
+  // to fetch" from @tanstack/start-client-core's serverFnFetcher and takes the
+  // outgoing route into CatchBoundaryImpl — cosmetic, since that page is being
+  // torn down. Evidence it is an abort and not an outage: no server-side error
+  // in the dev log, no failed agent_runs in the window, and a full startup
+  // validation immediately afterwards reported every layer healthy.
   const KNOWN_NONBLOCKING_WARNING =
-    /state update on a component that hasn't mounted yet|Failed to fetch.*SupabaseAuthClient\.getUser|SupabaseAuthClient\.getUser.*Failed to fetch/is;
+    /state update on a component that hasn't mounted yet|Failed to fetch.*SupabaseAuthClient\.getUser|SupabaseAuthClient\.getUser.*Failed to fetch|Failed to fetch[\s\S]*serverFnFetcher|serverFnFetcher[\s\S]*Failed to fetch/is;
   const consoleErrors: string[] = [];
   page.on("pageerror", (error) => {
     if (!KNOWN_NONBLOCKING_WARNING.test(error.message)) consoleErrors.push(error.message);
