@@ -104,11 +104,23 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   // stuck grant until it exhausted MAX_ENRICH_ATTEMPTS. Taking whatever the
   // catalog's default ordering surfaces first removes the dependency on
   // any single external funder's site behaving today.
+  //
+  // Still not pinned to a funder or a program title — but no longer "whatever
+  // sorts first" either. The catalog now leads with Canadian programs, and the
+  // first of those was a Mitacs student internship: the evaluator correctly
+  // returned eligibility_pass=false for an SME applying to a grant restricted
+  // to undergraduates, which leaves "Draft proposal" disabled and the rest of
+  // the lifecycle unreachable (confirmed live 2026-08-16). Searching a term
+  // aligned with the seeded org profile (SME, technology, R&D) picks a grant
+  // the org can plausibly win, without hardcoding which one that is.
   await page.goto("/dashboard");
   await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
+  const grantSearch = page.getByRole("searchbox", { name: /search grants/i });
+  await expect(grantSearch).toBeVisible();
+  await grantSearch.fill("innovation research and development for small business");
   const grantLink = page.locator('a[href^="/grants/"]').first();
-  await expect(grantLink).toBeVisible();
+  await expect(grantLink).toBeVisible({ timeout: 60_000 });
   await grantLink.click();
   await expect(page).toHaveURL(/\/grants\/[^/]+$/);
 
