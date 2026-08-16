@@ -393,19 +393,25 @@ export function V2GrantDetail({
                     Fetch details
                   </Button>
                 )}
-                <Button
-                  className="w-full gap-2"
-                  variant={canFetch ? "outline" : "default"}
-                  disabled={actionDisabled || !canEvaluate}
-                  onClick={onEvaluate}
-                >
-                  {busy === "eval" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <SearchCheck className="h-4 w-4" />
+                <div className="w-full">
+                  <Button
+                    className="w-full gap-2"
+                    variant={canFetch ? "outline" : "default"}
+                    disabled={actionDisabled || !canEvaluate}
+                    onClick={onEvaluate}
+                    title={evaluateBlockedReason ?? undefined}
+                  >
+                    {busy === "eval" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <SearchCheck className="h-4 w-4" />
+                    )}
+                    {evaluation ? "Re-evaluate fit" : "Check fit"}
+                  </Button>
+                  {evaluateBlockedReason && (
+                    <p className="mt-1.5 text-xs text-muted-foreground">{evaluateBlockedReason}</p>
                   )}
-                  {evaluation ? "Re-evaluate fit" : "Check fit"}
-                </Button>
+                </div>
                 {existingProposalId ? (
                   <Button asChild className="w-full gap-2">
                     <Link to="/proposals/$id" params={{ id: existingProposalId }}>
