@@ -178,6 +178,14 @@ const ACCENT_CLASS: Record<NavGroup["accent"], string> = {
 export function V2AuthenticatedShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const isAdmin = useIsAdmin();
+  // Shell renders on every authenticated page, so this must never suspend or
+  // throw: assume the safer "cloud is in play" wording until it resolves.
+  const fetchLlmRoute = useServerFn(getLlmRouteStatus);
+  const { data: llmRoute = { cloudProviders: [], localOnly: false } } = useQuery({
+    queryKey: ["llm-route-status"],
+    queryFn: () => fetchLlmRoute({ data: {} }),
+    staleTime: 5 * 60_000,
+  });
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
