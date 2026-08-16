@@ -307,16 +307,17 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     await primaryAction.click();
     await expect(primaryAction).toBeDisabled({ timeout: 5_000 }); // mutation started
     await expect(primaryAction).toBeEnabled({ timeout: CRITIC_TIMEOUT }); // mutation finished
-  // "The mutation finished" is not "the review succeeded". onCritic() surfaces
-  // a failure as a toast and leaves proposals.critic_score NULL, so the run
-  // sails on and only dies later at the submit gate reporting "not reviewed" —
-  // which points at the wrong thing entirely. Confirmed live 2026-08-16: the
-  // critic was failing with ollama_prewarm_404 (model 'phi4-mini:latest' not
-  // found) while this step reported success.
-  await expect(
-    page.getByText(/quality review completed/i),
-    "the quality review reported an error instead of completing - check agent_runs for the critic",
-  ).toBeVisible({ timeout: 15_000 });
+    // "The mutation finished" is not "the review succeeded". onCritic()
+    // surfaces a failure as a toast and leaves proposals.critic_score NULL, so
+    // the run sails on and only dies later at the submit gate reporting "not
+    // reviewed" — which points at the wrong thing entirely. Confirmed live
+    // 2026-08-16: the critic was failing with ollama_prewarm_404 (model
+    // 'phi4-mini:latest' not found) while this step reported success.
+    await expect(
+      page.getByText(/quality review completed/i),
+      "the quality review reported an error instead of completing - check agent_runs for the critic",
+    ).toBeVisible({ timeout: 15_000 });
+  }
   expect(consoleErrors, `Console errors after critic: ${consoleErrors.join("; ")}`).toEqual([]);
 
   // 8. Export + submit only exist in the Advanced view.
