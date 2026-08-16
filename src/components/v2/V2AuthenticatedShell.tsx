@@ -341,11 +341,13 @@ function V2TopBar({
   activePath,
   groups,
   onSignOut,
+  llmRoute,
 }: {
   activeItem?: NavItem;
   activePath: string;
   groups: NavGroup[];
   onSignOut: () => void;
+  llmRoute: LlmRouteStatus;
 }) {
   const Icon = activeItem?.icon ?? Sparkles;
 
@@ -451,10 +453,12 @@ function V2MobileNav({
   activePath,
   groups,
   onSignOut,
+  llmRoute,
 }: {
   activePath: string;
   groups: NavGroup[];
   onSignOut: () => void;
+  llmRoute: LlmRouteStatus;
 }) {
   return (
     <Sheet>
