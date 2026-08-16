@@ -47,7 +47,11 @@ async function basicUserFlow(page: Page) {
   // 3000+, so IRAP legitimately sits outside the first page and this failed on
   // a healthy system. The searched assertion below is the one that carries the
   // real meaning.
-  const firstGrantLink = page.locator('a[href^="/grants/"]').first();
+  // Each card carries two links to the same grant: the title, and an "Open
+  // this grant" CTA. Only the title one has a `title` attribute (it is set
+  // from grant.title for the truncation tooltip), so it is the stable hook —
+  // a plain `a[href^="/grants/"]` picks the CTA and yields "Open this grant".
+  const firstGrantLink = page.locator('a[href^="/grants/"][title]').first();
   await expect(firstGrantLink).toBeVisible({ timeout: 30_000 });
 
   // Search for a grant the catalog actually has right now instead of the
@@ -58,8 +62,11 @@ async function basicUserFlow(page: Page) {
   // from a visible grant keeps the assertion meaningful — search must return
   // the specific thing asked for — without depending on any one seed row
   // surviving.
-  const sampleTitle = (await firstGrantLink.innerText()).trim().split("\n")[0].slice(0, 40);
+  const sampleTitle = ((await firstGrantLink.getAttribute("title")) ?? "").trim().slice(0, 40);
   expect(sampleTitle.length, "could not read a grant title to search for").toBeGreaterThan(3);
+  expect(sampleTitle, "read the CTA label instead of the grant title").not.toMatch(
+    /open this grant/i,
+  );
 
   await page.getByRole("searchbox", { name: /search grants/i }).fill(sampleTitle);
   await expect(page.getByRole("link", { name: sampleTitle, exact: false }).first()).toBeVisible({
