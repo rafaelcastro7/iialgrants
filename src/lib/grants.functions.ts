@@ -16,6 +16,40 @@ const EVAL_FETCH_CHUNK_SIZE = 30;
 // country filter) view. Large enough to outrank a marginally better-matching
 // foreign grant, small enough that a clearly better match still wins.
 const CANADA_PRIORITY_BOOST = 0.15;
+
+// Ranking adjustments for how a grant's funder jurisdiction lines up with the
+// org's own. A province-locked program in a province the org does not operate
+// in is not a weaker match — it is unwinnable — so the penalty is larger than
+// the reward for a match.
+const JURISDICTION_MATCH_BOOST = 0.12;
+const JURISDICTION_MISMATCH_PENALTY = 0.3;
+
+/**
+ * Compare a funder jurisdiction ("CA-Federal", "CA-ON", "US-HHS") against the
+ * org's declared jurisdictions (["CA", "ON", "QC"]).
+ *
+ * Returns "match", "mismatch" for a sub-national jurisdiction the org has not
+ * declared, or "unknown" when there is nothing to compare.
+ */
+export function classifyJurisdictionFit(
+  funderJurisdiction: string | null | undefined,
+  orgJurisdictions: Set<string>,
+): "match" | "mismatch" | "unknown" {
+  if (!funderJurisdiction || orgJurisdictions.size === 0) return "unknown";
+  const value = funderJurisdiction.toUpperCase();
+  if (orgJurisdictions.has(value)) return "match";
+
+  const [country, region] = value.split("-");
+  // National-level programs apply anywhere in that country.
+  if (!region || region === "FEDERAL") {
+    return orgJurisdictions.has(country) ? "match" : "unknown";
+  }
+  if (orgJurisdictions.has(region)) return "match";
+  // Sub-national and the org is not there: only call it a mismatch when the
+  // org actually operates in that country, so foreign grants stay neutral
+  // rather than being pushed below unwinnable domestic ones.
+  return orgJurisdictions.has(country) ? "mismatch" : "unknown";
+}
 function chunkIds(ids: string[], size = EVAL_FETCH_CHUNK_SIZE): string[][] {
   const chunks: string[][] = [];
   for (let i = 0; i < ids.length; i += size) chunks.push(ids.slice(i, i + size));
