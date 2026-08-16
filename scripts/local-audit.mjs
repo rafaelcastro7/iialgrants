@@ -54,7 +54,9 @@ const DEFAULT_TARGETS = [
   "src/lib/deep-crawl.server.ts",
   "src/lib/site-candidates.server.ts",
   "src/agents/embeddings.server.ts",
-  "src/lib/search-hybrid.server.ts",
+  // The live hybrid retrieval path; the old search-hybrid.server.ts it
+  // replaced was dead code and has been deleted.
+  "src/lib/grant-search-hybrid.server.ts",
   "src/lib/embeddings-cache.server.ts",
 ];
 const TARGETS = SINGLE ? [SINGLE] : DEFAULT_TARGETS;
