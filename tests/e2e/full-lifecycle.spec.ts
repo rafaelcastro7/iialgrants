@@ -155,6 +155,21 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   if (await openProposalLink.isVisible().catch(() => false)) {
     await openProposalLink.click();
   } else {
+    // An honest "not eligible" verdict is a legitimate evaluator outcome, and
+    // it leaves this button disabled permanently: evaluator.impl.server.ts
+    // only promotes a grant to "scored" (which is what canDraft requires) when
+    // eligibility_pass is true. Detect that here instead of sitting in
+    // toBeEnabled() for the full agent timeout and then reporting nothing more
+    // useful than "unexpected value disabled" — confirmed live 2026-08-16,
+    // where it burned 320s on a grant scored 0.30 / eligibility_pass=false.
+    const blockedReason = page.getByText(/assessed as not eligible|drafting unlocks once/i);
+    if (await blockedReason.isVisible().catch(() => false)) {
+      const reason = await blockedReason.innerText();
+      throw new Error(
+        `Grant is not draftable, so the rest of the lifecycle cannot run: "${reason}". ` +
+          `Seed or pick a grant the evaluator passes (eligibility_pass=true) for this test.`,
+      );
+    }
     await expect(draftButton).toBeEnabled({ timeout: AGENT_TIMEOUT });
     await draftButton.click();
   }
