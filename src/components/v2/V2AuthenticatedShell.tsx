@@ -219,6 +219,7 @@ export function V2AuthenticatedShell({ children }: { children: ReactNode }) {
             activePath={currentPath}
             groups={visibleGroups}
             onSignOut={signOut}
+            llmRoute={llmRoute}
           />
           <main className="min-h-[calc(100vh-65px)] pb-10">{children}</main>
         </div>
