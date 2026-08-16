@@ -1,50 +1,65 @@
-# Install daemon supervisor as a Windows Task Scheduler job.
+# Register IIAL Grants to start with Windows and validate itself on every boot.
+#
+# The task runs scripts/start-system.ps1, which brings up Docker, the Supabase
+# containers, Ollama, the web app and the ingestion daemon, then runs
+# scripts/startup-validate.ts and fails loudly if anything is not actually
+# working. Check scripts/start-system.log for each boot's report.
+#
+# ASCII only: Windows PowerShell 5.1 reads .ps1 as ANSI without a BOM.
+#
 # Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-autostart-windows.ps1
+#   ... -Uninstall
 
-$IialHome = "E:\Documents\PROYECTOS\IialGrants"
-$TaskName = "IIAL-Daemons-Supervisor"
-$ScriptPath = Join-Path $IialHome "scripts\daemon-supervisor.mjs"
-$LogPath = Join-Path $IialHome "scripts\daemon-supervisor.log"
+param(
+  [switch]$Uninstall
+)
+
+# Derive the repo from this script's location. The previous version hardcoded
+# E:\Documents\PROYECTOS\IialGrants, a path that does not exist on this machine,
+# so the registered task could never have started anything.
+$IialHome = Split-Path -Parent $PSScriptRoot
+$TaskName = "IIAL-Grants-Startup"
+$StartScript = Join-Path $IialHome "scripts\start-system.ps1"
+$LogPath = Join-Path $IialHome "scripts\start-system.log"
 $User = $env:USERNAME
 $Domain = $env:USERDOMAIN
 
-try {
-  $NodePath = (Get-Command node -ErrorAction Stop).Source
-} catch {
-  throw "node.exe was not found in PATH. Install Node.js or add it to PATH before installing the supervisor."
+if ($Uninstall) {
+  Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+  Write-Host "Task '$TaskName' removed." -ForegroundColor Yellow
+  exit 0
 }
 
-Write-Host "Installing daemon supervisor as a Windows task..."
-Write-Host "Task Name: $TaskName"
-Write-Host "User: $Domain\$User"
-Write-Host "Node: $NodePath"
-Write-Host "Script: $ScriptPath"
+if (-not (Test-Path $StartScript)) {
+  throw "Startup script not found at $StartScript"
+}
+
+$PwshPath = (Get-Command powershell.exe -ErrorAction Stop).Source
+
+Write-Host "Installing IIAL Grants autostart" -ForegroundColor Cyan
+Write-Host "  Task:   $TaskName"
+Write-Host "  Repo:   $IialHome"
+Write-Host "  Script: $StartScript"
+Write-Host "  User:   $Domain\$User"
 Write-Host ""
 
-try {
-  $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-  if ($existing) {
-    Write-Host "Removing existing task '$TaskName'..."
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-    Start-Sleep -Seconds 1
-  }
-} catch {
-  # Task does not exist.
-}
+Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
 
 $Action = New-ScheduledTaskAction `
-  -Execute $NodePath `
-  -Argument "`"$ScriptPath`"" `
+  -Execute $PwshPath `
+  -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$StartScript`" -NoBrowser" `
   -WorkingDirectory $IialHome
 
-$Trigger = New-ScheduledTaskTrigger `
-  -AtStartup `
-  -RandomDelay (New-TimeSpan -Seconds 30)
+# At logon rather than at startup: Docker Desktop and Ollama are per-user
+# desktop apps, so they cannot come up before someone is logged in. The delay
+# gives Windows time to settle the network and the Docker service.
+$Trigger = New-ScheduledTaskTrigger -AtLogOn -User "$Domain\$User"
+$Trigger.Delay = "PT45S"
 
 $Principal = New-ScheduledTaskPrincipal `
   -UserID "$Domain\$User" `
-  -LogonType S4U `
+  -LogonType Interactive `
   -RunLevel Highest
 
 $Settings = New-ScheduledTaskSettingsSet `
@@ -52,7 +67,9 @@ $Settings = New-ScheduledTaskSettingsSet `
   -DontStopIfGoingOnBatteries `
   -StartWhenAvailable `
   -MultipleInstances IgnoreNew `
-  -ExecutionTimeLimit (New-TimeSpan -Seconds 0)
+  -RestartCount 2 `
+  -RestartInterval (New-TimeSpan -Minutes 5) `
+  -ExecutionTimeLimit (New-TimeSpan -Hours 1)
 
 Register-ScheduledTask `
   -TaskName $TaskName `
@@ -60,18 +77,11 @@ Register-ScheduledTask `
   -Trigger $Trigger `
   -Principal $Principal `
   -Settings $Settings `
-  -Description "IIAL Grants daemon supervisor - keeps daemons alive 24/7" | Out-Null
+  -Description "Starts the IIAL Grants stack at logon and validates every layer end to end." | Out-Null
 
-Write-Host "Task registered successfully" -ForegroundColor Green
+Write-Host "Task registered." -ForegroundColor Green
 Write-Host ""
-Write-Host "Verify installation:"
-Write-Host "  Get-ScheduledTask -TaskName '$TaskName' | Format-List"
-Write-Host ""
-Write-Host "View logs:"
-Write-Host "  Get-Content -Path '$LogPath' -Tail 80 -Wait"
-Write-Host ""
-Write-Host "Manual start:"
-Write-Host "  Start-ScheduledTask -TaskName '$TaskName'"
-Write-Host ""
-Write-Host "Uninstall:"
-Write-Host "  Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"
+Write-Host "Run it now:      Start-ScheduledTask -TaskName '$TaskName'"
+Write-Host "Boot report:     Get-Content '$LogPath' -Tail 60"
+Write-Host "Validate only:   bun run scripts/startup-validate.ts"
+Write-Host "Uninstall:       powershell -File scripts/install-autostart-windows.ps1 -Uninstall"
