@@ -148,45 +148,7 @@ export const getRecentFunderActivity = createServerFn({ method: "GET" })
     }
   });
 
-/**
- * Get top funders by various metrics
- */
-export const getTopFunders = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      metric: z.enum(["revenue", "grants", "recent"]),
-      limit: z.number().min(1).max(20).default(10),
-    }),
-  )
-  .handler(async ({ data, context }) => {
-    try {
-      const supabase = context.supabase;
-
-      let query = supabase
-        .from("funders")
-        .select(
-          "id, name, category, country, jurisdiction, province, total_revenue, disbursed_annual, website",
-        );
-
-      switch (data.metric) {
-        case "revenue":
-          // Non-Canadian funders carry disbursement rather than CRA revenue,
-          // so rank on whichever figure the funder actually has.
-          query = query
-            .order("disbursed_annual", { ascending: false, nullsFirst: false })
-            .order("total_revenue", { ascending: false, nullsFirst: false });
-          break;
-        case "grants":
-          break;
-        case "recent":
-          query = query.order("updated_at", { ascending: false });
-          break;
-      }
-
-      const { data: funders } = await query.limit(data.limit);
-      return funders || [];
-    } catch (e) {
-      throw new Error(e instanceof Error ? e.message : String(e));
-    }
-  });
+// getTopFunders was removed: listFunders (funder-search.functions.ts) supersedes
+// it with real pagination, and its "grants" metric was a silent no-op — the
+// switch case fell through without ordering, so asking for the top funders by
+// grant count returned an arbitrary page.
