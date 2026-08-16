@@ -47,14 +47,37 @@ bun run scripts/startup-validate.ts       # all 10 layers, cloud chain included
 | **Self-Hosted Supabase** | Production-grade local PostgreSQL | `supabase start` gives you Auth, RLS, realtime, pgvector in one command — zero cloud dependencies |
 | **Hardware-Aware Scheduling** | Cloud cost optimization patterns | GTX 1070 8GB VRAM VRAM budget: phi4-mini (2.5GB) for high-throughput, dolphin3 (4.9GB) for 2 agents, qwen3:14b (9.3GB CPU-offload) for only the 2 that need deep reasoning |
 
-### Why Local-First Wins
+### Cloud LLM chain (measured, not assumed)
 
-- **$0 inference cost** — no per-token pricing, no API keys, no rate limits
-- **Data sovereignty** — PIPEDA, Law 25, AIDA compliant by default
-- **Offline operation** — no internet required after initial `ollama pull`
-- **Deterministic reproducibility** — same model, same seed, same output every time
-- **Uncensored evaluation** — dolphin3 gives honest scoring without politeness bias
-- **No vendor lock-in** — swap models, upgrade hardware, change providers freely
+Provider order is **per agent**, because a single order optimises for the wrong
+thing. Every agent still traverses the whole chain, so an outage degrades
+rather than breaks.
+
+| Agents | Order | Why |
+|--------|-------|-----|
+| evaluator, critic, strategist, writer | Groq → Cerebras → Gemini | These produce the judgements and prose a person acts on. Groq's `llama-3.3-70b-versatile` is the largest model that answered reliably, and is not slower in practice. |
+| discoverer, enricher | Cerebras → Groq → Gemini | High-volume extraction where latency × volume dominates; Cerebras `gemma-4-31b` leads. |
+
+Three findings that cost real quality, all from live probes on 2026-08-16:
+
+- **Gemini's whole rung was dead.** Both mapped `gemini-2.0-*` models had been
+  retired (404). `gemini-2.5-pro` and `gemini-2.5-flash-lite` are *listed* by
+  `GET /models` but also answer 404 on this account — **being listed is not
+  evidence a model can be called.** Only `gemini-2.5-flash` works.
+- **A stale comment cost every judgement a 31B model.** The note claiming
+  Cerebras `gpt-oss-120b` "truncates" and `zai-glm-4.7` "returns empty" pinned
+  all six agents to `gemma-4-31b`. Re-measured: both produce valid structured
+  JSON — but `gpt-oss-120b` is *inconsistent* between plain and JSON modes, so
+  Cerebras stays on `gemma-4-31b` and quality comes from provider order.
+- **Plain and JSON modes are not equivalent.** `response_format=json_object`
+  changes whether some models answer at all. evaluator / critic / discoverer /
+  enricher request JSON; writer / strategist do not.
+
+### What the local floor still buys
+
+- **Never fully down** — every provider failing degrades to Ollama, not an outage
+- **Local embeddings** — `nomic-embed-text` (768d) never leaves the machine
+- **Local storage** — self-hosted Supabase + pgvector, RLS enforced
 
 ## Project Overview
 
