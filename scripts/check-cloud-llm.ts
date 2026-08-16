@@ -183,5 +183,5 @@ if (JSON_OUT) {
 
 // Exit non-zero only when the whole chain is unusable: a single dead provider
 // is survivable by design, no cloud at all is not (for a cloud deployment).
-const anyUsable = reports.some((r) => r.keyPresent && r.keyValid && r.chat?.ok);
+const anyUsable = reports.some((r) => r.keyPresent && r.keyValid && r.chat.some((c) => c.ok));
 process.exit(anyUsable ? 0 : 1);
