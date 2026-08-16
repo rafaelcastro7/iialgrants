@@ -41,6 +41,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { NotificationBell } from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UiVersionToggle } from "@/components/v2/UiVersionToggle";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getLlmRouteStatus } from "@/lib/llm-route.functions";
 
 type NavItem = {
   to: string;
