@@ -1,6 +1,28 @@
 // EU Funding & Tenders Portal public Search API. The API requires POST with a
-// multipart JSON query; GET returns 405. We retain only current English grant
-// calls that mention Canada and emit their framework as a funder signal.
+// multipart JSON query; GET returns 405. Retains current, open, English grant
+// calls and emits their framework as a funder signal — genuinely EU-wide, not
+// filtered down to Canada-relevant calls only (a `text: "Canada"` search-term
+// filter used to sit here, which meant this was effectively a "Canada
+// mentions in EU calls" ingester rather than a real EU funding source).
+//
+// `text` is a REQUIRED query param (confirmed live 2026-07-23: omitting it
+// entirely — my first attempt at the fix above — gets HTTP 400 "Required
+// request parameter 'text'... is not present", which silently broke this
+// ingester until now, since fetchEuCalls has no catch and runSource's own
+// catch just marks the whole run "failed" with no visible symptom besides
+// that). An explicit EMPTY string satisfies "present" without narrowing
+// results: verified live, totalResults 21,128 vs erroring out entirely.
+//
+// Second regression found the same day, also silent (status stayed
+// "succeeded" — an empty array isn't an error): the API's `results[].language`
+// is essentially unfilterable from the *outside* — without a `text` term the
+// index returns same-language runs (confirmed live: 50/50 "bg" for several
+// pageNumbers straight) and a top-level `languages=en` query param is
+// silently ignored. The only thing that actually works is adding `language`
+// as its own `terms` clause INSIDE the bool query body, same shape as
+// `type`/`status` below (confirmed live: 1418 results, 50/50 "en"). Without
+// this the old post-fetch `hit.language !== "en"` filter just dropped every
+// row and produced a "succeeded" run with rows_in: 0, candidates_out: 0.
 
 import type { RawCandidate } from "./scoring.server";
 
@@ -23,13 +45,17 @@ type Hit = {
 export async function fetchEuCalls(limit = 50): Promise<RawCandidate[]> {
   const params = new URLSearchParams({
     apiKey: "SEDIA",
-    text: "Canada",
+    text: "",
     pageSize: String(limit),
     pageNumber: "1",
   });
   const query = {
     bool: {
-      must: [{ terms: { type: ["1", "2", "8"] } }, { terms: { status: OPEN_STATUSES } }],
+      must: [
+        { terms: { type: ["1", "2", "8"] } },
+        { terms: { status: OPEN_STATUSES } },
+        { terms: { language: ["en"] } },
+      ],
     },
   };
   const form = new FormData();

@@ -1,3 +1,12 @@
+// @vitest-environment node
+//
+// jsdom's Response/fetch shim doesn't round-trip binary bodies correctly —
+// a Buffer passed to `new Response()` comes back empty/malformed from
+// `.arrayBuffer()`, which broke the BBF XLSX contract test with a jszip
+// "not a supported JavaScript type" error even though the real production
+// fetch (native, outside jsdom) handles the same bytes fine. This suite is
+// pure server-side fetch-mocking with no DOM dependency, so run it under
+// Node's real fetch/Response instead of the project-wide jsdom default.
 import ExcelJS from "exceljs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fetchAlbertaGrants } from "./alberta-ckan.server";

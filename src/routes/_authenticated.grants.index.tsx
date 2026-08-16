@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   applyGrantFilters,
   sortGrants,
+  type AmountPresetKey,
   type SortKey,
 } from "@/components/grants/grant-filters.utils";
 import { EventLog } from "@/components/grants/EventLog";
@@ -100,6 +101,11 @@ function GrantsPage() {
   const [jurisdiction, setJurisdiction] = useState<string>(
     () => ss.get("grants.jurisdiction") ?? "all",
   );
+  const [country, setCountry] = useState<string>(() => ss.get("grants.country") ?? "all");
+  const [sector, setSector] = useState<string>(() => ss.get("grants.sector") ?? "all");
+  const [amountPreset, setAmountPreset] = useState<AmountPresetKey>(
+    () => (ss.get("grants.amountPreset") as AmountPresetKey) ?? "all",
+  );
   const [sortKey, setSortKey] = useState<SortKey>(
     () => (ss.get("grants.sort") as SortKey) ?? "fit",
   );
@@ -123,10 +129,22 @@ function GrantsPage() {
   useEffect(() => {
     ss.set("grants.search", search);
     ss.set("grants.jurisdiction", jurisdiction);
+    ss.set("grants.country", country);
+    ss.set("grants.sector", sector);
+    ss.set("grants.amountPreset", amountPreset);
     ss.set("grants.sort", sortKey);
     ss.set("grants.eligibleOnly", eligibleOnly ? "1" : "0");
     ss.set("grants.onlyWithDeadline", onlyWithDeadline ? "1" : "0");
-  }, [search, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline]);
+  }, [
+    search,
+    jurisdiction,
+    country,
+    sector,
+    amountPreset,
+    sortKey,
+    eligibleOnly,
+    onlyWithDeadline,
+  ]);
 
   useEffect(() => {
     ss.set("grants.searchProfileId", searchProfileId ?? "");
@@ -146,14 +164,18 @@ function GrantsPage() {
     }
   }, [search]);
 
+  // Country is a server-side filter, not a client-side one: the server returns
+  // a Canada-first page of 100, so filtering that page for another country
+  // would show almost nothing. Changing it refetches instead.
   const { data } = useSuspenseQuery({
-    queryKey: ["grants", "all", serverSearch, searchProfileId ?? "general"],
+    queryKey: ["grants", "all", serverSearch, searchProfileId ?? "general", country],
     queryFn: () =>
       fetchGrants({
         data: {
           limit: 100,
           search: serverSearch.length >= 2 ? serverSearch : undefined,
           profileId: searchProfileId ?? undefined,
+          country: country !== "all" ? country : undefined,
         },
       }),
   });
@@ -339,12 +361,26 @@ function GrantsPage() {
         applyGrantFilters(data.grants, {
           search: serverSearch.length >= 2 ? "" : search,
           jurisdiction,
+          country,
+          sector,
+          amountPreset,
           eligibleOnly,
           onlyWithDeadline,
         }),
         sortKey,
       ) as GrantRowData[],
-    [data.grants, search, serverSearch, jurisdiction, sortKey, eligibleOnly, onlyWithDeadline],
+    [
+      data.grants,
+      search,
+      serverSearch,
+      jurisdiction,
+      country,
+      sector,
+      amountPreset,
+      sortKey,
+      eligibleOnly,
+      onlyWithDeadline,
+    ],
   );
 
   // Search/jurisdiction/eligibleOnly/onlyWithDeadline live in GrantFilters,
@@ -403,6 +439,10 @@ function GrantsPage() {
           filteredGrants={filtered}
           isAdmin={isAdmin}
           jurisdiction={jurisdiction}
+          country={country}
+          availableCountries={data.availableCountries}
+          sector={sector}
+          amountPreset={amountPreset}
           onlyWithDeadline={onlyWithDeadline}
           pending={pending}
           search={search}
@@ -426,6 +466,9 @@ function GrantsPage() {
               : undefined
           }
           onJurisdictionChange={setJurisdiction}
+          onCountryChange={setCountry}
+          onSectorChange={setSector}
+          onAmountPresetChange={setAmountPreset}
           onOnlyWithDeadlineChange={setOnlyWithDeadline}
           onSearchChange={setSearch}
           onSelectedFundersChange={setSelectedFunders}
@@ -529,6 +572,10 @@ function GrantsPage() {
                   setSearch={setSearch}
                   jurisdiction={jurisdiction}
                   setJurisdiction={setJurisdiction}
+                  sector={sector}
+                  setSector={setSector}
+                  amountPreset={amountPreset}
+                  setAmountPreset={setAmountPreset}
                   sortKey={sortKey}
                   setSortKey={setSortKey}
                   eligibleOnly={eligibleOnly}

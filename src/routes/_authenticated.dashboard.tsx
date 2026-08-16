@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getOrgProfile } from "@/lib/org.functions";
 import { listGrants } from "@/lib/grants.functions";
+import { getFunderDashboardStats } from "@/lib/funder-dashboard.functions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +89,16 @@ function Dashboard() {
     queryKey: ["dashboard", "grants"],
     queryFn: () => fetchGrants({ data: { limit: 100 } }),
   });
+  // Coverage trust signal — "how many funders are we watching" is table
+  // stakes on every competing grant-search product (Instrumentl, Candid);
+  // without it, "56 grants" has no context for whether that's a small slice
+  // or the whole relevant universe.
+  const fetchFunderStats = useServerFn(getFunderDashboardStats);
+  const { data: funderStats } = useQuery({
+    queryKey: ["dashboard", "funder-stats"],
+    queryFn: () => fetchFunderStats({ data: {} }),
+  });
+  const funderCount = funderStats?.totalFunders ?? null;
 
   const p = org?.profile;
   const profileComplete = !!(p?.org_name && p.sectors?.length && p.jurisdictions?.length);
@@ -176,6 +187,7 @@ function Dashboard() {
         eligible={eligible}
         email={email}
         enrichedCount={enrichedCount}
+        funderCount={funderCount}
         grantsCount={grants.length}
         greeting={greeting}
         inPipeline={inPipeline}
@@ -220,7 +232,13 @@ function Dashboard() {
               icon={Search}
               value={loading ? "—" : grants.length}
               label="Active opportunities"
-              hint={loading ? "Live grants tracked" : `${enrichedCount} enriched so far`}
+              hint={
+                loading
+                  ? "Live grants tracked"
+                  : funderCount != null
+                    ? `${enrichedCount} enriched · ${funderCount} funders watched`
+                    : `${enrichedCount} enriched so far`
+              }
               to="/grants"
             />
             <StatTile
@@ -348,6 +366,7 @@ function DashboardV2({
   eligible,
   email,
   enrichedCount,
+  funderCount,
   grantsCount,
   greeting,
   inPipeline,
@@ -362,6 +381,7 @@ function DashboardV2({
   eligible: number;
   email: string | null;
   enrichedCount: number;
+  funderCount: number | null;
   grantsCount: number;
   greeting: string;
   inPipeline: number;
@@ -478,7 +498,13 @@ function DashboardV2({
               icon={Search}
               label="Active opportunities"
               value={loading ? "-" : grantsCount}
-              detail={loading ? "Loading grants" : `${enrichedCount} enriched`}
+              detail={
+                loading
+                  ? "Loading grants"
+                  : funderCount != null
+                    ? `${enrichedCount} enriched · ${funderCount} funders watched`
+                    : `${enrichedCount} enriched`
+              }
               to="/grants"
             />
             <V2Metric

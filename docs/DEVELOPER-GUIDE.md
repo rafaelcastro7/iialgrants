@@ -22,6 +22,33 @@ The local development loop is intentionally local-first:
 - LLM work can run through Ollama on `http://localhost:11434`.
 - `bun run check:local` verifies the local stack.
 
+## Environment Architecture (dev vs prod)
+
+One codebase, two databases and a hybrid LLM stack. Full operational detail
+(exact keys, restart/CORS gotchas, demo-password reset) lives in
+`docs/DRP-MIGRATION-RUNBOOK.md`; the summary:
+
+**Databases** — local dev uses the Docker Supabase (`localhost:15435`);
+production (Lovable) uses the Cloud Supabase (`*.supabase.co`). The dev machine
+switches to local purely through a `.env.local` file that overrides `.env`
+per-key (both Bun and Vite load `.env` then `.env.local`). Both files are
+gitignored; Lovable production reads its own dashboard env vars, not any repo
+file. Never hand-edit `.env` to switch DBs — create/remove `.env.local` instead.
+
+The local anon/service keys must be the JWTs from this stack's `kong.yml` (issuer
+`supabase`), not the generic `supabase-demo` keys, or Kong rejects everything
+with `{"message":"Unauthorized"}`. Run the dev server on port 8080 (local
+Supabase CORS only allows that origin) and keep it non-elevated so it can be
+restarted after env changes.
+
+**LLM router** (`src/agents/llm.server.ts`, `llm-free.server.ts`,
+`llm-cloud.server.ts`) is hybrid and picks its path by environment: if Ollama is
+reachable (dev) it is local-first; if not (Lovable prod) it uses the cloud chain
+**Cerebras → Groq → Gemini** (each skipped when its API key is unset), then still
+falls back to local Ollama if the whole cloud chain fails. This is why the app
+works both offline on the workstation and deployed to Lovable with no code
+change.
+
 ## Stack
 
 | Layer           | Technology                                                |
@@ -312,6 +339,121 @@ Local-first auditing: `node scripts/local-audit.mjs qwen2.5-coder:7b [file]`
 runs a zero-cloud-token sweep via Ollama. Expect heavy false-positive "race
 condition" labels from the 7B model — triage each finding against the actual
 code before acting.
+
+## Discovery Fetch Engine (2026-07-22)
+
+Grant discovery scrapes each known funder's own website for individual
+program pages. It is built as a homegrown, local-first equivalent of a
+commercial crawling API (Firecrawl) — before reaching for a paid service or
+building something new, check whether this stack already covers it.
+
+**The engine ladder** (`src/lib/web-fetch.server.ts`'s `scrapeWithFallback`,
+used by the discoverer, enricher, and evidence-gathering steps): each engine
+is tried in order until one returns enough content.
+
+| # | Engine | File | What it's for |
+| - | ------ | ---- | -------------- |
+| 1 | `scrape_engine` | `scrape-engine.server.ts` | Fast path: conditional GET (ETag/If-Modified-Since) + `linkedom` → `@mozilla/readability` (Firefox Reader algorithm) → `turndown` markdown. Robots.txt-aware, per-host throttled (≥1.5s). |
+| 2 | `browser_render` | `browser-render.server.ts` | Local headless Chromium (Playwright, already installed for e2e tests — no new infra). Real JS execution, and best-effort clicking of "Eligibility"/"How to apply" tabs/accordions before extraction. Shares the same robots/throttle state as #1. |
+| 3 | `jina_reader` | `web-fetch.server.ts` | Remote, free-tier markdownifier. Also handles JS but is third-party and rate-limited. |
+| 4 | `raw_html` | `web-fetch.server.ts` | Plain fetch with a realistic desktop Chrome UA. |
+| 5 | `raw_html_googlebot` | `web-fetch.server.ts` | Same, with a Googlebot UA — some gov/news sites whitelist it. |
+| 6 | `wayback` | `web-fetch.server.ts` | Internet Archive snapshot, for pages that 404/moved. |
+| 7 | `archive_today` | `web-fetch.server.ts` | archive.ph snapshot, same purpose, different archive. |
+
+Firecrawl itself (`firecrawl.server.ts`) is also wired in as an optional
+preferred path (`discoverFunderImpl`'s "Path A") but is **off by default**
+(`USE_FIRECRAWL=0`, empty `FIRECRAWL_API_KEY` in `.env`) — the ladder above is
+the active path ("Path B" / `engine: "fallback"` in `agent_runs.metadata`).
+
+**Considered and declined (2026-07-22): self-hosting Firecrawl or Crawl4AI.**
+Checked before writing this off — `docker info` on this machine shows Docker
+Desktop's own memory budget is ~8.3GB total, already shared across the
+running Supabase stack (kong/auth/rest/db/meta). Self-hosted Firecrawl's own
+Docker Compose stack (API + Playwright + Redis + RabbitMQ + Postgres) needs
+8-12GB **on its own** — there isn't headroom without raising Docker's memory
+allocation, a host-level change affecting every other Docker-based project on
+this machine, not just this one. Crawl4AI is lighter (~2GB image, ~300MB idle
+RAM) but is a Python library/service — this project has zero other Python
+dependencies, and it would largely duplicate `browser-render.server.ts` +
+`scrape-engine.server.ts`, which already provide equivalent local, free
+headless-render + Readability-based extraction in the same Node/TS runtime
+everything else here runs in. Conclusion: skip both. If cloud Firecrawl
+capacity is ever wanted for its `map()` relevance-ranking specifically (the
+one thing the local ladder doesn't replicate), a paid API key is the lower-
+friction path — flip `USE_FIRECRAWL=1` and set a real `FIRECRAWL_API_KEY`, no
+code change needed.
+
+**Realistic User-Agent, not a self-identifying one.** The discoverer's
+funder-index-page fetch used to send `"IIAL/0.1 (+https://iial.ca)"` — a
+transparent bot string that gets 403'd by several government-site WAFs
+(confirmed empirically against tradecommissioner.gc.ca). Fixed to use the same
+realistic Chrome UA (`web-fetch.server.ts`'s exported `CHROME_UA`) already
+proven effective everywhere else in the ladder. Never use a self-identifying
+UA for a fetch that needs to actually succeed.
+
+**Registration/login walls are tracked, never auto-solved.**
+`src/lib/registration-gate.server.ts`'s `detectRegistrationWall` recognizes a
+login/signup wall (URL redirected to a `/login`, `/register`, etc. path, or
+page text like "sign in to view", "create an account to access", French
+equivalents) and — instead of the page silently vanishing into a generic
+"page too short" skip — records it in `discovery_registration_gates`
+(funder_id + url unique, `times_seen`/`last_detected_at` accumulate on repeat
+sightings). Surfaced on `/admin/sources` under "Needs manual sign-up" with
+Registered/Not needed actions. **This system never creates accounts on any
+external site** — detection and a visibility queue only; a human signs up
+and marks the row resolved.
+
+**Per-platform boilerplate filters.** `isNonGrantUrl` / `NON_GRANT_URL_PATTERNS`
+in `discoverer.impl.server.ts` reject known non-program pages by URL path.
+These were built incrementally from real false positives — most recently,
+Salesforce Experience Cloud's standard `/s/...` slugs (`email-verification`,
+check-your-email, `unsubscribe-desabonner`, `error500`, `dovdetail`) got
+extracted as fake "grant programs" from Innovation Canada's Salesforce
+Community site on 2026-07-22. When adding a new funder whose site runs on a
+recognizable platform (Salesforce Community, Drupal, WordPress, etc.), check
+whether that platform has its own standard utility-page slugs worth
+blocklisting up front rather than waiting for a false positive.
+
+**Known hard limits (not attempted to bypass):** Trade Commissioner Service
+(tradecommissioner.gc.ca) sits behind an Akamai WAF that returns 403/404
+inconsistently to curl, a realistic UA, and even real headless Chromium —
+including on its sitemap.xml. Innovation Canada's Salesforce Experience Cloud
+page never finishes rendering its grant listing client-side even after 11+
+seconds of headless-browser wait (stuck `aria-busy` state), independent of
+network/UA — a content-timing issue, not a fetch failure. Both are
+documented rather than chased with fingerprint-evasion techniques, since that
+crosses from legitimate resilience engineering into active anti-bot
+circumvention on sites that have deliberately chosen to block automated
+access.
+
+## Self-Improvement System
+
+Yes — a real one, with an explicit safety boundary. Daemon fleet in `scripts/`:
+
+- `self-eval-daemon.mjs` — computes a scorecard (grounding coverage, data
+  completeness, duplicate clusters, stuck-at-max-attempts grants, fake test
+  accounts, fabricated requirements) and detects regressions against the
+  previous cycle (`src/lib/autonomy-logic.ts`'s `detectRegressions` — pure,
+  unit-tested).
+- `live-audit-daemon.mjs` — continuous code/data audits.
+- `self-criticism-daemon.mjs` — self-critique pass.
+- `improvement-daemon.mjs` — synthesizes signal from the above (plus recent
+  commits) into a prioritized backlog at `scripts/improvement-queue.md`,
+  using the local coder model **only when the GPU is idle**
+  (`ollamaChatWhenIdle`). **It never edits code or data — it proposes; a
+  human or the `/loop` disposes.** That boundary is deliberate.
+- `daemon-watchdog.mjs` / `daemon-supervisor.mjs` — process supervision and
+  auto-restart.
+- `docs/TECHNIQUES.md` — a living list of reusable engineering patterns. Both
+  the improvement daemon and a `/loop` session append a bullet here when they
+  discover a technique worth repeating (see that file's own header comment).
+
+Surfaced in-app at `/autonomy` (daemon health, regressions, recent lessons).
+A daemon is only reported "healthy" if it is both alive (recent heartbeat)
+AND has actually emitted signal — a process that's running but has never
+logged a cycle is treated as `silent`, not healthy (`daemonHealth` in
+`autonomy-logic.ts`).
 
 ## Verification Standard
 

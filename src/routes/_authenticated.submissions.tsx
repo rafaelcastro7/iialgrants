@@ -32,6 +32,17 @@ export const Route = createFileRoute("/_authenticated/submissions")({
 
 type SubmissionRow = Awaited<ReturnType<typeof listSubmissions>>["submissions"][number];
 
+// outcomes.submission_id is unique (recordOutcome upserts on it), so
+// PostgREST — and the generated Supabase types — already return this embed
+// as a single object, not an array. Reading it as `s.outcome?.[0]` (a stale
+// cast to Array<...>) always resolved to undefined, which made every
+// already-decided submission render as if no outcome had been recorded yet
+// (no Won/Lost pill, "Record what happened" offered again, win-rate stuck
+// at 0%).
+function getSubmissionOutcome(s: SubmissionRow) {
+  return s.outcome ?? null;
+}
+
 function SubmissionsPage() {
   const { t } = useTranslation();
   const { version } = useUiVersion();
@@ -103,13 +114,7 @@ function SubmissionsPage() {
         )}
         {data.submissions.map((s) => {
           const grant = s.grant as { id: string; title: string; title_fr: string | null } | null;
-          const oc = (
-            s.outcome as Array<{
-              result: string;
-              amount_awarded_cad: number | null;
-              decision_date: string | null;
-            }> | null
-          )?.[0];
+          const oc = getSubmissionOutcome(s);
           return (
             <Card key={s.id}>
               <CardHeader>
@@ -221,16 +226,7 @@ function SubmissionsPageV2({
   err: string | null;
   onSave: (subId: string) => void;
 }) {
-  const outcomes = submissions.map((s) => {
-    const oc = (
-      s.outcome as Array<{
-        result: string;
-        amount_awarded_cad: number | null;
-        decision_date: string | null;
-      }> | null
-    )?.[0];
-    return oc?.result ?? null;
-  });
+  const outcomes = submissions.map((s) => getSubmissionOutcome(s)?.result ?? null);
   const won = outcomes.filter((r) => r === "won").length;
   const waiting = outcomes.filter((r) => r == null).length;
   const decided = outcomes.filter((r) => r != null).length;
@@ -274,13 +270,7 @@ function SubmissionsPageV2({
                 title: string;
                 title_fr: string | null;
               } | null;
-              const oc = (
-                s.outcome as Array<{
-                  result: string;
-                  amount_awarded_cad: number | null;
-                  decision_date: string | null;
-                }> | null
-              )?.[0];
+              const oc = getSubmissionOutcome(s);
               const pill = oc ? RESULT_PILL[oc.result] : null;
 
               return (

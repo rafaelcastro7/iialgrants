@@ -4,7 +4,7 @@
 import { logGenAI, newRunId } from "@/lib/otel";
 import { resolveModel, resolveFallback } from "@/agents/model-router.server";
 import { timeoutFor, usesStreamingClient } from "@/agents/llm-timeouts.server";
-import { isOllamaReachable, callCloudLlm } from "@/agents/llm-cloud.server";
+import { callCloudLlm } from "@/agents/llm-cloud.server";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -16,6 +16,11 @@ export type LlmCallOptions = {
   agent: "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";
   runId?: string;
   responseFormat?: "json";
+  // Optional schema guard — when set, a provider's output that fails this check
+  // is treated as a failure and the chain advances (cloud provider → next
+  // provider → local model), instead of returning unusable content. Pass the
+  // caller's Zod parse (see critic.functions.ts).
+  validate?: (text: string) => boolean;
 };
 
 export type LlmCallResult = {
@@ -213,7 +218,10 @@ async function prewarmModel(model: string, signal: AbortSignal): Promise<void> {
 }
 
 export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
-  // 1. CLOUD FIRST: Attempt cloud generation via Groq API (faster, 70B models).
+  // CLOUD FIRST: cloud chain is Cerebras -> Groq (see llm-cloud.server.ts).
+  // This is the initial source everywhere, including Lovable (no local Ollama).
+  // Local Ollama below is the last-resort fallback when no cloud key is set or
+  // every cloud provider fails — keeps the dev machine working fully offline.
   try {
     return await callCloudLlm({
       agent: opts.agent,
@@ -222,16 +230,15 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       maxOutputTokens: opts.maxOutputTokens,
       responseFormat: opts.responseFormat,
       runId: opts.runId,
+      validate: opts.validate,
     });
   } catch (err) {
-    // 2. LOCAL FALLBACK: If cloud fails (rate limit, offline, no API key), explicitly warn and fallback.
     const msg = err instanceof Error ? err.message : String(err);
     if (!msg.includes("cloud_llm_unavailable")) {
       console.warn(`[LLM Router] Cloud failed (${msg}). Falling back to local Ollama...`);
     }
   }
 
-  // Fallback to local Ollama logic...
   const runId = opts.runId ?? newRunId();
   const t0 = Date.now();
   let ok = false;
@@ -280,7 +287,7 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
   // connection pool until the body is consumed or cancelled, so every
   // retried/superseded response must be explicitly cancelled here.
   const discard = (response: Response) => {
-    if (streamResponse) response.body?.cancel().catch(() => { });
+    if (streamResponse) response.body?.cancel().catch(() => {});
   };
 
   const recordModelFailure = (model: string, error: unknown) => {
@@ -357,6 +364,15 @@ export async function callLlm(opts: LlmCallOptions): Promise<LlmCallResult> {
       text = data?.message?.content ?? "";
       inputTokens = data?.prompt_eval_count;
       outputTokens = data?.eval_count;
+      // Local model may also return HTTP 200 with schema-invalid content — treat
+      // it like a failure and advance to the next local model rather than
+      // handing the caller unusable text.
+      if (opts.validate && !opts.validate(text)) {
+        const error = new Error(`ollama_output_failed_validation`);
+        recordModelFailure(usedModel, error);
+        if (switchToNextModel()) continue;
+        throw error;
+      }
       ok = true;
       return { text, inputTokens, outputTokens, runId, model: usedModel, provider: "ollama" };
     }

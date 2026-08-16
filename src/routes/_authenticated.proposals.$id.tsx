@@ -6,8 +6,12 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getProposal } from "@/lib/proposals.functions";
-import { submitProposal, exportProposalFile } from "@/lib/submissions.functions";
-import { draftSection } from "@/agents/writer.functions";
+import {
+  submitProposal,
+  exportProposalFile,
+  confirmHumanReview,
+} from "@/lib/submissions.functions";
+import { draftSection, editSectionContent } from "@/agents/writer.functions";
 import { runCritic } from "@/agents/critic.functions";
 import { computeProposalReadiness, type ProposalRequirement } from "@/lib/proposal-readiness";
 import { scoreProposal, getReviewerArchetypes } from "@/lib/multi-expert-review.functions";
@@ -18,11 +22,23 @@ import { SubmitDialog } from "@/components/SubmitDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { DocumentManager } from "@/components/DocumentManager";
 import { ArrowLeft } from "lucide-react";
 import { syncClientLocale } from "@/i18n/sync";
 import "@/i18n";
+
+// Matches CRITIC_RUBRIC_CATEGORIES in src/agents/schemas.ts.
+const CRITIC_RUBRIC_LABELS: Record<string, string> = {
+  need_significance: "Need & significance",
+  approach_feasibility: "Approach & feasibility",
+  capacity: "Organizational capacity",
+  evaluation_plan: "Evaluation plan",
+  sustainability: "Sustainability",
+  budget: "Budget",
+  compliance: "Compliance",
+};
 
 export const Route = createFileRoute("/_authenticated/proposals/$id")({
   head: ({ params }) => ({
@@ -39,14 +55,18 @@ function ProposalDetailPage() {
   const qc = useQueryClient();
   const fetchProposal = useServerFn(getProposal);
   const draft = useServerFn(draftSection);
+  const editContent = useServerFn(editSectionContent);
   const critic = useServerFn(runCritic);
   const submit = useServerFn(submitProposal);
+  const confirmReview = useServerFn(confirmHumanReview);
   const exportFile = useServerFn(exportProposalFile);
   const [pending, setPending] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [submitWarning, setSubmitWarning] = useState<string | null>(null);
   const [pendingForce, setPendingForce] = useState(false);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
   const [viewMode, setViewMode] = useState<"express" | "advanced">(() =>
     typeof window !== "undefined"
       ? ((window.sessionStorage.getItem("proposals.viewMode") as "express" | "advanced") ??
@@ -189,6 +209,22 @@ function ProposalDetailPage() {
       setPending(null);
     }
   }
+  async function onSaveEdit(sectionId: string) {
+    setPending(sectionId);
+    setErr(null);
+    try {
+      await editContent({ data: { sectionId, contentEn: editDraft } });
+      await qc.invalidateQueries({ queryKey: ["proposal", id] });
+      setEditingSectionId(null);
+      toast.success("Section updated");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErr(msg);
+      toast.error(msg);
+    } finally {
+      setPending(null);
+    }
+  }
   async function onCritic() {
     setPending("critic");
     setErr(null);
@@ -212,6 +248,7 @@ function ProposalDetailPage() {
     low_critic_score: "the quality review score is below the submit threshold",
     open_critical_requirements: "a critical funder requirement is not yet covered",
     low_readiness: "most sections are still too thin or missing citations",
+    human_review_not_confirmed: "the human-review confirmation was not recorded",
   };
 
   async function doSubmit(method: string, confirmationNumber: string, force = false) {
@@ -219,6 +256,10 @@ function ProposalDetailPage() {
     setErr(null);
     setSubmitDialogOpen(false);
     try {
+      // The dialog's checkbox is a client-side prompt; this is the real,
+      // server-recorded confirmation submitProposal requires and can never
+      // bypass, even with force — see confirmHumanReview's own comment.
+      await confirmReview({ data: { proposalId: id } });
       await submit({
         data: {
           proposalId: id,
@@ -291,7 +332,9 @@ function ProposalDetailPage() {
   const meta = (proposal.metadata ?? {}) as {
     critic_summary_en?: string;
     critic_summary_fr?: string;
+    critic_rubric?: Array<{ category: string; score: number; note: string }>;
   };
+  const rubric = meta.critic_rubric ?? [];
 
   return (
     <main className="min-h-screen text-foreground">
@@ -418,6 +461,43 @@ function ProposalDetailPage() {
               </Card>
             )}
 
+            {rubric.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Reviewer rubric</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Scored the way a real funder panel scores: need, approach, capacity, evaluation,
+                    sustainability, budget, compliance.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-2.5">
+                  {rubric.map((r) => (
+                    <div key={r.category} className="text-xs">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-medium">
+                          {CRITIC_RUBRIC_LABELS[r.category] ?? r.category}
+                        </span>
+                        <span className="tabular-nums text-muted-foreground">{r.score}/10</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${
+                            r.score >= 7
+                              ? "bg-emerald-500"
+                              : r.score >= 4
+                                ? "bg-amber-500"
+                                : "bg-rose-500"
+                          }`}
+                          style={{ width: `${r.score * 10}%` }}
+                        />
+                      </div>
+                      <p className="text-muted-foreground mt-0.5">{r.note}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -513,26 +593,82 @@ function ProposalDetailPage() {
                   must_cover?: string[];
                   findings?: Array<{ severity: string; message_en: string; message_fr: string }>;
                 };
+                const editing = editingSectionId === s.id;
                 return (
                   <Card key={s.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between gap-4">
-                        <CardTitle className="text-base">{heading}</CardTitle>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={pending === s.id}
-                          onClick={() => onDraft(s.id)}
-                        >
-                          {pending === s.id ? t("app.loading") : t("proposals.draftSection")}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-base">{heading}</CardTitle>
+                          {s.human_edited ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              Human-edited
+                            </Badge>
+                          ) : content ? (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px]"
+                              title="Written by the AI writer, not yet edited by a human — read it before submitting."
+                            >
+                              AI-drafted
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className="flex gap-2">
+                          {!editing && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={pending === s.id}
+                              onClick={() => {
+                                setEditingSectionId(s.id);
+                                setEditDraft(content ?? "");
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={pending === s.id}
+                            onClick={() => onDraft(s.id)}
+                          >
+                            {pending === s.id ? t("app.loading") : t("proposals.draftSection")}
+                          </Button>
+                        </div>
                       </div>
                       {notes.angle && (
                         <p className="text-xs text-muted-foreground mt-1 italic">{notes.angle}</p>
                       )}
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {content ? (
+                      {editing ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            rows={8}
+                            className="text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              disabled={pending === s.id || editDraft.trim().length === 0}
+                              onClick={() => onSaveEdit(s.id)}
+                            >
+                              {pending === s.id ? t("app.loading") : "Save"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingSectionId(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : content ? (
                         <p className="text-sm whitespace-pre-wrap">{content}</p>
                       ) : (
                         <p className="text-sm text-muted-foreground">-</p>

@@ -1,8 +1,11 @@
-// E2E: local-only LLM cascade behavior.
+// E2E: LLM cascade behavior.
 //
-// Contract: all LLM calls go to Ollama localhost only. Primary model is tried
-// first with 2 attempts (with rate-limit backoff), then fallback model if
-// primary fails. No cloud providers are ever contacted.
+// Contract: cloud is the initial source (Cerebras -> Groq), and local Ollama is
+// the last-resort fallback when no cloud key is set. These local-cascade cases
+// clear the cloud keys in beforeEach so they exercise the Ollama path in
+// isolation; a dedicated case at the end asserts cloud-first routing when a key
+// is present. The local model cascade: primary model tried first with 2
+// attempts (rate-limit backoff), then fallback model.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
@@ -33,6 +36,12 @@ describe("local-only LLM cascade", () => {
 
   beforeEach(() => {
     process.env.OLLAMA_BASE_URL = "http://localhost:11434";
+    // Isolate the local Ollama cascade: with no cloud key, callLlm/callFreeLlm
+    // skip the cloud chain and go straight to Ollama. The cloud-first path has
+    // its own dedicated case at the end.
+    delete process.env.CEREBRAS_API_KEY;
+    delete process.env.GROQ_API_KEY;
+    delete process.env.GOOGLE_AI_STUDIO_KEY;
     vi.resetModules();
   });
 
@@ -127,7 +136,10 @@ describe("local-only LLM cascade", () => {
     expect(models).toContain("dolphin3:latest");
     expect(models).toContain("dolphin-mistral:7b");
     expect(calls.some((c) => c.startsWith(OLLAMA_URL))).toBe(true);
-    expect(calls.every((c) => c.startsWith("http://localhost:"))).toBe(true);
+    // With cloud keys cleared (beforeEach), no cloud LLM provider is contacted.
+    // (The Supabase agent-config lookup is orthogonal infra, not an LLM call.)
+    const cloudHosts = ["api.cerebras.ai", "api.groq.com", "generativelanguage.googleapis.com"];
+    expect(calls.some((c) => cloudHosts.some((h) => c.includes(h)))).toBe(false);
   }, 15000);
 
   it("callLlm skips unavailable configured models when Ollama tags are available", async () => {
@@ -197,21 +209,58 @@ describe("local-only LLM cascade", () => {
     expect(models).toContain("phi4-mini:latest");
   }, 15000);
 
-  it("no cloud providers are ever contacted", async () => {
+  it("cloud is the initial source (Cerebras) when a key is present", async () => {
+    process.env.CEREBRAS_API_KEY = "test-key";
     const calls: string[] = [];
     mockFetch((url) => {
       calls.push(url);
-      return okBody("ok");
+      if (url.startsWith("https://api.cerebras.ai/")) {
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "from-cerebras" } }],
+            usage: { prompt_tokens: 1, completion_tokens: 1 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      throw new Error(`unexpected fetch: ${url}`);
     });
 
     const { callFreeLlm } = await import("@/agents/llm-free.server");
-    await callFreeLlm({
+    const r = await callFreeLlm({
       agent: "enricher",
       messages: [{ role: "user", content: "hi" }],
-    }).catch(() => {});
+    });
 
-    for (const c of calls) {
-      expect(c).toMatch(/^http:\/\/localhost:/);
-    }
+    expect(r.provider).toBe("cerebras");
+    expect(r.text).toBe("from-cerebras");
+    expect(calls[0]).toMatch(/^https:\/\/api\.cerebras\.ai\//);
+    // Ollama is never reached when the cloud call succeeds.
+    expect(calls.some((c) => c.startsWith("http://localhost:"))).toBe(false);
   });
+
+  it("falls back Cerebras -> Groq -> local Ollama across failures", async () => {
+    process.env.CEREBRAS_API_KEY = "test-key";
+    process.env.GROQ_API_KEY = "test-key";
+    const calls: string[] = [];
+    mockFetch((url) => {
+      calls.push(url);
+      if (url.startsWith("https://api.cerebras.ai/")) return errBody(500);
+      if (url.startsWith("https://api.groq.com/")) return errBody(500);
+      if (url.startsWith("http://localhost:11434/")) return okBody("from-ollama");
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+
+    const { callFreeLlm } = await import("@/agents/llm-free.server");
+    const r = await callFreeLlm({
+      agent: "enricher",
+      messages: [{ role: "user", content: "hi" }],
+    });
+
+    expect(r.provider).toBe("ollama");
+    expect(r.text).toBe("from-ollama");
+    expect(calls.some((c) => c.startsWith("https://api.cerebras.ai/"))).toBe(true);
+    expect(calls.some((c) => c.startsWith("https://api.groq.com/"))).toBe(true);
+    expect(calls.some((c) => c.startsWith("http://localhost:11434/"))).toBe(true);
+  }, 15000);
 });

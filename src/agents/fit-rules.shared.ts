@@ -17,10 +17,11 @@ export type FitRules = {
   hard_fail_on_amount: boolean;
   hard_fail_on_deadline: boolean;
   auto_archive_on_fail: boolean;
-  // NOT read by evaluateRules() (fit-rules.server.ts) — only
-  // applicant_types_excluded drives the F1 legal-eligibility check. Stored/
-  // validated for a future positive-match check but has zero effect on
-  // screening today; not exposed in the Screening Rules UI either.
+  // Read by evaluateRules()'s F1 legal-eligibility check (fit-rules.server.ts)
+  // as "what applicant category IS this org" — when a grant explicitly
+  // restricts to a category, the org passes only if that category matches
+  // one of these. Not exposed in the Screening Rules UI; derived from the
+  // org profile's `stage` in deriveRulesFromOrg() below.
   applicant_types_allowed: string[];
   applicant_types_excluded: string[];
   lead_min_weeks: number | null;
@@ -51,14 +52,14 @@ export const DEFAULT_RULES: FitRules = {
   hard_fail_on_amount: false,
   hard_fail_on_deadline: false,
   auto_archive_on_fail: true,
-  applicant_types_allowed: ["nonprofit", "non-profit", "not-for-profit"],
-  applicant_types_excluded: [
-    "charity_only",
-    "municipality_only",
-    "university_only",
-    "individual_only",
-    "for_profit_only",
-  ],
+  // Empty until deriveRulesFromOrg() sets these from the org's declared
+  // `stage` — a fixed "nonprofit"/exclude-for-profit default here would be
+  // wrong for the (very common) for-profit SME/startup case, and the F1
+  // check is skipped entirely when both lists are empty (see
+  // evaluateRules() in fit-rules.server.ts), so an unconfigured org gets no
+  // applicant-type screening rather than a wrong one.
+  applicant_types_allowed: [],
+  applicant_types_excluded: [],
   lead_min_weeks: 4,
   partner_min_weeks: 8,
   iial_capabilities: [
@@ -310,7 +311,54 @@ export function deriveRulesFromOrg(
           .map((s) => s.trim().replace(/^"|"$/g, ""))
       : [];
   const sectors = [...(org.sectors ?? []), ...focus].map((s) => String(s).trim()).filter(Boolean);
-  if (sectors.length > 0) rules.required_sectors = Array.from(new Set(sectors));
+  if (sectors.length > 0) {
+    rules.required_sectors = Array.from(new Set(sectors));
+    // SOP F4's strategic-fit check (`iial_capabilities`) used to stay pinned
+    // to DEFAULT_RULES' fixed keyword list ("wcis", "smart city", "aiot", …)
+    // for every org, since only required_sectors was derived here — a
+    // second org with a completely different profile (e.g. sectors
+    // "technology, ai" instead of IIAL's own) was screened against a
+    // capability list that was never theirs. The same declared
+    // sectors/focus-areas ARE the org's own capabilities, so reuse them here
+    // too rather than leaving a single hardcoded tenant's keywords as the
+    // permanent default for every organization using this system.
+    rules.iial_capabilities = Array.from(new Set(sectors));
+  }
+
+  // Org's legal/organizational type → SOP F1's applicant-type check. A
+  // for-profit SME and a nonprofit need opposite defaults here (a grant
+  // restricted to "for-profit only" should PASS a for-profit SME and FAIL a
+  // nonprofit, and vice versa for "charity only") — a single fixed default
+  // for every org, regardless of what they actually are, would silently
+  // mis-screen whichever org-types don't match that one hardcoded shape.
+  const stageTypes = STAGE_APPLICANT_TYPES[(org.stage ?? "").trim().toLowerCase()];
+  if (stageTypes) {
+    rules.applicant_types_allowed = stageTypes.allowed;
+    rules.applicant_types_excluded = stageTypes.excluded;
+  }
 
   return rules;
 }
+
+const STAGE_APPLICANT_TYPES: Record<string, { allowed: string[]; excluded: string[] }> = {
+  startup: {
+    allowed: ["business", "sme", "startup", "for-profit"],
+    excluded: ["charity_only", "municipality_only", "university_only", "individual_only"],
+  },
+  sme: {
+    allowed: ["business", "sme", "enterprise", "for-profit"],
+    excluded: ["charity_only", "municipality_only", "university_only", "individual_only"],
+  },
+  nonprofit: {
+    allowed: ["non-profit", "charity", "not-for-profit"],
+    excluded: ["for_profit_only", "municipality_only", "university_only", "individual_only"],
+  },
+  research: {
+    allowed: ["university", "research institution"],
+    excluded: ["for_profit_only", "charity_only", "municipality_only", "individual_only"],
+  },
+  public_sector: {
+    allowed: ["government", "municipality"],
+    excluded: ["for_profit_only", "charity_only", "university_only", "individual_only"],
+  },
+};

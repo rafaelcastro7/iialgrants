@@ -29,14 +29,13 @@ export const toggleModuleFlag = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ module: z.string().min(1), enabled: z.boolean() }).parse(i))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { error } = await context.supabase
       .from("module_flags")
       .update({ enabled: data.enabled, updated_by: context.userId })
       .eq("module", data.module);
     if (error) throw new Error(error.message);
 
-    await supabaseAdmin.from("audit_log").insert({
+    await context.supabase.from("audit_log").insert({
       user_id: context.userId,
       action: data.enabled ? "module.enable" : "module.disable",
       resource_type: "module_flag",
@@ -46,16 +45,7 @@ export const toggleModuleFlag = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Server-side check used by agent server fns to short-circuit when off.
-export async function assertModuleEnabled(name: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("module_flags")
-    .select("enabled")
-    .eq("module", name)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data || !data.enabled) {
-    throw new Error(`module_disabled:${name}`);
-  }
-}
+// assertModuleEnabled lives in ./admin-modules.server and is imported from
+// there directly. Re-exporting it here broke the production build: this module
+// is imported by the /admin/modules route, so the static re-export pulled
+// supabaseAdmin (server-only) into the client bundle.

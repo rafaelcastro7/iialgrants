@@ -152,6 +152,3 @@ export function findDuplicateInRows(
   }
   return { kind: "new" };
 }
-
-export const AUTO_APPROVE_THRESHOLD = 80;
-export const REVIEW_MIN_THRESHOLD = 40;

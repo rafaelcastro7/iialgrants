@@ -8,21 +8,34 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createSupabaseAdmin } from "./supabase-admin";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * Get overall funder statistics
  */
 export const getFunderDashboardStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
     try {
-      const supabase = await createSupabaseAdmin();
+      const supabase = context.supabase;
 
       // Total funders
-      const { count: totalFunders } = await supabase
+      const { count: totalFunders, error: countError } = await supabase
         .from("funders")
         .select("*", { count: "exact", head: true });
+      if (countError) throw new Error(countError.message);
+
+      // By country — the only location field present on every funder
+      const { data: countryData } = await supabase
+        .from("funders")
+        .select("country")
+        .not("country", "is", null);
+
+      const byCountry: Record<string, number> = {};
+      for (const r of countryData || []) {
+        if (r.country) byCountry[r.country] = (byCountry[r.country] || 0) + 1;
+      }
 
       // By province
       const { data: provinceData } = await supabase
@@ -77,6 +90,7 @@ export const getFunderDashboardStats = createServerFn({ method: "GET" })
 
       return {
         totalFunders: totalFunders || 0,
+        byCountry,
         byProvince,
         byType,
         byStatus,
@@ -91,19 +105,20 @@ export const getFunderDashboardStats = createServerFn({ method: "GET" })
  * Get recent funder activity
  */
 export const getRecentFunderActivity = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       limit: z.number().min(1).max(50).default(10),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
-      const supabase = await createSupabaseAdmin();
+      const supabase = context.supabase;
 
       // Recently updated funders
       const { data: recentFunders } = await supabase
         .from("funders")
-        .select("id, name, category, province, updated_at")
+        .select("id, name, category, country, jurisdiction, province, updated_at")
         .order("updated_at", { ascending: false })
         .limit(data.limit);
 
@@ -137,25 +152,30 @@ export const getRecentFunderActivity = createServerFn({ method: "GET" })
  * Get top funders by various metrics
  */
 export const getTopFunders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       metric: z.enum(["revenue", "grants", "recent"]),
       limit: z.number().min(1).max(20).default(10),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
-      const supabase = await createSupabaseAdmin();
+      const supabase = context.supabase;
 
       let query = supabase
         .from("funders")
-        .select("id, name, category, province, total_revenue, website");
+        .select(
+          "id, name, category, country, jurisdiction, province, total_revenue, disbursed_annual, website",
+        );
 
       switch (data.metric) {
         case "revenue":
+          // Non-Canadian funders carry disbursement rather than CRA revenue,
+          // so rank on whichever figure the funder actually has.
           query = query
-            .not("total_revenue", "is", null)
-            .order("total_revenue", { ascending: false });
+            .order("disbursed_annual", { ascending: false, nullsFirst: false })
+            .order("total_revenue", { ascending: false, nullsFirst: false });
           break;
         case "grants":
           break;

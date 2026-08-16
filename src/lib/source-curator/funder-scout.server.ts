@@ -1,8 +1,10 @@
 import { callLlm } from "@/agents/llm.server";
-import { jinaSearch } from "@/lib/web-fetch.server";
+import { localWebSearch } from "@/lib/web-fetch.server";
 import type { RawCandidate } from "./scoring.server";
 
-const QUERIES = [
+// Default seed queries — used unless discovery_config.funder_scout_queries
+// has been customized by an admin (empty override list = keep these).
+const DEFAULT_QUERIES = [
   '"grants for nonprofits" Canada "workforce" OR "credentials" site:.ca 2026',
   '"funding opportunities" Canada "micro-credentials" OR "skills training" site:.ca',
   '"call for proposals" Canada "applied research" "industry partnership" site:.ca',
@@ -19,11 +21,11 @@ councils, or programs), never articles, news, university research pages, or
 consulting firms. Return strict JSON: {"hits":[{"name":"...","url":"https://...","reason":"<=120 chars"}]}.
 Only include high-confidence hits. Return an empty hits array when none qualify.`;
 
-export async function runFunderScout(): Promise<RawCandidate[]> {
+export async function runFunderScout(queries: string[] = DEFAULT_QUERIES): Promise<RawCandidate[]> {
   const candidates: RawCandidate[] = [];
   const failures: string[] = [];
-  for (const query of QUERIES) {
-    const search = await jinaSearch(query, 6);
+  for (const query of queries) {
+    const search = await localWebSearch(query, 6);
     if (!search.ok) {
       failures.push(`search:${search.error ?? "unknown"}`);
       continue;

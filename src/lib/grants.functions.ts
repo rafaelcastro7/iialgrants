@@ -6,6 +6,22 @@ import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-
 import { scoreGrantForProfile } from "@/lib/grant-search-profile-ranking.shared";
 import { searchGrantCatalogHybrid } from "@/lib/grant-search-hybrid.server";
 
+// A single `.in("grant_id", ids)` with ~100 UUIDs produces a query string
+// long enough that the local Kong/PostgREST gateway intermittently returns
+// "invalid response from upstream server". Splitting ids into chunks keeps
+// each request's URL short enough to avoid that gateway limit.
+const EVAL_FETCH_CHUNK_SIZE = 30;
+
+// Ranking nudge applied to Canadian opportunities in the default (no explicit
+// country filter) view. Large enough to outrank a marginally better-matching
+// foreign grant, small enough that a clearly better match still wins.
+const CANADA_PRIORITY_BOOST = 0.15;
+function chunkIds(ids: string[], size = EVAL_FETCH_CHUNK_SIZE): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) chunks.push(ids.slice(i, i + size));
+  return chunks;
+}
+
 // List grants from the public catalog, sorted by deadline asc / fit_score desc.
 // Also returns the calling user's per-grant evaluation (if any), so the UI can
 // render the fit verdict + rationale alongside each card.
@@ -29,6 +45,8 @@ export const listGrants = createServerFn({ method: "GET" })
           ])
           .optional(),
         search: z.string().trim().max(120).optional(),
+        // ISO country of the opportunity (CA, US, INTL, …). Omitted = all.
+        country: z.string().trim().min(2).max(8).optional(),
         profileId: z.string().uuid().optional(),
         limit: z.number().int().min(1).max(100).default(50),
       })
@@ -83,21 +101,61 @@ export const listGrants = createServerFn({ method: "GET" })
           query_concepts: row.queryConcepts,
         });
       }
-      if (rankById.size === 0) return { grants: [], searchDegradedReason };
+      if (rankById.size === 0)
+        return { grants: [], searchDegradedReason, availableCountries: [] as string[] };
     }
 
-    let q = context.supabase
-      .from("grants")
-      .select(
-        "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder_id, funder:funders(name, name_fr, jurisdiction)",
-      )
-      .order("fit_score", { ascending: false, nullsFirst: false })
-      .order("deadline", { ascending: true, nullsFirst: false })
-      .limit(100);
-    if (data.status) q = q.eq("status", data.status);
-    if (rankById.size > 0) q = q.in("id", [...rankById.keys()]);
-    const { data: rows, error } = await q;
-    if (error) throw new Error(error.message);
+    const GRANT_COLUMNS =
+      "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, country, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder_id, funder:funders(name, name_fr, jurisdiction, country)";
+    const buildQuery = () => {
+      let q = context.supabase
+        .from("grants")
+        .select(GRANT_COLUMNS)
+        .order("fit_score", { ascending: false, nullsFirst: false })
+        .order("deadline", { ascending: true, nullsFirst: false })
+        .limit(100);
+      if (data.status) q = q.eq("status", data.status);
+      if (data.country) q = q.eq("country", data.country);
+      return q;
+    };
+
+    // Same gateway URL-length limit as the evaluation fetch below: a search
+    // that matches ~100 grants produced an `.in("id", …)` filter long enough
+    // to make Kong return "invalid response from upstream server", which the
+    // UI surfaced as a blank error page. Chunk the id filter the same way.
+    let rows: Awaited<ReturnType<typeof buildQuery>>["data"] = [];
+    if (rankById.size > 0) {
+      // The matched set is already capped at 100 ids, so every match is
+      // fetched and the Canada boost below can reorder the full result.
+      const collected: NonNullable<typeof rows> = [];
+      for (const idChunk of chunkIds([...rankById.keys()])) {
+        const { data: chunkRows, error: chunkError } = await buildQuery().in("id", idChunk);
+        if (chunkError) throw new Error(chunkError.message);
+        collected.push(...(chunkRows ?? []));
+      }
+      rows = collected;
+    } else if (data.country) {
+      const { data: allRows, error } = await buildQuery();
+      if (error) throw new Error(error.message);
+      rows = allRows;
+    } else {
+      // Browsing with no country chosen. A single deadline-ordered page of 100
+      // is dominated by US federal calls (they all carry close dates, while
+      // many Canadian programs are rolling), so Canadian opportunities never
+      // made it into the page the boost could reorder. Fetch the domestic page
+      // first and only top it up with foreign rows.
+      const { data: domestic, error: domesticError } = await buildQuery().eq("country", "CA");
+      if (domesticError) throw new Error(domesticError.message);
+      const collected: NonNullable<typeof rows> = [...(domestic ?? [])];
+      if (collected.length < 100) {
+        const { data: foreign, error: foreignError } = await buildQuery()
+          .neq("country", "CA")
+          .limit(100 - collected.length);
+        if (foreignError) throw new Error(foreignError.message);
+        collected.push(...(foreign ?? []));
+      }
+      rows = collected;
+    }
     const grantsWithProfile = (rows ?? [])
       .map((grant) => {
         const profileMatch = searchProfile ? scoreGrantForProfile(grant, searchProfile) : null;
@@ -106,9 +164,17 @@ export const listGrants = createServerFn({ method: "GET" })
           feedbackAction === "saved" ? 0.08 : feedbackAction === "pursued" ? 0.12 : 0;
         const lexicalRelevance = rankById.get(grant.id)?.relevance ?? 0;
         const profileRelevance = profileMatch ? profileMatch.score / 100 : 0;
-        const combinedRelevance = rankById.size
-          ? lexicalRelevance * (searchProfile ? 0.75 : 1) + profileRelevance * 0.25 + feedbackBoost
-          : profileRelevance + feedbackBoost;
+        // The product is a Canadian grant operation: with the catalog now
+        // holding more US federal opportunities than Canadian ones, an
+        // unweighted ranking buries domestic programs. Boost Canadian grants
+        // unless the user explicitly asked for another country.
+        const canadaBoost = !data.country && grant.country === "CA" ? CANADA_PRIORITY_BOOST : 0;
+        const combinedRelevance =
+          (rankById.size
+            ? lexicalRelevance * (searchProfile ? 0.75 : 1) +
+              profileRelevance * 0.25 +
+              feedbackBoost
+            : profileRelevance + feedbackBoost) + canadaBoost;
         return { grant, profileMatch, feedbackAction, combinedRelevance };
       })
       .filter(
@@ -136,12 +202,20 @@ export const listGrants = createServerFn({ method: "GET" })
         created_at: string;
       }
     >();
-    if (ids.length > 0) {
-      const { data: evals } = await context.supabase
+    // Previously a single `.in("grant_id", ids)` call with ~100 UUIDs — and
+    // since only `data` was destructured, the resulting gateway error was
+    // silently swallowed, leaving every grant's evaluation blank (frontend
+    // showed "Not checked yet" / "Need a look" even for grants the user had
+    // already scored). Chunking (see chunkIds above) avoids the oversized
+    // request; checking `error` here surfaces any future failure instead of
+    // masking it.
+    for (const chunk of chunkIds(ids)) {
+      const { data: evals, error: evalsError } = await context.supabase
         .from("grant_evaluations")
         .select("grant_id, fit_score, eligibility_pass, rationale_en, rationale_fr, created_at")
         .eq("user_id", context.userId)
-        .in("grant_id", ids);
+        .in("grant_id", chunk);
+      if (evalsError) throw new Error(`grant_evaluations: ${evalsError.message}`);
       for (const e of evals ?? []) {
         evalsByGrant.set(e.grant_id, {
           fit_score: Number(e.fit_score),
@@ -173,8 +247,19 @@ export const listGrants = createServerFn({ method: "GET" })
       groupCounts.set(key, (groupCounts.get(key) ?? 0) + 1);
     }
 
+    // Countries present in the whole catalog, not just this page — the filter
+    // dropdown has to offer countries the current (Canada-first) page excludes.
+    const { data: countryRows } = await context.supabase
+      .from("grants")
+      .select("country")
+      .not("country", "is", null);
+    const availableCountries = [...new Set((countryRows ?? []).map((r) => r.country))].sort(
+      (a, b) => (a === "CA" ? -1 : b === "CA" ? 1 : a.localeCompare(b)),
+    );
+
     return {
       searchDegradedReason,
+      availableCountries,
       grants: grantsWithProfile.map(
         ({ grant: g, profileMatch, feedbackAction, combinedRelevance }) => ({
           ...g,
@@ -515,7 +600,14 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");
     try {
       await assertAgentEnabled("evaluator", context.supabase as never);
-    } catch {
+    } catch (e) {
+      // Real bug, confirmed live: assertAgentEnabled throws the same Error
+      // type whether the flag is genuinely off (message "agent_disabled:...")
+      // or the agent_flags query itself failed (DB down, RLS) — that second
+      // case was being silently reported as a normal "disabled" outcome
+      // instead of surfacing as the infrastructure failure it actually is.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.startsWith("agent_disabled:")) throw e;
       return { ok: true, evaluated: 0, skipped: 0, reason: "evaluator_disabled" as const };
     }
 
@@ -531,12 +623,16 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
     const ids = (candidates ?? []).map((g) => g.id);
     if (ids.length === 0) return { ok: true, evaluated: 0, skipped: 0 };
 
-    const { data: existing } = await context.supabase
-      .from("grant_evaluations")
-      .select("grant_id")
-      .eq("user_id", context.userId)
-      .in("grant_id", ids);
-    const done = new Set((existing ?? []).map((e) => e.grant_id));
+    const done = new Set<string>();
+    for (const chunk of chunkIds(ids)) {
+      const { data: existing, error: existingError } = await context.supabase
+        .from("grant_evaluations")
+        .select("grant_id")
+        .eq("user_id", context.userId)
+        .in("grant_id", chunk);
+      if (existingError) throw new Error(`grant_evaluations: ${existingError.message}`);
+      for (const e of existing ?? []) done.add(e.grant_id);
+    }
     const todo = ids.filter((id) => !done.has(id)).slice(0, data.limit);
 
     if (todo.length === 0) return { ok: true, evaluated: 0, skipped: 0 };

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EnricherOutput, PROMPTS } from "@/agents/schemas";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { MAX_ENRICH_ATTEMPTS } from "@/agents/pipeline-stages.shared";
+import { grantTitleTokens, pageLooksRelevantToGrant } from "@/agents/deep-crawl-relevance.shared";
 
 export type EnricherResult = {
   ok: boolean;
@@ -188,41 +189,9 @@ export async function enrichGrantImpl(
   };
   const pageForQuote = (quote: string) =>
     pages.find((page) => snippetIsGrounded(quote, page.markdown)) ?? null;
-  const grantTitleTokens: string[] = Array.from(
-    new Set<string>(
-      g.title
-        .normalize("NFKD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim()
-        .split(/\s+/)
-        .filter(
-          (token: string) =>
-            token.length >= 4 &&
-            ![
-              "grant",
-              "grants",
-              "fund",
-              "funding",
-              "program",
-              "programme",
-              "award",
-              "awards",
-              "support",
-            ].includes(token),
-        ),
-    ),
-  );
-  const pageLooksRelevantToGrant = (page: { url: string; markdown: string }) => {
-    if (grantTitleTokens.length === 0) return true;
-    const hay = `${page.url}\n${page.markdown.slice(0, 2_500)}`
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-    const overlap = grantTitleTokens.filter((token: string) => hay.includes(token)).length;
-    return overlap >= Math.min(2, grantTitleTokens.length);
-  };
+  const titleTokens = grantTitleTokens(g.title);
+  const isRelevantPage = (page: { url: string; markdown: string }) =>
+    pageLooksRelevantToGrant(page, titleTokens);
 
   await trace("scrape", `Scraped ${scraped.markdown.length} chars via ${scraped.via}`, "done", {
     via: scraped.via,
@@ -446,7 +415,7 @@ export async function enrichGrantImpl(
     if (deepPages.length > 0) {
       const relevantDeepPages: typeof deepPages = [];
       for (const page of deepPages) {
-        if (pageLooksRelevantToGrant(page)) {
+        if (isRelevantPage(page)) {
           relevantDeepPages.push(page);
         } else {
           await trace("deep_crawl_filter", "Skipped low-relevance detail page", "warn", {

@@ -1,6 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Search, X } from "lucide-react";
-import { funderOf, SORT_LABELS, type GrantLite, type SortKey } from "./grant-filters.utils";
+import {
+  AMOUNT_PRESETS,
+  collectSectors,
+  funderOf,
+  SORT_LABELS,
+  type AmountPresetKey,
+  type GrantLite,
+  type SortKey,
+} from "./grant-filters.utils";
 
 export function GrantFilters({
   grants,
@@ -8,6 +16,10 @@ export function GrantFilters({
   setSearch,
   jurisdiction,
   setJurisdiction,
+  sector,
+  setSector,
+  amountPreset,
+  setAmountPreset,
   sortKey,
   setSortKey,
   eligibleOnly,
@@ -20,6 +32,10 @@ export function GrantFilters({
   setSearch: (v: string) => void;
   jurisdiction: string;
   setJurisdiction: (v: string) => void;
+  sector: string;
+  setSector: (v: string) => void;
+  amountPreset: AmountPresetKey;
+  setAmountPreset: (v: AmountPresetKey) => void;
   sortKey: SortKey;
   setSortKey: (v: SortKey) => void;
   eligibleOnly: boolean;
@@ -32,11 +48,20 @@ export function GrantFilters({
       grants.map((g) => funderOf(g)?.jurisdiction ?? null).filter((x): x is string => Boolean(x)),
     ),
   ).sort();
+  const sectors = collectSectors(grants);
 
-  const active = search.trim() !== "" || jurisdiction !== "all" || eligibleOnly || onlyWithDeadline;
+  const active =
+    search.trim() !== "" ||
+    jurisdiction !== "all" ||
+    sector !== "all" ||
+    amountPreset !== "all" ||
+    eligibleOnly ||
+    onlyWithDeadline;
   const clearAll = () => {
     setSearch("");
     setJurisdiction("all");
+    setSector("all");
+    setAmountPreset("all");
     setEligibleOnly(false);
     setOnlyWithDeadline(false);
   };
@@ -81,6 +106,33 @@ export function GrantFilters({
         {jurisdictions.map((j) => (
           <option key={j} value={j}>
             {j}
+          </option>
+        ))}
+      </select>
+
+      <select
+        className="h-9 rounded-md border bg-background px-2 text-sm"
+        value={sector}
+        onChange={(e) => setSector(e.target.value)}
+        aria-label="Sector"
+      >
+        <option value="all">All sectors</option>
+        {sectors.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+
+      <select
+        className="h-9 rounded-md border bg-background px-2 text-sm"
+        value={amountPreset}
+        onChange={(e) => setAmountPreset(e.target.value as AmountPresetKey)}
+        aria-label="Amount"
+      >
+        {AMOUNT_PRESETS.map((p) => (
+          <option key={p.key} value={p.key}>
+            {p.label}
           </option>
         ))}
       </select>

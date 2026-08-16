@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Circle,
   Clock3,
-  ExternalLink,
   FileCheck2,
   FileText,
   Flag,
@@ -25,7 +24,8 @@ import {
 } from "lucide-react";
 import { MAX_ENRICH_ATTEMPTS, isTerminalGrantStatus } from "@/agents/pipeline-stages.shared";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 const DAY_MS = 86_400_000;
 
@@ -611,12 +611,9 @@ export function GrantDetailExpress({
                   Review diagnostics
                 </Button>
               )}
-              <Button asChild variant="outline">
-                <a href={url} target="_blank" rel="noopener noreferrer">
-                  Official page
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
+              <ExternalLinkPreview url={url} className={buttonVariants({ variant: "outline" })}>
+                Official page
+              </ExternalLinkPreview>
             </div>
           </div>
         </div>
@@ -1147,14 +1144,11 @@ function RequirementList({
 
 function SourceLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <ExternalLinkPreview
+      url={href}
       className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 font-medium text-primary hover:bg-muted/40"
     >
       <span className="min-w-0 break-words">{children}</span>
-      <ExternalLink className="h-4 w-4 shrink-0" />
-    </a>
+    </ExternalLinkPreview>
   );
 }

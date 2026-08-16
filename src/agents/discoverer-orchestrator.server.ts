@@ -105,7 +105,7 @@ export async function runDiscoveryJob(
   funderIds?: string[],
   opts: { forceRefresh?: boolean } = {},
 ): Promise<DiscoveryJobResult> {
-  const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+  const { assertModuleEnabled } = await import("@/lib/admin-modules.server");
   await assertModuleEnabled("grants_discovery");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -253,16 +253,25 @@ export async function runDiscoveryJob(
         .select("id")
         .eq("status", "enriched")
         .limit(15);
-      // Build a user-scoped client (RLS as the triggering user).
-      const { createClient } = await import("@supabase/supabase-js");
-      const userSupabase = createClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } },
-      );
+      // evaluateGrantImpl takes a `userSupabase` param because its normal
+      // caller (the runEvaluator serverFn) has the browser's session and can
+      // pass a real RLS-scoped client. This background job only has
+      // `triggeringUserId` — no JWT to build a real user-scoped client from —
+      // so it deliberately passes the service-role admin client instead.
+      // This is safe ONLY because evaluateGrantImpl filters every read/write
+      // by `.eq("user_id", userId)` explicitly rather than relying on RLS to
+      // do that scoping — it does not, on its own, isolate the triggering
+      // user's data. (Previously named `userSupabase` and commented as
+      // "RLS as the triggering user", which was simply false — it was the
+      // same admin client as `supabaseAdmin` above, constructed a second,
+      // redundant time.)
       for (const g of pending ?? []) {
         try {
-          await evaluateGrantImpl({ grantId: g.id, userId: triggeringUserId, userSupabase });
+          await evaluateGrantImpl({
+            grantId: g.id,
+            userId: triggeringUserId,
+            userSupabase: supabaseAdmin,
+          });
           evaluated++;
         } catch (e) {
           evalErrors.push({ grantId: g.id, error: e instanceof Error ? e.message : String(e) });

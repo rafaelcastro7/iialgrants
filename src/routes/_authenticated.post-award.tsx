@@ -322,7 +322,7 @@ function PostAwardPageV2({
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {nextReport
-                          ? `Next report: ${nextReport.type.replace(/_/g, " ")}`
+                          ? `Next report: ${nextReport.type.replace(/_/g, " ")} due ${nextReport.dueDate}`
                           : "No report scheduled yet"}
                         {o.decision_date && ` · Awarded ${o.decision_date}`}
                       </p>

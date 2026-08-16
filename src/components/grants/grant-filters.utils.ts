@@ -2,21 +2,48 @@
 // from GrantFilters.tsx so that component file only exports a component (React
 // Fast Refresh requirement) and these are unit-testable in isolation.
 
-export type FunderLite = { name?: string | null; jurisdiction?: string | null };
+export type FunderLite = {
+  name?: string | null;
+  jurisdiction?: string | null;
+  country?: string | null;
+};
 
 export type GrantLite = {
   title?: string | null;
   status: string;
   funder?: FunderLite | FunderLite[] | null;
+  country?: string | null;
   deadline?: string | null;
   amount_cad_min?: number | null;
   amount_cad_max?: number | null;
   discovered_at?: string | null;
   fit_score?: number | null;
+  sectors?: string[] | null;
   evaluation?: { eligibility_pass: boolean; fit_score?: number } | null;
 };
 
 export type SortKey = "relevance" | "fit" | "deadline" | "amount" | "newest";
+
+// Amount-range filter, as a fixed preset list rather than a two-input range —
+// every grant-database competitor (Instrumentl, Candid, GrantStation) offers
+// this and IIAL's /grants didn't; presets keep it a single dropdown instead
+// of a bulkier min/max pair. "all" = no filter. A grant with no known amount
+// is excluded once a preset narrower than "all" is picked — we can't verify
+// an unknown amount falls in range, so silently including it would be a
+// false positive, not a convenience.
+export type AmountPresetKey = "all" | "under25k" | "25k-100k" | "100k-500k" | "500k-plus";
+export const AMOUNT_PRESETS: Array<{
+  key: AmountPresetKey;
+  label: string;
+  min: number | null;
+  max: number | null;
+}> = [
+  { key: "all", label: "Any amount", min: null, max: null },
+  { key: "under25k", label: "Under $25K", min: null, max: 25_000 },
+  { key: "25k-100k", label: "$25K – $100K", min: 25_000, max: 100_000 },
+  { key: "100k-500k", label: "$100K – $500K", min: 100_000, max: 500_000 },
+  { key: "500k-plus", label: "$500K+", min: 500_000, max: null },
+];
 
 export const SORT_LABELS: Record<SortKey, string> = {
   relevance: "Search relevance",
@@ -30,11 +57,47 @@ export function funderOf(g: GrantLite): FunderLite | null {
   return Array.isArray(g.funder) ? (g.funder[0] ?? null) : (g.funder ?? null);
 }
 
+export const COUNTRY_LABELS: Record<string, string> = {
+  CA: "Canada",
+  US: "United States",
+  INTL: "Multilateral",
+  MX: "Mexico",
+  BR: "Brazil",
+  CL: "Chile",
+  CO: "Colombia",
+  AR: "Argentina",
+};
+
+/** Distinct countries present in the result set, Canada first (home market). */
+export function collectCountries(grants: GrantLite[]): string[] {
+  const found = new Set<string>();
+  for (const g of grants) {
+    const code = g.country ?? funderOf(g)?.country ?? null;
+    if (code) found.add(code);
+  }
+  return [...found].sort((a, b) => {
+    if (a === "CA") return -1;
+    if (b === "CA") return 1;
+    return a.localeCompare(b);
+  });
+}
+
 export function applyGrantFilters<T extends GrantLite>(
   grants: T[],
-  opts: { search: string; jurisdiction: string; eligibleOnly: boolean; onlyWithDeadline: boolean },
+  opts: {
+    search: string;
+    jurisdiction: string;
+    country?: string;
+    sector?: string;
+    amountPreset?: AmountPresetKey;
+    eligibleOnly: boolean;
+    onlyWithDeadline: boolean;
+  },
 ): T[] {
   const q = opts.search.trim().toLowerCase();
+  const sector = opts.sector ?? "all";
+  const amountPreset = opts.amountPreset ?? "all";
+  const preset = AMOUNT_PRESETS.find((p) => p.key === amountPreset) ?? AMOUNT_PRESETS[0];
   return grants.filter((g) => {
     if (q) {
       const funder = funderOf(g);
@@ -44,10 +107,36 @@ export function applyGrantFilters<T extends GrantLite>(
     if (opts.jurisdiction !== "all") {
       if ((funderOf(g)?.jurisdiction ?? "") !== opts.jurisdiction) return false;
     }
+    // Country of the opportunity itself; falls back to the funder's country
+    // for rows imported before grants carried their own country.
+    if (opts.country && opts.country !== "all") {
+      const grantCountry = g.country ?? funderOf(g)?.country ?? "";
+      if (grantCountry !== opts.country) return false;
+    }
+    if (sector !== "all") {
+      if (!(g.sectors ?? []).some((s) => s.toLowerCase() === sector.toLowerCase())) return false;
+    }
+    if (preset.min != null || preset.max != null) {
+      const amt = g.amount_cad_max ?? g.amount_cad_min ?? null;
+      if (amt == null) return false;
+      if (preset.min != null && amt < preset.min) return false;
+      if (preset.max != null && amt > preset.max) return false;
+    }
     if (opts.eligibleOnly && !g.evaluation?.eligibility_pass) return false;
     if (opts.onlyWithDeadline && !g.deadline) return false;
     return true;
   });
+}
+
+/** Distinct sector values across a grant list, alphabetized for the filter dropdown. */
+export function collectSectors(grants: GrantLite[]): string[] {
+  const set = new Set<string>();
+  for (const g of grants) {
+    for (const s of g.sectors ?? []) {
+      if (s && s.trim()) set.add(s.trim());
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
 function fitValue(g: GrantLite): number {

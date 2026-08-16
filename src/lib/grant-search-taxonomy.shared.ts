@@ -45,6 +45,60 @@ const rules: Array<{ concept: string; patterns: string[]; expansions: string[] }
     patterns: ["international collaboration", "globalink award", "globalink internship"],
     expansions: ["international research collaboration", "Globalink research award internship"],
   },
+  {
+    concept: "us-americas-funders",
+    patterns: [
+      "us funders",
+      "usa grants",
+      "us federal",
+      "gates foundation",
+      "ford foundation",
+      "nsf",
+      "nih",
+      "usaid",
+      "bid",
+      "idb",
+      "caf",
+      "conacyt",
+      "fapesp",
+      "anid",
+      "minciencias",
+    ],
+    expansions: [
+      "US Federal Agency",
+      "Bill & Melinda Gates Foundation",
+      "Ford Foundation",
+      "Inter-American Development Bank",
+      "CAF Development Bank",
+      "National Science Foundation",
+    ],
+  },
+  {
+    // Open-data sources list these bodies by their full legal name only
+    // ("Natural Sciences and Engineering Research Council of Canada"), so a
+    // search for the acronym everyone actually types matched nothing.
+    concept: "canadian-research-councils",
+    patterns: ["nserc", "crsng", "sshrc", "crsh", "cihr", "irsc", "tri council", "tri-council"],
+    expansions: [
+      "Natural Sciences and Engineering Research Council of Canada",
+      "Social Sciences and Humanities Research Council of Canada",
+      "Canadian Institutes of Health Research",
+    ],
+  },
+  {
+    concept: "canadian-innovation-agencies",
+    patterns: ["irap", "nrc irap", "cnrc", "pari", "national research council"],
+    expansions: ["National Research Council Canada", "Industrial Research Assistance Program"],
+  },
+  {
+    concept: "us-health-research",
+    patterns: ["nih", "cdc", "hhs", "national institutes of health"],
+    expansions: [
+      "National Institutes of Health",
+      "Centers for Disease Control and Prevention",
+      "Department of Health and Human Services",
+    ],
+  },
 ];
 
 export function expandGrantSearchQuery(query: string, maxLexicalQueries = 4): QueryExpansion {

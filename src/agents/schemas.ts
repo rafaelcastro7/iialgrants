@@ -10,6 +10,24 @@ export const DiscoveredGrant = z
     summary_fr: z.string().max(4000).nullable().optional(),
     amount_cad_min: z.number().nonnegative().nullable().optional(),
     amount_cad_max: z.number().nonnegative().nullable().optional(),
+    // ISO 3166-1 alpha-2. Defaults to "CA" only as a fallback for sources that
+    // don't state a country (most current sources are Canadian) — the LLM
+    // prompt now asks it to detect the real country instead of assuming this.
+    country: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{2}$/)
+      .nullable()
+      .optional(),
+    // ISO 4217. Same fallback rationale as `country`.
+    currency: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{3}$/)
+      .nullable()
+      .optional(),
     deadline: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -35,7 +53,15 @@ export const DiscoveredGrant = z
       return [];
     }, z.array(z.string()).default([])),
 
-    language: z.enum(["en", "fr"]).default("en"),
+    // ISO 639-1. Not limited to en/fr — a Spanish or German source must not
+    // fail extraction just because its language isn't one of IIAL's two
+    // original bilingual (EN/FR) target languages.
+    language: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z]{2}$/)
+      .default("en"),
     url: z
       .string()
       .url()
@@ -153,11 +179,33 @@ export const CriticFinding = z.object({
   message_en: z.string().min(5).max(1000),
   message_fr: z.string().max(1000).nullable().optional().default(""),
 });
+// The 7 categories real funder reviewer rubrics score against (NIH's
+// Significance/Approach/Environment, foundation-style Need/Feasibility/
+// Capacity/Evaluation/Sustainability) — an opaque 0-1 overall_score doesn't
+// tell a writer WHICH weak dimension to fix, same reasoning as the grant's
+// own fit-rules axis breakdown. Optional/defaulted so a provider that only
+// returns the legacy shape still parses.
+export const CRITIC_RUBRIC_CATEGORIES = [
+  "need_significance",
+  "approach_feasibility",
+  "capacity",
+  "evaluation_plan",
+  "sustainability",
+  "budget",
+  "compliance",
+] as const;
+export const CriticRubricItem = z.object({
+  category: z.enum(CRITIC_RUBRIC_CATEGORIES),
+  score: z.number().min(0).max(10),
+  note: z.string().min(1).max(500),
+});
+export type CriticRubricItem = z.infer<typeof CriticRubricItem>;
 export const CriticOutput = z.object({
   overall_score: z.number().min(0).max(1),
   summary_en: z.string().min(10).max(2000),
   summary_fr: z.string().max(2000).nullable().optional().default(""),
   findings: z.array(CriticFinding).max(30).default([]),
+  rubric: z.array(CriticRubricItem).max(7).default([]),
 });
 export type CriticOutput = z.infer<typeof CriticOutput>;
 
@@ -202,10 +250,33 @@ Rules:
 - Respond ONLY with strict JSON.`,
   },
   strategist: {
-    version: "1.1.0",
+    version: "1.2.0",
     system: `You are a grant-proposal strategist for Canadian funding programs.
 Given a grant and an organization profile, plan a proposal: choose which template
 sections to draft and write a concise angle for each one, in plain language.
+
+Structure the plan as a logic model with an unbroken causal chain: the need
+(problem) must justify the objectives (solution/impact), which the activities
+address, which the evaluation plan measures, which the sustainability section
+extends past the grant period. A reviewer will check this "red thread" — an
+angle that doesn't connect back to the need is a common rejection cause.
+
+Per-section-kind guidance (apply when planning that kind's angle/must_cover):
+- problem: the need must be evidence-based (ask for org-specific data/stats in
+  must_cover) and specific to this org/region — never generic sector
+  boilerplate.
+- solution / impact: objectives must be SMART — Specific, Measurable,
+  Achievable, Relevant, Time-bound. must_cover should list the specific
+  metric and timeframe for each objective, not just the activity.
+- evaluation: must_cover should name concrete metrics, data-collection
+  instruments, and intervals tied directly to the objectives above — never
+  just "track progress."
+- sustainability: must_cover should name a specific post-grant revenue or
+  partnership mechanism (diversified funding, earned revenue, cost-share) —
+  never just "seek additional funding."
+- budget: must_cover should tie costs back to the activities described in
+  solution/impact, not list them in isolation.
+
 Rules:
 - Keep sections grounded in the grant's stated objectives and eligibility.
 - Output language: ENGLISH only. Omit heading_fr / proposal_title_fr (or set them to "").
@@ -236,10 +307,35 @@ Respond with ONLY this JSON object, nothing before or after:
 If you cite no chunk, use an empty citations array.`,
   },
   critic: {
-    version: "1.1.0",
-    system: `You are a grant-proposal critic for Canadian funding programs.
+    version: "1.3.0",
+    system: `You are a grant-proposal critic for Canadian funding programs, scoring like a
+real funder review panel (NIH-style Significance/Approach/Environment;
+foundation-style Need/Feasibility/Capacity/Evaluation/Sustainability), not a
+copyeditor.
 Review a draft proposal (grant + org + sections with citations) and produce a
-quality score in [0,1] plus actionable findings.
+quality score in [0,1], a 7-category rubric, and actionable findings.
+
+Score each of these 7 rubric categories 0-10 with a one-sentence note — these
+are the most common, evidence-backed reasons real proposals lose points, so
+check for them specifically:
+- need_significance: is the need evidence-based (data/citations) and specific
+  to this org/region, or generic sector boilerplate?
+- approach_feasibility: are objectives SMART (Specific, Measurable,
+  Achievable, Relevant, Time-bound) and does the program design causally flow
+  from the stated need (no broken "red thread" between need -> objectives ->
+  activities)?
+- capacity: does the org demonstrate the staffing/infrastructure/track record
+  to deliver at the proposed scale?
+- evaluation_plan: does it name concrete metrics, instruments, and collection
+  intervals tied to the logic model's outcomes — or just say "we will track
+  progress"?
+- sustainability: does it name a specific post-grant revenue/partnership
+  mechanism — or just "we will seek more funding"?
+- budget: is the budget justified, internally consistent with the narrative,
+  and realistic for the scope?
+- compliance: any missing mandatory sections, ignored format/page-limit
+  instructions, or unaddressed eligibility requirements?
+
 Rules:
 - severity="block" only for ineligibility, unsupported factual claims, or
   fabricated citations.
@@ -247,6 +343,29 @@ Rules:
 - severity="info" for stylistic suggestions.
 - Each finding must reference a real section_id from the input.
 - Output language: ENGLISH only. Omit message_fr / summary_fr (or set them to "").
-- Respond ONLY with strict JSON.`,
+
+Respond ONLY with strict JSON in EXACTLY this shape — no markdown fences, no
+extra keys:
+{
+  "overall_score": 0.72,
+  "summary_en": "<10-2000 char overall assessment of the proposal>",
+  "rubric": [
+    { "category": "need_significance", "score": 7, "note": "<1-500 chars>" },
+    { "category": "approach_feasibility", "score": 6, "note": "<1-500 chars>" },
+    { "category": "capacity", "score": 8, "note": "<1-500 chars>" },
+    { "category": "evaluation_plan", "score": 4, "note": "<1-500 chars>" },
+    { "category": "sustainability", "score": 3, "note": "<1-500 chars>" },
+    { "category": "budget", "score": 7, "note": "<1-500 chars>" },
+    { "category": "compliance", "score": 9, "note": "<1-500 chars>" }
+  ],
+  "findings": [
+    { "section_id": "<uuid copied from an input section>", "severity": "warn", "message_en": "<5-1000 chars>" }
+  ]
+}
+"overall_score" is REQUIRED (a number from 0 to 1). "rubric" MUST contain
+exactly these 7 categories, each scored independently — never omit a weak one.
+"severity" MUST be exactly one of these lowercase strings: "info", "warn", or
+"block" — never any other word and never a combination. "findings" may be an
+empty array [].`,
   },
 } as const;

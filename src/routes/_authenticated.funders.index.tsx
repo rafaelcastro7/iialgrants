@@ -5,8 +5,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getFunderDashboardStats, getTopFunders } from "@/lib/funder-dashboard.functions";
-import { searchFunders } from "@/lib/funder-search.functions";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
+import { getFunderDashboardStats } from "@/lib/funder-dashboard.functions";
+import { listFunders, searchFunders } from "@/lib/funder-search.functions";
 import { enrichFunder } from "@/lib/funder-enrichment.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
@@ -15,21 +16,41 @@ import { toast } from "sonner";
 import { Search, Building2, MapPin, DollarSign, Globe, RefreshCw } from "lucide-react";
 import { CRA_CATEGORY_TOOLTIP } from "@/lib/cra-t3010-labels";
 
+const COUNTRY_LABELS: Record<string, string> = {
+  CA: "Canada",
+  US: "United States",
+  INTL: "Multilateral",
+  MX: "Mexico",
+  BR: "Brazil",
+  CL: "Chile",
+  CO: "Colombia",
+  AR: "Argentina",
+  PE: "Peru",
+  UY: "Uruguay",
+  CR: "Costa Rica",
+  EC: "Ecuador",
+  PA: "Panama",
+  DO: "Dominican Republic",
+  GT: "Guatemala",
+};
+
 const statsQO = queryOptions({
   queryKey: ["funders", "dashboard"],
   queryFn: () => getFunderDashboardStats({ data: {} }),
 });
 
-const topFundersQO = queryOptions({
-  queryKey: ["funders", "top"],
-  queryFn: () => getTopFunders({ data: { metric: "recent", limit: 12 } }),
+const DIRECTORY_PAGE_SIZE = 50;
+
+const directoryQO = queryOptions({
+  queryKey: ["funders", "directory", "CA", 0],
+  queryFn: () => listFunders({ data: { country: "CA", offset: 0, limit: DIRECTORY_PAGE_SIZE } }),
 });
 
 export const Route = createFileRoute("/_authenticated/funders/")({
   head: () => ({ meta: [{ title: "Funders — IIAL" }] }),
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(statsQO);
-    await context.queryClient.ensureQueryData(topFundersQO);
+    await context.queryClient.ensureQueryData(directoryQO);
   },
   component: FundersPage,
 });
@@ -41,10 +62,21 @@ function FundersPage() {
     queryFn: () => fetchStats({ data: {} }),
   });
 
-  const fetchTopFunders = useServerFn(getTopFunders);
-  const { data: topFunders } = useSuspenseQuery({
-    queryKey: ["funders", "top"],
-    queryFn: () => fetchTopFunders({ data: { metric: "recent", limit: 12 } }),
+  // Directory browses the whole catalog, defaulting to Canada (home market)
+  // with a country switcher for the rest of the Americas.
+  const [directoryCountry, setDirectoryCountry] = useState<string>("CA");
+  const [directoryPage, setDirectoryPage] = useState(0);
+  const fetchDirectory = useServerFn(listFunders);
+  const { data: directory } = useSuspenseQuery({
+    queryKey: ["funders", "directory", directoryCountry, directoryPage],
+    queryFn: () =>
+      fetchDirectory({
+        data: {
+          country: directoryCountry === "all" ? undefined : directoryCountry,
+          offset: directoryPage * DIRECTORY_PAGE_SIZE,
+          limit: DIRECTORY_PAGE_SIZE,
+        },
+      }),
   });
 
   const queryClient = useQueryClient();
@@ -101,9 +133,9 @@ function FundersPage() {
     return `$${rev.toLocaleString()}`;
   };
 
-  const topProvinces = Object.entries(stats.byProvince)
+  const topCountries = Object.entries(stats.byCountry ?? {})
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
+    .slice(0, 4);
 
   const topTypes = Object.entries(stats.byType)
     .sort((a, b) => b[1] - a[1])
@@ -117,7 +149,7 @@ function FundersPage() {
           <PageHeader
             eyebrow="Directory"
             title="Funder Intelligence"
-            description="CRA T3010 registered charity data — search, analyze, and enrich Canadian funders."
+            description="Funders across the Americas — CRA T3010 charities, US federal agencies and foundations, Pan-American multilaterals, and LatAm science councils."
           />
 
           <StatGrid columns={3}>
@@ -125,14 +157,19 @@ function FundersPage() {
               label="Total funders"
               value={stats.totalFunders.toLocaleString()}
               icon={Building2}
-              sublabel="Registered charities tracked"
+              sublabel="Funding bodies tracked"
             />
-            <DistributionCard label="Top provinces" icon={MapPin} rows={topProvinces} />
             <DistributionCard
-              label="Top CRA categories"
+              label="Top countries"
+              icon={MapPin}
+              rows={topCountries}
+              formatKey={(code) => COUNTRY_LABELS[code] ?? code}
+            />
+            <DistributionCard
+              label="Top categories"
               icon={DollarSign}
               rows={topTypes}
-              formatKey={(code) => `CRA ${code}`}
+              formatKey={(code) => (/^\d+$/.test(code) ? `CRA ${code}` : code)}
               keyTitle={CRA_CATEGORY_TOOLTIP}
             />
           </StatGrid>
@@ -142,7 +179,7 @@ function FundersPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, city, or category..."
+                  placeholder="Search by name, country, jurisdiction, city, or category..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -181,22 +218,73 @@ function FundersPage() {
           </Section>
 
           <Section title="Funders directory">
-            {topFunders.length === 0 ? (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {[
+                "CA",
+                ...Object.keys(stats.byCountry ?? {})
+                  .filter((c) => c !== "CA")
+                  .sort(),
+                "all",
+              ].map((code) => (
+                <Button
+                  key={code}
+                  size="sm"
+                  variant={directoryCountry === code ? "default" : "outline"}
+                  onClick={() => {
+                    setDirectoryCountry(code);
+                    setDirectoryPage(0);
+                  }}
+                >
+                  {code === "all"
+                    ? "All countries"
+                    : `${COUNTRY_LABELS[code] ?? code} (${stats.byCountry?.[code] ?? 0})`}
+                </Button>
+              ))}
+            </div>
+
+            {directory.funders.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 No funder data available yet.
               </p>
             ) : (
-              <div className="space-y-2">
-                {topFunders.map((funder) => (
-                  <FunderRow
-                    key={funder.id}
-                    funder={funder}
-                    formatRevenue={formatRevenue}
-                    enriching={enrichingId === funder.id}
-                    onEnrich={() => enrichMutation.mutate(funder.id)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="space-y-2">
+                  {directory.funders.map((funder) => (
+                    <FunderRow
+                      key={funder.id}
+                      funder={funder}
+                      formatRevenue={formatRevenue}
+                      enriching={enrichingId === funder.id}
+                      onEnrich={() => enrichMutation.mutate(funder.id)}
+                    />
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    Showing {directoryPage * DIRECTORY_PAGE_SIZE + 1}–
+                    {directoryPage * DIRECTORY_PAGE_SIZE + directory.funders.length} of{" "}
+                    {directory.total.toLocaleString()}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={directoryPage === 0}
+                      onClick={() => setDirectoryPage((p) => Math.max(0, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={(directoryPage + 1) * DIRECTORY_PAGE_SIZE >= directory.total}
+                      onClick={() => setDirectoryPage((p) => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </>
             )}
           </Section>
         </PageContainer>
@@ -242,8 +330,11 @@ type FunderRowData = {
   id: string;
   name: string;
   category: string | null;
+  country?: string | null;
+  jurisdiction?: string | null;
   province: string | null;
   total_revenue: number | null;
+  disbursed_annual?: number | null;
   website: string | null;
 };
 
@@ -270,33 +361,39 @@ function FunderRow({
         </Link>
         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {funder.category && (
-            <Badge variant="secondary" title={CRA_CATEGORY_TOOLTIP}>
-              CRA {funder.category}
+            <Badge
+              variant="secondary"
+              title={/^\d+$/.test(funder.category) ? CRA_CATEGORY_TOOLTIP : undefined}
+            >
+              {/^\d+$/.test(funder.category) ? `CRA ${funder.category}` : funder.category}
             </Badge>
           )}
-          {funder.province && (
+          {funder.country && <Badge variant="outline">{funder.country}</Badge>}
+          {/* Jurisdiction is the only location most non-Canadian funders have —
+              US federal agencies and multilaterals carry no province/city. */}
+          {(funder.jurisdiction || funder.province) && (
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              {funder.province}
+              {funder.jurisdiction || funder.province}
             </span>
           )}
-          {funder.total_revenue != null && (
+          {(funder.total_revenue ?? funder.disbursed_annual) != null && (
             <span className="font-medium text-foreground">
-              {formatRevenue(funder.total_revenue)}
+              {formatRevenue(funder.total_revenue ?? funder.disbursed_annual ?? null)}
             </span>
           )}
         </div>
       </div>
       <div className="flex items-center gap-2">
         {funder.website && (
-          <a
-            href={funder.website}
-            target="_blank"
-            rel="noopener noreferrer"
+          <ExternalLinkPreview
+            url={funder.website}
+            showIcon={false}
+            title="Preview funder website"
             className="text-muted-foreground hover:text-foreground"
           >
             <Globe className="h-4 w-4" />
-          </a>
+          </ExternalLinkPreview>
         )}
         <Button variant="outline" size="sm" onClick={onEnrich} disabled={enriching}>
           {enriching ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Enrich"}

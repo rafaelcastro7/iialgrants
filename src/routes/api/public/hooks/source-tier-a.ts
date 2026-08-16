@@ -15,6 +15,8 @@ export const Route = createFileRoute("/api/public/hooks/source-tier-a")({
           });
         }
         try {
+          const { assertModuleEnabled } = await import("@/lib/admin-modules.server");
+          await assertModuleEnabled("public_webhooks");
           const { runSourceCurator } = await import("@/lib/source-curator/orchestrator.server");
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const result = await runSourceCurator("A");

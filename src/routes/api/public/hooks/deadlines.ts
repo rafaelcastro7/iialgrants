@@ -11,6 +11,16 @@ export const Route = createFileRoute("/api/public/hooks/deadlines")({
         const { result } = await verifyWebhookRequest(request, "deadlines");
         if (!result.ok) return new Response(result.reason, { status: result.status });
 
+        const { assertModuleEnabled } = await import("@/lib/admin-modules.server");
+        try {
+          await assertModuleEnabled("public_webhooks");
+        } catch (e) {
+          return Response.json(
+            { ok: false, error: e instanceof Error ? e.message : String(e) },
+            { status: 503 },
+          );
+        }
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         const today = new Date();
@@ -28,7 +38,7 @@ export const Route = createFileRoute("/api/public/hooks/deadlines")({
 
         let created = 0;
         for (const row of rows ?? []) {
-          const g = row.grant as {
+          const g = (Array.isArray(row.grant) ? row.grant[0] : row.grant) as {
             id: string;
             title: string;
             title_fr: string | null;

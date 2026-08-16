@@ -1,31 +1,27 @@
 // RSS-driven funder candidate generator. Polls feeds whose items are *grants*
-// (Grants.gov, IDRC, Tri-Council news) and extracts the issuing agency from
-// each item as a funder_candidate. Lightweight: pure regex parser, no deps.
-
+// and extracts the issuing agency from each item as a funder_candidate.
+// Lightweight: pure regex parser, no deps.
+//
+// Verified live 2026-07-23 that 3 of the original 5 feeds here were dead
+// (curl -sL confirms actual final response, not just the request succeeding):
+//   - grants.gov: 200s with the grants.gov website's HTML, not XML. Replaced
+//     by grants-gov.server.ts's real Search2 REST API ingester.
+//   - nserc_news / sshrc_news / cihr_news: genuine 404s (nserc-crsng.canada.ca
+//     and sshrc-crsh.canada.ca redirect straight to their own 404 pages).
+//     Removed rather than fixed — NSERC/SSHRC/CIHR are already covered as
+//     curated seed funders in tri-council.server.ts, so these were pure dead
+//     weight (a fetch+12s-timeout on every Tier A run for zero output ever).
+// idrc_rss's URL below is the canonical idrc-crdi.ca domain it 301-redirects
+// to — fetch() follows redirects fine either way, this just avoids the
+// pointless round trip every run.
 import type { RawCandidate } from "./scoring.server";
 import { parseFeed, type FeedItem } from "@/lib/rss-ingestor.server";
 
 export const GRANT_FEEDS: Array<{ key: string; url: string; defaultAgency?: string }> = [
-  { key: "grants_gov", url: "https://www.grants.gov/rss/GG_NewOppByCategory.xml" },
   {
     key: "idrc_rss",
-    url: "https://www.idrc.ca/en/rss.xml",
+    url: "https://idrc-crdi.ca/en/rss.xml",
     defaultAgency: "International Development Research Centre (IDRC)",
-  },
-  {
-    key: "nserc_news",
-    url: "https://www.nserc-crsng.gc.ca/Media-Media/NewsRelease-CommuniqueDePresse_RSS_eng.asp",
-    defaultAgency: "Natural Sciences and Engineering Research Council of Canada (NSERC)",
-  },
-  {
-    key: "sshrc_news",
-    url: "https://www.sshrc-crsh.gc.ca/news_room-salle_de_presse/rss-eng.aspx",
-    defaultAgency: "Social Sciences and Humanities Research Council of Canada (SSHRC)",
-  },
-  {
-    key: "cihr_news",
-    url: "https://cihr-irsc.gc.ca/e/rss.html",
-    defaultAgency: "Canadian Institutes of Health Research (CIHR)",
   },
 ];
 
@@ -45,15 +41,21 @@ function extractAgency(item: FeedItem, fallback?: string): string | null {
   }
 }
 
-export async function fetchRssGrantCandidates(): Promise<RawCandidate[]> {
+export async function fetchRssGrantCandidates(
+  extraFeeds: Array<{ key: string; url: string; defaultAgency?: string }> = [],
+): Promise<RawCandidate[]> {
   const seen = new Map<string, RawCandidate>();
-  for (const feed of GRANT_FEEDS) {
+  for (const feed of [...GRANT_FEEDS, ...extraFeeds]) {
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 12_000);
+      // A self-identifying UA gets 403'd by WAFs some funder sites already
+      // run (confirmed elsewhere in this codebase — see web-fetch.server.ts);
+      // the same proven realistic browser UA is strictly better here too.
+      const { CHROME_UA } = await import("@/lib/web-fetch.server");
       const res = await fetch(feed.url, {
         signal: ctrl.signal,
-        headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
+        headers: { "User-Agent": CHROME_UA },
       });
       clearTimeout(t);
       if (!res.ok) continue;
@@ -75,7 +77,7 @@ export async function fetchRssGrantCandidates(): Promise<RawCandidate[]> {
         }
         seen.set(key, {
           name: agency,
-          funder_type: feed.key === "grants_gov" ? "US Federal" : "Federal",
+          funder_type: "Federal",
           website: host || null,
           source_signals: [feed.key],
           raw_metadata: { sample_title: item.title.slice(0, 200), sample_link: item.link },

@@ -3,11 +3,26 @@ import { expect, test, type Page } from "@playwright/test";
 const DEMO_MEMBER = "Member A";
 const DEMO_ADMIN = "Admin";
 
+// Rapid programmatic navigation (exactly what this spec does) aborts an
+// in-flight SupabaseAuthClient.getUser() session check when the *next*
+// navigation starts before it resolves — the browser correctly cancelling
+// work for a document that's going away, not a real connectivity failure.
+// Confirmed live and flaky-reproduced: this test passes reliably in
+// isolation and only intermittently shows this exact signature when run
+// back-to-back with other specs under more system load. Same known-benign
+// pattern already filtered in tests/e2e/full-lifecycle.spec.ts.
+const KNOWN_NONBLOCKING_WARNING =
+  /Failed to fetch.*SupabaseAuthClient\.getUser|SupabaseAuthClient\.getUser.*Failed to fetch/is;
+
 function captureBrowserErrors(page: Page) {
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("pageerror", (error) => {
+    if (!KNOWN_NONBLOCKING_WARNING.test(error.message)) errors.push(error.message);
+  });
   page.on("console", (msg) => {
-    if (msg.type() === "error") errors.push(msg.text());
+    if (msg.type() === "error" && !KNOWN_NONBLOCKING_WARNING.test(msg.text())) {
+      errors.push(msg.text());
+    }
   });
   return errors;
 }
@@ -43,21 +58,32 @@ test.describe("navigation audit - member", () => {
     await signInDemo(page, DEMO_MEMBER);
 
     await clickAndAssert(page, "/grants", /\/grants\/?$/, async () => {
+      // Real bug, confirmed live: this asserted stale copy and a stale tab
+      // structure. The current V2GrantsWorkspace (src/components/v2/
+      // V2GrantsWorkspace.tsx) renders the heading "Here's where to focus
+      // today" and has no "Queue"/"Lifecycle" tabs at all — that grouping was
+      // removed in a prior redesign in favor of a flat filtered list, and this
+      // test was never updated, so it failed on every run regardless of app
+      // correctness.
       await expect(
-        page.getByRole("heading", { name: /prioritize every opportunity/i }),
+        // Match without the apostrophe: the source renders `&rsquo;` (U+2019 ’),
+        // not a straight quote, so a literal `'` in this regex would never match.
+        page.getByRole("heading", { name: /where to focus today/i }),
       ).toBeVisible();
       await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
-      await expect(page.getByRole("tab", { name: "Queue" })).toBeVisible();
-      await expect(page.getByRole("tab", { name: "Lifecycle" })).toBeVisible();
     });
 
     const firstGrantLink = page.locator('a[href^="/grants/"]').first();
     await expect(firstGrantLink).toBeVisible();
     await firstGrantLink.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+$/);
-    await expect(page.getByRole("link", { name: "Audit", exact: true })).toBeVisible();
+    // Real bug, confirmed live: renamed to "Scoring details" (see
+    // src/routes/_authenticated.grants.$id.audit.tsx's own comment) precisely
+    // to avoid colliding with the unrelated Admin "Audit Trail" page — this
+    // test still looked for the old "Audit" label and never found it.
+    await expect(page.getByRole("link", { name: "Scoring details", exact: true })).toBeVisible();
 
-    const auditTrailLink = page.getByRole("link", { name: "Audit", exact: true });
+    const auditTrailLink = page.getByRole("link", { name: "Scoring details", exact: true });
     await auditTrailLink.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+\/audit$/);
     await expect(page.getByText(/rules evaluated/i)).toBeVisible();
@@ -69,7 +95,10 @@ test.describe("navigation audit - member", () => {
 
     await page.goto("/dashboard");
     await clickAndAssert(page, "/proposals", /\/proposals\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /proposals/i }).first()).toBeVisible();
+      // Real bug, confirmed live: the V2 proposals page (this demo user's
+      // shell) renders "Your applications", not "Proposals" — a prior
+      // redesign renamed the heading and this test was never updated.
+      await expect(page.getByRole("heading", { name: /your applications/i }).first()).toBeVisible();
     });
 
     await page.goto("/dashboard");
@@ -92,10 +121,17 @@ test.describe("navigation audit - member", () => {
       await expect(page.getByRole("heading", { name: /privacy/i }).first()).toBeVisible();
     });
 
-    await page.goto("/dashboard");
-    await clickAndAssert(page, "/compliance", /\/compliance\/?$/, async () => {
-      await expect(page.getByRole("heading", { name: /compliance/i }).first()).toBeVisible();
-    });
+    // Real bug, confirmed live: /compliance was retired 2026-07-23 (see
+    // src/routes/compliance.tsx's own comment) — it now only exists as a
+    // redirect to /privacy's "Compliance & frameworks" card so old bookmarks
+    // keep working, and its nav link was removed along with the page (no
+    // `href="/compliance"` remains anywhere in src/). clickAndAssert's own
+    // first step (require a *visible* nav link before clicking) can no
+    // longer pass, through no fault of the app — there's nothing left to
+    // click. Testing the redirect directly is what's left to verify.
+    await page.goto("/compliance");
+    await expect(page).toHaveURL(/\/privacy\/?$/);
+    await expect(page.getByText(/compliance & frameworks/i)).toBeVisible();
 
     expect(errors).toEqual([]);
   });

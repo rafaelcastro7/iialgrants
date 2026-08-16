@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import {
   Dialog,
   DialogContent,
@@ -150,14 +151,13 @@ function CandidatesPage() {
               <CardContent className="flex items-center justify-between gap-4 text-sm">
                 <div className="text-muted-foreground truncate">
                   {c.website ? (
-                    <a
-                      href={c.website as string}
-                      target="_blank"
-                      rel="noreferrer"
+                    <ExternalLinkPreview
+                      url={c.website as string}
+                      showIcon={false}
                       className="underline"
                     >
                       {c.website as string}
-                    </a>
+                    </ExternalLinkPreview>
                   ) : (
                     <span>No website</span>
                   )}

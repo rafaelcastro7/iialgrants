@@ -31,7 +31,16 @@ async function basicUserFlow(page: Page) {
 
   await page.getByRole("link", { name: /open radar/i }).click();
   await expect(page).toHaveURL(/\/grants\/?$/);
-  await expect(page.getByRole("heading", { name: /prioritize every opportunity/i })).toBeVisible();
+  // Real bug, confirmed live: this asserted stale copy — "prioritize every
+  // opportunity" was never the actual heading in the current V2GrantsWorkspace
+  // (src/components/v2/V2GrantsWorkspace.tsx), which renders "Here's where to
+  // focus today". A prior UI rewrite changed the copy and this test was never
+  // updated to match, so it failed on every run regardless of app correctness.
+  await expect(
+    // Match without the apostrophe: the source renders `&rsquo;` (U+2019 ’),
+    // not a straight quote, so a literal `'` in this regex would never match.
+    page.getByRole("heading", { name: /where to focus today/i }),
+  ).toBeVisible();
   await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Industrial Research Assistance Program (IRAP)", exact: true }),
@@ -41,7 +50,9 @@ async function basicUserFlow(page: Page) {
   await expect(
     page.getByRole("link", { name: "Industrial Research Assistance Program (IRAP)", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/showing \d+ of \d+ active records/i)).toBeVisible();
+  // Same stale-copy issue as the heading above: the real component renders
+  // "active grants", not "active records".
+  await expect(page.getByText(/showing \d+ of \d+ active grants/i)).toBeVisible();
 
   await page.getByRole("button", { name: /open command palette/i }).click();
   const commandDialog = page.getByRole("dialog", { name: /command palette/i });

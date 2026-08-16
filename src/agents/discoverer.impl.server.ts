@@ -10,10 +10,10 @@ import { z } from "zod";
 import { createHash } from "crypto";
 import { DiscoveredGrant, PROMPTS } from "@/agents/schemas";
 
-const MAX_PAGES_PER_RUN = 15;
+// Page/concurrency limits (maxPagesPerRun, scrapeConcurrency, fallbackMaxLinks)
+// moved to discovery-config.server.ts — admin-configurable via
+// /admin/discovery-config, defaulting to the same values these used to be.
 const MAX_MARKDOWN_LEN = 22_000;
-const SCRAPE_CONCURRENCY = 3;
-const FALLBACK_MAX_LINKS = 12;
 const FALLBACK_LLM_THROTTLE_MS = 2_200;
 
 // Hard title normalization for canonical dedup. Strips:
@@ -26,9 +26,14 @@ const FALLBACK_LLM_THROTTLE_MS = 2_200;
 const GENERIC_STOPWORDS = new Set([
   "program",
   "programme",
+  "programs",
   "initiative",
   "fund",
   "funding",
+  "financing",
+  "financial",
+  "government",
+  "governmental",
   "grant",
   "grants",
   "subsidy",
@@ -200,15 +205,21 @@ const ROOT_INDEX_PATHS = new Set([
   "/produits",
   "/products",
 ]);
-function isRootIndex(url: string): boolean {
+// `extraPaths` are admin-added slugs from discovery_config (additive on top
+// of ROOT_INDEX_PATHS, never a replacement) — default empty keeps every
+// existing call site and test unaffected.
+export function isRootIndex(url: string, extraPaths: string[] = []): boolean {
   try {
     const u = new URL(url);
     const path = u.pathname.replace(/\/+$/, "").toLowerCase();
     if (!path || path === "/") return true;
-    if (ROOT_INDEX_PATHS.has(path)) return true;
+    if (ROOT_INDEX_PATHS.has(path) || extraPaths.includes(path)) return true;
     // Single-segment path with one of the generic words → also reject.
     const segs = path.split("/").filter(Boolean);
-    if (segs.length === 1 && ROOT_INDEX_PATHS.has(`/${segs[0]}`)) return true;
+    if (segs.length === 1) {
+      const seg = `/${segs[0]}`;
+      if (ROOT_INDEX_PATHS.has(seg) || extraPaths.includes(seg)) return true;
+    }
     return false;
   } catch {
     return false;
@@ -237,6 +248,20 @@ const NON_GRANT_URL_PATTERNS: RegExp[] = [
   /outside-employment|emploi.*ext[ée]rieur/i,
   /code-of-conduct|code-de-conduite/i,
   /national-inventory/i,
+  // Salesforce Experience Cloud / Community sites (path pattern "/s/...")
+  // ship a standard set of transactional/utility page slugs that have
+  // nothing to do with any specific funder's content — e.g.
+  // innovation.ised-isde.canada.ca's sitemap includes /s/email-verification
+  // and /s/dovdetail (its own "Business Benefits Finder" landing page),
+  // both of which the LLM mistakenly extracted as "grant programs" on
+  // 2026-07-22 (titles "Email Verification Program", "Business Benefits
+  // Finder"). These slugs are Salesforce platform boilerplate, not specific
+  // to this funder, so they're safe to reject globally rather than per-host.
+  /\/s\/(check-your-)?email-verification\b/i,
+  /\/s\/unsubscribe(-desabonner)?\b/i,
+  /\/s\/(login|logout|password-reset)\b/i,
+  /\/s\/error[0-9]{3}\b/i,
+  /\/s\/dovdetail\b/i,
 ];
 // Hosts that are never a funder's own program page — encyclopedias, social
 // networks, aggregators. A grant lives on the funder's site, not Wikipedia.
@@ -253,7 +278,10 @@ const NON_GRANT_HOSTS = [
   "crunchbase.com",
   "reddit.com",
 ];
-export function isNonGrantUrl(url: string): boolean {
+// `extraPatterns` are admin-added regexes from discovery_config (additive on
+// top of NON_GRANT_URL_PATTERNS, never a replacement) — default empty keeps
+// every existing call site and test unaffected.
+export function isNonGrantUrl(url: string, extraPatterns: RegExp[] = []): boolean {
   try {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
@@ -270,7 +298,8 @@ export function isNonGrantUrl(url: string): boolean {
       if (/^\/services\//.test(path)) return true;
       if (/eligible-research.*adjudication.*criteria/.test(path)) return true;
     }
-    return NON_GRANT_URL_PATTERNS.some((re) => re.test(path));
+    if (NON_GRANT_URL_PATTERNS.some((re) => re.test(path))) return true;
+    return extraPatterns.some((re) => re.test(path));
   } catch {
     return false;
   }
@@ -297,12 +326,29 @@ const FIRECRAWL_JSON_SCHEMA = {
           title_fr: { type: ["string", "null"], description: "French (Quebec) title if present" },
           summary: { type: ["string", "null"], description: "1-3 sentence description" },
           summary_fr: { type: ["string", "null"] },
-          amount_cad_min: { type: ["number", "null"], description: "Min funding in CAD" },
-          amount_cad_max: { type: ["number", "null"], description: "Max funding in CAD" },
+          amount_cad_min: {
+            type: ["number", "null"],
+            description: "Min funding amount, in the currency field below",
+          },
+          amount_cad_max: {
+            type: ["number", "null"],
+            description: "Max funding amount, in the currency field below",
+          },
+          country: {
+            type: ["string", "null"],
+            description: "ISO 3166-1 alpha-2 country the program applies to, e.g. CA, US, FR",
+          },
+          currency: {
+            type: ["string", "null"],
+            description: "ISO 4217 currency of the amounts, e.g. CAD, USD, EUR",
+          },
           deadline: { type: ["string", "null"], description: "ISO YYYY-MM-DD or null" },
           eligibility: { type: "object" },
           sectors: { type: "array", items: { type: "string" } },
-          language: { type: "string", enum: ["en", "fr"] },
+          language: {
+            type: "string",
+            description: "ISO 639-1 language code of the page, e.g. en, fr, es",
+          },
           url: { type: "string", description: "Canonical program URL" },
         },
         required: ["title", "language", "url"],
@@ -313,10 +359,11 @@ const FIRECRAWL_JSON_SCHEMA = {
 } as const;
 
 const JSON_PROMPT =
-  "Extract every distinct Canadian funding program described on this page. " +
+  "Extract every distinct funding program (grant, subsidy, or loan — any country) described on this page. " +
   "If the page is an index that lists multiple programs with links, extract one entry per listed program using the link as `url`. " +
-  "Use Canadian dollars; never invent amounts or deadlines (null if unknown). " +
-  "Deadlines must be ISO YYYY-MM-DD or null. Detect language ('en' or 'fr') from the text.";
+  "Detect the country (ISO 3166-1 alpha-2) and currency (ISO 4217) from context — do not assume Canada/CAD; " +
+  "only default to CA/CAD when the page gives no country/currency signal at all. Never invent amounts or deadlines (null if unknown). " +
+  "Deadlines must be ISO YYYY-MM-DD or null. Detect the page's language (ISO 639-1, e.g. en, fr, es, de).";
 
 export type DiscoveryResult = {
   ok: boolean;
@@ -347,9 +394,14 @@ export async function discoverFunderImpl(
   const { newRunId } = await import("@/lib/otel");
   const { firecrawlAvailable, firecrawlMap, filterProgramUrls } =
     await import("@/lib/firecrawl.server");
-  const { scrapeWithFallback, jinaSearch } = await import("@/lib/web-fetch.server");
+  const { scrapeWithFallback, localWebSearch, CHROME_UA } = await import("@/lib/web-fetch.server");
   const { shouldFetch, recordFetch } = await import("@/lib/crawl-ledger.server");
   const { fetchCandidateLinksFromSitemaps } = await import("@/lib/site-candidates.server");
+  const { resolveDiscoveryConfig } = await import("@/lib/discovery-config.server");
+
+  // Admin-configurable knobs (page/concurrency limits, extra noise filters,
+  // seed query) with hardcoded fallbacks — see discovery-config.server.ts.
+  const cfg = await resolveDiscoveryConfig();
 
   const runId = newRunId();
   const t0 = Date.now();
@@ -379,7 +431,7 @@ export async function discoverFunderImpl(
     const mapped = new Set<string>();
     // First pass: search-focused map (Firecrawl ranks results by relevance).
     for (const idx of indexUrls) {
-      const m = await firecrawlMap(idx, 100, "program funding grant subvention financement");
+      const m = await firecrawlMap(idx, 100, cfg.firecrawlSearchQuery);
       if (m.ok) m.links.forEach((l) => mapped.add(l));
     }
     // Fallback pass: plain map for any funder whose search returned nothing.
@@ -407,7 +459,7 @@ export async function discoverFunderImpl(
     indexUrls.forEach((u) => mapped.add(u));
 
     const origin = new URL(F.source_url).origin;
-    const candidates = filterProgramUrls([...mapped], origin).slice(0, MAX_PAGES_PER_RUN);
+    const candidates = filterProgramUrls([...mapped], origin).slice(0, cfg.maxPagesPerRun);
 
     let inserted = 0;
     let seenAgain = 0;
@@ -480,12 +532,28 @@ export async function discoverFunderImpl(
           runId,
           temperature: 0.1,
           responseFormat: "json",
+          // Schema guard: without this, a provider whose JSON fails
+          // MultiPageOutput just gets caught below and the page is silently
+          // skipped, instead of the cloud/local chain advancing to a
+          // provider that can actually produce the requested shape — the
+          // same bug class fixed for critic.functions.ts, applied here since
+          // this path (and the two other discoverer callLlm sites) never
+          // got the same guard.
+          validate: (text) => {
+            try {
+              return MultiPageOutput.safeParse(JSON.parse(text)).success;
+            } catch {
+              return false;
+            }
+          },
           messages: [
             {
               role: "system",
               content:
                 `${PROMPTS.discoverer.system}\nPrompt version: ${PROMPTS.discoverer.version}\n` +
-                `Extract every distinct Canadian funding program described on this page. ` +
+                `Extract every distinct funding program (grant, subsidy, or loan — any country) described on this page. ` +
+                `Detect the country (ISO 3166-1 alpha-2) and currency (ISO 4217) from context — do not assume Canada/CAD; ` +
+                `only default to CA/CAD when the page gives no country/currency signal at all. ` +
                 `If the page is an index listing multiple programs, return one entry per listed program. ` +
                 `If nothing is a real program, return { "grants": [] }.`,
             },
@@ -495,8 +563,8 @@ export async function discoverFunderImpl(
                 `Funder: ${F.name}\nPage URL: ${url}\nPage title: ${scrape.title ?? ""}\n\n` +
                 `Markdown:\n${md}\n\n` +
                 `Return JSON: { "grants": [ { "title", "title_fr"?, "summary"?, "summary_fr"?, ` +
-                `"amount_cad_min"?, "amount_cad_max"?, "deadline"?, "eligibility"?, "sectors"?, ` +
-                `"language", "url" } ] }`,
+                `"amount_cad_min"?, "amount_cad_max"?, "country"?, "currency"?, "deadline"?, ` +
+                `"eligibility"?, "sectors"?, "language", "url" } ] }`,
             },
           ],
         });
@@ -517,15 +585,55 @@ export async function discoverFunderImpl(
       perPageStats.push({ url, found: pageGrants.length, via });
 
       for (const g of pageGrants) {
-        if (isGenericTitle(g.title) || isRootIndex(g.url || url) || isNonGrantUrl(g.url || url)) {
+        if (
+          isGenericTitle(g.title) ||
+          isRootIndex(g.url || url, cfg.extraRootIndexPaths) ||
+          isNonGrantUrl(g.url || url, cfg.extraNonGrantUrlPatterns)
+        ) {
           continue; // structural filter: skip landing-page / index / non-grant policy pages
         }
         const ck = canonicalKey(F.id, g.title, F.name);
-        const { data: existing } = await supabaseAdmin
-          .from("grants")
-          .select("id, times_seen")
-          .eq("canonical_key", ck)
-          .maybeSingle();
+        const grantUrl = g.url || url;
+        // canonical_key is derived from the (normalized, funder-name-stripped)
+        // TITLE words — an LLM re-paraphrasing the same program's title
+        // differently across discovery runs produces a different key even
+        // though it's the same real program. Confirmed live: the same NRC
+        // "Outreach Initiative" URL was discovered as 6 separate grants
+        // ("NRC Outreach Initiative", "Indigenous Outreach Stream", "Outreach
+        // Initiative by the NRC", ...) since none of their title wordings
+        // matched closely enough. A same-funder + exact-URL match is
+        // additional evidence, checked as a second, independent signal here
+        // — but NOT sufficient alone: some funder pages are generic/broken
+        // fallback URLs (e.g. a Salesforce community redirect) that several
+        // genuinely DIFFERENT programs share because the discoverer couldn't
+        // resolve each one's own specific page. Confirmed live: "Strategic
+        // Response Fund", "Grant for Nunavut Employers", "Aboriginal Business
+        // Financing Program" and "First Peoples Economic Growth Fund" are
+        // real, distinct Indigenous-business programs that all shared one
+        // such fallback URL — merging them by URL alone would have silently
+        // discarded three real grants. Requiring at least one shared
+        // normalized title word keeps the NRC Outreach case (all wordings
+        // share "outreach") while rejecting unrelated titles that merely
+        // happen to share a fallback URL.
+        const [{ data: existingByKey }, { data: existingByUrl }] = await Promise.all([
+          supabaseAdmin
+            .from("grants")
+            .select("id, times_seen")
+            .eq("canonical_key", ck)
+            .maybeSingle(),
+          supabaseAdmin
+            .from("grants")
+            .select("id, times_seen, title")
+            .eq("funder_id", F.id)
+            .eq("url", grantUrl)
+            .maybeSingle(),
+        ]);
+        const urlMatchSharesTitleWord =
+          existingByUrl &&
+          normalizeTitle((existingByUrl as { title?: string }).title ?? "")
+            .split(/\s+/)
+            .some((w) => w && normalizeTitle(g.title).split(/\s+/).includes(w));
+        const existing = existingByKey ?? (urlMatchSharesTitleWord ? existingByUrl : null);
         if (existing) {
           await supabaseAdmin
             .from("grants")
@@ -553,6 +661,11 @@ export async function discoverFunderImpl(
           // the one and only source of truth for these two fields.
           amount_cad_min: null,
           amount_cad_max: null,
+          // Previously never set — DB default ('CA'/'CAD') silently applied
+          // even when the LLM correctly detected a different country, which
+          // meant a non-Canadian source's grant was always mis-tagged CA/CAD.
+          country: g.country ?? "CA",
+          currency: g.currency ?? "CAD",
           deadline: null,
           eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
           sectors: g.sectors ?? [],
@@ -565,8 +678,8 @@ export async function discoverFunderImpl(
         if (!ierr) {
           inserted++;
         } else if (/duplicate key/i.test(ierr.message)) {
-          // Concurrent processOne calls (SCRAPE_CONCURRENCY) can both read
-          // existing=null for the same program before either inserts —
+          // Concurrent processOne calls (bounded by cfg.scrapeConcurrency) can
+          // both read existing=null for the same program before either inserts —
           // that's a benign dedup race, not a real failure.
           seenAgain++;
         } else {
@@ -576,8 +689,8 @@ export async function discoverFunderImpl(
     }
 
     // Bounded concurrency.
-    for (let i = 0; i < candidates.length; i += SCRAPE_CONCURRENCY) {
-      await Promise.all(candidates.slice(i, i + SCRAPE_CONCURRENCY).map(processOne));
+    for (let i = 0; i < candidates.length; i += cfg.scrapeConcurrency) {
+      await Promise.all(candidates.slice(i, i + cfg.scrapeConcurrency).map(processOne));
     }
 
     await supabaseAdmin
@@ -632,14 +745,36 @@ export async function discoverFunderImpl(
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
+      // A self-identifying bot UA ("IIAL/0.1") gets blocked by WAFs several
+      // funder sites already run (confirmed: tradecommissioner.gc.ca 403s a
+      // generic UA); the same realistic browser UA already proven effective
+      // throughout web-fetch.server.ts/scrape-engine.server.ts is strictly
+      // better here and never worse.
       const res = await fetch(target, {
         signal: ctrl.signal,
-        headers: { "User-Agent": "IIAL/0.1 (+https://iial.ca)" },
+        headers: { "User-Agent": CHROME_UA },
       });
       if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
       return (await res.text()).slice(0, 350_000);
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  // If the plain fetch fails outright (network error, WAF block, timeout),
+  // fall back to the local headless-browser engine before giving up on the
+  // index page entirely — some funder index pages are JS-rendered SPAs where
+  // a bare fetch() never sees real content even on HTTP 200. Only used for
+  // the length/degraded-run gate below; link extraction still needs raw HTML
+  // anchor tags, which this markdown-only fallback can't provide, so sitemap
+  // + search seeding (below) remain the link sources when this path is hit.
+  async function fetchIndexTextViaBrowser(target: string): Promise<string | null> {
+    try {
+      const { renderWithBrowser } = await import("@/lib/browser-render.server");
+      const r = await renderWithBrowser(target, { timeoutMs: 25_000, minContentChars: 0 });
+      return r.ok ? r.markdown : null;
+    } catch {
+      return null;
     }
   }
   function htmlToText(html: string, max = 30_000): string {
@@ -651,11 +786,22 @@ export async function discoverFunderImpl(
       .trim()
       .slice(0, max);
   }
-  const PROGRAM_HINTS =
-    /(program|programme|fund(ing)?|grant|subvention|aide|prêt|pret|bourse|scholarship|prime|credit|crédit|incentive|loan)/i;
+  // Builds a keyword-alternation regex from a base pattern plus any
+  // admin-added keywords from discovery_config — identical to the original
+  // hardcoded regex when no extras are configured.
+  function withExtraKeywords(base: string, extra: string[]): RegExp {
+    const escaped = extra.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return new RegExp(`(${[base, ...escaped].join("|")})`, "i");
+  }
+  const PROGRAM_HINTS = withExtraKeywords(
+    "program|programme|fund(ing)?|grant|subvention|aide|prêt|pret|bourse|scholarship|prime|credit|crédit|incentive|loan",
+    cfg.extraProgramHintKeywords,
+  );
   // Negative patterns: obviously non-program pages we should never spend an LLM call on.
-  const NON_PROGRAM =
-    /(about|contact|press|news|blog|career|jobs|privacy|terms|legal|cookie|login|sign[-_]?in|sitemap|search|rss|feed|sponsor|commandite|salle[-_]de[-_]presse|nous[-_]joindre|tout[-_]sur[-_]nous|qui[-_]sommes|esg|publication|rapport|annual[-_]report|events?|evenements?|webinair|partners?|partenaires)/i;
+  const NON_PROGRAM = withExtraKeywords(
+    "about|contact|press|news|blog|career|jobs|privacy|terms|legal|cookie|login|sign[-_]?in|sitemap|search|rss|feed|sponsor|commandite|salle[-_]de[-_]presse|nous[-_]joindre|tout[-_]sur[-_]nous|qui[-_]sommes|esg|publication|rapport|annual[-_]report|events?|evenements?|webinair|partners?|partenaires",
+    cfg.extraNonProgramKeywords,
+  );
   function extractCandidateLinks(
     html: string,
     baseUrl: string,
@@ -702,17 +848,47 @@ export async function discoverFunderImpl(
 
   let indexHtml = "";
   let indexFetchError: string | null = null;
+  let indexViaBrowser = false;
   try {
     indexHtml = await fetchHtml(F.source_url, 10_000);
   } catch (e) {
     indexFetchError = e instanceof Error ? e.message : String(e);
   }
-  const indexText = htmlToText(indexHtml, 8_000);
+  let indexText = htmlToText(indexHtml, 8_000);
   const linksFromIndex = indexHtml ? extractCandidateLinks(indexHtml, F.source_url) : [];
+  // Plain fetch either failed outright or returned an empty/near-empty shell
+  // (common for JS-rendered SPA index pages, which still return HTTP 200).
+  // Try the local headless-browser engine so the degraded-run gate below
+  // reflects real page content rather than an unrendered shell. This can't
+  // recover link extraction (browser-render only exposes markdown, not raw
+  // HTML anchors), so sitemap + search seeding remain the link sources here.
+  if (indexText.length < 200) {
+    const rendered = await fetchIndexTextViaBrowser(F.source_url);
+    if (rendered && rendered.length > indexText.length) {
+      indexText = rendered.slice(0, 8_000);
+      indexViaBrowser = true;
+    }
+  }
 
-  // Seed extra candidates via Jina Search so we never depend on the funder's
-  // own navigation surfacing every program. This makes discovery resilient on
-  // sites that hide programs behind JS menus, filters, or pagination.
+  // A registration/login wall must be tracked, not just silently skipped as
+  // "page too short" — same category of content-blocker as a 404 or WAF
+  // block, but this one has a concrete resolution (a human signs up).
+  const { detectRegistrationWall, recordRegistrationGate } =
+    await import("@/lib/registration-gate.server");
+  const indexWall = detectRegistrationWall(indexText, F.source_url);
+  if (indexWall.blocked) {
+    await recordRegistrationGate(supabaseAdmin, {
+      funderId: F.id,
+      url: F.source_url,
+      reason: indexWall.reason,
+      snippet: indexWall.snippet,
+    });
+  }
+
+  // Seed extra candidates via the local search engine (SearXNG) so we never
+  // depend on the funder's own navigation surfacing every program. This
+  // makes discovery resilient on sites that hide programs behind JS menus,
+  // filters, or pagination.
   const seedHost = new URL(F.source_url).host;
   const seeded: Array<{ url: string; text: string; score: number }> = [];
   const searchSeeds: Array<{ query: string; ok: boolean; hits: number; error?: string }> = [];
@@ -722,7 +898,7 @@ export async function discoverFunderImpl(
       `site:${seedHost} eligibility deadline application`,
     ];
     for (const q of queries) {
-      const r = await jinaSearch(q, 15);
+      const r = await localWebSearch(q, 15);
       searchSeeds.push({
         query: q,
         ok: r.ok,
@@ -747,10 +923,10 @@ export async function discoverFunderImpl(
 
   const sitemapSeeded = await fetchCandidateLinksFromSitemaps(F.source_url, {
     title: F.name,
-    max: FALLBACK_MAX_LINKS,
+    max: cfg.fallbackMaxLinks,
   }).catch(() => []);
 
-  // Merge index + seeded, dedupe by URL, keep best score, cap at FALLBACK_MAX_LINKS.
+  // Merge index + seeded, dedupe by URL, keep best score, cap at fallbackMaxLinks.
   const merged = new Map<string, { url: string; text: string; score: number }>();
   for (const l of [...linksFromIndex, ...seeded, ...sitemapSeeded]) {
     const prev = merged.get(l.url);
@@ -758,7 +934,7 @@ export async function discoverFunderImpl(
   }
   const links = Array.from(merged.values())
     .sort((a, b) => b.score - a.score)
-    .slice(0, FALLBACK_MAX_LINKS);
+    .slice(0, cfg.fallbackMaxLinks);
 
   if (links.length === 0 && indexText.length < 200) {
     await supabaseAdmin.from("agent_runs").insert({
@@ -774,6 +950,7 @@ export async function discoverFunderImpl(
         funder_name: F.name,
         engine: "fallback",
         index_fetch_error: indexFetchError,
+        index_via_browser: indexViaBrowser,
         links_considered: 0,
       },
     });
@@ -796,8 +973,8 @@ export async function discoverFunderImpl(
   let ledgerFreshHits = 0;
   const pageFetchFailures: Array<{ url: string; reason: string }> = [];
   const pageSkipReasons: Record<string, number> = {};
-  for (let i = 0; i < links.length; i += SCRAPE_CONCURRENCY) {
-    const batch = links.slice(i, i + SCRAPE_CONCURRENCY);
+  for (let i = 0; i < links.length; i += cfg.scrapeConcurrency) {
+    const batch = links.slice(i, i + cfg.scrapeConcurrency);
     const results = await Promise.allSettled(
       batch.map(async (l) => {
         const decision = opts.forceRefresh
@@ -868,6 +1045,7 @@ export async function discoverFunderImpl(
         funder_name: F.name,
         engine: "fallback",
         index_fetch_error: indexFetchError,
+        index_via_browser: indexViaBrowser,
         links_from_index: linksFromIndex.length,
         links_from_search: seeded.length,
         links_from_sitemap: sitemapSeeded.length,
@@ -912,12 +1090,46 @@ export async function discoverFunderImpl(
     if (pi > 0) await sleep(FALLBACK_LLM_THROTTLE_MS);
     let pageGrants: z.infer<typeof DiscoveredGrant>[] = [];
 
+    // A login/registration wall on a candidate program page: track it for a
+    // human to sign up, and skip the LLM call entirely — extracting a
+    // "grant" from a login prompt would only produce noise or a hallucinated
+    // program.
+    const wall = detectRegistrationWall(doc.text, doc.url);
+    if (wall.blocked) {
+      await recordRegistrationGate(supabaseAdmin, {
+        funderId: F.id,
+        url: doc.url,
+        reason: wall.reason,
+        snippet: wall.snippet,
+      });
+      perPage.push({
+        url: doc.url,
+        found: 0,
+        inserted: 0,
+        reason: `registration_wall:${wall.reason}`,
+      });
+      continue;
+    }
+
     try {
       const llmPage = await callLlm({
         agent: "discoverer",
         runId,
         temperature: 0.1,
         responseFormat: "json",
+        // Schema guard (see the Path A callLlm above for the full rationale):
+        // this is the ACTIVE extraction loop — it runs on every real "Find
+        // new grants" click while Firecrawl is disabled — so a provider
+        // returning malformed JSON here used to mean the whole page's
+        // extraction failed instead of the chain advancing to a provider
+        // that could actually produce valid output.
+        validate: (text) => {
+          try {
+            return MultiPageOutput.safeParse(JSON.parse(text)).success;
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
@@ -929,11 +1141,15 @@ export async function discoverFunderImpl(
               `Funder: ${F.name}\nProgram page URL: ${doc.url}\n\nPage text:\n${doc.text}\n\n` +
               `Return JSON: { "grants": [ one entry describing THIS specific program with fields: ` +
               `"title", "title_fr"?, "summary"?, "summary_fr"?, "amount_cad_min"?, "amount_cad_max"?, ` +
-              `"deadline"?, "eligibility"?, "sectors"?, "language", "url" ] }. Use "${doc.url}" as the url. ` +
+              `"country"?, "currency"?, "deadline"?, "eligibility"?, "sectors"?, "language", "url" ] }. Use "${doc.url}" as the url. ` +
+              `Detect "country" (ISO 3166-1 alpha-2) and "currency" (ISO 4217) from context — do not assume Canada/CAD; ` +
+              `only default to CA/CAD when the page gives no signal at all. ` +
               `LANGUAGE RULE (CRITICAL): "title" and "summary" MUST always be in ENGLISH. ` +
               `If the source page is in French, translate them to natural English and put the ORIGINAL French ` +
-              `text in "title_fr" and "summary_fr". Set "language" to the source page language ("en" or "fr"). ` +
-              `Do not leave French strings in "title" or "summary". Translate "eligibility" values and "sectors" to English as well. ` +
+              `text in "title_fr" and "summary_fr". If the source page is in another language (Spanish, German, etc.), ` +
+              `translate "title" and "summary" to natural English directly (no _fr fields needed). ` +
+              `Set "language" to the source page's ISO 639-1 code (e.g. "en", "fr", "es", "de"). ` +
+              `Do not leave non-English strings in "title" or "summary". Translate "eligibility" values and "sectors" to English as well. ` +
               `If the page is not a specific funding program, return { "grants": [] }.`,
           },
         ],
@@ -963,6 +1179,18 @@ export async function discoverFunderImpl(
           runId,
           temperature: 0,
           responseFormat: "json",
+          // Lower-severity than the two extraction call sites above (a failed
+          // translation here just keeps the original text, never drops the
+          // grant), but still worth advancing past a provider that returns
+          // JSON without either expected string field.
+          validate: (text) => {
+            try {
+              const v = JSON.parse(text) as Record<string, unknown>;
+              return typeof v.title_en === "string" || typeof v.summary_en === "string";
+            } catch {
+              return false;
+            }
+          },
           messages: [
             {
               role: "system",
@@ -1007,8 +1235,13 @@ export async function discoverFunderImpl(
       }
       // Force page URL when the LLM omits it or returns the index URL.
       const effectiveUrl = g.url && g.url !== F.source_url ? g.url : doc.url;
-      if (isRootIndex(effectiveUrl) || isNonGrantUrl(effectiveUrl)) {
-        const reason = isNonGrantUrl(effectiveUrl) ? "non_grant_url" : "root_index";
+      if (
+        isRootIndex(effectiveUrl, cfg.extraRootIndexPaths) ||
+        isNonGrantUrl(effectiveUrl, cfg.extraNonGrantUrlPatterns)
+      ) {
+        const reason = isNonGrantUrl(effectiveUrl, cfg.extraNonGrantUrlPatterns)
+          ? "non_grant_url"
+          : "root_index";
         skipReasons[reason] = (skipReasons[reason] ?? 0) + 1;
         if (skippedSamples.length < 5)
           skippedSamples.push({ title: g.title, url: effectiveUrl, reason });
@@ -1019,11 +1252,38 @@ export async function discoverFunderImpl(
         .update(`${g.url && g.url !== F.source_url ? g.url : doc.url}|${g.title}`)
         .digest("hex");
       // Look up existing by canonical_key OR source_hash to absorb retries/dupes.
-      const { data: existing } = await supabaseAdmin
-        .from("grants")
-        .select("id, times_seen")
-        .or(`canonical_key.eq.${ck},source_hash.eq.${sourceHash}`)
-        .maybeSingle();
+      // Both of those are still title-derived, so an LLM re-paraphrasing the
+      // same program's title differently across runs slips past both (see
+      // canonicalKey's call site above for the confirmed real case: the same
+      // NRC "Outreach Initiative" URL discovered as 6 separate grants). A
+      // same-funder + exact-URL match is checked as a third, independent
+      // signal — but requires at least one shared normalized title word
+      // before being trusted alone, since some funder pages are generic/
+      // broken fallback URLs that several genuinely DIFFERENT programs share
+      // (confirmed live: "Strategic Response Fund", "Grant for Nunavut
+      // Employers", "Aboriginal Business Financing Program" and "First
+      // Peoples Economic Growth Fund" are real, distinct programs that all
+      // shared one such fallback URL — merging by URL alone would have
+      // silently discarded three real grants).
+      const [{ data: existingByKeyOrHash }, { data: existingByUrl }] = await Promise.all([
+        supabaseAdmin
+          .from("grants")
+          .select("id, times_seen")
+          .or(`canonical_key.eq.${ck},source_hash.eq.${sourceHash}`)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("grants")
+          .select("id, times_seen, title")
+          .eq("funder_id", F.id)
+          .eq("url", effectiveUrl)
+          .maybeSingle(),
+      ]);
+      const urlMatchSharesTitleWord =
+        existingByUrl &&
+        normalizeTitle((existingByUrl as { title?: string }).title ?? "")
+          .split(/\s+/)
+          .some((w) => w && normalizeTitle(g.title).split(/\s+/).includes(w));
+      const existing = existingByKeyOrHash ?? (urlMatchSharesTitleWord ? existingByUrl : null);
       if (existing) {
         await supabaseAdmin
           .from("grants")
@@ -1048,6 +1308,8 @@ export async function discoverFunderImpl(
         // guess.
         amount_cad_min: null,
         amount_cad_max: null,
+        country: g.country ?? "CA",
+        currency: g.currency ?? "CAD",
         deadline: null,
         eligibility: (g.eligibility ?? {}) as Record<string, unknown> as never,
         sectors: g.sectors ?? [],
@@ -1088,6 +1350,7 @@ export async function discoverFunderImpl(
       funder_name: F.name,
       engine: "fallback",
       index_fetch_error: indexFetchError,
+      index_via_browser: indexViaBrowser,
       links_extracted: links.length,
       pages_scraped: pageDocs.length,
       links_from_index: linksFromIndex.length,

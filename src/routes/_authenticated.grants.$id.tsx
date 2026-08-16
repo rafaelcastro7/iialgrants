@@ -5,16 +5,7 @@ import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-
 import { useServerFn } from "@tanstack/react-start";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import {
-  Activity,
-  ArrowLeft,
-  Building2,
-  Calendar,
-  DollarSign,
-  ExternalLink,
-  Globe,
-  Tag,
-} from "lucide-react";
+import { Activity, ArrowLeft, Building2, Calendar, DollarSign, Globe, Tag } from "lucide-react";
 import { runEvaluator } from "@/agents/evaluator.functions";
 import { runStrategist } from "@/agents/strategist.functions";
 import { AgentTracePanel } from "@/components/grants/AgentTracePanel";
@@ -23,6 +14,7 @@ import { EvaluationDetail } from "@/components/grants/EvaluationDetail";
 import { EvidenceChip, EvidencePanel } from "@/components/grants/EvidencePanel";
 import { FetchTrailPanel } from "@/components/grants/FetchTrailPanel";
 import { FitEvaluation } from "@/components/grants/FitEvaluation";
+import type { AxisScore } from "@/agents/fit-rules.shared";
 import { FreshnessBadges } from "@/components/grants/FreshnessBadges";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import { OpportunityBriefPanel } from "@/components/grants/OpportunityBriefPanel";
@@ -30,8 +22,9 @@ import { SelfCheckBanner } from "@/components/grants/SelfCheckBanner";
 import { V2GrantDetail } from "@/components/v2/V2GrantDetail";
 import { useUiVersion } from "@/components/v2/ui-version";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { getGrantDetail } from "@/lib/grant-detail.functions";
 import { enrichGrant, markGrantsCurated } from "@/lib/grants.functions";
 import { createShareLink } from "@/lib/share-report.functions";
@@ -342,16 +335,13 @@ function GrantDetailPage() {
           {viewMode === "advanced" && (
             <div className="flex flex-wrap items-center gap-2">
               {g.url && (
-                <Button asChild size="sm">
-                  <a href={g.url} target="_blank" rel="noopener noreferrer">
-                    Open funder page
-                    <ExternalLink className="ml-1 h-4 w-4" />
-                  </a>
-                </Button>
+                <ExternalLinkPreview url={g.url} className={buttonVariants({ size: "sm" })}>
+                  Open funder page
+                </ExternalLinkPreview>
               )}
               <Button asChild variant="outline" size="sm">
                 <Link to="/grants/$id/audit" params={{ id }}>
-                  Audit trail
+                  Scoring details
                 </Link>
               </Button>
               <Button variant="outline" size="sm" disabled={busy === "share"} onClick={onShare}>
@@ -527,26 +517,20 @@ function GrantDetailPage() {
                     <span className="font-medium text-muted-foreground">Official links</span>
                     <div className="flex flex-col gap-1.5">
                       {g.url && (
-                        <a
-                          href={g.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <ExternalLinkPreview
+                          url={g.url}
                           className="inline-flex w-fit items-center gap-1 underline"
                         >
                           Official grant page
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                        </ExternalLinkPreview>
                       )}
                       {g.funder?.source_url && g.funder.source_url !== g.url && (
-                        <a
-                          href={g.funder.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <ExternalLinkPreview
+                          url={g.funder.source_url}
                           className="inline-flex w-fit items-center gap-1 underline"
                         >
                           Funder website
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                        </ExternalLinkPreview>
                       )}
                     </div>
                   </div>
@@ -584,6 +568,7 @@ function GrantDetailPage() {
                     rationale_en: string;
                     rationale_fr: string;
                     created_at: string;
+                    axis_breakdown?: AxisScore[] | null;
                   } | null
                 }
                 fr={false}
@@ -689,15 +674,12 @@ function GrantDetailPage() {
             </Card>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-              <a
-                href={g.url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <ExternalLinkPreview
+                url={g.url}
                 className="inline-flex items-center gap-1 text-sm underline"
               >
                 {t("grants.source")}
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+              </ExternalLinkPreview>
               <div className="flex flex-wrap gap-2">
                 {g.status !== "discovered" && (
                   <NotebookLMBridge grantId={id} label="Send to NotebookLM" />

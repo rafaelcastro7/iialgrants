@@ -16,6 +16,7 @@ import {
   Gavel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AxisScore } from "@/agents/fit-rules.shared";
 
 type Stage = "discovered" | "enriched" | "evaluated" | "verdict";
 
@@ -30,9 +31,22 @@ interface Props {
     rationale_en: string;
     rationale_fr: string;
     created_at: string;
+    axis_breakdown?: AxisScore[] | null;
   } | null;
   isEvaluating?: boolean;
   fr?: boolean;
+}
+
+// A high score computed from only 1-2 evaluable factors reads as more
+// confident than it should — the same 100% pass rate on 2 known factors and
+// on 6 known factors are NOT equally trustworthy, but a bare score doesn't
+// say so. Surfaces "assessed 2 of 6 factors" next to the score whenever
+// coverage is thin, instead of letting a high number imply more certainty
+// than the underlying data supports.
+function coverage(axes: AxisScore[] | null | undefined) {
+  if (!axes || axes.length === 0) return null;
+  const assessed = axes.filter((a) => a.status !== "na").length;
+  return { assessed, total: axes.length };
 }
 
 const STAGE_ORDER: Stage[] = ["discovered", "enriched", "evaluated", "verdict"];
@@ -68,7 +82,12 @@ function tier(score: number) {
       bg: "bg-emerald-50 dark:bg-emerald-950/40",
       icon: Trophy,
     };
-  if (score >= 0.4)
+  // 0.45, not 0.4 — must match GrantDetailExpress.tsx/V2GrantDetail.tsx/
+  // GrantExpressView.tsx's "possible/partial fit" boundary. This one was
+  // out of sync (0.4): the same grant at a 0.40-0.449 fit_score showed
+  // "partial fit" here but the lower "poor fit" tier in every sibling
+  // component that also renders a fit badge for the same grant.
+  if (score >= 0.45)
     return {
       key: "partial",
       color: "text-amber-600",
@@ -180,6 +199,8 @@ export function FitEvaluation(props: Props) {
   const t = e ? tier(e.fit_score) : null;
   const VerdictIcon = t?.icon;
   const [open, setOpen] = useState(false);
+  const cov = e ? coverage(e.axis_breakdown) : null;
+  const thinCoverage = cov !== null && cov.assessed / cov.total < 0.5;
 
   const stageTs: Record<Stage, string | null> = {
     discovered: props.discoveredAt,
@@ -260,6 +281,13 @@ export function FitEvaluation(props: Props) {
                   {e.eligibility_pass ? L.eligiblePass : L.eligibleFail}
                 </span>
               </div>
+              {thinCoverage && cov && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-500">
+                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                  Based on {cov.assessed} of {cov.total} factors — the rest need more info to
+                  assess. Treat this score as preliminary.
+                </p>
+              )}
               <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {L.rationale}
               </p>

@@ -1,9 +1,126 @@
 // Adaptive recrawl cadence math (Nutch-style). These tests stub the
 // supabaseAdmin client so they don't touch the network.
+//
+// recordFetch()'s actual read-modify-write now happens atomically inside
+// the record_crawl_fetch() Postgres function (supabase/migrations/
+// 20260722130000_crawl_ledger_record_fetch_rpc.sql), serialized per-URL via
+// an advisory lock. The mock's `rpc()` below mirrors that function's exact
+// contract — including simulating the read/write gap that used to let two
+// overlapping calls race — so the concurrency test below actually exercises
+// the same lock/serialize behavior the SQL function provides. This was
+// verified independently against a real local Postgres instance running the
+// migration (two concurrent calls → fetch_count reflects both, second call
+// sees the first's committed write instead of a stale read).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // In-memory ledger state.
 let store = new Map<string, Record<string, unknown>>();
+// Per-URL advisory-lock analog: queues concurrent rpc() calls for the same
+// URL so they run sequentially, matching pg_advisory_xact_lock in the SQL
+// function.
+let locks = new Map<string, Promise<unknown>>();
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.min(Math.max(n, lo), hi);
+}
+
+async function withUrlLock<T>(url: string, fn: () => Promise<T>): Promise<T> {
+  const prev = locks.get(url) ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  locks.set(
+    url,
+    run.catch(() => undefined),
+  );
+  return run;
+}
+
+// Mirrors record_crawl_fetch()'s cadence logic 1:1 against the in-memory
+// store, but — critically — awaits between reading the previous row and
+// writing the new one, simulating the real network round-trip gap where the
+// old JS implementation's race lived. Without the withUrlLock() wrapper
+// above, two concurrent calls for the same URL would both read the stale
+// row here, exactly reproducing the bug this migration fixes.
+async function recordCrawlFetchRpc(params: Record<string, unknown>) {
+  const url = params.p_url as string;
+  return withUrlLock(url, async () => {
+    const prevRow = store.get(url) as
+      | {
+          content_hash: string | null;
+          interval_hours: number;
+          change_count: number;
+          fetch_count: number;
+          error_count: number;
+        }
+      | undefined;
+
+    // Simulate the async I/O gap between the read and the write.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const prevInterval = prevRow?.interval_hours ?? (params.p_default_interval as number) ?? 24;
+    const changeCount = prevRow?.change_count ?? 0;
+    const fetchCount = (prevRow?.fetch_count ?? 0) + 1;
+    let errorCount = prevRow?.error_count ?? 0;
+    let outHash = prevRow?.content_hash ?? null;
+    let status: string;
+    let nextIntervalHours: number;
+    let changed = false;
+    let changeCountNext = changeCount;
+
+    const kind = params.p_outcome_kind as string;
+    if (kind === "ok") {
+      const newHash = params.p_content_hash as string;
+      if (prevRow?.content_hash && prevRow.content_hash !== newHash) {
+        status = "changed";
+        changed = true;
+        changeCountNext += 1;
+        nextIntervalHours = clamp(Math.floor(prevInterval * 0.5), 6, 336);
+      } else if (prevRow?.content_hash === newHash) {
+        status = "unchanged";
+        nextIntervalHours = clamp(Math.floor(prevInterval * 1.5), 24, 336);
+      } else {
+        status = "ok";
+        nextIntervalHours = 24;
+      }
+      outHash = newHash;
+    } else if (kind === "not_modified") {
+      status = "unchanged";
+      nextIntervalHours = clamp(Math.floor(prevInterval * 1.5), 24, 336);
+    } else if (kind === "gone") {
+      status = "gone";
+      nextIntervalHours = 720;
+    } else if (kind === "blocked") {
+      status = "blocked";
+      nextIntervalHours = 168;
+    } else if (kind === "error") {
+      status = "error";
+      errorCount += 1;
+      nextIntervalHours = clamp(Math.floor(prevInterval * 2), 24, 168);
+    } else {
+      throw new Error(`invalid_outcome_kind: ${kind}`);
+    }
+
+    const nextFetchAt = new Date(Date.now() + nextIntervalHours * 3600_000).toISOString();
+    store.set(url, {
+      url,
+      content_hash: outHash,
+      interval_hours: nextIntervalHours,
+      change_count: changeCountNext,
+      fetch_count: fetchCount,
+      error_count: errorCount,
+      status,
+      next_fetch_at: nextFetchAt,
+    });
+
+    return {
+      next_fetch_at: nextFetchAt,
+      status,
+      changed,
+      interval_hours: nextIntervalHours,
+      content_hash: outHash,
+    };
+  });
+}
 
 vi.mock("@/integrations/supabase/client.server", () => {
   const builder = {
@@ -25,18 +142,24 @@ vi.mock("@/integrations/supabase/client.server", () => {
       const url = this._filters["url"] as string;
       return Promise.resolve({ data: store.get(url) ?? null, error: null });
     },
-    upsert(row: Record<string, unknown>) {
-      store.set(row.url as string, row);
-      return Promise.resolve({ error: null });
+  };
+  return {
+    supabaseAdmin: {
+      from: (t: string) => builder.from(t),
+      rpc: (fn: string, params: Record<string, unknown>) => {
+        if (fn !== "record_crawl_fetch") throw new Error(`unexpected rpc: ${fn}`);
+        const p = recordCrawlFetchRpc(params).then((row) => ({ data: row, error: null }));
+        return { single: () => p };
+      },
     },
   };
-  return { supabaseAdmin: { from: (t: string) => builder.from(t) } };
 });
 
 import { shouldFetch, recordFetch } from "@/lib/crawl-ledger.server";
 
 beforeEach(() => {
   store = new Map();
+  locks = new Map();
 });
 
 describe("crawl-ledger cadence", () => {
@@ -98,5 +221,42 @@ describe("crawl-ledger cadence", () => {
     const d = await shouldFetch("https://x.test/f");
     expect(d.fetch).toBe(false);
     if (!d.fetch) expect(d.reason).toBe("not_due_yet");
+  });
+
+  it("concurrent recordFetch calls for the same URL don't lose updates", async () => {
+    // Two overlapping discovery runs hit the same brand-new URL at once
+    // (e.g. a scheduled run overlapping a manual "Find new grants" click).
+    // Without per-URL serialization, both would read the same (empty)
+    // previous row and one upsert would silently clobber the other's
+    // fetch_count/change_count — this is the exact race that was fixed by
+    // moving the read-modify-write into an atomically-locked SQL function.
+    //
+    // Start call A, then start call B before A has committed — B must still
+    // start strictly after A's own `await import(...)` has resolved (a
+    // setTimeout tick apart) so this exercises overlap in the actual
+    // read-modify-write critical section rather than two `import()` calls
+    // racing in the same microtask, which is a Vitest module-loader quirk
+    // unrelated to the production race this test targets.
+    const p1 = recordFetch("https://x.test/race", {
+      kind: "ok",
+      markdown: "version A",
+      via: "scrape_engine",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const p2 = recordFetch("https://x.test/race", {
+      kind: "ok",
+      markdown: "version B",
+      via: "scrape_engine",
+    });
+    const [r1, r2] = await Promise.all([p1, p2]);
+
+    const final = store.get("https://x.test/race") as { fetch_count: number; change_count: number };
+    // Both calls' increments must land — a lost update would leave this at 1.
+    expect(final.fetch_count).toBe(2);
+    // Whichever call was serialized second must have seen the first's
+    // committed write and correctly detected a content change.
+    expect(final.change_count).toBe(1);
+    const statuses = [r1.status, r2.status].sort();
+    expect(statuses).toEqual(["changed", "ok"]);
   });
 });

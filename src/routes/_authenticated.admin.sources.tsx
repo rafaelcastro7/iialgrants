@@ -9,6 +9,8 @@ import {
   runDiscoveryTier,
   promoteStaleCandidates,
   recentSourceRuns,
+  listRegistrationGates,
+  resolveRegistrationGate,
 } from "@/lib/admin-sources.functions";
 import { funderActivityRollup, type FunderActivityRow } from "@/lib/admin-sources-audit.functions";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CrawlLedgerWidget } from "@/components/admin/CrawlLedgerWidget";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
 
 export const Route = createFileRoute("/_authenticated/admin/sources")({
@@ -77,6 +80,19 @@ type RunRow = {
   run_at: string;
 };
 
+type RegistrationGateRow = {
+  id: string;
+  funder_id: string | null;
+  url: string;
+  reason: string;
+  snippet: string | null;
+  status: string;
+  first_detected_at: string;
+  last_detected_at: string;
+  times_seen: number;
+  funders: { name: string } | null;
+};
+
 function SourcesPage() {
   const listFn = useServerFn(listDiscoverySources);
   const toggleFn = useServerFn(setSourceEnabled);
@@ -84,6 +100,8 @@ function SourcesPage() {
   const promoteFn = useServerFn(promoteStaleCandidates);
   const runsFn = useServerFn(recentSourceRuns);
   const funderFn = useServerFn(funderActivityRollup);
+  const gatesFn = useServerFn(listRegistrationGates);
+  const resolveGateFn = useServerFn(resolveRegistrationGate);
   const [busy, setBusy] = useState<string | null>(null);
 
   const q = useQuery({
@@ -99,6 +117,22 @@ function SourcesPage() {
     queryFn: () => funderFn(),
     refetchInterval: 30_000,
   });
+  const qGates = useQuery({
+    queryKey: ["admin-registration-gates"],
+    queryFn: () => gatesFn(),
+  });
+
+  async function resolveGate(id: string, status: "registered" | "not_needed") {
+    setBusy(`gate:${id}`);
+    try {
+      await resolveGateFn({ data: { id, status } });
+      qGates.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const sources: SourceRow[] = q.data?.sources ?? [];
   const health: HealthRow[] = q.data?.health ?? [];
@@ -182,11 +216,100 @@ function SourcesPage() {
             <Link to="/admin/candidates">
               <Button variant="ghost">View candidates →</Button>
             </Link>
+            <Link to="/admin/discovery-config">
+              <Button variant="ghost">Configure search →</Button>
+            </Link>
           </>
         }
       />
 
       <CrawlLedgerWidget />
+
+      {(() => {
+        const gates: RegistrationGateRow[] = qGates.data ?? [];
+        const pending = gates.filter((g) => g.status === "pending");
+        if (gates.length === 0) return null;
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Needs manual sign-up ({pending.length} pending)
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Pages that gated content behind a login/registration wall during discovery. This
+                system never creates accounts on external sites — sign up yourself, then mark the
+                row resolved so discovery stops flagging it.
+              </p>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Funder</TableHead>
+                    <TableHead>URL</TableHead>
+                    <TableHead>Why</TableHead>
+                    <TableHead>Seen</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {gates.map((g) => (
+                    <TableRow key={g.id} className={g.status !== "pending" ? "opacity-50" : ""}>
+                      <TableCell>{g.funders?.name ?? "—"}</TableCell>
+                      <TableCell className="max-w-xs">
+                        <ExternalLinkPreview
+                          url={g.url}
+                          showIcon={false}
+                          className="text-xs truncate block hover:underline"
+                        >
+                          {g.url}
+                        </ExternalLinkPreview>
+                      </TableCell>
+                      <TableCell className="text-xs max-w-xs truncate" title={g.snippet ?? ""}>
+                        {g.reason === "redirected_to_login_url"
+                          ? "Redirected to a login page"
+                          : "Login-wall text detected"}
+                        {g.snippet && <div className="text-muted-foreground">{g.snippet}</div>}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {g.times_seen}x · {new Date(g.last_detected_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={g.status === "pending" ? "secondary" : "default"}>
+                          {g.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-1">
+                        {g.status === "pending" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busy !== null}
+                              onClick={() => resolveGate(g.id, "registered")}
+                            >
+                              Registered
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={busy !== null}
+                              onClick={() => resolveGate(g.id, "not_needed")}
+                            >
+                              Not needed
+                            </Button>
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {Object.keys(TIER_LABEL).map((tier) => {
         const rows = byTier[tier] ?? [];
@@ -303,14 +426,13 @@ function SourcesPage() {
                     <TableCell>
                       <div className="font-medium">{f.funder_name}</div>
                       {f.source_url && (
-                        <a
-                          href={f.source_url}
-                          target="_blank"
-                          rel="noreferrer"
+                        <ExternalLinkPreview
+                          url={f.source_url}
+                          showIcon={false}
                           className="text-xs text-muted-foreground hover:underline truncate block max-w-xs"
                         >
                           {f.source_url}
-                        </a>
+                        </ExternalLinkPreview>
                       )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{f.grants_total}</TableCell>

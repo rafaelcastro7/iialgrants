@@ -31,7 +31,7 @@ export const getProposal = createServerFn({ method: "GET" })
       context.supabase
         .from("proposal_sections")
         .select(
-          "id, kind, ord, heading_en, heading_fr, content_en, content_fr, citations, critic_notes",
+          "id, kind, ord, heading_en, heading_fr, content_en, content_fr, citations, critic_notes, human_edited",
         )
         .eq("proposal_id", data.id)
         .order("ord", { ascending: true }),

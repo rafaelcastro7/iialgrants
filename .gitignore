@@ -51,5 +51,13 @@ scripts/.gpu.lock
 scripts/.pids/
 scripts/.supervisor.pid
 scripts/.watchdog-state.json
-[
-]+.env
+
+# Environment files - never commit (secrets). Use .env.example as the template.
+.env
+.env.*
+!.env.example
+
+# git filter-branch's own scratch directory — accidentally committed once by
+# the auto-sync script's `git add -A` while a prior filter-branch run was
+# mid-flight and left this behind in the working tree.
+.git-rewrite/

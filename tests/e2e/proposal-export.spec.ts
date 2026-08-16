@@ -9,14 +9,29 @@ const FUNDER_ID = "20000000-0000-0000-0000-000000000001";
 const GRANT_ID = "20000000-0000-0000-0000-000000000002";
 const PROPOSAL_ID = "20000000-0000-0000-0000-000000000003";
 
-function loadLocalEnv() {
-  const envPath = join(process.cwd(), ".env");
-  if (!existsSync(envPath)) return;
-  for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+// Real bug, confirmed live: this only ever read `.env`, never `.env.local` —
+// so this fixture always pointed at `.env`'s SUPABASE_URL (the cloud
+// project) while the rest of the app (via Vite's own .env.local > .env
+// precedence) talks to the local Supabase stack. Every run failed with
+// "Invalid API key" because the local-signed SERVICE_ROLE_KEY doesn't
+// validate against the cloud project's JWT secret — and a fixed env var
+// would have made it worse by seeding real production data instead.
+// Loading `.env` first and letting `.env.local` overwrite matches Vite's
+// precedence, so this fixture targets the same backend the app under test
+// does.
+function loadEnvFile(path: string, override: boolean) {
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
     const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (!match || process.env[match[1]]) continue;
+    if (!match) continue;
+    if (!override && process.env[match[1]]) continue;
     process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
   }
+}
+
+function loadLocalEnv() {
+  loadEnvFile(join(process.cwd(), ".env"), false);
+  loadEnvFile(join(process.cwd(), ".env.local"), true);
 }
 
 function captureBrowserErrors(page: Page) {

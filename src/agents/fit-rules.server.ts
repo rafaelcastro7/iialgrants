@@ -44,6 +44,10 @@ export type RulesResult = {
   combined_score: (llmScore: number) => number;
   pass: (llmScore: number) => boolean;
   detected_role: "lead" | "partner" | "unknown";
+  // Only meaningful when detected_role === "partner" — which KIND of partner
+  // the eligibility text implies, so the brief can say "you'll need a
+  // municipal co-applicant" instead of just "partner".
+  detected_partner_type: "municipality" | "first_nation" | "co_applicant" | "other" | null;
   cost_share_pct: number | null;
   rolling_intake: boolean;
 };
@@ -175,7 +179,16 @@ function buildHaystack(g: GrantForRules): string {
       g.summary ?? "",
       g.title ?? "",
     ].join(" "),
-  ).replace(/[_/]+/g, " ");
+    // Underscore-stripping matters here: JS's native \b treats "_" as a word
+    // character, so "in_the_middle" would never get a boundary around
+    // "the" without this. "/" must NOT be stripped the same way — it broke
+    // detectCostShare()'s ratio pattern (e.g. "50/50", "70/30") by turning
+    // "50/50" into "50 50" before the regex ever saw it, silently making
+    // that entire detection path dead code. containsAny/overlap's
+    // Unicode-boundary regex already treats "/" as a boundary on its own
+    // (it isn't \p{L} or \p{N}), so nothing downstream needed the slash
+    // replaced with a space in the first place.
+  ).replace(/_+/g, " ");
 }
 
 function detectRole(hay: string): "lead" | "partner" | "unknown" {
@@ -188,6 +201,21 @@ function detectRole(hay: string): "lead" | "partner" | "unknown" {
   if (lead && !partner) return "lead";
   if (partner && lead) return "lead"; // prefer lead when both signals (IIAL is an org)
   return "unknown";
+}
+
+// Which kind of partner the eligibility text implies — thrown away previously
+// (detectRole collapsed everything to a bare "partner" enum), but this is the
+// difference between "find a municipality" and "find a First Nation" as the
+// next concrete step, so it's worth a second, more specific pass.
+export function detectPartnerType(
+  hay: string,
+): "municipality" | "first_nation" | "co_applicant" | "other" {
+  if (/\b(first nation|indigenous|premi[eè]re nation|autochtone)\b/.test(hay))
+    return "first_nation";
+  if (/\b(municipal(ity|ities)?|city of|town of|municipalit[ée]s?)\b/.test(hay))
+    return "municipality";
+  if (/\b(co-?applicant|joint application|consortium)\b/.test(hay)) return "co_applicant";
+  return "other";
 }
 
 /**
@@ -325,6 +353,7 @@ export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date(
   const grantCountry = (g.country ?? "").trim();
   const hay = buildHaystack(g);
   const detected_role = detectRole(hay);
+  const detected_partner_type = detected_role === "partner" ? detectPartnerType(hay) : null;
   const cost_share_pct = detectCostShare(hay);
   const rolling_intake = isRollingIntake(hay, g.deadline);
 
@@ -614,6 +643,7 @@ export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date(
     combined_score,
     pass,
     detected_role,
+    detected_partner_type,
     cost_share_pct,
     rolling_intake,
   };

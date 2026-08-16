@@ -13,6 +13,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseAdmin } from "./supabase-admin";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSafeExternalUrl } from "./external-preview.shared";
 import type { Database, Json } from "@/integrations/supabase/types";
 
 type FunderUpdate = Database["public"]["Tables"]["funders"]["Update"];
@@ -116,9 +117,17 @@ export const enrichFunder = createServerFn({ method: "POST" })
         return { success: false, error: "Funder not found" };
       }
 
+      // Real bug, confirmed: this fetched whatever URL was passed with no
+      // host validation — an authenticated user could pass
+      // "http://169.254.169.254/latest/meta-data/..." or an internal
+      // docker-compose service and the server would fetch it and echo back
+      // scraped fragments (SSRF / internal network reconnaissance). Reuse
+      // the same allowlist external-preview.shared.ts already enforces for
+      // link previews instead of introducing a second, divergent check.
+      const targetUrl = funder.website || data.website;
       let websiteData = null;
-      if (funder.website || data.website) {
-        websiteData = await scrapeFunderWebsite(funder.website || data.website!);
+      if (targetUrl && isSafeExternalUrl(targetUrl)) {
+        websiteData = await scrapeFunderWebsite(targetUrl);
       }
 
       const updates: FunderUpdate = {

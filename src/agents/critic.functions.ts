@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CriticOutput, PROMPTS } from "@/agents/schemas";
 import { bumpProposalVersion } from "@/lib/proposal-versioning";
+import { detectAiCliches } from "@/agents/genericity-check.shared";
 
 export const runCritic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -42,6 +43,16 @@ export const runCritic = createServerFn({ method: "POST" })
         runId,
         temperature: 0.1,
         responseFormat: "json",
+        // Schema guard: if a provider returns 200 but JSON that fails the
+        // CriticOutput schema (e.g. Cerebras gemma-4-31b omitting overall_score),
+        // fall through to the next provider (Groq llama-3.3-70b) / local model.
+        validate: (text) => {
+          try {
+            return CriticOutput.safeParse(JSON.parse(text)).success;
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
@@ -93,6 +104,22 @@ export const runCritic = createServerFn({ method: "POST" })
     const validIds = new Set((sections ?? []).map((s) => s.id));
     const findings = parsed.findings.filter((f) => validIds.has(f.section_id));
 
+    // Deterministic homogenization check, independent of the LLM's own
+    // judgment — an LLM can miss generic phrasing it would itself produce.
+    // Real reviewers name this as the #1 tell of an AI-drafted proposal, so
+    // it's checked with a fixed pattern list, not left to the model's mood.
+    for (const s of sections ?? []) {
+      const hits = detectAiCliches(s.content_en ?? "");
+      for (const hit of hits) {
+        findings.push({
+          section_id: s.id,
+          severity: "warn",
+          message_en: `Sounds AI-generic ("${hit.snippet}") — a reviewer who reads many proposals will recognize this pattern. Rewrite with a concrete, org-specific detail instead.`,
+          message_fr: "",
+        });
+      }
+    }
+
     const { error: ue } = await context.supabase
       .from("proposals")
       .update({
@@ -100,6 +127,7 @@ export const runCritic = createServerFn({ method: "POST" })
         metadata: {
           critic_summary_en: parsed.summary_en,
           critic_summary_fr: parsed.summary_fr,
+          critic_rubric: parsed.rubric,
           critic_run: runId,
         } as never,
       })

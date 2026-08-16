@@ -13,6 +13,13 @@ import {
   type GrantForRules,
 } from "@/agents/fit-rules.server";
 
+const PARTNER_TYPE_LABEL: Record<string, string> = {
+  municipality: "a municipality (city or town)",
+  first_nation: "a First Nation",
+  co_applicant: "a co-applicant partner",
+  other: "a partner organization",
+};
+
 export type Brief = {
   program_snapshot: {
     funder: string | null;
@@ -24,8 +31,21 @@ export type Brief = {
     intake: "fixed" | "rolling" | "unknown";
   };
   iial_role: "lead" | "partner" | "unknown";
+  // Plain-language answer to "what partner do I need?" — merges the
+  // deterministic role/partner-type detection into one sentence instead of
+  // leaving the reader to interpret a bare "partner" badge themselves.
+  partner: {
+    needed: boolean;
+    type: "municipality" | "first_nation" | "co_applicant" | "other" | null;
+    note: string;
+  };
   strategic_angle: string;
   mandatory_components: string[];
+  // Single merged "what do I need to apply" checklist — combines the
+  // LLM-drafted mandatory_components with the grant's own extracted
+  // requirements (previously two disconnected lists the reader had to
+  // reconcile themselves across two different UI sections).
+  application_checklist: string[];
   money: {
     request_amount: number | null;
     match_required_pct: number | null;
@@ -52,7 +72,7 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
       supabase
         .from("grants")
         .select(
-          "id, title, summary, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, url, funder:funders(name)",
+          "id, title, summary, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, country, url, requirements, funder:funders(name)",
         )
         .eq("id", grantId)
         .maybeSingle(),
@@ -87,45 +107,76 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
 
     if (hardFails.length > 0) {
       verdict = "no_go";
-      reason = `Hard-fail en ${hardFails.length} filtro(s): ${hardFails.map((c) => c.label).join("; ")}`;
+      reason = `Hard fail on ${hardFails.length} filter(s): ${hardFails.map((c) => c.label).join("; ")}`;
     } else if (softFails.length > 0 || warnings.length > 0) {
       verdict = "go_conditional";
-      reason = `${softFails.length} fallo(s) soft + ${warnings.length} aviso(s); requiere validación de liderazgo`;
+      reason = `${softFails.length} soft fail(s) + ${warnings.length} warning(s); needs leadership review`;
       for (const c of [...softFails, ...warnings]) conditions.push(`${c.label}: ${c.detail}`);
     } else {
       verdict = "go";
-      reason = `${rr.checks.length} filtros pasados; rule_score=${rr.rule_score}/100`;
+      reason = `${rr.checks.length} filters passed; rule score ${rr.rule_score}/100`;
+    }
+
+    // Experienced grant writers apply an "~80% fit or don't apply" discipline
+    // and treat pre-submission contact with the program officer as the
+    // highest-return activity before drafting begins — a borderline pass
+    // (rule score under 80) is exactly the case where that quick check pays
+    // off most, before investing writer/critic time on a marginal fit.
+    if (verdict !== "no_go" && rr.rule_score < 80) {
+      conditions.push(
+        `Borderline fit (rule score ${rr.rule_score}/100, below the ~80% experienced grant-writers use as a go/no-go line) — consider confirming alignment with the funder's program officer before drafting`,
+      );
+      if (verdict === "go") verdict = "go_conditional";
     }
 
     if (rr.cost_share_pct !== null && rr.cost_share_pct > 0 && rules.require_match_verification) {
-      conditions.push(
-        `Verificar disponibilidad de cash match (~${rr.cost_share_pct}%) con liderazgo`,
-      );
+      conditions.push(`Confirm cash-match availability (~${rr.cost_share_pct}%) with leadership`);
       if (verdict === "go") verdict = "go_conditional";
     }
 
     // Narrative parts via single cheap LLM call (Groq llama-3.3-70b — free)
     const { callLlm } = await import("@/agents/llm.server");
     const { newRunId } = await import("@/lib/otel");
+    const orgName = org?.org_name?.trim() || "your organization";
     const runId = newRunId();
     let strategic_angle = "—";
     let mandatory_components: string[] = [];
     let risks: string[] = [];
     try {
       const llm = await callLlm({
-        model: "groq/llama-3.3-70b-versatile",
+        // A "groq/llama-3.3-70b-versatile" model override used to sit here,
+        // but callLlm's cloud path (the default, cloud-first) never forwards
+        // opts.model to callCloudLlm at all — it silently had zero effect and
+        // this call went through the normal Cerebras->Groq->Gemini chain
+        // regardless. Removed rather than wiring a new "pin to one provider"
+        // capability that no other call site uses or needs.
         agent: "strategist",
         runId,
         temperature: 0.2,
         responseFormat: "json",
+        // Loose shape guard (no Zod schema here, just the 3 expected keys) so
+        // a provider returning something else entirely advances the chain
+        // instead of silently producing an empty/garbage brief section.
+        validate: (text) => {
+          try {
+            const v = JSON.parse(text) as Record<string, unknown>;
+            return (
+              typeof v.strategic_angle === "string" ||
+              Array.isArray(v.mandatory_components) ||
+              Array.isArray(v.risks)
+            );
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
             content:
-              "You generate one section of an IIAL Opportunity Brief (SOP v2). " +
+              `You generate one section of an Opportunity Brief (SOP v2) for ${orgName}. ` +
               "Return strict JSON: {strategic_angle:string, mandatory_components:string[], risks:string[]}. " +
               "Output language: ENGLISH only. " +
-              "strategic_angle = 2-3 sentences explaining which IIAL capability this program leverages and what we gain. " +
+              `strategic_angle = 2-3 sentences explaining which of ${orgName}'s capabilities this program leverages and what they gain. ` +
               "mandatory_components = bullet list of required studies/assessments/deliverables explicitly named in the grant. " +
               "risks = bullet list of eligibility ambiguities, capacity constraints, or open questions. " +
               "Never invent: if unknown, return an empty array.",
@@ -163,6 +214,35 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
 
     const funderName = (g.funder as { name?: string } | null)?.name ?? null;
 
+    const partnerNote =
+      rr.detected_role === "partner"
+        ? `You'll likely need to apply alongside ${PARTNER_TYPE_LABEL[rr.detected_partner_type ?? "other"]} — the eligibility text implies ${orgName} can't apply alone.`
+        : rr.detected_role === "lead"
+          ? `${orgName} can apply as the lead applicant — no partner appears to be required.`
+          : "Role unclear from the eligibility text — confirm with the funder before applying.";
+
+    // Merge the LLM-drafted mandatory components with the grant's own
+    // extracted requirements into one de-duplicated checklist, so the reader
+    // sees a single "what do I need" list instead of two separate sections
+    // that may repeat or contradict each other.
+    type RequirementRow = { requirement?: string; category?: string; isCritical?: boolean };
+    const extractedRequirements = (
+      Array.isArray((g as { requirements?: unknown }).requirements)
+        ? ((g as { requirements: RequirementRow[] }).requirements ?? [])
+        : []
+    )
+      .filter((r) => typeof r.requirement === "string" && r.requirement.trim())
+      .map((r) => (r.isCritical ? `${r.requirement} (critical)` : r.requirement!));
+    const seenChecklist = new Set<string>();
+    const application_checklist = [...extractedRequirements, ...mandatory_components].filter(
+      (item) => {
+        const key = item.toLowerCase().trim();
+        if (!key || seenChecklist.has(key)) return false;
+        seenChecklist.add(key);
+        return true;
+      },
+    );
+
     const brief: Brief = {
       program_snapshot: {
         funder: funderName,
@@ -174,8 +254,14 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
         intake,
       },
       iial_role: rr.detected_role,
+      partner: {
+        needed: rr.detected_role === "partner",
+        type: rr.detected_partner_type,
+        note: partnerNote,
+      },
       strategic_angle,
       mandatory_components,
+      application_checklist,
       money: {
         request_amount: (g.amount_cad_max ?? g.amount_cad_min ?? null) as number | null,
         match_required_pct: rr.cost_share_pct,

@@ -49,8 +49,10 @@ vi.mock("@/lib/web-fetch.server", () => ({
     title: "Innovation Boost Program",
     attempts: [],
   }),
-  jinaSearch: async () => ({ ok: true, hits: [] }),
+  localWebSearch: async () => ({ ok: true, hits: [] }),
   searchWeb: async () => [],
+  CHROME_UA:
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
 }));
 vi.mock("@/lib/firecrawl.server", () => ({
   firecrawlAvailable: () => false,

@@ -19,6 +19,7 @@ import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import { StatCard, StatGrid } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 const DAY_MS = 86_400_000;
 
@@ -360,14 +361,12 @@ function MatchCard({ g, mode }: { g: GrantRowData; mode: "progress" | "match" })
               <ArrowRight className="ml-1 h-3.5 w-3.5" />
             </Link>
           </Button>
-          <a
-            href={g.url}
-            target="_blank"
-            rel="noopener noreferrer"
+          <ExternalLinkPreview
+            url={g.url}
             className="text-xs text-muted-foreground hover:underline"
           >
             Official page
-          </a>
+          </ExternalLinkPreview>
         </div>
       </div>
     </li>

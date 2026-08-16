@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createSupabaseAdmin } from "./supabase-admin";
 
 export const getOrgProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -23,14 +24,72 @@ const OrgInput = z.object({
   focus_areas: z.string().max(2000).nullable(),
 });
 
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64) || "org"
+  );
+}
+
 export const saveOrgProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => OrgInput.parse(input))
   .handler(async ({ data, context }) => {
+    // Matches the submissions/submitProposal convention: gate the write
+    // action, not reads (getOrgProfile stays open). Previously nothing
+    // checked this -- toggling "Organization profile and RAG knowledge"
+    // off in /admin/modules did nothing.
+    const { assertModuleEnabled } = await import("@/lib/admin-modules.server");
+    await assertModuleEnabled("org_profile");
     const { error } = await context.supabase
       .from("org_profiles")
       .upsert({ user_id: context.userId, ...data }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
+
+    // Real bug, confirmed live: `organizations` + `profiles.org_id` (the
+    // actual multi-tenant grouping team collaboration's RLS checks — see
+    // can_access_tenant_entity() and assertEntityInUserOrg) were never
+    // populated by anything in the app. org_profiles above is a *different*,
+    // single-user RAG blob; saving it never touched org_id. Result: every
+    // profile.org_id stayed NULL forever, so "same org" was never true for
+    // anyone and Team Collaboration (tasks/comments/documents sharing) was
+    // unreachable by design even though its schema and policies are correct.
+    // Find-or-create an organization by a slug of the org name and adopt it
+    // once — first-write-wins, so re-saving a profile never silently moves a
+    // user out of an org they already joined. A real invite/join-code flow
+    // would be more robust for two orgs sharing a name, but this closes the
+    // "nothing is ever assigned" gap with the same identity a person already
+    // types in this exact form.
+    const { data: profile, error: profileErr } = await context.supabase
+      .from("profiles")
+      .select("org_id")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (profileErr) throw new Error(profileErr.message);
+    if (!profile?.org_id) {
+      // organizations has no INSERT policy (SELECT-only — see "Users can
+      // view their own organization" / org_member_r), so this one step needs
+      // the admin client; the profiles update right after is scoped to the
+      // caller's own row (profiles_self_update) and would work under RLS too,
+      // but sharing one client keeps this block's error handling uniform.
+      const admin = await createSupabaseAdmin();
+      const slug = slugify(data.org_name);
+      const { data: org, error: orgErr } = await admin
+        .from("organizations")
+        .upsert({ name: data.org_name, slug }, { onConflict: "slug", ignoreDuplicates: false })
+        .select("id")
+        .single();
+      if (orgErr) throw new Error(orgErr.message);
+      const { error: linkErr } = await admin
+        .from("profiles")
+        .update({ org_id: org.id })
+        .eq("id", context.userId);
+      if (linkErr) throw new Error(linkErr.message);
+    }
+
     return { ok: true };
   });
 

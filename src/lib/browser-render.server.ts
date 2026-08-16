@@ -29,6 +29,17 @@ const MAX_REVEAL_CLICKS = 6;
 
 let browserPromise: Promise<Browser> | null = null;
 
+// Real bug, confirmed live: chromium.launch() has no timeout of its own, and
+// under some JS runtimes (e.g. Playwright's Node driver handshake running
+// under Bun) the browser process spawns but the launch promise never
+// settles — it neither resolves nor rejects. Every caller in the fallback
+// chain (renderWithBrowser's try/catch around getBrowser()) is written to
+// "degrade gracefully" on a launch failure, but that only works if launch
+// actually fails; a hang instead stalls enrichment for that grant forever.
+// Racing a bounded rejection turns a silent hang into the graceful failure
+// the rest of the code already expects.
+const LAUNCH_TIMEOUT_MS = 15_000;
+
 async function getBrowser(): Promise<Browser> {
   if (browserPromise) {
     try {
@@ -41,7 +52,12 @@ async function getBrowser(): Promise<Browser> {
   }
   browserPromise = (async () => {
     const { chromium } = await import("playwright");
-    return chromium.launch({ headless: true });
+    return Promise.race([
+      chromium.launch({ headless: true }),
+      new Promise<Browser>((_, reject) =>
+        setTimeout(() => reject(new Error("chromium_launch_timeout")), LAUNCH_TIMEOUT_MS),
+      ),
+    ]);
   })();
   return browserPromise;
 }

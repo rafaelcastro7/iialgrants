@@ -10,6 +10,7 @@ import {
 } from "@/lib/crawl-ledger.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—";
@@ -135,15 +136,14 @@ export function CrawlLedgerWidget() {
                   {inFuture(r.next_fetch_at)}
                 </span>
                 <span className="text-muted-foreground w-12 shrink-0">×{r.change_count}</span>
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="truncate hover:underline"
+                <ExternalLinkPreview
+                  url={r.url}
+                  showIcon={false}
                   title={r.url}
+                  className="truncate hover:underline"
                 >
                   {r.title || r.url}
-                </a>
+                </ExternalLinkPreview>
               </div>
             ))}
             {(recent.data?.length ?? 0) === 0 && (

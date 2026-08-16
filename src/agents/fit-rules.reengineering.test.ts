@@ -49,6 +49,19 @@ describe("fit-rules reengineering fixes", () => {
     expect(result.cost_share_pct).toBe(25);
   });
 
+  it("detectCostShare recognizes a ratio-format split (e.g. 50/50), not just a % figure", () => {
+    // buildHaystack used to strip "/" to a space for every field before
+    // detectCostShare ever saw it, turning "50/50" into "50 50" — silently
+    // making detectCostShare's entire ratio-regex branch unreachable dead
+    // code. Confirmed live: this exact input returned cost_share_pct=null
+    // before the fix.
+    const grant = { ...baseGrant, summary: "The program operates on a 50/50 cost sharing basis." };
+    const result = evaluateRules(DEFAULT_RULES, grant);
+    expect(result.cost_share_pct).toBe(50);
+    const costShareCheck = result.checks.find((c) => c.id === "sop_filter_3_costshare");
+    expect(costShareCheck?.status).toBe("pass");
+  });
+
   it("GRANT_TRANSITIONS allows discovered -> scored (matches the live DB trigger)", () => {
     expect(GRANT_TRANSITIONS.discovered).toContain("scored");
     expect(canTransition("discovered", "scored")).toBe(true);

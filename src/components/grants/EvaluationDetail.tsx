@@ -9,7 +9,6 @@ import {
   XCircle,
   MinusCircle,
   AlertTriangle,
-  ExternalLink,
   Brain,
   Gauge,
   Scale,
@@ -23,6 +22,7 @@ import { getGrantAudit } from "@/lib/grant-audit.functions";
 import type { AxisScore } from "@/agents/fit-rules.shared";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { Button } from "@/components/ui/button";
 
 const STATUS_ICON = {
@@ -149,9 +149,26 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
         {/* Transparent multi-axis breakdown — the "why" across named dimensions */}
         {axes && axes.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
-              Fit by dimension
-            </p>
+            {(() => {
+              const assessed = axes.filter((a) => a.status !== "na").length;
+              const thin = assessed / axes.length < 0.5;
+              return (
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase">
+                    Fit by dimension
+                  </p>
+                  <span
+                    className={
+                      thin
+                        ? "text-[11px] font-medium text-amber-700 dark:text-amber-500"
+                        : "text-[11px] text-muted-foreground"
+                    }
+                  >
+                    Assessed {assessed} of {axes.length}
+                  </span>
+                </div>
+              );
+            })()}
             <ul className="space-y-1.5">
               {axes.map((a) => (
                 <AxisBar key={a.axis} axis={a} />
@@ -242,52 +259,115 @@ export function EvaluationDetail({ grantId }: { grantId: string }) {
           </div>
         )}
 
-        {/* Evidence preview */}
-        {evidence.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
-              Evidence used ({evidence.length})
-            </p>
-            <ul className="divide-y rounded-md border max-h-56 overflow-y-auto">
-              {evidence.slice(0, 8).map((e, i) => (
-                <li key={i} className="px-3 py-2 text-xs space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="text-[10px]">
-                      {e.agent}
-                    </Badge>
-                    <span className="font-medium">{e.field}</span>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {e.extraction_method}
-                    </Badge>
-                    <span className="text-muted-foreground">
-                      conf {Math.round(Number(e.confidence) * 100)}%
-                    </span>
-                    {e.source_url && (
-                      <a
-                        href={e.source_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="ml-auto text-primary hover:underline inline-flex items-center gap-1"
-                      >
-                        source <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
+        {/* Evidence preview — split into what actually fed a scored rule vs.
+            everything else the enricher extracted. A field like
+            "sectors.forestry" showing up unlabeled next to a 96% AI/tech
+            match reads as the score citing irrelevant evidence; it's real
+            extracted data, just not what drove this particular score. */}
+        {evidence.length > 0 &&
+          (() => {
+            const relevantFields = new Set(
+              rules.checks
+                .filter((c) => c.status === "pass" || c.status === "fail")
+                .flatMap((c) => RULE_FIELD_MAP[c.id] ?? []),
+            );
+            // Sector evidence needs finer-grained filtering than a field-name
+            // prefix: "sectors.ai" and "sectors.forestry" both start with
+            // "sectors", but only the sector tokens actually named in the
+            // strategic-fit rule's matched-overlap set drove the score.
+            // Without this, an unrelated extracted sector reads as if it
+            // were cited evidence for the match, undermining trust in the
+            // whole rationale.
+            const sectorCheck = rules.checks.find(
+              (c) =>
+                c.id === "sop_filter_4_strategic" && (c.status === "pass" || c.status === "fail"),
+            );
+            const sectorMatch = sectorCheck ? /\{([^}]*)\}/.exec(sectorCheck.detail) : null;
+            const matchedSectors = sectorMatch
+              ? new Set(
+                  sectorMatch[1]
+                    .split(",")
+                    .map((s) => s.trim().toLowerCase())
+                    .filter(Boolean),
+                )
+              : null;
+            const isRelevant = (field: string) => {
+              const f = (field ?? "").toLowerCase();
+              if (f.startsWith("sectors.") && matchedSectors) {
+                const val = f.slice("sectors.".length).replace(/_/g, " ");
+                return [...matchedSectors].some((m) => m.includes(val) || val.includes(m));
+              }
+              return relevantFields.size === 0 || [...relevantFields].some((w) => f.includes(w));
+            };
+            const scoringEvidence = evidence.filter((e) => isRelevant(e.field));
+            const otherEvidence = evidence.filter((e) => !isRelevant(e.field));
+            const EvidenceRow = ({ e }: { e: (typeof evidence)[number] }) => (
+              <li className="px-3 py-2 text-xs space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="text-[10px]">
+                    {e.agent}
+                  </Badge>
+                  <span className="font-medium">{e.field}</span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {e.extraction_method}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    conf {Math.round(Number(e.confidence) * 100)}%
+                  </span>
+                  {e.source_url && (
+                    <ExternalLinkPreview
+                      url={e.source_url}
+                      className="ml-auto text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      source
+                    </ExternalLinkPreview>
+                  )}
+                </div>
+                <div className="text-muted-foreground italic truncate" title={e.snippet ?? ""}>
+                  "{e.snippet}"
+                </div>
+              </li>
+            );
+            return (
+              <>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
+                    Evidence used in this score ({scoringEvidence.length})
+                  </p>
+                  {scoringEvidence.length === 0 ? (
+                    <p className="text-xs italic text-muted-foreground">
+                      No extracted evidence ties directly to a scored rule.
+                    </p>
+                  ) : (
+                    <ul className="divide-y rounded-md border max-h-56 overflow-y-auto">
+                      {scoringEvidence.slice(0, 8).map((e, i) => (
+                        <EvidenceRow key={i} e={e} />
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {otherEvidence.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
+                      Also extracted, not used in this score ({otherEvidence.length})
+                    </p>
+                    <ul className="divide-y rounded-md border max-h-40 overflow-y-auto opacity-70">
+                      {otherEvidence.slice(0, 8).map((e, i) => (
+                        <EvidenceRow key={i} e={e} />
+                      ))}
+                    </ul>
                   </div>
-                  <div className="text-muted-foreground italic truncate" title={e.snippet ?? ""}>
-                    "{e.snippet}"
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {evidence.length > 8 && (
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Showing 8 of {evidence.length}.{" "}
-                <Link to="/grants/$id/audit" params={{ id: grantId }} className="underline">
-                  See all in audit →
-                </Link>
-              </p>
-            )}
-          </div>
+                )}
+              </>
+            );
+          })()}
+        {evidence.length > 8 && (
+          <p className="text-[11px] text-muted-foreground">
+            Showing 8 of {evidence.length} per list.{" "}
+            <Link to="/grants/$id/audit" params={{ id: grantId }} className="underline">
+              See all in audit →
+            </Link>
+          </p>
         )}
       </CardContent>
     </Card>
@@ -511,14 +591,12 @@ function RuleRow({
                         conf {Math.round(Number(e.confidence) * 100)}%
                       </span>
                       {e.source_url && (
-                        <a
-                          href={e.source_url}
-                          target="_blank"
-                          rel="noreferrer"
+                        <ExternalLinkPreview
+                          url={e.source_url}
                           className="ml-auto text-primary hover:underline inline-flex items-center gap-1"
                         >
-                          source <ExternalLink className="h-3 w-3" />
-                        </a>
+                          source
+                        </ExternalLinkPreview>
                       )}
                     </div>
                     {e.snippet && (

@@ -8,7 +8,6 @@ import {
   Sliders,
   Activity,
   ShieldCheck,
-  Shield,
   Settings,
   Menu,
   BookOpen,
@@ -35,7 +34,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/fit-rules", labelKey: "nav.fitRules", icon: Sliders },
   { to: "/ops", labelKey: "ops.title", icon: Activity, adminOnly: true },
   { to: "/privacy", labelKey: "privacy.link", icon: ShieldCheck },
-  { to: "/compliance", labelKey: "compliance.link", icon: Shield },
   { to: "/admin", labelKey: "Admin Console", icon: Settings },
 ];
 

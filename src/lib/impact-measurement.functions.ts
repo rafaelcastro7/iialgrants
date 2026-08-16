@@ -13,6 +13,7 @@ import { createSupabaseAdmin } from "./supabase-admin";
 import { getTenantPrincipal, type TenantPrincipal } from "./tenant-access.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { AUTHORSHIP_BUCKETS, computeAuthorshipBuckets } from "./authorship-correlation.shared";
 
 /**
  * Returns the submission IDs the caller is allowed to see: their own
@@ -74,6 +75,51 @@ export const getImpactMetrics = createServerFn({ method: "GET" })
     } catch (e) {
       throw new Error(e instanceof Error ? e.message : String(e));
     }
+  });
+
+// Closes the feedback-loop gap an external audit flagged: the system had no
+// way to tell whether its own AI-drafted content helps or hurts win rate.
+// submissions.human_edited_pct (captured at submit time, see
+// submissions.functions.ts) is now correlated against outcomes.result —
+// this is the first report that can actually answer "does AI-verbatim
+// content perform worse than human-edited content."
+export const getAiAuthorshipOutcomeCorrelation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({}))
+  .handler(async ({ context }) => {
+    const supabase = await createSupabaseAdmin();
+    const principal = await getTenantPrincipal(supabase, context.userId);
+
+    let subQuery = supabase.from("submissions").select("id, human_edited_pct");
+    subQuery = principal.orgId
+      ? subQuery.or(`user_id.eq.${principal.userId},org_id.eq.${principal.orgId}`)
+      : subQuery.eq("user_id", principal.userId);
+    const { data: subs, error: subErr } = await subQuery;
+    if (subErr) throw new Error(`Failed to load submissions: ${subErr.message}`);
+    const pctById = new Map((subs ?? []).map((s) => [s.id, s.human_edited_pct]));
+    const ids = [...pctById.keys()];
+    if (ids.length === 0) {
+      return {
+        buckets: AUTHORSHIP_BUCKETS.map((b) => ({
+          ...b,
+          won: 0,
+          decided: 0,
+          winRatePct: null as number | null,
+        })),
+        totalDecided: 0,
+      };
+    }
+
+    const { data: outcomes, error: outErr } = await supabase
+      .from("outcomes")
+      .select("submission_id, result")
+      .in("submission_id", ids)
+      .in("result", ["won", "lost"]);
+    if (outErr) throw new Error(`Failed to load outcomes: ${outErr.message}`);
+
+    const buckets = computeAuthorshipBuckets(outcomes ?? [], pctById);
+
+    return { buckets, totalDecided: (outcomes ?? []).length };
   });
 
 export const getOutcomeDetails = createServerFn({ method: "GET" })

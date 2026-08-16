@@ -1846,3 +1846,108 @@ to unblock Phase 2. This remains separate from Claude's completed commits.
   7. Daemon logs / Ollama proxy health check
 
 **Status**: starting. Dev server online (HTTP 200 on localhost:8080). Will document evidence (screenshots if needed) and report final verdict at end of session.
+
+## 2026-07-31 Claude — broad system audit ("sin humo, sin deuda tecnica, sin bugs, sin mentiras")
+
+Rafael asked for a full-system review against industry practice, verifying
+grant search and funder usage work for real, with zero tolerance for
+smoke/vapor features. Re-checked this doc's own "Remaining Audit Targets" /
+"Next high-value work" items against current code rather than trusting them
+as still-open — two were stale:
+
+- **`applicant_types_allowed` is NOT dead.** The 2026-07-09 note said it was
+  "stored/validated, never read by `evaluateRules()`, not exposed in the
+  Screening Rules UI." Verified against current `fit-rules.server.ts`:
+  `evaluateRules()` actively branches on it (line ~360), and
+  `deriveRulesFromOrg()` (wired into `evaluator.impl.server.ts` and
+  `grant-audit.functions.ts`) auto-populates it from the org's declared
+  `stage` — the user never needed a raw form field for it because it's
+  derived automatically. `fit-rules.org.test.ts`'s "derives opposite
+  applicant-type profiles for a for-profit SME vs. a nonprofit" test already
+  covers exactly this. This must have been fixed sometime after the original
+  note and the note never got corrected — leaving it as-is would have wasted
+  a future session's time re-investigating a non-problem.
+- **Discovery's eligibility/sectors grounding gap is closed, differently
+  than expected.** The 2026-07-11 note said these fields were "still
+  inserted from Discovery's ungrounded LLM extraction without a snippet
+  check." Current code (`src/agents/extractors/eligibility.server.ts`,
+  `sectors.server.ts`) replaced the LLM extraction for these two fields
+  entirely with deterministic EN/FR regex taxonomy classifiers that return a
+  real substring window (`windowAround`) as evidence — there's no LLM in
+  this path to hallucinate from. Wired into `enricher.functions.ts`
+  (confirmed live call sites, not just present-but-unused files). `summary`
+  remains free-text LLM output with no snippet check, same as the original
+  note already flagged — that part is still accurate and is a reasonable
+  design tradeoff (a paraphrase field isn't the kind of thing you
+  regex-verify), not a bug.
+
+**Real, still-open finding, now partially fixed**: `admin_modules`
+(`/admin/modules`) exposed **9** toggleable modules
+(`analytics, compliance, grants, grants_discovery, org_profile, privacy,
+proposals, public_webhooks, submissions`) but only 2
+(`grants_discovery`, `submissions`) were ever checked anywhere in code —
+confirmed via `grep -rn "assertModuleEnabled("`. The other 7 flags did
+nothing: an admin could toggle "Proposals" off, see the toggle flip and an
+audit-log entry get written, and proposal drafting would keep working
+exactly as before. Pure smoke.
+
+Fixed `public_webhooks` (the most concrete, highest-blast-radius one, since
+it gates all 7 cron-triggered `/api/public/hooks/*` routes this session
+already relies on for source-curator scheduling): added
+`assertModuleEnabled("public_webhooks")` to all 7 route handlers
+(`discover`, `enrich`, `deadlines`, `rss-poll`, `source-curator`,
+`source-tier-a`, `source-tier-b`), right after each route's own
+auth check. Verified live, not just typechecked: toggled the flag off in
+the DB, confirmed `POST /api/public/hooks/source-tier-a` now returns
+`{"ok":false,"error":"module_disabled:public_webhooks"}`, toggled back on,
+confirmed it works again. `tsc --noEmit` clean, full suite still
+440 passed / 4 skipped.
+
+**Still open** (not fixed this pass — each needs its own gate placement
+decided, not a blind copy-paste of the same one-liner): `analytics`,
+`compliance`, `grants`, `org_profile`, `privacy`, `proposals` remain
+unenforced toggles. Whoever picks this up next: don't re-litigate whether
+this is a real gap, it's confirmed — decide *where* each module's gate
+belongs (e.g. `proposals` likely belongs in `strategist.functions.ts`'s
+`createProposal`/`writer.functions.ts`'s draft handlers; `org_profile` in
+`org.functions.ts`'s `saveOrgProfile`) and wire it the same way.
+
+Also replaced Jina Search (dead, no anonymous tier left) with a self-hosted
+local SearXNG instance and fixed a real bug in Jina Reader's 401-retry (it
+resent the same invalid key instead of dropping it) — see
+`docs/LOCAL-SYSTEM-VERIFICATION.md`'s "Jina Search eliminated" section for
+full detail; not duplicated here.
+
+### Follow-up same day: `proposals` and `org_profile` module flags wired
+
+Resolved the module_flags/agent_flags overlap question above rather than
+leaving it stuck: `grants_discovery`/`discoverer` (the one pre-existing
+enforced pair) already has BOTH a module-level gate
+(`discoverer-orchestrator.server.ts`'s `runDiscoveryJob`) AND a separate
+agent-level gate (`grants.functions.ts:257`'s single-grant re-discovery
+call to `assertAgentEnabled("discoverer")`) — this is an established,
+already-shipped pattern, not something new I'd be introducing. Module
+flags gate "is this feature area enabled at all"; agent flags gate "is
+this specific LLM agent allowed to run regardless of caller." Different,
+complementary admin concerns, not true redundancy.
+
+Wired `proposals` (`strategist.functions.ts`'s `runStrategist`, alongside
+its existing `assertAgentEnabled("strategist", ...)`) and `org_profile`
+(`org.functions.ts`'s `saveOrgProfile` — gating the write, not
+`getOrgProfile`'s read, matching the existing `submitProposal` convention
+of gating writes only). Verified live: disabled both flags, confirmed
+`saveOrgProfile` returns `module_disabled:org_profile` in the real UI
+(the /org page's error banner), re-enabled, ran the full unit suite
+(440 passed / 4 skipped) and `full-lifecycle.spec.ts` end to end — passed.
+
+Still open, deliberately not attempted: `analytics`, `compliance`,
+`grants`, `privacy`. These don't fit the "gate one write action" pattern —
+they're read-only admin/info surfaces (dashboards, compliance center,
+privacy center) with no single obvious action to gate, and `grants` is
+confusingly similarly-named to the already-enforced `grants_discovery`
+(a 2026-06-20 migration seeded both `grants_discovery` — "Automated grant
+discovery agent" — and `grants` — "Grants discovery and catalog" —
+separately; possibly two flags for a never-fully-differentiated concept,
+worth a product decision rather than a guess). Gating a whole route/page
+rather than one serverFn write is a different shape of fix and needs its
+own design pass.

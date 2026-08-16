@@ -10,7 +10,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  ExternalLink,
   ArrowLeft,
   Award,
   BarChart3,
@@ -43,6 +42,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { AppTopBar } from "@/components/AppSidebar";
 import { toast } from "sonner";
@@ -330,16 +330,13 @@ function FunderProfilePage() {
                   </div>
                 )}
                 {funder.website && (
-                  <a
-                    href={funder.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <ExternalLinkPreview
+                    url={funder.website}
                     className="flex items-center gap-2 text-primary hover:underline"
                   >
                     <Globe className="h-4 w-4" />
                     Website
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  </ExternalLinkPreview>
                 )}
               </div>
             </CardContent>

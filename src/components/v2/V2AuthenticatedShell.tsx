@@ -24,7 +24,6 @@ import {
   Search,
   Send,
   Settings,
-  Shield,
   SlidersHorizontal,
   Sparkles,
   Target,
@@ -122,8 +121,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: SlidersHorizontal,
       },
       { to: "/manual", label: "Guide", description: "System guide", icon: BookOpen },
-      { to: "/compliance", label: "Governance", description: "Policy and assurance", icon: Shield },
-      { to: "/privacy", label: "Privacy", description: "Local-first posture", icon: Scale },
+      {
+        to: "/privacy",
+        label: "Privacy & governance",
+        description: "Consents, data rights, compliance",
+        icon: Scale,
+      },
     ],
   },
   {
@@ -273,7 +276,17 @@ function V2DesktopNav({
             <span className="rounded-[6px] bg-white/[0.07] px-2 py-1">Ollama</span>
             <span className="rounded-[6px] bg-white/[0.07] px-2 py-1">Supabase</span>
             <span className="rounded-[6px] bg-white/[0.07] px-2 py-1">RLS</span>
-            <span className="rounded-[6px] bg-white/[0.07] px-2 py-1">0 cloud tokens</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help rounded-[6px] bg-white/[0.07] px-2 py-1 underline decoration-dotted underline-offset-2">
+                  0 cloud tokens
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-64 text-xs">
+                Local models trade some output quality and reliability for $0 cost and data
+                sovereignty — always read AI-drafted text before submitting, never take it as final.
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 

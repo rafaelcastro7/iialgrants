@@ -10,13 +10,8 @@
 // auto-promote + telemetry into source_ingest_runs and updates the registry.
 
 import { newRunId } from "@/lib/otel";
-import {
-  AUTO_APPROVE_THRESHOLD,
-  REVIEW_MIN_THRESHOLD,
-  findDuplicate,
-  scoreCandidate,
-  type RawCandidate,
-} from "./scoring.server";
+import { findDuplicate, scoreCandidate, type RawCandidate } from "./scoring.server";
+import type { DiscoveryConfig } from "@/lib/discovery-config.server";
 
 export type Tier = "A" | "B" | "C" | "scout" | "all";
 
@@ -70,7 +65,12 @@ export function mergeCandidateEvidence(
   };
 }
 
-async function runSource(name: string, fn: SourceFn, result: CuratorResult): Promise<void> {
+async function runSource(
+  name: string,
+  fn: SourceFn,
+  result: CuratorResult,
+  cfg: DiscoveryConfig,
+): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const t0 = Date.now();
   const bucket = { rows: 0, new: 0, dup: 0, held: 0, rejected: 0, auto: 0, err: 0 };
@@ -112,7 +112,8 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
           }
           const merged = mergeCandidateEvidence(existing as RawCandidate, c);
           const mergedScore = scoreCandidate(merged);
-          const mergedStatus = mergedScore >= REVIEW_MIN_THRESHOLD ? "pending_review" : "candidate";
+          const mergedStatus =
+            mergedScore >= cfg.candidateReviewMinThreshold ? "pending_review" : "candidate";
           const { error: mergeError } = await supabaseAdmin
             .from("funder_candidates")
             .update({
@@ -134,7 +135,7 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
           continue;
         }
         const score = scoreCandidate(c);
-        if (score < REVIEW_MIN_THRESHOLD) {
+        if (score < cfg.candidateReviewMinThreshold) {
           // Not a duplicate — a genuinely new candidate whose signal quality
           // (BN/website/multiple sources/etc.) is too thin to review yet.
           // Counting this as `dup` corrupted the source_health_summary
@@ -159,7 +160,7 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
           bucket.held++;
           continue;
         }
-        const cStatus = score >= AUTO_APPROVE_THRESHOLD ? "approved" : "pending_review";
+        const cStatus = score >= cfg.candidateAutoApproveThreshold ? "approved" : "pending_review";
         const { data: inserted, error } = await supabaseAdmin
           .from("funder_candidates")
           .insert({
@@ -240,26 +241,36 @@ async function runSource(name: string, fn: SourceFn, result: CuratorResult): Pro
 }
 
 // Per-tier ingestor map. Lazy-imported so cold paths stay cheap.
-async function ingestorsForTier(tier: Tier): Promise<Array<{ key: string; fn: SourceFn }>> {
+async function ingestorsForTier(
+  tier: Tier,
+  cfg: DiscoveryConfig,
+): Promise<Array<{ key: string; fn: SourceFn }>> {
   const out: Array<{ key: string; fn: SourceFn }> = [];
 
   if (tier === "A" || tier === "all") {
     const { fetchRssGrantCandidates } = await import("./rss-grants.server");
-    out.push({ key: "rss_grants_bundle", fn: fetchRssGrantCandidates });
+    const { fetchGrantsGovAgencies } = await import("./grants-gov.server");
+    out.push({ key: "rss_grants_bundle", fn: () => fetchRssGrantCandidates(cfg.extraRssFeeds) });
+    out.push({ key: "grants_gov_api", fn: () => fetchGrantsGovAgencies() });
   }
 
   if (tier === "B" || tier === "all") {
     const { fetchBbfPrograms } = await import("./bbf-programs.server");
     const { fetchEuCalls } = await import("./eu-ft.server");
     const { fetchTriCouncilFunders } = await import("./tri-council.server");
+    const { fetchRegionalDevelopmentFunders } = await import("./regional-development.server");
     out.push({ key: "bbf_programs", fn: fetchBbfPrograms });
     out.push({ key: "eu_ft_portal", fn: fetchEuCalls });
     out.push({ key: "tri_council", fn: fetchTriCouncilFunders });
+    out.push({ key: "regional_development", fn: fetchRegionalDevelopmentFunders });
   }
 
   if (tier === "scout" || tier === "all") {
     const { runFunderScout } = await import("./funder-scout.server");
-    out.push({ key: "funder_scout", fn: runFunderScout });
+    out.push({
+      key: "funder_scout",
+      fn: () => runFunderScout(cfg.funderScoutQueries.length ? cfg.funderScoutQueries : undefined),
+    });
   }
 
   if (tier === "C" || tier === "all") {
@@ -298,6 +309,8 @@ async function ingestorsForTier(tier: Tier): Promise<Array<{ key: string; fn: So
 }
 
 export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResult> {
+  const { resolveDiscoveryConfig } = await import("@/lib/discovery-config.server");
+  const cfg = await resolveDiscoveryConfig();
   const result: CuratorResult = {
     runId: newRunId(),
     tier,
@@ -306,9 +319,9 @@ export async function runSourceCurator(tier: Tier = "all"): Promise<CuratorResul
     totals: { rows: 0, new: 0, dup: 0, held: 0, rejected: 0, auto: 0, err: 0 },
   };
   const t0 = Date.now();
-  const ingestors = await ingestorsForTier(tier);
+  const ingestors = await ingestorsForTier(tier, cfg);
   for (const ing of ingestors) {
-    await runSource(ing.key, ing.fn, result);
+    await runSource(ing.key, ing.fn, result, cfg);
   }
   for (const b of Object.values(result.perSource)) {
     result.totals.rows += b.rows;

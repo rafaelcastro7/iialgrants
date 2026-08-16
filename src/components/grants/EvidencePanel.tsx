@@ -9,8 +9,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, ShieldCheck, Bot, Regex, FileCheck2, Calendar } from "lucide-react";
+import { ShieldCheck, Bot, Regex, FileCheck2, Calendar } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 type Span = {
   id: string;
@@ -121,14 +122,12 @@ export function EvidencePanel({
                   "{s.snippet}"
                 </blockquote>
 
-                <a
-                  href={s.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <ExternalLinkPreview
+                  url={s.source_url}
                   className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline break-all"
                 >
-                  {s.source_url} <ExternalLink className="h-3 w-3 shrink-0" />
-                </a>
+                  {s.source_url}
+                </ExternalLinkPreview>
                 <p className="text-[10px] text-muted-foreground">
                   {new Date(s.created_at).toLocaleString("en-CA")}
                 </p>

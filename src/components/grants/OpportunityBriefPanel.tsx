@@ -1,12 +1,22 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, CheckCircle2, FileText, MinusCircle, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  ListChecks,
+  Loader2,
+  MinusCircle,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { generateOpportunityBrief, type Brief } from "@/lib/opportunity-brief.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 function StatusIcon({ s }: { s: string }) {
   if (s === "pass") return <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />;
@@ -21,53 +31,54 @@ function VerdictBadge({ v }: { v: Brief["recommendation"]["verdict"] }) {
   return <Badge className="bg-amber-600 hover:bg-amber-700">GO-CONDITIONAL</Badge>;
 }
 
-export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
+export function OpportunityBriefPanel({
+  grantId,
+  showScreeningDetails = true,
+}: {
+  grantId: string;
+  // The screening-details breakdown (SOP rule codes, hard/soft flags) is the
+  // same technical language a "Simple" grant-detail view hides elsewhere —
+  // callers rendering this panel in a simplified context can suppress it
+  // here too, without losing the plain-language brief above it.
+  showScreeningDetails?: boolean;
+}) {
   const gen = useServerFn(generateOpportunityBrief);
   const m = useMutation({ mutationFn: () => gen({ data: { grantId } }) });
-  const [open, setOpen] = useState(false);
 
-  if (!open) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          setOpen(true);
-          m.mutate();
-        }}
-        className="gap-2"
-      >
-        <FileText className="h-4 w-4" />
-        Opportunity Brief
-      </Button>
-    );
-  }
+  // Auto-loads as soon as this panel mounts — no button to find first. A
+  // grant detail page view is already a deliberate look at one opportunity,
+  // so the one LLM call this costs is worth not making the reader hunt for
+  // "what do I need" behind a click.
+  useEffect(() => {
+    m.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grantId]);
 
   const b = m.data?.brief;
 
   return (
-    <Card className="mt-4 border-primary/40">
+    <Card className="border-primary/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4" />
-            Opportunity Brief - IIAL SOP v2
+            What you need to apply
           </CardTitle>
           <p className="mt-1 text-xs text-muted-foreground">
-            Structured leadership brief for the go / no-go decision.
+            Documents, partners, and money — everything before the go / no-go call.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => m.mutate()} disabled={m.isPending}>
-            Refresh
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            Close
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" onClick={() => m.mutate()} disabled={m.isPending}>
+          <Loader2 className={`h-3.5 w-3.5 ${m.isPending ? "animate-spin" : "hidden"}`} />
+          Refresh
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
-        {m.isPending && <p className="text-muted-foreground">Generating brief...</p>}
+        {m.isPending && !b && (
+          <p className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Working out what this grant needs...
+          </p>
+        )}
         {m.isError && <p className="text-xs text-destructive">{(m.error as Error).message}</p>}
         {b && (
           <>
@@ -89,6 +100,35 @@ export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
                 )}
               </div>
             </div>
+
+            <section className="rounded-lg bg-muted/40 p-3">
+              <h4 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Users className="h-3.5 w-3.5" /> Partners needed
+              </h4>
+              <p className="text-sm leading-relaxed">{b.partner.note}</p>
+            </section>
+
+            <section className="rounded-lg bg-muted/40 p-3">
+              <h4 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <ListChecks className="h-3.5 w-3.5" /> Application checklist
+              </h4>
+              {b.application_checklist.length === 0 ? (
+                <p className="text-xs italic text-muted-foreground">
+                  No specific requirements detected yet — check the funder's own guidelines page.
+                </p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {b.application_checklist.map((x, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span>{x}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <Separator />
 
             <section>
               <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -129,53 +169,22 @@ export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
                 </div>
               </dl>
               {b.program_snapshot.url && (
-                <a
-                  href={b.program_snapshot.url}
-                  target="_blank"
-                  rel="noreferrer"
+                <ExternalLinkPreview
+                  url={b.program_snapshot.url}
                   className="mt-1 inline-block text-xs text-primary hover:underline"
                 >
                   Authoritative URL
-                </a>
+                </ExternalLinkPreview>
               )}
             </section>
 
             <Separator />
-
-            <section className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                IIAL role
-              </span>
-              <Badge
-                variant={b.iial_role === "unknown" ? "secondary" : "default"}
-                className="capitalize"
-              >
-                {b.iial_role}
-              </Badge>
-            </section>
 
             <section>
               <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Strategic angle
               </h4>
               <p className="text-xs leading-relaxed">{b.strategic_angle}</p>
-            </section>
-
-            <section>
-              <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Mandatory components
-              </h4>
-              {b.mandatory_components.length === 0 ? (
-                <p className="text-xs italic text-muted-foreground">
-                  No mandatory components detected.
-                </p>
-              ) : (
-                <ul className="list-disc space-y-0.5 pl-4 text-xs">
-                  {b.mandatory_components.map((x, i) => (
-                    <li key={i}>{x}</li>
-                  ))}
-                </ul>
-              )}
             </section>
 
             <section>
@@ -221,27 +230,33 @@ export function OpportunityBriefPanel({ grantId }: { grantId: string }) {
               )}
             </section>
 
-            <Separator />
+            {showScreeningDetails && (
+              <>
+                <Separator />
 
-            <section>
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                SOP filters
-              </h4>
-              <ul className="space-y-1 text-xs">
-                {b.filters.map((c) => (
-                  <li key={c.id} className="flex items-start gap-2">
-                    <StatusIcon s={c.status} />
-                    <span className="flex-1">
-                      <span className="font-medium">{c.label}</span>
-                      {c.hard && (
-                        <span className="ml-1 text-[10px] uppercase text-destructive">hard</span>
-                      )}
-                      <span className="block text-muted-foreground">{c.detail}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+                <section>
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Screening details
+                  </h4>
+                  <ul className="space-y-1 text-xs">
+                    {b.filters.map((c) => (
+                      <li key={c.id} className="flex items-start gap-2">
+                        <StatusIcon s={c.status} />
+                        <span className="flex-1">
+                          <span className="font-medium">{c.label}</span>
+                          {c.hard && (
+                            <span className="ml-1 text-[10px] uppercase text-destructive">
+                              hard
+                            </span>
+                          )}
+                          <span className="block text-muted-foreground">{c.detail}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            )}
           </>
         )}
       </CardContent>

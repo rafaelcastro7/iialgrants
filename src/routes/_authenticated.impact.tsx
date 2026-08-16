@@ -3,11 +3,15 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getImpactMetrics, getOutcomeDetails } from "@/lib/impact-measurement.functions";
+import {
+  getImpactMetrics,
+  getOutcomeDetails,
+  getAiAuthorshipOutcomeCorrelation,
+} from "@/lib/impact-measurement.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
-import { Target, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
+import { Target, TrendingUp, Clock, CheckCircle2, Bot } from "lucide-react";
 import { useUiVersion } from "@/components/v2/ui-version";
 
 const metricsQO = queryOptions({
@@ -20,11 +24,17 @@ const detailsQO = queryOptions({
   queryFn: () => getOutcomeDetails({ data: { limit: 20 } }),
 });
 
+const authorshipQO = queryOptions({
+  queryKey: ["impact", "authorship-correlation"],
+  queryFn: () => getAiAuthorshipOutcomeCorrelation({ data: {} }),
+});
+
 export const Route = createFileRoute("/_authenticated/impact")({
   head: () => ({ meta: [{ title: "Impact Measurement — IIAL" }] }),
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(metricsQO);
     await context.queryClient.ensureQueryData(detailsQO);
+    await context.queryClient.ensureQueryData(authorshipQO);
   },
   component: ImpactMeasurementPage,
 });
@@ -43,8 +53,14 @@ function ImpactMeasurementPage() {
     queryFn: () => fetchDetails({ data: { limit: 20 } }),
   });
 
+  const fetchAuthorship = useServerFn(getAiAuthorshipOutcomeCorrelation);
+  const { data: authorship } = useSuspenseQuery({
+    queryKey: ["impact", "authorship-correlation"],
+    queryFn: () => fetchAuthorship({ data: {} }),
+  });
+
   if (version === "v2") {
-    return <ImpactMeasurementPageV2 metrics={metrics} details={details} />;
+    return <ImpactMeasurementPageV2 metrics={metrics} details={details} authorship={authorship} />;
   }
 
   return (
@@ -103,6 +119,8 @@ function ImpactMeasurementPage() {
             </Card>
           </div>
 
+          <AuthorshipCorrelationCard authorship={authorship} />
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Outcome Details</CardTitle>
@@ -153,13 +171,16 @@ function ImpactMeasurementPage() {
 
 type ImpactMetrics = Awaited<ReturnType<typeof getImpactMetrics>>;
 type OutcomeDetails = Awaited<ReturnType<typeof getOutcomeDetails>>;
+type AuthorshipCorrelation = Awaited<ReturnType<typeof getAiAuthorshipOutcomeCorrelation>>;
 
 function ImpactMeasurementPageV2({
   metrics,
   details,
+  authorship,
 }: {
   metrics: ImpactMetrics;
   details: OutcomeDetails;
+  authorship: AuthorshipCorrelation;
 }) {
   return (
     <PageTransition>
@@ -199,6 +220,8 @@ function ImpactMeasurementPageV2({
               </p>
             </div>
           </div>
+
+          <AuthorshipCorrelationCard authorship={authorship} />
 
           <Card>
             <CardHeader>
@@ -246,5 +269,49 @@ function ImpactMeasurementPageV2({
         </section>
       </div>
     </PageTransition>
+  );
+}
+
+// Shared by both v1 and v2 — answers the question an external audit flagged
+// as unanswerable: does AI-verbatim content win at a different rate than
+// human-edited content? Buckets stay "—" (not a fabricated 0%) below
+// MIN_SAMPLE_FOR_RATE, since a rate from 1-2 decided outcomes is noise, not
+// signal — same principle as this app's other honest-empty-state metrics.
+function AuthorshipCorrelationCard({ authorship }: { authorship: AuthorshipCorrelation }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Bot className="h-4 w-4" />
+          Does AI-drafted content win less?
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Win rate by how much of the submitted proposal a human actually edited after the AI
+          drafted it. Needs at least {5} decided outcomes per bucket before showing a rate.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {authorship.totalDecided === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No submissions with a won/lost outcome yet — this fills in as decisions come back.
+          </p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-4">
+            {authorship.buckets.map((b) => (
+              <div key={b.key} className="rounded-md border p-3">
+                <p className="text-[11px] text-muted-foreground">{b.label}</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">
+                  {b.winRatePct != null ? `${b.winRatePct}%` : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {b.won}/{b.decided} won
+                  {b.decided > 0 && b.decided < 5 ? " (too few to trust)" : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

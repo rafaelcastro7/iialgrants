@@ -12,6 +12,8 @@ import {
   MIN_CRITIC_SCORE_TO_SUBMIT,
   type SubmitGateInput,
 } from "@/lib/submit-gate.shared";
+import { computeHumanEditedPct } from "@/lib/authorship-correlation.shared";
+import { assertEntityInUserOrg } from "@/lib/tenant-access.server";
 
 export { canSubmit, MIN_CRITIC_SCORE_TO_SUBMIT, type SubmitGateInput };
 
@@ -30,22 +32,61 @@ const SubmitInput = z.object({
   force: z.boolean().default(false),
 });
 
+// Explicit human-accountability checkpoint, separate from the forceable
+// quality gate below. An external audit of AI grant-writing tools found
+// real, hardening funder policy risk here — e.g. NIH Notice NOT-OD-25-132
+// treats applications "substantially developed by AI" as not original to
+// the applicant, with cost-disallowance/suspension/termination on
+// detection — and this app previously had zero record that a human ever
+// looked at AI-drafted content before it reached a real funder. `force`
+// on submitProposal bypasses quality checks (low score, thin readiness);
+// it must NEVER bypass this one, since that would defeat its entire point.
+export const confirmHumanReview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ proposalId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    // proposals RLS only grants UPDATE to the owning user_id — org-mates can
+    // SELECT (view) a colleague's proposal but not write to it. An update
+    // that matches 0 rows because of that is NOT an error to PostgREST (RLS
+    // filters rows silently, same class of bug as the notifications gap
+    // found earlier this session) — without .select().maybeSingle() here,
+    // a non-owner clicking "Confirm Review" would get a false {ok:true}
+    // and only discover nothing happened when submit later, confusingly,
+    // still blocks on "not confirmed."
+    const { data: updated, error } = await context.supabase
+      .from("proposals")
+      .update({ human_reviewed_at: new Date().toISOString() })
+      .eq("id", data.proposalId)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("review_confirmation_not_authorized");
+    return { ok: true };
+  });
+
 // Record a submission, advance grant state in_proposal → submitted,
 // and bump proposal.status to 'submitted' in one shot.
 export const submitProposal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => SubmitInput.parse(i))
   .handler(async ({ data, context }) => {
-    const { assertModuleEnabled } = await import("@/lib/admin-modules.functions");
+    const { assertModuleEnabled } = await import("@/lib/admin-modules.server");
     await assertModuleEnabled("submissions");
     const { supabase, userId } = context;
     const { data: proposal, error: pe } = await supabase
       .from("proposals")
-      .select("id, grant_id, status, critic_score, grant:grants(requirements, status)")
+      .select(
+        "id, org_id, grant_id, status, critic_score, human_reviewed_at, grant:grants(requirements, status)",
+      )
       .eq("id", data.proposalId)
       .maybeSingle();
     if (pe) throw new Error(pe.message);
     if (!proposal) throw new Error("proposal_not_found");
+
+    // Never forceable — see confirmHumanReview above.
+    if (!proposal.human_reviewed_at) {
+      throw new Error("submit_blocked:human_review_not_confirmed");
+    }
 
     // Grant-status precondition, checked BEFORE any write so a mismatch can't
     // leave a submission row + submitted proposal behind a lagging grant (a
@@ -57,37 +98,48 @@ export const submitProposal = createServerFn({ method: "POST" })
       throw new Error(`grant_not_in_proposal:${grantStatus ?? "unknown"}`);
     }
 
+    // Fetched unconditionally (not just under !force) — human_edited_pct is
+    // captured as a submission-time snapshot regardless of whether the
+    // quality gate below was forced, since it answers a different question
+    // ("how much of this was AI-verbatim") than the gate does.
+    const { data: gateSections } = await supabase
+      .from("proposal_sections")
+      .select("id, kind, heading_en, content_en, citations, critic_notes, human_edited")
+      .eq("proposal_id", proposal.id);
+    const sectionsWithContent = (gateSections ?? []).filter(
+      (s) => ((s as { content_en?: string | null }).content_en ?? "").trim().length > 0,
+    );
+    const humanEditedPct = computeHumanEditedPct(gateSections ?? []);
+
     // S3a reviewer-simulation gate: never submit a proposal that has not been
     // reviewed, scores poorly, has no drafted content, or leaves a critical
     // funder requirement uncovered — unless the caller explicitly forces it.
     if (!data.force) {
-      const { data: gateSections } = await supabase
-        .from("proposal_sections")
-        .select("id, kind, heading_en, content_en, citations, critic_notes")
-        .eq("proposal_id", proposal.id);
       const grant = proposal.grant as { requirements?: unknown } | null;
       const readiness = computeProposalReadiness({
         sections: (gateSections ?? []) as unknown as ProposalSectionForReadiness[],
         requirements: (grant?.requirements ?? []) as ProposalRequirement[],
       });
-      const draftedSections = (gateSections ?? []).filter(
-        (s) => ((s as { content_en?: string | null }).content_en ?? "").trim().length > 0,
-      ).length;
       const gate = canSubmit({
         criticScore: (proposal as { critic_score?: number | null }).critic_score ?? null,
         readinessScore: readiness.score,
         openCriticalRequirements: readiness.openCriticalRequirements.length,
-        draftedSections,
+        draftedSections: sectionsWithContent.length,
       });
       if (!gate.ok) {
         throw new Error(`submit_blocked:${gate.reasons.join(",")}`);
       }
     }
 
+    // Real bug, confirmed live: never set org_id — same root cause as
+    // strategist.functions.ts's proposal insert (see its comment). A
+    // submission should inherit the proposal's own org_id rather than
+    // re-deriving from whichever team member happens to click Submit.
     const { data: sub, error: se } = await supabase
       .from("submissions")
       .insert({
         user_id: userId,
+        org_id: (proposal as { org_id?: string | null }).org_id ?? null,
         proposal_id: proposal.id,
         grant_id: proposal.grant_id,
         method: data.method,
@@ -95,6 +147,7 @@ export const submitProposal = createServerFn({ method: "POST" })
         language: data.language,
         attachments: data.attachments,
         notes: data.notes ?? null,
+        human_edited_pct: humanEditedPct,
       })
       .select("id, submitted_at")
       .single();
@@ -169,6 +222,54 @@ export const recordOutcome = createServerFn({ method: "POST" })
         .eq("id", sub.grant_id)
         .eq("status", "submitted");
       if (ge2) throw new Error(ge2.message);
+    }
+
+    // Winning a grant creates real reporting obligations — without this, the
+    // Awards page's "Reporting Deadlines" panel had nothing real to show and
+    // fell back to a hardcoded placeholder list (progress/financial/final
+    // report, every due_date null) that looked real but wasn't. Only the two
+    // cadences a funder relationship reliably implies get auto-created here;
+    // a final report's due date depends on project length we don't track, so
+    // that one is left for the org to add manually via the Compliance
+    // Calendar once they know the real date. Guarded so re-recording an
+    // outcome (e.g. correcting a mistake) doesn't stack duplicate items.
+    if (data.result === "won") {
+      const { count: existingCount } = await supabase
+        .from("compliance_items")
+        .select("id", { count: "exact", head: true })
+        .eq("submission_id", sub.id);
+      if (!existingCount) {
+        const { orgId } = await assertEntityInUserOrg(supabase, userId, "submission", sub.id);
+        const baseDate = data.decision_date ? new Date(data.decision_date) : new Date();
+        const dueDate = (days: number) => {
+          const d = new Date(baseDate);
+          d.setDate(d.getDate() + days);
+          return d.toISOString().split("T")[0];
+        };
+        const { error: ciError } = await supabase.from("compliance_items").insert([
+          {
+            submission_id: sub.id,
+            type: "progress_report",
+            title: "Progress report",
+            due_date: dueDate(90),
+            frequency: "quarterly",
+            status: "pending",
+            org_id: orgId,
+            created_by: userId,
+          },
+          {
+            submission_id: sub.id,
+            type: "financial_report",
+            title: "Financial report",
+            due_date: dueDate(365),
+            frequency: "annual",
+            status: "pending",
+            org_id: orgId,
+            created_by: userId,
+          },
+        ]);
+        if (ciError) throw new Error(ciError.message);
+      }
     }
     return { ok: true };
   });

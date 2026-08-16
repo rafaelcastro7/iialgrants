@@ -6,7 +6,12 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi", ".remember"] },
+  // .claude/worktrees holds full copies of the repo checked out by isolated
+  // Agent runs (see Agent tool's `isolation: "worktree"`). Without this,
+  // `eslint .` re-lints every stale worktree snapshot as if it were part of
+  // this codebase — confirmed live 2026-07-23: 5 leftover worktrees turned a
+  // real ~8,600-line CRLF issue into a reported 348,003 problems.
+  { ignores: ["dist", ".output", ".vinxi", ".remember", ".claude"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

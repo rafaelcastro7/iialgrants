@@ -1,19 +1,16 @@
-// Per-grant audit page: shows the rule engine result, evidence used, agent
-// trace timeline, and final verdict. Linked from /grants/$id "Audit" button.
+// Per-grant scoring-explainability page: shows the rule engine result,
+// evidence used, agent trace timeline, and final verdict. Linked from
+// /grants/$id's "Scoring details" button — named that way (not "Audit
+// trail") to avoid colliding with the unrelated Admin "Audit Trail" page,
+// which is a generic CRUD change-log over a different table entirely.
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
-  AlertTriangle,
-  ExternalLink,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, MinusCircle, AlertTriangle } from "lucide-react";
 import { getGrantAudit } from "@/lib/grant-audit.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 
 const auditQuery = (id: string) =>
   queryOptions({
@@ -22,7 +19,9 @@ const auditQuery = (id: string) =>
   });
 
 export const Route = createFileRoute("/_authenticated/grants/$id/audit")({
-  head: ({ params }) => ({ meta: [{ title: `Audit · Grant ${params.id.slice(0, 8)} — IIAL` }] }),
+  head: ({ params }) => ({
+    meta: [{ title: `Scoring details · Grant ${params.id.slice(0, 8)} — IIAL` }],
+  }),
   loader: ({ context, params }) => context.queryClient.ensureQueryData(auditQuery(params.id)),
   errorComponent: ({ error }) => <div className="p-6 text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-6">Not found</div>,
@@ -185,14 +184,12 @@ function AuditPage() {
                   <span className="text-muted-foreground">
                     conf {Math.round(Number(e.confidence) * 100)}%
                   </span>
-                  <a
-                    href={e.source_url}
-                    target="_blank"
-                    rel="noreferrer"
+                  <ExternalLinkPreview
+                    url={e.source_url}
                     className="ml-auto text-blue-600 hover:underline inline-flex items-center gap-1"
                   >
-                    source <ExternalLink className="h-3 w-3" />
-                  </a>
+                    source
+                  </ExternalLinkPreview>
                 </div>
                 <div className="text-muted-foreground italic truncate" title={e.snippet}>
                   "{e.snippet}"

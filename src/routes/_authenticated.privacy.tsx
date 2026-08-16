@@ -255,6 +255,8 @@ function PrivacyCenter() {
           )}
         </CardContent>
       </Card>
+
+      <ComplianceAndTrustCard />
     </main>
   );
 }
@@ -262,6 +264,57 @@ function PrivacyCenter() {
 // -----------------------------------------------------------------------------
 // V2 — friendly redesign (presentation only; same consent/DSAR handlers as v1)
 // -----------------------------------------------------------------------------
+
+// Merged in from the old standalone /compliance page (2026-07-23): that page
+// was public and unauthenticated, dropped users out of the app entirely, and
+// its own "your rights" card just linked back here — pure duplication with
+// one broken hop. The informational content genuinely missing from this
+// page (legal frameworks, AI transparency) moved in as a card below; the
+// interactive rights (export/access/delete) were already implemented here.
+function ComplianceAndTrustCard() {
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="text-base">Compliance &amp; frameworks</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p>
+          All customer data is stored locally on self-hosted infrastructure (local PostgreSQL) — no
+          cross-border transfer occurs. AI model calls are processed locally via Ollama; no data is
+          sent to external APIs by default.
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <strong>PIPEDA</strong> — Personal Information Protection and Electronic Documents Act.
+          </li>
+          <li>
+            <strong>Quebec Law 25</strong> — Quebec's modernization of personal information
+            protection.
+          </li>
+          <li>
+            <strong>AIDA (Bill C-27)</strong> — Artificial Intelligence and Data Act (pending).
+          </li>
+          <li>
+            <strong>TBS Directive</strong> — Treasury Board Directive on Automated Decision-Making,
+            referenced for this app's human-in-the-loop controls.
+          </li>
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          This lists the frameworks IIAL is designed around — it is not a certification.
+        </p>
+        <p>
+          Every AI agent run is traced (cost, tokens, latency, status). AI-assisted decisions stay
+          under human control: no grant submission is sent to a funder automatically. Generated
+          content includes citations to source material; uncited claims are rejected before they
+          reach a proposal.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Privacy officer / Data Protection lead: privacy@iial.ca
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
 const LOCAL_FIRST_POINTS = [
   {
@@ -409,6 +462,8 @@ function PrivacyCenterV2({
           )}
         </CardContent>
       </Card>
+
+      <ComplianceAndTrustCard />
     </main>
   );
 }

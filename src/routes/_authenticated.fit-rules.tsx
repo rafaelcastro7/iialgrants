@@ -485,12 +485,12 @@ function FitRulesPage() {
               code="F4"
               title="Strategic fit"
               tone="auto"
-              summary="At least one IIAL capability must appear in the grant's objectives."
+              summary="At least one of your organization's capabilities must appear in the grant's objectives."
               hardEnabled={r.hard_fail_on_capability}
             >
               <Field
-                label="IIAL capabilities"
-                hint="Edit only when your strategy shifts. Defaults reflect the 6 SOP capabilities."
+                label="Your organization's capabilities"
+                hint="Auto-filled from your org profile's sectors and focus areas. Edit only when your strategy shifts."
               >
                 <PresetChips
                   value={r.iial_capabilities}

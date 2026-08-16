@@ -145,6 +145,24 @@ export async function evaluateGrantImpl(opts: {
     temperature: 0.1,
     maxOutputTokens: 256,
     responseFormat: "json",
+    // Schema guard: without this, a provider whose JSON fails EvaluatorOutput
+    // (e.g. missing fit_score, rationale_en too short) marks the whole run
+    // failed instead of the cloud/local chain advancing to the next
+    // provider — the exact bug class fixed for critic.functions.ts, applied
+    // here since evaluateGrantImpl never got the same guard.
+    validate: (text) => {
+      try {
+        const raw = JSON.parse(text);
+        if (raw && typeof raw === "object" && raw.eligibility_pass === undefined) {
+          // Mirror the real parse path's default exactly (below) — rulesResult
+          // is already in scope here, not a placeholder.
+          raw.eligibility_pass = !rulesResult.hard_fail;
+        }
+        return EvaluatorOutput.safeParse(raw).success;
+      } catch {
+        return false;
+      }
+    },
     messages: [
       {
         role: "system",
@@ -237,6 +255,7 @@ export async function evaluateGrantImpl(opts: {
         hard_fail: rulesResult.hard_fail,
         rule_score: rulesResult.rule_score,
         detected_role: rulesResult.detected_role,
+        detected_partner_type: rulesResult.detected_partner_type,
         cost_share_pct: rulesResult.cost_share_pct,
         rolling_intake: rulesResult.rolling_intake,
         threshold_fit_pass: rules.threshold_fit_pass,
@@ -248,6 +267,42 @@ export async function evaluateGrantImpl(opts: {
   if (upErr) {
     await trace("persist", `grant_evaluations upsert failed: ${upErr.message}`, "error");
     throw new Error(`grant_evaluations_upsert_failed: ${upErr.message}`);
+  }
+
+  // "Nothing missed" notification — competing tools (Grants.gov saved-search
+  // alerts, Submittable's "follow a funder") tell the user the moment a new
+  // match appears; this app previously only ever notified on deadlines. Uses
+  // the same ~80%-fit bar as the opportunity brief's cultivation heuristic.
+  // Only fires once per grant (checked before insert) so re-evaluating an
+  // already-notified grant doesn't spam the bell every time fit-rules change.
+  if (eligibilityPass && combinedFit >= 80) {
+    try {
+      // notifications has no INSERT policy for regular users (only
+      // read/update their own row) — same reason agent_runs writes in this
+      // file use supabaseAdmin. A user-scoped client silently RLS-fails here.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: already } = await supabaseAdmin
+        .from("notifications")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("grant_id", g.id)
+        .eq("kind", "strong_fit")
+        .limit(1);
+      if (!already || already.length === 0) {
+        const grantTitle = (g as { title?: string }).title ?? "a grant";
+        await supabaseAdmin.from("notifications").insert({
+          user_id: userId,
+          grant_id: g.id,
+          kind: "strong_fit",
+          title_en: `Strong match: ${combinedFit}% fit`,
+          title_fr: `Bonne correspondance : ${combinedFit}% de compatibilité`,
+          body_en: `"${grantTitle}" scored ${combinedFit}% against your organization profile.`,
+          body_fr: `« ${grantTitle} » a obtenu ${combinedFit}% par rapport à votre profil d'organisation.`,
+        });
+      }
+    } catch {
+      // Best-effort — a notification failure must never fail the evaluation itself.
+    }
   }
 
   try {

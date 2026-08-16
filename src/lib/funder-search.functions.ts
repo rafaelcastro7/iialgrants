@@ -3,22 +3,31 @@
 /**
  * Funder Search API
  *
- * Full-text search and filtering for Canadian funders.
+ * Full-text search and filtering for funders across the Americas.
+ *
+ * Reads run through the caller's authenticated client (RLS), not the service
+ * role: the funder directory is user-facing reference data, so there is no
+ * reason to bypass row-level security for it — and doing so made the whole
+ * module silently render "0 funders" whenever the service key was unset or
+ * stale, because the admin client 401s and the count coalesced to 0.
  */
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createSupabaseAdmin } from "./supabase-admin";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sanitizePgrstTerm } from "./search-sanitize";
 
 /**
  * Search funders using full-text search + trigram similarity
  */
 export const searchFunders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       query: z.string().min(1).max(200),
+      country: z.string().optional(),
       province: z.string().optional(),
+      jurisdiction: z.string().optional(),
       type: z.string().optional(),
       status: z.string().optional(),
       minRevenue: z.number().optional(),
@@ -27,9 +36,9 @@ export const searchFunders = createServerFn({ method: "GET" })
       offset: z.number().min(0).default(0),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
-      const supabase = await createSupabaseAdmin();
+      const supabase = context.supabase;
       const term = sanitizePgrstTerm(data.query);
 
       // Rank across the FULL matching set first (indexed FTS-style trigram +
@@ -52,10 +61,12 @@ export const searchFunders = createServerFn({ method: "GET" })
       let query = supabase
         .from("funders")
         .select(
-          `id, name, designation, category, province, city, charity_status, total_revenue, website`,
+          `id, name, designation, category, country, jurisdiction, province, city, charity_status, total_revenue, disbursed_annual, website`,
         )
         .in("id", [...rankById.keys()]);
 
+      if (data.country) query = query.eq("country", data.country);
+      if (data.jurisdiction) query = query.eq("jurisdiction", data.jurisdiction);
       if (data.province) query = query.eq("province", data.province);
       if (data.type) query = query.eq("category", data.type);
       if (data.status) query = query.eq("charity_status", data.status);
@@ -80,22 +91,64 @@ export const searchFunders = createServerFn({ method: "GET" })
   });
 
 /**
+ * Browse the full funder directory, page by page.
+ *
+ * The directory section previously rendered getTopFunders(limit: 12), whose
+ * validator caps at 20 — so with a 699-funder catalog the page could never
+ * show more than a sliver of it, with no way to reach the rest.
+ */
+export const listFunders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      country: z.string().trim().min(2).max(8).optional(),
+      offset: z.number().int().min(0).default(0),
+      limit: z.number().int().min(1).max(100).default(50),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    let query = context.supabase
+      .from("funders")
+      .select(
+        "id, name, category, country, jurisdiction, province, city, charity_status, total_revenue, disbursed_annual, website",
+        { count: "exact" },
+      );
+    if (data.country) query = query.eq("country", data.country);
+
+    const {
+      data: rows,
+      error,
+      count,
+    } = await query
+      // Alphabetical inside the selected country. Canada-first is expressed by
+      // the UI defaulting the country filter to CA rather than by sort order:
+      // ordering on the country column would put AR/BR/CL/CO ahead of CA, and
+      // PostgREST cannot order by a CASE expression.
+      .order("name", { ascending: true })
+      .range(data.offset, data.offset + data.limit - 1);
+    if (error) throw new Error(error.message);
+
+    return { funders: rows ?? [], total: count ?? 0 };
+  });
+
+/**
  * Get funder suggestions for autocomplete
  */
 export const suggestFunders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       query: z.string().min(2).max(100),
       limit: z.number().min(1).max(20).default(10),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     try {
-      const supabase = await createSupabaseAdmin();
+      const supabase = context.supabase;
 
       const { data: results } = await supabase
         .from("funders")
-        .select("id, name, category, province, city")
+        .select("id, name, category, country, jurisdiction, province, city")
         .ilike("name", `%${data.query}%`)
         .limit(data.limit);
 
@@ -109,10 +162,11 @@ export const suggestFunders = createServerFn({ method: "GET" })
  * Get funder statistics
  */
 export const getFunderStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({}))
-  .handler(async () => {
+  .handler(async ({ context }) => {
     try {
-      const supabase = await createSupabaseAdmin();
+      const supabase = context.supabase;
 
       const { data: byProvince } = await supabase
         .from("funders")
@@ -122,6 +176,19 @@ export const getFunderStats = createServerFn({ method: "GET" })
       const provinceCounts: Record<string, number> = {};
       for (const r of byProvince || []) {
         if (r.province) provinceCounts[r.province] = (provinceCounts[r.province] || 0) + 1;
+      }
+
+      // Country is the only location field every funder has: US federal
+      // agencies and multilaterals carry no province, so a province-only
+      // breakdown hides most of the non-Canadian directory.
+      const { data: byCountryRows } = await supabase
+        .from("funders")
+        .select("country")
+        .not("country", "is", null);
+
+      const countryCounts: Record<string, number> = {};
+      for (const r of byCountryRows || []) {
+        if (r.country) countryCounts[r.country] = (countryCounts[r.country] || 0) + 1;
       }
 
       const { data: byType } = await supabase
@@ -134,12 +201,16 @@ export const getFunderStats = createServerFn({ method: "GET" })
         if (r.category) typeCounts[r.category] = (typeCounts[r.category] || 0) + 1;
       }
 
-      const { count: total } = await supabase
+      const { count: total, error: countError } = await supabase
         .from("funders")
         .select("*", { count: "exact", head: true });
+      // Surface the failure instead of coalescing it to 0 — a silent zero here
+      // is indistinguishable from an empty directory in the UI.
+      if (countError) throw new Error(countError.message);
 
       return {
         total: total || 0,
+        byCountry: countryCounts,
         byProvince: provinceCounts,
         byType: typeCounts,
       };

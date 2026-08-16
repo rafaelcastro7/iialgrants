@@ -30,7 +30,15 @@ import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import type { GrantRowData } from "@/components/grants/GrantRow";
-import { SORT_LABELS, type SortKey } from "@/components/grants/grant-filters.utils";
+import {
+  AMOUNT_PRESETS,
+  collectCountries,
+  collectSectors,
+  COUNTRY_LABELS,
+  SORT_LABELS,
+  type AmountPresetKey,
+  type SortKey,
+} from "@/components/grants/grant-filters.utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +77,10 @@ type V2GrantsWorkspaceProps = {
   filteredGrants: GrantRowData[];
   isAdmin: boolean;
   jurisdiction: string;
+  country: string;
+  availableCountries?: string[];
+  sector: string;
+  amountPreset: AmountPresetKey;
   onlyWithDeadline: boolean;
   pending: string | null;
   search: string;
@@ -85,6 +97,9 @@ type V2GrantsWorkspaceProps = {
   onEvaluate: (grantId: string) => void;
   onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
   onJurisdictionChange: (next: string) => void;
+  onCountryChange: (next: string) => void;
+  onSectorChange: (next: string) => void;
+  onAmountPresetChange: (next: AmountPresetKey) => void;
   onOnlyWithDeadlineChange: (next: boolean) => void;
   onSearchChange: (next: string) => void;
   onSelectedFundersChange: (next: Set<string>) => void;
@@ -155,6 +170,10 @@ export function V2GrantsWorkspace({
   filteredGrants,
   isAdmin,
   jurisdiction,
+  country,
+  availableCountries,
+  sector,
+  amountPreset,
   onlyWithDeadline,
   pending,
   search,
@@ -171,6 +190,9 @@ export function V2GrantsWorkspace({
   onEvaluate,
   onFeedback,
   onJurisdictionChange,
+  onCountryChange,
+  onSectorChange,
+  onAmountPresetChange,
   onOnlyWithDeadlineChange,
   onSearchChange,
   onSelectedFundersChange,
@@ -228,6 +250,13 @@ export function V2GrantsWorkspace({
   const nextFocus = queue.find((g) => !["submitted", "won"].includes(g.status)) ?? queue[0];
   const riskItems = useMemo(() => activeFiltered.filter(hasOperationalRisk), [activeFiltered]);
   const jurisdictions = useMemo(() => collectJurisdictions(allGrants), [allGrants]);
+  // Prefer the catalog-wide list from the server; fall back to whatever the
+  // loaded page contains when it is unavailable.
+  const countryOptions = useMemo(
+    () => (availableCountries?.length ? availableCountries : collectCountries(allGrants)),
+    [availableCountries, allGrants],
+  );
+  const sectorOptions = useMemo(() => collectSectors(allGrants), [allGrants]);
 
   return (
     <section className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6">
@@ -338,6 +367,11 @@ export function V2GrantsWorkspace({
         filteredCount={activeFiltered.length}
         jurisdiction={jurisdiction}
         jurisdictions={jurisdictions}
+        country={country}
+        countries={countryOptions}
+        sector={sector}
+        sectors={sectorOptions}
+        amountPreset={amountPreset}
         onlyWithDeadline={onlyWithDeadline}
         search={search}
         sortKey={sortKey}
@@ -345,6 +379,9 @@ export function V2GrantsWorkspace({
         totalCount={activeAll.length}
         onEligibleOnlyChange={onEligibleOnlyChange}
         onJurisdictionChange={onJurisdictionChange}
+        onCountryChange={onCountryChange}
+        onSectorChange={onSectorChange}
+        onAmountPresetChange={onAmountPresetChange}
         onOnlyWithDeadlineChange={onOnlyWithDeadlineChange}
         onSearchChange={onSearchChange}
         onSortKeyChange={onSortKeyChange}
@@ -590,6 +627,11 @@ function FilterBar({
   filteredCount,
   jurisdiction,
   jurisdictions,
+  country,
+  countries,
+  sector,
+  sectors,
+  amountPreset,
   onlyWithDeadline,
   search,
   sortKey,
@@ -597,6 +639,9 @@ function FilterBar({
   totalCount,
   onEligibleOnlyChange,
   onJurisdictionChange,
+  onCountryChange,
+  onSectorChange,
+  onAmountPresetChange,
   onOnlyWithDeadlineChange,
   onSearchChange,
   onSortKeyChange,
@@ -606,6 +651,11 @@ function FilterBar({
   filteredCount: number;
   jurisdiction: string;
   jurisdictions: string[];
+  country: string;
+  countries: string[];
+  sector: string;
+  sectors: string[];
+  amountPreset: AmountPresetKey;
   onlyWithDeadline: boolean;
   search: string;
   sortKey: SortKey;
@@ -613,6 +663,9 @@ function FilterBar({
   totalCount: number;
   onEligibleOnlyChange: (next: boolean) => void;
   onJurisdictionChange: (next: string) => void;
+  onCountryChange: (next: string) => void;
+  onSectorChange: (next: string) => void;
+  onAmountPresetChange: (next: AmountPresetKey) => void;
   onOnlyWithDeadlineChange: (next: boolean) => void;
   onSearchChange: (next: string) => void;
   onSortKeyChange: (next: SortKey) => void;
@@ -644,6 +697,19 @@ function FilterBar({
             ))}
           </SelectContent>
         </Select>
+        <Select value={country} onValueChange={onCountryChange}>
+          <SelectTrigger className="w-[170px]" aria-label="Filter by country">
+            <SelectValue placeholder="Country" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All countries</SelectItem>
+            {countries.map((c) => (
+              <SelectItem key={c} value={c}>
+                {COUNTRY_LABELS[c] ?? c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={jurisdiction} onValueChange={onJurisdictionChange}>
           <SelectTrigger className="w-[180px]" aria-label="Filter by jurisdiction">
             <SelectValue placeholder="Where" />
@@ -653,6 +719,34 @@ function FilterBar({
             {jurisdictions.map((j) => (
               <SelectItem key={j} value={j}>
                 {j}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sector} onValueChange={onSectorChange}>
+          <SelectTrigger className="w-[180px]" aria-label="Filter by sector">
+            <SelectValue placeholder="Sector" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any sector</SelectItem>
+            {sectors.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={amountPreset}
+          onValueChange={(v) => onAmountPresetChange(v as AmountPresetKey)}
+        >
+          <SelectTrigger className="w-[160px]" aria-label="Filter by amount">
+            <SelectValue placeholder="Amount" />
+          </SelectTrigger>
+          <SelectContent>
+            {AMOUNT_PRESETS.map((p) => (
+              <SelectItem key={p.key} value={p.key}>
+                {p.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1477,7 +1571,13 @@ function hasOperationalRisk(grant: GrantRowData): boolean {
   return riskReasons(grant).length > 0;
 }
 
+// Once a grant has been submitted, the eligibility/deadline/fit checks below
+// describe a decision that already happened — flagging them as "needs a
+// look" is stale noise, not something the user can still act on.
+const DECIDED_GRANT_STATUSES = new Set(["submitted", "won", "lost"]);
+
 function riskReasons(grant: GrantRowData): string[] {
+  if (DECIDED_GRANT_STATUSES.has(grant.status)) return [];
   const reasons: string[] = [];
   const deadline = deadlineState(grant.deadline);
   if (deadline.days != null && deadline.days >= 0 && deadline.days <= 14)

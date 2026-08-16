@@ -143,6 +143,20 @@ export const draftSection = createServerFn({ method: "POST" })
         // section plus citations while bounding local latency.
         maxOutputTokens: 450,
         responseFormat: "json",
+        // Schema guard: coerceWriterOutput repairs common shape issues, but a
+        // provider's output that's still unusable after coercion (or not
+        // even parseable JSON) used to fail the whole section instead of the
+        // cloud/local chain advancing to a provider that can produce a valid
+        // WriterOutput. Mirrors the exact coerce+parse pipeline below so the
+        // guard's verdict matches what the real parse will do.
+        validate: (text) => {
+          try {
+            WriterOutput.parse(coerceWriterOutput(JSON.parse(extractJsonObject(text)), allowed));
+            return true;
+          } catch {
+            return false;
+          }
+        },
         messages: [
           {
             role: "system",
@@ -260,8 +274,13 @@ export const draftSection = createServerFn({ method: "POST" })
     // A prior critic run scored the OLD section content — once it's
     // rewritten, that score no longer describes what's actually on the page.
     // Left in place, canSubmit() would pass a proposal whose current text was
-    // never reviewed by the critic at all.
-    await context.supabase.from("proposals").update({ critic_score: null }).eq("id", proposal.id);
+    // never reviewed by the critic at all. Same reasoning for
+    // human_reviewed_at: a human's earlier confirmation was for the text
+    // that existed then, not for whatever the AI just rewrote it to.
+    await context.supabase
+      .from("proposals")
+      .update({ critic_score: null, human_reviewed_at: null })
+      .eq("id", proposal.id);
 
     // Append immutable citation rows.
     if (parsed.citations.length) {
@@ -294,4 +313,46 @@ export const draftSection = createServerFn({ method: "POST" })
     });
 
     return { ok: true, sectionId: section.id, citations: parsed.citations.length, runId };
+  });
+
+// Manual section edit — previously content_en could ONLY ever be written by
+// the AI writer above; there was no path for a human to actually rewrite
+// what gets submitted, so "human review" could only ever mean "read it,"
+// never "took responsibility for it." Sets human_edited so submission-time
+// tracking can distinguish AI-verbatim content from human-touched content.
+export const editSectionContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        sectionId: z.string().uuid(),
+        contentEn: z.string().min(1).max(8000),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: section, error: se } = await context.supabase
+      .from("proposal_sections")
+      .select("id, proposal_id")
+      .eq("id", data.sectionId)
+      .maybeSingle();
+    if (se) throw new Error(se.message);
+    if (!section) throw new Error("section_not_found");
+
+    const { error: ue } = await context.supabase
+      .from("proposal_sections")
+      .update({ content_en: data.contentEn, human_edited: true })
+      .eq("id", section.id);
+    if (ue) throw new Error(ue.message);
+
+    // Same reasoning as draftSection: the critic scored the OLD text, and a
+    // stale human_reviewed_at from before this edit must not carry over —
+    // one explicit confirmation is required against the final content.
+    await context.supabase
+      .from("proposals")
+      .update({ critic_score: null, human_reviewed_at: null })
+      .eq("id", section.proposal_id);
+
+    await bumpProposalVersion(context.supabase, section.proposal_id);
+    return { ok: true, sectionId: section.id };
   });

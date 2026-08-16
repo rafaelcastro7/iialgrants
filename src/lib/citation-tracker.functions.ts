@@ -32,6 +32,19 @@ export const extractCitations = createServerFn({ method: "POST" })
       const supabase = await createSupabaseAdmin();
       await assertEntityInUserOrg(supabase, context.userId, "proposal", data.proposalId);
 
+      // Self-citation = the "evidence" is actually the org's own name, not
+      // an independent source — a red flag the AI is circularly citing the
+      // applicant to support their own application. Must compare against
+      // THIS org's actual name, not a fixed string: a hardcoded demo-org
+      // check here would silently never flag self-citation for any real
+      // organization, defeating the check entirely.
+      const { data: org } = await supabase
+        .from("org_profiles")
+        .select("org_name")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      const orgNameLower = org?.org_name?.trim().toLowerCase() || null;
+
       const allCitations: Array<{
         id: string;
         proposalSectionId: string;
@@ -42,27 +55,30 @@ export const extractCitations = createServerFn({ method: "POST" })
         selfCitation: boolean;
       }> = [];
 
-      for (const section of data.sections) {
-        const inlinePattern =
-          /\(([A-Z][a-z]+(?:\s*(?:&|and)\s*[A-Z][a-z]+)*,?\s*\d{4}(?:[a-z])?)\)/g;
-        let match;
-        const sectionCitations: string[] = [];
+      // The writer records every grounded citation to `proposal_citations` as
+      // it drafts (marker `[dN]` -> retrieved evidence chunk), so extraction
+      // reads that table rather than re-parsing section prose: this app's
+      // citations are internal evidence markers, not academic (Author, Year)
+      // references, so a text regex over content can never find them.
+      const sectionIds = data.sections.map((s) => s.id);
+      const { data: rows, error: citationsError } = await supabase
+        .from("proposal_citations")
+        .select("id, section_id, marker, snippet")
+        .in("section_id", sectionIds);
 
-        while ((match = inlinePattern.exec(section.content)) !== null) {
-          sectionCitations.push(match[1]);
-        }
+      if (citationsError) throw new Error("Failed to load citations: " + citationsError.message);
 
-        sectionCitations.forEach((ref, i) => {
-          allCitations.push({
-            id: `${section.id}-cit-${i}`,
-            proposalSectionId: section.id,
-            source: "user_added",
-            verified: false,
-            retracted: false,
-            inlineRef: ref,
-            selfCitation:
-              ref.toLowerCase().includes("iial") || ref.toLowerCase().includes("institute"),
-          });
+      for (const row of rows ?? []) {
+        allCitations.push({
+          id: row.id,
+          proposalSectionId: row.section_id,
+          source: "grounded_evidence",
+          verified: true,
+          retracted: false,
+          inlineRef: row.marker,
+          selfCitation: Boolean(
+            orgNameLower && (row.snippet ?? "").toLowerCase().includes(orgNameLower),
+          ),
         });
       }
 
