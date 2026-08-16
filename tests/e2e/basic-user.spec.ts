@@ -42,9 +42,12 @@ async function basicUserFlow(page: Page) {
     page.getByRole("heading", { name: /where to focus today/i }),
   ).toBeVisible();
   await expect(page.getByRole("searchbox", { name: /search grants/i })).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Industrial Research Assistance Program (IRAP)", exact: true }),
-  ).toBeVisible();
+  // Assert the workspace renders grants, not that one specific grant happens to
+  // be on the first page. That held when the catalog had 47 rows; it now has
+  // 3000+, so IRAP legitimately sits outside the first page and this failed on
+  // a healthy system. The searched assertion below is the one that carries the
+  // real meaning.
+  await expect(page.locator('a[href^="/grants/"]').first()).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("searchbox", { name: /search grants/i }).fill("IRAP");
   await expect(
