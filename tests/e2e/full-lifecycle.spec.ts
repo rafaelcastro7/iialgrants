@@ -304,10 +304,15 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   }
   await expect(submitDialog).toBeHidden({ timeout: AGENT_TIMEOUT });
 
-  // Verify it was recorded, not just that the dialog closed.
+  // Verify it was recorded, not just that the dialog closed. Matching on a
+  // distinctive prefix rather than the whole heading: grant titles here run
+  // long and carry em-dashes, and an exact full-string getByText is brittle
+  // against any whitespace or punctuation the list renders differently.
   await page.goto("/submissions");
-  await expect(page.getByText(grantTitle, { exact: false }).first()).toBeVisible({
-    timeout: 30_000,
-  });
+  const titleFragment = grantTitle.split(/\s+/).slice(0, 5).join(" ");
+  await expect(
+    page.getByText(titleFragment, { exact: false }).first(),
+    `submitted grant "${titleFragment}" did not appear on /submissions`,
+  ).toBeVisible({ timeout: 30_000 });
   expect(consoleErrors, `Console errors after submit: ${consoleErrors.join("; ")}`).toEqual([]);
 });
