@@ -76,15 +76,26 @@ function validate(text: string): { valid: boolean; note: string } {
   }
   if (!Array.isArray(o.risks)) return { valid: false, note: "risks not an array" };
   const rationale = String(o.rationale_en ?? "");
-  if (rationale.length < 40) return { valid: false, note: `rationale too thin (${rationale.length} chars)` };
-  return { valid: true, note: `fit=${o.fit_score} risks=${o.risks.length} rationale=${rationale.length}ch` };
+  if (rationale.length < 40)
+    return { valid: false, note: `rationale too thin (${rationale.length} chars)` };
+  return {
+    valid: true,
+    note: `fit=${o.fit_score} risks=${o.risks.length} rationale=${rationale.length}ch`,
+  };
 }
 
 const rows: Row[] = [];
 
 for (const c of CANDIDATES) {
   if (!c.key) {
-    rows.push({ provider: c.provider, model: c.model, ok: false, ms: 0, valid: false, note: "no key" });
+    rows.push({
+      provider: c.provider,
+      model: c.model,
+      ok: false,
+      ms: 0,
+      valid: false,
+      note: "no key",
+    });
     continue;
   }
   const started = Date.now();
@@ -119,7 +130,14 @@ for (const c of CANDIDATES) {
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const text = data.choices?.[0]?.message?.content ?? "";
     if (!text.trim()) {
-      rows.push({ provider: c.provider, model: c.model, ok: true, ms, valid: false, note: "empty content" });
+      rows.push({
+        provider: c.provider,
+        model: c.model,
+        ok: true,
+        ms,
+        valid: false,
+        note: "empty content",
+      });
       continue;
     }
     const v = validate(text);
