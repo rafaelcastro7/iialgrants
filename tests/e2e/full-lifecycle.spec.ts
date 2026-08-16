@@ -328,11 +328,24 @@ test("search → enrich → evaluate → draft → critic → export → submit"
   ]);
   expect(download.suggestedFilename()).toBeTruthy();
 
-  // 9. Submit — proposal is freshly drafted, so this should hit the
-  // readiness gate (not silently succeed, not silently fail).
-  await page.getByRole("button", { name: /^submit$/i }).click();
-  const submitDialog = page.getByRole("dialog");
-  await expect(submitDialog).toBeVisible({ timeout: 15_000 });
+  // 9. Submit — unless this grant's proposal is already submitted.
+  //
+  // Submitting is terminal: the Submit button is gone once it has happened, so
+  // a re-run that lands on an earlier run's proposal waited the full 20-minute
+  // budget for a control that correctly no longer exists (confirmed live
+  // 2026-08-16 — the Advanced view offered only the three Export buttons).
+  // An already-submitted proposal is the lifecycle's success state, not a
+  // failure, so verify it rather than trying to submit it twice.
+  const alreadySubmitted = await page
+    .getByText(/^submitted$/i)
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  if (!alreadySubmitted) {
+    await page.getByRole("button", { name: /^submit$/i }).click();
+    const submitDialog = page.getByRole("dialog");
+    await expect(submitDialog).toBeVisible({ timeout: 15_000 });
 
   // Actually go through with it. This used to stop at "the gate appeared",
   // which passed while `submissions` stayed empty — the test's name promised
