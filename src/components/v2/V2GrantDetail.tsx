@@ -209,6 +209,16 @@ export function V2GrantDetail({
   const canFetch = grant.status === "discovered" && !verdict.enrichmentFailed;
   const canEvaluate = grant.status !== "discovered" || !!evaluation;
   const canDraft = ["scored", "shortlisted", "in_proposal"].includes(grant.status);
+  // Why drafting is unavailable, in the user's terms. The evaluator only
+  // promotes a grant to "scored" when eligibility passes, so an honest
+  // "not eligible" verdict leaves this button disabled forever.
+  const draftBlockedReason = canDraft
+    ? null
+    : evaluation && evaluation.eligibility_pass === false
+      ? "Drafting is off: this grant was assessed as not eligible for your organization. Update your profile or re-evaluate if that looks wrong."
+      : evaluation
+        ? "Drafting unlocks once this grant is scored."
+        : "Check fit first - drafting unlocks once this grant has been evaluated.";
   const actionDisabled = busy != null;
   const hasBriefingTools = (isAdmin && grant.status === "scored") || !!traceRun;
   const [detailMode, setDetailMode] = useDetailMode();
@@ -391,18 +401,29 @@ export function V2GrantDetail({
                     </Link>
                   </Button>
                 ) : (
-                  <Button
-                    className="w-full gap-2"
-                    disabled={actionDisabled || !canDraft}
-                    onClick={onDraft}
-                  >
-                    {busy === "draft" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
+                  <div className="w-full">
+                    <Button
+                      className="w-full gap-2"
+                      disabled={actionDisabled || !canDraft}
+                      onClick={onDraft}
+                      title={draftBlockedReason ?? undefined}
+                    >
+                      {busy === "draft" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Draft proposal
+                    </Button>
+                    {/* A permanently greyed-out button with no explanation is
+                        the single most confusing state on this page: the app
+                        knows exactly why drafting is blocked (not evaluated
+                        yet, or evaluated as not eligible) and used to say
+                        nothing at all. */}
+                    {draftBlockedReason && (
+                      <p className="mt-1.5 text-xs text-muted-foreground">{draftBlockedReason}</p>
                     )}
-                    Draft proposal
-                  </Button>
+                  </div>
                 )}
               </div>
 
