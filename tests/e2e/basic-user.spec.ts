@@ -47,12 +47,24 @@ async function basicUserFlow(page: Page) {
   // 3000+, so IRAP legitimately sits outside the first page and this failed on
   // a healthy system. The searched assertion below is the one that carries the
   // real meaning.
-  await expect(page.locator('a[href^="/grants/"]').first()).toBeVisible({ timeout: 30_000 });
+  const firstGrantLink = page.locator('a[href^="/grants/"]').first();
+  await expect(firstGrantLink).toBeVisible({ timeout: 30_000 });
 
-  await page.getByRole("searchbox", { name: /search grants/i }).fill("IRAP");
-  await expect(
-    page.getByRole("link", { name: "Industrial Research Assistance Program (IRAP)", exact: true }),
-  ).toBeVisible();
+  // Search for a grant the catalog actually has right now instead of the
+  // hardcoded "Industrial Research Assistance Program (IRAP)". That row was
+  // seeded once and has since been auto-archived by a real failed-fit
+  // evaluation, so it is correctly excluded from the active list and both of
+  // these assertions failed on a perfectly healthy system. Taking the term
+  // from a visible grant keeps the assertion meaningful — search must return
+  // the specific thing asked for — without depending on any one seed row
+  // surviving.
+  const sampleTitle = (await firstGrantLink.innerText()).trim().split("\n")[0].slice(0, 40);
+  expect(sampleTitle.length, "could not read a grant title to search for").toBeGreaterThan(3);
+
+  await page.getByRole("searchbox", { name: /search grants/i }).fill(sampleTitle);
+  await expect(page.getByRole("link", { name: sampleTitle, exact: false }).first()).toBeVisible({
+    timeout: 30_000,
+  });
   // Same stale-copy issue as the heading above: the real component renders
   // "active grants", not "active records".
   await expect(page.getByText(/showing \d+ of \d+ active grants/i)).toBeVisible();
@@ -61,10 +73,10 @@ async function basicUserFlow(page: Page) {
   const commandDialog = page.getByRole("dialog", { name: /command palette/i });
   await commandDialog
     .getByPlaceholder("Search grants, proposals, or type a command...")
-    .fill("IRAP");
-  await expect(
-    commandDialog.getByText("Industrial Research Assistance Program (IRAP)", { exact: true }),
-  ).toBeVisible();
+    .fill(sampleTitle);
+  await expect(commandDialog.getByText(sampleTitle, { exact: false }).first()).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(commandDialog.getByText(/no results found/i)).toHaveCount(0);
   await page.keyboard.press("Escape");
 
