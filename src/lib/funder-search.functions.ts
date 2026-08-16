@@ -158,63 +158,6 @@ export const suggestFunders = createServerFn({ method: "GET" })
     }
   });
 
-/**
- * Get funder statistics
- */
-export const getFunderStats = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({}))
-  .handler(async ({ context }) => {
-    try {
-      const supabase = context.supabase;
-
-      const { data: byProvince } = await supabase
-        .from("funders")
-        .select("province")
-        .not("province", "is", null);
-
-      const provinceCounts: Record<string, number> = {};
-      for (const r of byProvince || []) {
-        if (r.province) provinceCounts[r.province] = (provinceCounts[r.province] || 0) + 1;
-      }
-
-      // Country is the only location field every funder has: US federal
-      // agencies and multilaterals carry no province, so a province-only
-      // breakdown hides most of the non-Canadian directory.
-      const { data: byCountryRows } = await supabase
-        .from("funders")
-        .select("country")
-        .not("country", "is", null);
-
-      const countryCounts: Record<string, number> = {};
-      for (const r of byCountryRows || []) {
-        if (r.country) countryCounts[r.country] = (countryCounts[r.country] || 0) + 1;
-      }
-
-      const { data: byType } = await supabase
-        .from("funders")
-        .select("category")
-        .not("category", "is", null);
-
-      const typeCounts: Record<string, number> = {};
-      for (const r of byType || []) {
-        if (r.category) typeCounts[r.category] = (typeCounts[r.category] || 0) + 1;
-      }
-
-      const { count: total, error: countError } = await supabase
-        .from("funders")
-        .select("*", { count: "exact", head: true });
-      // Surface the failure instead of coalescing it to 0 — a silent zero here
-      // is indistinguishable from an empty directory in the UI.
-      if (countError) throw new Error(countError.message);
-
-      return {
-        total: total || 0,
-        byCountry: countryCounts,
-        byProvince: provinceCounts,
-        byType: typeCounts,
-      };
-    } catch (e) {
-      throw new Error(e instanceof Error ? e.message : String(e));
-    }
-  });
+// getFunderStats was removed: it duplicated getFunderDashboardStats
+// (funder-dashboard.functions.ts), which is what the /funders page actually
+// renders. Two functions computing the same breakdown drift apart in practice.

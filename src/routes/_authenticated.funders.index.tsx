@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { getFunderDashboardStats } from "@/lib/funder-dashboard.functions";
-import { listFunders, searchFunders } from "@/lib/funder-search.functions";
+import { listFunders, searchFunders, suggestFunders } from "@/lib/funder-search.functions";
 import { enrichFunder } from "@/lib/funder-enrichment.functions";
 import { AppTopBar } from "@/components/AppSidebar";
 import { PageTransition } from "@/components/PageTransition";
@@ -95,19 +95,45 @@ function FundersPage() {
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
   const fetchSearch = useServerFn(searchFunders);
+  const fetchSuggestions = useServerFn(suggestFunders);
+  const [suggestions, setSuggestions] = useState<
+    { id: string; name: string; country: string | null; jurisdiction: string | null }[]
+  >([]);
 
-  const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    try {
-      const results = await fetchSearch({ data: { query: searchQuery.trim(), limit: 20 } });
-      setSearchResults(results);
-    } catch {
-      toast.error("Search failed");
-    } finally {
-      setSearching(false);
+  const handleSearch = useCallback(
+    async (overrideQuery?: string) => {
+      const query = (overrideQuery ?? searchQuery).trim();
+      if (!query) return;
+      setSuggestions([]);
+      setSearching(true);
+      try {
+        const results = await fetchSearch({ data: { query, limit: 20 } });
+        setSearchResults(results);
+      } catch {
+        toast.error("Search failed");
+      } finally {
+        setSearching(false);
+      }
+    },
+    [searchQuery, fetchSearch],
+  );
+
+  // Debounced type-ahead over the 699-funder directory. suggestFunders already
+  // existed but nothing rendered it, so the search box gave no feedback until
+  // the user guessed a name exactly right and pressed Enter.
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      setSuggestions([]);
+      return;
     }
-  }, [searchQuery, fetchSearch]);
+    const timer = setTimeout(() => {
+      fetchSuggestions({ data: { query, limit: 8 } })
+        .then(setSuggestions)
+        .catch(() => setSuggestions([]));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery, fetchSuggestions]);
 
   const enrichMutation = useMutation({
     mutationFn: (funderId: string) => enrichFunder({ data: { funderId } }),
@@ -184,9 +210,31 @@ function FundersPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   className="pl-9"
+                  aria-label="Search funders"
                 />
+                {suggestions.length > 0 && (
+                  <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-md">
+                    {suggestions.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                          onClick={() => {
+                            setSearchQuery(s.name);
+                            handleSearch(s.name);
+                          }}
+                        >
+                          <span className="truncate">{s.name}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            {s.jurisdiction || s.country || ""}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <Button onClick={handleSearch} disabled={searching || !searchQuery.trim()}>
+              <Button onClick={() => handleSearch()} disabled={searching || !searchQuery.trim()}>
                 {searching ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Search"}
               </Button>
             </div>
