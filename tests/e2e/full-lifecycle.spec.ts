@@ -347,24 +347,24 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     const submitDialog = page.getByRole("dialog");
     await expect(submitDialog).toBeVisible({ timeout: 15_000 });
 
-  // Actually go through with it. This used to stop at "the gate appeared",
-  // which passed while `submissions` stayed empty — the test's name promised
-  // "→ submit" but the submit leg was never exercised end to end. SubmitDialog
-  // keeps both buttons disabled until the human-review checkbox is ticked
-  // (submitProposal rejects with submit_blocked:human_review_not_confirmed
-  // otherwise), and offers "Submit Anyway" only on a blocked proposal — a
-  // freshly drafted one legitimately hits that path (submit-gate.shared.ts
-  // also requires zero open critical requirements).
-  //
-  // Submitting is a TWO-phase flow, and missing that is what made this hang:
-  // "Submit Anyway" does not exist on the first pass. The plain Submit posts,
-  // the server answers submit_blocked:<reasons>, and _authenticated.proposals
-  // .$id.tsx then re-opens the same dialog carrying a warning — only that
-  // second render offers the force button. Waiting for the dialog to close
-  // after one click therefore sat there for the full timeout while the dialog
-  // was sitting right in front of it saying why. Confirmed live 2026-08-16:
-  // "This proposal isn't ready to submit: the proposal has not been run
-  // through the quality review".
+    // Actually go through with it. This used to stop at "the gate appeared",
+    // which passed while `submissions` stayed empty — the test's name promised
+    // "→ submit" but the submit leg was never exercised end to end. SubmitDialog
+    // keeps both buttons disabled until the human-review checkbox is ticked
+    // (submitProposal rejects with submit_blocked:human_review_not_confirmed
+    // otherwise), and offers "Submit Anyway" only on a blocked proposal — a
+    // freshly drafted one legitimately hits that path (submit-gate.shared.ts
+    // also requires zero open critical requirements).
+    //
+    // Submitting is a TWO-phase flow, and missing that is what made this hang:
+    // "Submit Anyway" does not exist on the first pass. The plain Submit posts,
+    // the server answers submit_blocked:<reasons>, and _authenticated.proposals
+    // .$id.tsx then re-opens the same dialog carrying a warning — only that
+    // second render offers the force button. Waiting for the dialog to close
+    // after one click therefore sat there for the full timeout while the dialog
+    // was sitting right in front of it saying why. Confirmed live 2026-08-16:
+    // "This proposal isn't ready to submit: the proposal has not been run
+    // through the quality review".
     const forceSubmit = submitDialog.getByRole("button", { name: /submit anyway/i });
     const plainSubmit = submitDialog.getByRole("button", { name: /^submit$/i });
 
