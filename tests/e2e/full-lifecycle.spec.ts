@@ -149,7 +149,19 @@ test("search → enrich → evaluate → draft → critic → export → submit"
     await expect(link).toBeVisible({ timeout: 60_000 });
     await link.click();
     await expect(page).toHaveURL(/\/grants\/[^/]+$/);
-    return (await page.getByRole("heading", { level: 1 }).first().innerText()).trim();
+    // The URL flips before the detail view renders, so reading the h1 right
+    // away returns the *list* page's heading — this captured "Here's where to
+    // focus today" and then failed 20 minutes later looking for that on
+    // /submissions. Wait for a control that only the detail view has before
+    // trusting the heading.
+    await expect(page.getByRole("button", { name: /official page/i })).toBeVisible({
+      timeout: 60_000,
+    });
+    const title = (await page.getByRole("heading", { level: 1 }).first().innerText()).trim();
+    expect(title, "read the grants list heading instead of the grant's").not.toMatch(
+      /where to focus today/i,
+    );
+    return title;
   }
 
   // Held for the final assertion, so "submitted" is verified against the grant
