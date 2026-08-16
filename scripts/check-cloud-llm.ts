@@ -60,8 +60,12 @@ type ProviderReport = {
   available: string[];
   mapped: string[];
   missing: string[];
-  chat: { model: string; ok: boolean; ms: number; detail: string } | null;
+  chat: Array<{ model: string; ok: boolean; ms: number; detail: string }>;
 };
+
+// Google returns ids as "models/gemini-2.5-flash" from /models but expects
+// "gemini-2.5-flash" as the request model, so compare on the bare id.
+const bareId = (id: string) => id.replace(/^models\//, "");
 
 async function listModels(p: ProviderSpec): Promise<string[]> {
   const res = await fetch(`${p.baseUrl}/models`, {

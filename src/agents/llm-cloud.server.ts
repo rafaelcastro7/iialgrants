@@ -71,13 +71,20 @@ export const GROQ_MODEL_MAP: Record<AgentName, string> = {
 };
 
 // Gemini — tertiary cloud source via Google's OpenAI-compatible endpoint.
+//
+// The 2.0 IDs this used to name (gemini-2.0-flash / -flash-lite) were retired
+// by Google and answer 404 "no longer available"; the whole tertiary rung was
+// therefore dead, and a Cerebras+Groq outage fell straight through to local
+// Ollama. Confirmed live 2026-08-16 against this account's model list.
+// Pinned rather than tracking the -latest aliases so behaviour is stable;
+// `bun run scripts/check-cloud-llm.ts` catches the next retirement.
 export const GEMINI_MODEL_MAP: Record<AgentName, string> = {
-  discoverer: "gemini-2.0-flash-lite",
-  enricher: "gemini-2.0-flash-lite",
-  evaluator: "gemini-2.0-flash",
-  strategist: "gemini-2.0-flash",
-  writer: "gemini-2.0-flash",
-  critic: "gemini-2.0-flash",
+  discoverer: "gemini-2.5-flash-lite",
+  enricher: "gemini-2.5-flash-lite",
+  evaluator: "gemini-2.5-flash",
+  strategist: "gemini-2.5-flash",
+  writer: "gemini-2.5-flash",
+  critic: "gemini-2.5-flash",
 };
 
 // Cloud chain order: Cerebras -> Groq -> Gemini. Providers with no API key are
