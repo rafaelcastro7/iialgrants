@@ -109,11 +109,17 @@ if (-not (Test-Url "$OllamaUrl/api/tags")) {
 
 # The embedding model is what keeps search in hybrid mode rather than silently
 # degrading to lexical-only, so make sure it is actually present.
+# nomic-embed-text keeps search in hybrid mode instead of silently degrading to
+# lexical-only; phi4-mini and dolphin3 are what the agents themselves run on,
+# and without them every agent quietly falls through to a cloud provider (the
+# critic failed with ollama_prewarm_404 and left proposals unreviewable).
 $tags = ""
 try { $tags = (Invoke-WebRequest -Uri "$OllamaUrl/api/tags" -TimeoutSec 10 -UseBasicParsing).Content } catch {}
-if ($tags -notmatch "nomic-embed-text") {
-  Write-Step "Pulling nomic-embed-text (first run only)..." "Yellow"
-  ollama pull nomic-embed-text *> $null
+foreach ($model in @("nomic-embed-text", "phi4-mini", "dolphin3")) {
+  if ($tags -notmatch [regex]::Escape($model)) {
+    Write-Step "Pulling $model (first run only)..." "Yellow"
+    ollama pull $model *> $null
+  }
 }
 
 # --- 4. Web app --------------------------------------------------------------

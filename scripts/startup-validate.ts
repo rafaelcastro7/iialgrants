@@ -140,6 +140,29 @@ await check("ollama embeddings", true, async () => {
   return `nomic-embed-text ready (768 dims)`;
 });
 
+// --- 5b. Local agent chat models --------------------------------------------
+// Separate pulls from the embedding model, and their absence is quiet: the
+// agent falls through to a cloud provider, so runs mostly still succeed and
+// only fail when that fallback is unavailable. The critic failed exactly this
+// way with ollama_prewarm_404: model 'phi4-mini:latest' not found, leaving
+// proposals.critic_score NULL and the submit gate reporting "not reviewed"
+// even though the UI had shown the review running to completion.
+await check("ollama agent models", true, async () => {
+  const tags = await fetchWithTimeout(`${OLLAMA_URL}/api/tags`);
+  if (!tags.ok) throw new Error(`ollama HTTP ${tags.status}`);
+  const { models } = (await tags.json()) as { models?: Array<{ name: string }> };
+  const names = (models ?? []).map((m) => m.name);
+  const required = ["phi4-mini", "dolphin3"];
+  const missing = required.filter((r) => !names.some((n) => n.startsWith(r)));
+  if (missing.length) {
+    throw new Error(
+      `missing local agent model(s): ${missing.join(", ")} — run "ollama pull <model>". ` +
+        `Agents silently fall back to a cloud provider without them.`,
+    );
+  }
+  return `${required.join(", ")} installed`;
+});
+
 // --- 6. The real hybrid search path the /grants page uses --------------------
 await check("hybrid search end-to-end", true, async () => {
   if (!supabase) throw new Error("skipped: no authenticated client");
