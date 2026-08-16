@@ -163,6 +163,72 @@ await check("ollama agent models", true, async () => {
   return `${required.join(", ")} installed`;
 });
 
+// --- 5c. Cloud LLM chain (advisory: local Ollama still covers every agent) ---
+// Cerebras -> Groq -> Gemini, tried in that order before falling back local.
+// Provider model IDs rot: Gemini's mapped gemini-2.0-* pair had been retired
+// outright, so the whole tertiary rung was dead without anything reporting it.
+await check("cloud llm chain", false, async () => {
+  const { CEREBRAS_MODEL_MAP, GROQ_MODEL_MAP, GEMINI_MODEL_MAP } = await import(
+    "../src/agents/llm-cloud.server"
+  );
+  const providers = [
+    {
+      name: "cerebras",
+      url: "https://api.cerebras.ai/v1",
+      key: process.env.CEREBRAS_API_KEY,
+      model: CEREBRAS_MODEL_MAP.evaluator,
+    },
+    {
+      name: "groq",
+      url: "https://api.groq.com/openai/v1",
+      key: process.env.GROQ_API_KEY,
+      model: GROQ_MODEL_MAP.evaluator,
+    },
+    {
+      name: "gemini",
+      url: "https://generativelanguage.googleapis.com/v1beta/openai",
+      key: process.env.GOOGLE_AI_STUDIO_KEY,
+      model: GEMINI_MODEL_MAP.evaluator,
+    },
+  ];
+
+  const results: string[] = [];
+  const broken: string[] = [];
+  for (const p of providers) {
+    if (!p.key) {
+      results.push(`${p.name}:no-key`);
+      continue;
+    }
+    try {
+      const response = await fetchWithTimeout(
+        `${p.url}/chat/completions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
+          body: JSON.stringify({
+            model: p.model,
+            messages: [{ role: "user", content: "Reply with the single word: ready" }],
+            max_tokens: 8,
+            temperature: 0,
+          }),
+        },
+        30000,
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      results.push(`${p.name}:ok`);
+    } catch (error) {
+      broken.push(`${p.name} (${p.model}): ${error instanceof Error ? error.message : error}`);
+      results.push(`${p.name}:FAIL`);
+    }
+  }
+  if (broken.length) {
+    throw new Error(
+      `${broken.join("; ")} — run "bun run scripts/check-cloud-llm.ts" for the model list`,
+    );
+  }
+  return results.join(", ");
+});
+
 // --- 6. The real hybrid search path the /grants page uses --------------------
 await check("hybrid search end-to-end", true, async () => {
   if (!supabase) throw new Error("skipped: no authenticated client");
