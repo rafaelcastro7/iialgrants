@@ -291,3 +291,81 @@ force-push is safe — "I rewrote this so mine must be authoritative" does not
 follow. When the two sides both contain real independent work, push the
 local side to a new branch name instead of forcing, and leave reconciliation
 as an explicit human decision.
+
+## The failure mode that costs 20 minutes every time: asserting instead of reading
+
+Nine separate defects in this suite shared one shape — **assert an expected
+state and wait for it, instead of reading the real state and branching.** Each
+consumed the whole `test.setTimeout` budget and then reported only
+`waiting for locator(...)`, which never names the cause. Found and fixed
+2026-08-16; none of the nine was an application bug.
+
+| The assumption | What was actually true |
+|---|---|
+| The sign-in page loads | It had rendered the error boundary |
+| A button changes label | A modal had removed it from the a11y tree |
+| "Fetch details" re-enables | It unmounts when enrichment *succeeds* |
+| The grant will be eligible | "Not eligible" is a correct verdict |
+| Review follows drafting | Only when one is outstanding |
+| The Submit button is there | It disappears once submitted |
+| The heading is the grant's | The URL flips before the view renders |
+| A seeded grant is on page one | Auto-archived; catalog grew 47 → 3,014 |
+| A July reminder says "in 5 days" | Seed state expires by construction |
+
+Concretely, when writing specs here:
+
+- **Assert `toBeEnabled()` before `.click()`.** A click on a disabled element
+  sits in Playwright's actionability wait until the test times out. Attach a
+  message naming what being disabled would mean.
+- **Close a modal before asserting on anything behind it.** The "Chain of
+  thought" Sheet is a modal Radix dialog; while open, the rest of the page is
+  `aria-hidden` and assertions against it can never pass — the failure snapshot
+  will contain nothing but the dialog.
+- **Success can remove a control.** "Fetch details" unmounts when the grant
+  leaves `discovered`, so waiting for it to re-enable fails precisely when
+  enrichment worked. Wait for the *next* state instead.
+- **Follow the action ladder, don't assume its next rung.** `ProposalDetailExpress`
+  offers exactly one primary action; re-running against an already-reviewed
+  proposal lands on "Submit proposal", not "Run quality review".
+- **A finished mutation is not a successful one.** `onCritic()` reports failure
+  as a toast and leaves `critic_score` NULL, so the run continues and dies later
+  at the submit gate reporting "not reviewed" — pointing at the wrong thing.
+  Assert the success signal, not just that the pending flag cleared.
+- **Wait for a view-specific element before reading a heading.** The URL changes
+  before the detail view renders, so an immediate `h1` read returns the *list*
+  page's heading.
+- **Submitting is two-phase.** "Submit Anyway" does not exist on the first pass:
+  the plain Submit posts, the server answers `submit_blocked:<reasons>`, and
+  only the re-rendered dialog offers the force button. The human-review checkbox
+  resets with that re-render, so re-tick it each pass.
+
+## Don't depend on seed state — build the precondition
+
+Two specs asserted against data seeded by hand months earlier. Both failed on a
+perfectly healthy system: the notification fixture's "deadline in 5 days" had
+long passed (and `notifications` was empty), and the pinned IRAP grant had been
+auto-archived by a real failed-fit evaluation.
+
+Write the precondition instead. `notification-bell.spec.ts` now sets a deadline
+via the service-role client, signs the deadlines webhook itself
+(hex HMAC-SHA256 over `${ts}.${nonce}.${rawBody}`, secret in `webhook_config`),
+asserts the hook created a reminder, and only then checks the bell. Where the
+assertion needs a real row, take one from the catalog at runtime rather than
+hardcoding a title.
+
+Note also: each grant card renders **two** links to the same grant — the title
+and an "Open this grant" CTA. Only the title link carries a `title` attribute,
+so a bare `a[href^="/grants/"]` yields "Open this grant".
+
+## Models the pipeline needs before any of this works
+
+- `nomic-embed-text` — embeddings; without it search silently degrades to
+  lexical-only.
+- `phi4-mini` **and** `dolphin3` — the agents themselves. Missing ones fail as
+  `ollama_prewarm_404` mid-run, leaving `critic_score` NULL while the UI shows
+  the review completing.
+- Cloud keys are optional but change which model answers; the chain is
+  cloud-first with local as the floor.
+
+`bun run scripts/startup-validate.ts` checks all of this in one pass and exits
+non-zero with the specific failure — run it before debugging a spec.
