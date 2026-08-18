@@ -11,6 +11,16 @@
 
 # IialGrants — AI-native Grant Intelligence for Canada
 
+> **A successor exists.** `e:/dev/grantdesk` is a clean rebuild of this product
+> for grant consultants across the Américas, on its own ports and its own
+> database (app 5180, Postgres 15532, gateway 15535) — nothing is shared with
+> this repo. It carries forward what was proven here (Grants.gov and Innovation
+> Canada ingestion, the cloud LLM chain, RLS-as-isolation) and drops what was
+> not: 39 screens became six, 59 tables became fifteen, and search became
+> hybrid retrieval measured against a keyword baseline rather than assumed to
+> work. Read `e:/dev/grantdesk/CLAUDE.md` before changing anything here that the
+> successor also depends on.
+
 > **Best model wins, local always works.**
 > Cloud LLM chain for quality, self-hosted Supabase + Ollama underneath so the
 > system still runs with every provider down.
