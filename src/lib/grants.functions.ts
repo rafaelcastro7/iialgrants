@@ -5,6 +5,7 @@ import { assertAdmin } from "@/lib/admin-guard";
 import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-stages.shared";
 import { scoreGrantForProfile } from "@/lib/grant-search-profile-ranking.shared";
 import { searchGrantCatalogHybrid } from "@/lib/grant-search-hybrid.server";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 // A single `.in("grant_id", ids)` with ~100 UUIDs produces a query string
 // long enough that the local Kong/PostgREST gateway intermittently returns
@@ -109,11 +110,7 @@ export const listGrants = createServerFn({ method: "GET" })
     // "small business innovation" got province-locked programs from the other
     // side of the country at the top — the evaluator then correctly failed
     // them on jurisdiction, after the user had already spent a click.
-    const orgProfilePromise = context.supabase
-      .from("org_profiles")
-      .select("jurisdictions")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+    const orgProfilePromise = getOrgProfileForUser(context.supabase, context.userId);
 
     const [
       { data: searchProfile, error: profileError },
@@ -656,11 +653,7 @@ export const autoEvaluatePending = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     // Need an org profile, otherwise the evaluator would throw.
-    const { data: org } = await context.supabase
-      .from("org_profiles")
-      .select("user_id")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+    const { data: org } = await getOrgProfileForUser(context.supabase, context.userId);
     if (!org) return { ok: true, evaluated: 0, skipped: 0, reason: "org_profile_missing" as const };
 
     const { assertAgentEnabled } = await import("@/lib/admin-agents.functions");

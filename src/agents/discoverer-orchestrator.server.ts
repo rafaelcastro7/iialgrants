@@ -3,6 +3,7 @@
 // agent_runs (tagged with metadata.job_id so the UI can aggregate by job).
 
 import { discoverFunderImpl } from "@/agents/discoverer.impl.server";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 const FUNDER_TIMEOUT_MS = Number(process.env.DISCOVERY_FUNDER_TIMEOUT_MS ?? 90_000);
 const MAX_ATTEMPTS = 2;
@@ -241,11 +242,7 @@ export async function runDiscoveryJob(
   let evaluated = 0;
   const evalErrors: Array<{ grantId: string; error: string }> = [];
   try {
-    const { data: org } = await supabaseAdmin
-      .from("org_profiles")
-      .select("user_id")
-      .eq("user_id", triggeringUserId)
-      .maybeSingle();
+    const { data: org } = await getOrgProfileForUser(supabaseAdmin, triggeringUserId);
     if (org) {
       const { evaluateGrantImpl } = await import("@/agents/evaluator.impl.server");
       const { data: pending } = await supabaseAdmin

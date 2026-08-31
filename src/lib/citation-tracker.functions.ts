@@ -12,6 +12,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { assertEntityInUserOrg } from "./tenant-access.server";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 export const extractCitations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -38,11 +39,7 @@ export const extractCitations = createServerFn({ method: "POST" })
       // THIS org's actual name, not a fixed string: a hardcoded demo-org
       // check here would silently never flag self-citation for any real
       // organization, defeating the check entirely.
-      const { data: org } = await supabase
-        .from("org_profiles")
-        .select("org_name")
-        .eq("user_id", context.userId)
-        .maybeSingle();
+      const { data: org } = await getOrgProfileForUser(supabase, context.userId);
       const orgNameLower = org?.org_name?.trim().toLowerCase() || null;
 
       const allCitations: Array<{

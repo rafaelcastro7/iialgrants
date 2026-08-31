@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 // Current policy versions (bump when text changes — drives consent revalidation).
 export const POLICY_VERSIONS = {
@@ -106,7 +107,7 @@ export const exportMyData = createServerFn({ method: "POST" })
     const [profile, org, proposals, submissions, outcomes, consents, dsar, knowledge] =
       await Promise.all([
         supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-        supabase.from("org_profiles").select("*").eq("user_id", userId),
+        getOrgProfileForUser(supabase, userId),
         supabase.from("proposals").select("*").eq("user_id", userId),
         supabase.from("submissions").select("*").eq("user_id", userId),
         supabase.from("outcomes").select("*").eq("user_id", userId),
