@@ -55,10 +55,13 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => IngestInput.parse(i))
   .handler(async ({ data, context }) => {
+    const { getTenantPrincipal } = await import("@/lib/tenant-access.server");
+    const principal = await getTenantPrincipal(context.supabase, context.userId);
     const { embedText } = await import("@/agents/embeddings.server");
     const vectors = await embedText(data.texts);
     const rows = data.texts.map((content, i) => ({
       user_id: context.userId,
+      org_id: principal.orgId,
       source: data.source,
       source_kind: data.source_kind,
       language: data.language,
@@ -92,6 +95,7 @@ export const ingestOrgProfileAsKnowledge = createServerFn({ method: "POST" })
     // Uses upsert to avoid the race condition window between delete and insert.
     const rows = chunks.map((content, i) => ({
       user_id: context.userId,
+      org_id: org.org_id,
       source: "Organization profile",
       source_kind: "org_profile",
       language: "en" as const,
@@ -101,11 +105,10 @@ export const ingestOrgProfileAsKnowledge = createServerFn({ method: "POST" })
     // Delete existing org_profile chunks first, then insert new ones.
     // We can't use a true DB-level upsert because there's no unique constraint
     // on (user_id, source_kind), but this reduces the window vs the old pattern.
-    await context.supabase
-      .from("knowledge_chunks")
-      .delete()
-      .eq("user_id", context.userId)
-      .eq("source_kind", "org_profile");
+    const oldChunks = context.supabase.from("knowledge_chunks").delete().eq("source_kind", "org_profile");
+    if (org.org_id) oldChunks.eq("org_id", org.org_id);
+    else oldChunks.eq("user_id", context.userId);
+    await oldChunks;
     const { error: ie, data: inserted } = await context.supabase
       .from("knowledge_chunks")
       .insert(rows)
