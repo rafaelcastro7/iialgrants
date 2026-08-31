@@ -31,6 +31,14 @@ export async function ragRetrieve(
   query: string,
   topK = 6,
 ): Promise<RagHit[]> {
+  const { data: member } = await supabase
+    .from("profiles")
+    .select("org_id")
+    .eq("id", userId)
+    .maybeSingle();
+  const ownershipFilter = member?.org_id
+    ? `user_id.eq.${userId},org_id.eq.${member.org_id}`
+    : `user_id.eq.${userId}`;
   // 1) BM25 via Postgres FTS (simple config covers EN + FR ok for MVP).
   const tsQuery = query
     .toLowerCase()
@@ -45,7 +53,7 @@ export async function ragRetrieve(
       ? supabase
           .from("knowledge_chunks")
           .select("id, content, source, language")
-          .eq("user_id", userId)
+          .or(ownershipFilter)
           .textSearch("content", tsQuery, { type: "websearch", config: "simple" })
           .limit(topK * 2)
       : Promise.resolve({
