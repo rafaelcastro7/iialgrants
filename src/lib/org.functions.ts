@@ -2,15 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createSupabaseAdmin } from "./supabase-admin";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 export const getOrgProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("org_profiles")
-      .select("org_name, sectors, jurisdictions, stage, annual_budget_cad, focus_areas")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+    const { data, error } = await getOrgProfileForUser(context.supabase, context.userId);
     if (error) throw new Error(error.message);
     return { profile: data };
   });
@@ -22,7 +19,41 @@ const OrgInput = z.object({
   stage: z.enum(["startup", "sme", "nonprofit", "research", "public_sector"]),
   annual_budget_cad: z.number().nonnegative().nullable(),
   focus_areas: z.string().max(2000).nullable(),
-});
+  legal_name: z.string().max(240).nullable(),
+  business_number: z.string().max(80).nullable(),
+  website: z.string().max(500).nullable(),
+  mission: z.string().max(4000).nullable(),
+  applicant_types: z.array(z.string().min(1).max(80)).max(20),
+  activities: z.array(z.string().min(1).max(120)).max(30),
+  capabilities: z.array(z.string().min(1).max(120)).max(30),
+  populations_served: z.array(z.string().min(1).max(120)).max(30),
+  operating_regions: z.array(z.string().min(1).max(80)).max(30),
+  languages: z.array(z.string().min(2).max(10)).min(1).max(20),
+  years_operating: z.number().int().min(0).max(500).nullable(),
+  employee_count: z.number().int().min(0).max(10_000_000).nullable(),
+  registration_status: z
+    .enum([
+      "registered_charity",
+      "nonprofit",
+      "for_profit",
+      "public_body",
+      "academic",
+      "indigenous",
+      "unregistered",
+      "other",
+    ])
+    .nullable(),
+  funding_min_cad: z.number().nonnegative().nullable(),
+  funding_max_cad: z.number().nonnegative().nullable(),
+  cost_share_max_pct: z.number().min(0).max(100).nullable(),
+  indirect_cost_rate_pct: z.number().min(0).max(100).nullable(),
+}).refine(
+  (value) =>
+    value.funding_min_cad == null ||
+    value.funding_max_cad == null ||
+    value.funding_min_cad <= value.funding_max_cad,
+  { message: "Funding minimum cannot exceed maximum", path: ["funding_max_cad"] },
+);
 
 function slugify(name: string): string {
   return (
@@ -44,11 +75,6 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
     // off in /admin/modules did nothing.
     const { assertModuleEnabled } = await import("@/lib/admin-modules.server");
     await assertModuleEnabled("org_profile");
-    const { error } = await context.supabase
-      .from("org_profiles")
-      .upsert({ user_id: context.userId, ...data }, { onConflict: "user_id" });
-    if (error) throw new Error(error.message);
-
     // Real bug, confirmed live: `organizations` + `profiles.org_id` (the
     // actual multi-tenant grouping team collaboration's RLS checks — see
     // can_access_tenant_entity() and assertEntityInUserOrg) were never
@@ -69,7 +95,8 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
       .eq("id", context.userId)
       .maybeSingle();
     if (profileErr) throw new Error(profileErr.message);
-    if (!profile?.org_id) {
+    let orgId = profile?.org_id ?? null;
+    if (!orgId) {
       // organizations has no INSERT policy (SELECT-only — see "Users can
       // view their own organization" / org_member_r), so this one step needs
       // the admin client; the profiles update right after is scoped to the
@@ -88,7 +115,27 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
         .update({ org_id: org.id })
         .eq("id", context.userId);
       if (linkErr) throw new Error(linkErr.message);
+      orgId = org.id;
     }
+
+    const { data: existing, error: existingError } = await getOrgProfileForUser(
+      context.supabase,
+      context.userId,
+    );
+    if (existingError) throw new Error(existingError.message);
+    const payload = {
+      ...data,
+      org_id: orgId,
+      profile_updated_by: context.userId,
+    };
+    const write = existing
+      ? context.supabase.from("org_profiles").update(payload).eq("user_id", existing.user_id)
+      : context.supabase
+          .from("org_profiles")
+          .insert({ user_id: context.userId, ...payload });
+    const { data: saved, error: saveError } = await write.select("user_id").maybeSingle();
+    if (saveError) throw new Error(saveError.message);
+    if (!saved) throw new Error("org_profile_not_authorized");
 
     return { ok: true };
   });
