@@ -5,6 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 export const getGrantAudit = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -22,11 +23,7 @@ export const getGrantAudit = createServerFn({ method: "GET" })
 
     const [{ data: rulesRow }, { data: org }] = await Promise.all([
       context.supabase.from("fit_rules").select("*").eq("user_id", context.userId).maybeSingle(),
-      context.supabase
-        .from("org_profiles")
-        .select("org_name, sectors, jurisdictions, stage, annual_budget_cad, focus_areas")
-        .eq("user_id", context.userId)
-        .maybeSingle(),
+      getOrgProfileForUser(context.supabase, context.userId),
     ]);
 
     const { DEFAULT_RULES, evaluateRules, deriveRulesFromOrg } =

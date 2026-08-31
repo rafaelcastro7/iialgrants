@@ -5,6 +5,7 @@
 import { EvaluatorOutput, PROMPTS } from "@/agents/schemas";
 import { canTransition, type GrantStatus } from "@/agents/pipeline-stages.shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 export async function evaluateGrantImpl(opts: {
   grantId: string;
@@ -48,11 +49,7 @@ export async function evaluateGrantImpl(opts: {
       )
       .eq("id", grantId)
       .maybeSingle(),
-    userSupabase
-      .from("org_profiles")
-      .select("org_name, sectors, jurisdictions, stage, annual_budget_cad, focus_areas")
-      .eq("user_id", userId)
-      .maybeSingle(),
+    getOrgProfileForUser(userSupabase, userId),
   ]);
   if (gerr) throw new Error(gerr.message);
   if (!g) {

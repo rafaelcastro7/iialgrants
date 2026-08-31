@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PROMPTS, StrategistOutput } from "@/agents/schemas";
 import { resolveModel } from "@/agents/model-router.server";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 // Local models sometimes wrap JSON in ```fences``` or add a sentence before it.
 // Strip fences and slice to the outermost object so a strict schema parse does
@@ -151,11 +152,7 @@ export const runStrategist = createServerFn({ method: "POST" })
           )
           .eq("id", data.grantId)
           .maybeSingle(),
-        context.supabase
-          .from("org_profiles")
-          .select("org_name, sectors, jurisdictions, stage, annual_budget_cad, focus_areas")
-          .eq("user_id", context.userId)
-          .maybeSingle(),
+        getOrgProfileForUser(context.supabase, context.userId),
         data.templateId
           ? context.supabase
               .from("proposal_templates")
