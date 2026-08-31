@@ -8,10 +8,7 @@ import type { Database } from "@/integrations/supabase/types";
  * modules may safely import it while their actual database client remains in
  * the server handler.
  */
-export async function getOrgProfileForUser(
-  supabase: SupabaseClient<Database>,
-  userId: string,
-) {
+export async function getOrgProfileForUser(supabase: SupabaseClient<Database>, userId: string) {
   const { data: member, error: memberError } = await supabase
     .from("profiles")
     .select("org_id")
@@ -30,4 +27,3 @@ export async function getOrgProfileForUser(
 
   return supabase.from("org_profiles").select("*").eq("user_id", userId).maybeSingle();
 }
-
