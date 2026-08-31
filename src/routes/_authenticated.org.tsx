@@ -21,6 +21,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { computeOrgProfileReadiness } from "@/lib/org-profile-readiness";
+import { GrantReadinessProfileForm } from "@/components/org/GrantReadinessProfileForm";
 import "@/i18n";
 
 const orgQueryOptions = queryOptions({
@@ -72,7 +73,7 @@ const orgSchema = z.object({
   indirect_cost_rate_pct: z.string().optional().default(""),
 });
 
-type OrgFormValues = z.infer<typeof orgSchema>;
+export type OrgFormValues = z.infer<typeof orgSchema>;
 
 function OrgPage() {
   const { t } = useTranslation();
@@ -180,7 +181,7 @@ function OrgPage() {
   };
 
   if (version === "v2") {
-    return <OrgPageV2 form={form} mut={mut} onSubmit={onSubmit} t={t} />;
+    return <GrantReadinessProfileForm form={form} mut={mut} onSubmit={onSubmit} />;
   }
 
   return (
