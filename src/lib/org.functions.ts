@@ -12,48 +12,50 @@ export const getOrgProfile = createServerFn({ method: "GET" })
     return { profile: data };
   });
 
-const OrgInput = z.object({
-  org_name: z.string().min(1).max(200),
-  sectors: z.array(z.string().min(1).max(80)).max(20),
-  jurisdictions: z.array(z.string().min(2).max(4)).min(1).max(20),
-  stage: z.enum(["startup", "sme", "nonprofit", "research", "public_sector"]),
-  annual_budget_cad: z.number().nonnegative().nullable(),
-  focus_areas: z.string().max(2000).nullable(),
-  legal_name: z.string().max(240).nullable(),
-  business_number: z.string().max(80).nullable(),
-  website: z.string().max(500).nullable(),
-  mission: z.string().max(4000).nullable(),
-  applicant_types: z.array(z.string().min(1).max(80)).max(20),
-  activities: z.array(z.string().min(1).max(120)).max(30),
-  capabilities: z.array(z.string().min(1).max(120)).max(30),
-  populations_served: z.array(z.string().min(1).max(120)).max(30),
-  operating_regions: z.array(z.string().min(1).max(80)).max(30),
-  languages: z.array(z.string().min(2).max(10)).min(1).max(20),
-  years_operating: z.number().int().min(0).max(500).nullable(),
-  employee_count: z.number().int().min(0).max(10_000_000).nullable(),
-  registration_status: z
-    .enum([
-      "registered_charity",
-      "nonprofit",
-      "for_profit",
-      "public_body",
-      "academic",
-      "indigenous",
-      "unregistered",
-      "other",
-    ])
-    .nullable(),
-  funding_min_cad: z.number().nonnegative().nullable(),
-  funding_max_cad: z.number().nonnegative().nullable(),
-  cost_share_max_pct: z.number().min(0).max(100).nullable(),
-  indirect_cost_rate_pct: z.number().min(0).max(100).nullable(),
-}).refine(
-  (value) =>
-    value.funding_min_cad == null ||
-    value.funding_max_cad == null ||
-    value.funding_min_cad <= value.funding_max_cad,
-  { message: "Funding minimum cannot exceed maximum", path: ["funding_max_cad"] },
-);
+const OrgInput = z
+  .object({
+    org_name: z.string().min(1).max(200),
+    sectors: z.array(z.string().min(1).max(80)).max(20),
+    jurisdictions: z.array(z.string().min(2).max(4)).min(1).max(20),
+    stage: z.enum(["startup", "sme", "nonprofit", "research", "public_sector"]),
+    annual_budget_cad: z.number().nonnegative().nullable(),
+    focus_areas: z.string().max(2000).nullable(),
+    legal_name: z.string().max(240).nullable(),
+    business_number: z.string().max(80).nullable(),
+    website: z.string().max(500).nullable(),
+    mission: z.string().max(4000).nullable(),
+    applicant_types: z.array(z.string().min(1).max(80)).max(20),
+    activities: z.array(z.string().min(1).max(120)).max(30),
+    capabilities: z.array(z.string().min(1).max(120)).max(30),
+    populations_served: z.array(z.string().min(1).max(120)).max(30),
+    operating_regions: z.array(z.string().min(1).max(80)).max(30),
+    languages: z.array(z.string().min(2).max(10)).min(1).max(20),
+    years_operating: z.number().int().min(0).max(500).nullable(),
+    employee_count: z.number().int().min(0).max(10_000_000).nullable(),
+    registration_status: z
+      .enum([
+        "registered_charity",
+        "nonprofit",
+        "for_profit",
+        "public_body",
+        "academic",
+        "indigenous",
+        "unregistered",
+        "other",
+      ])
+      .nullable(),
+    funding_min_cad: z.number().nonnegative().nullable(),
+    funding_max_cad: z.number().nonnegative().nullable(),
+    cost_share_max_pct: z.number().min(0).max(100).nullable(),
+    indirect_cost_rate_pct: z.number().min(0).max(100).nullable(),
+  })
+  .refine(
+    (value) =>
+      value.funding_min_cad == null ||
+      value.funding_max_cad == null ||
+      value.funding_min_cad <= value.funding_max_cad,
+    { message: "Funding minimum cannot exceed maximum", path: ["funding_max_cad"] },
+  );
 
 function slugify(name: string): string {
   return (
@@ -130,9 +132,7 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
     };
     const write = existing
       ? context.supabase.from("org_profiles").update(payload).eq("user_id", existing.user_id)
-      : context.supabase
-          .from("org_profiles")
-          .insert({ user_id: context.userId, ...payload });
+      : context.supabase.from("org_profiles").insert({ user_id: context.userId, ...payload });
     const { data: saved, error: saveError } = await write.select("user_id").maybeSingle();
     if (saveError) throw new Error(saveError.message);
     if (!saved) throw new Error("org_profile_not_authorized");

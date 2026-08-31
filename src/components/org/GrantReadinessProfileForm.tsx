@@ -56,7 +56,9 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
       <section className="mx-auto max-w-[1040px] space-y-5 px-4 py-6 sm:px-6">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">IIAL tenant</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              IIAL tenant
+            </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight">Grant readiness profile</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               One shared source of truth for eligibility, matching, proposal reuse, and team
@@ -64,7 +66,9 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
             </p>
           </div>
           <Badge variant={readiness.readyForVerifiedMatching ? "secondary" : "destructive"}>
-            {readiness.readyForVerifiedMatching ? "Verified matching ready" : "Matching has blockers"}
+            {readiness.readyForVerifiedMatching
+              ? "Verified matching ready"
+              : "Matching has blockers"}
           </Badge>
         </header>
 
@@ -88,7 +92,9 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
               Next facts to confirm
             </p>
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-              {nextFacts.map((item) => <li key={item.key}>â€¢ {item.label}</li>)}
+              {nextFacts.map((item) => (
+                <li key={item.key}>â€¢ {item.label}</li>
+              ))}
               {nextFacts.length === 0 && <li>All tracked facts complete.</li>}
             </ul>
           </div>
@@ -104,7 +110,10 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
                 <Input {...form.register("org_name")} required />
               </FormField>
               <FormField label="Legal name">
-                <Input {...form.register("legal_name")} placeholder="Name on incorporation records" />
+                <Input
+                  {...form.register("legal_name")}
+                  placeholder="Name on incorporation records"
+                />
               </FormField>
               <FormField label="Registration status" description="Critical for eligibility">
                 <select
@@ -113,22 +122,43 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
                 >
                   <option value="">Select a verified status</option>
                   {REGISTRATION_STATUSES.map((status) => (
-                    <option key={status} value={status}>{humanize(status)}</option>
+                    <option key={status} value={status}>
+                      {humanize(status)}
+                    </option>
                   ))}
                 </select>
               </FormField>
-              <FormField label="Applicant types" description="Comma-separated; use formal categories">
-                <Input {...form.register("applicant_types")} placeholder="nonprofit, registered charity" />
+              <FormField
+                label="Applicant types"
+                description="Comma-separated; use formal categories"
+              >
+                <Input
+                  {...form.register("applicant_types")}
+                  placeholder="nonprofit, registered charity"
+                />
               </FormField>
-              <FormField label="Legal jurisdictions" description="Where IIAL is incorporated or eligible">
+              <FormField
+                label="Legal jurisdictions"
+                description="Where IIAL is incorporated or eligible"
+              >
                 <Input {...form.register("jurisdictions")} placeholder="CA, ON, QC" />
               </FormField>
               <FormField label="Regions served" description="Where funded work can create benefit">
-                <Input {...form.register("operating_regions")} placeholder="Canada, Ontario, Quebec" />
+                <Input
+                  {...form.register("operating_regions")}
+                  placeholder="Canada, Ontario, Quebec"
+                />
               </FormField>
               <FormField label="Organization type">
-                <select className="h-10 w-full rounded border bg-background px-3" {...form.register("stage")}>
-                  {STAGES.map((stage) => <option key={stage} value={stage}>{humanize(stage)}</option>)}
+                <select
+                  className="h-10 w-full rounded border bg-background px-3"
+                  {...form.register("stage")}
+                >
+                  {STAGES.map((stage) => (
+                    <option key={stage} value={stage}>
+                      {humanize(stage)}
+                    </option>
+                  ))}
                 </select>
               </FormField>
               <FormField label="Business / charity number">
@@ -156,13 +186,24 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
                   <Input {...form.register("sectors")} />
                 </FormField>
                 <FormField label="Populations served">
-                  <Input {...form.register("populations_served")} placeholder="adult learners, SMEs" />
+                  <Input
+                    {...form.register("populations_served")}
+                    placeholder="adult learners, SMEs"
+                  />
                 </FormField>
                 <FormField label="Activities and programs">
-                  <Textarea rows={3} {...form.register("activities")} placeholder="applied training, research partnerships" />
+                  <Textarea
+                    rows={3}
+                    {...form.register("activities")}
+                    placeholder="applied training, research partnerships"
+                  />
                 </FormField>
                 <FormField label="Delivery capabilities">
-                  <Textarea rows={3} {...form.register("capabilities")} placeholder="curriculum design, program evaluation" />
+                  <Textarea
+                    rows={3}
+                    {...form.register("capabilities")}
+                    placeholder="curriculum design, program evaluation"
+                  />
                 </FormField>
               </div>
               <FormField label="Additional focus context">
@@ -178,9 +219,23 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <NumberField form={form} name="annual_budget_cad" label="Annual budget (CAD)" />
               <NumberField form={form} name="funding_min_cad" label="Useful award floor (CAD)" />
-              <NumberField form={form} name="funding_max_cad" label="Manageable award ceiling (CAD)" />
-              <NumberField form={form} name="cost_share_max_pct" label="Maximum cost share (%)" max={100} />
-              <NumberField form={form} name="indirect_cost_rate_pct" label="Indirect cost rate (%)" max={100} />
+              <NumberField
+                form={form}
+                name="funding_max_cad"
+                label="Manageable award ceiling (CAD)"
+              />
+              <NumberField
+                form={form}
+                name="cost_share_max_pct"
+                label="Maximum cost share (%)"
+                max={100}
+              />
+              <NumberField
+                form={form}
+                name="indirect_cost_rate_pct"
+                label="Indirect cost rate (%)"
+                max={100}
+              />
               <NumberField form={form} name="years_operating" label="Years operating" max={500} />
               <NumberField form={form} name="employee_count" label="Employees / core team" />
             </div>
@@ -201,7 +256,15 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
   );
 }
 
-function ProfileSection({ children, description, title }: { children: React.ReactNode; description: string; title: string }) {
+function ProfileSection({
+  children,
+  description,
+  title,
+}: {
+  children: React.ReactNode;
+  description: string;
+  title: string;
+}) {
   return (
     <Card>
       <CardContent className="pt-6">
@@ -213,8 +276,22 @@ function ProfileSection({ children, description, title }: { children: React.Reac
   );
 }
 
-function NumberField({ form, label, max, name }: { form: UseFormReturn<OrgFormValues>; label: string; max?: number; name: keyof OrgFormValues }) {
-  return <FormField label={label}><Input type="number" min="0" max={max} step="any" {...form.register(name)} /></FormField>;
+function NumberField({
+  form,
+  label,
+  max,
+  name,
+}: {
+  form: UseFormReturn<OrgFormValues>;
+  label: string;
+  max?: number;
+  name: keyof OrgFormValues;
+}) {
+  return (
+    <FormField label={label}>
+      <Input type="number" min="0" max={max} step="any" {...form.register(name)} />
+    </FormField>
+  );
 }
 
 function ProgressRing({ ready, value }: { ready: boolean; value: number }) {
@@ -223,15 +300,30 @@ function ProgressRing({ ready, value }: { ready: boolean; value: number }) {
     <div className="relative h-14 w-14 shrink-0">
       <svg width="56" height="56" viewBox="0 0 44 44" aria-hidden="true">
         <circle cx="22" cy="22" r="18" fill="none" stroke="var(--muted)" strokeWidth="4" />
-        <circle cx="22" cy="22" r="18" fill="none" stroke={ready ? "#16a34a" : "var(--primary)"} strokeWidth="4" strokeLinecap="round" strokeDasharray={`${(value / 100) * circumference} ${circumference}`} transform="rotate(-90 22 22)" />
+        <circle
+          cx="22"
+          cy="22"
+          r="18"
+          fill="none"
+          stroke={ready ? "#16a34a" : "var(--primary)"}
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={`${(value / 100) * circumference} ${circumference}`}
+          transform="rotate(-90 22 22)"
+        />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums">{value}%</div>
+      <div className="absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums">
+        {value}%
+      </div>
     </div>
   );
 }
 
 function csv(value: string | undefined) {
-  return (value ?? "").split(/[,\n]/).map((item) => item.trim()).filter(Boolean);
+  return (value ?? "")
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function optionalNumber(value: string | undefined) {

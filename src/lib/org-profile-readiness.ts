@@ -138,4 +138,3 @@ export function computeOrgProfileReadiness(profile: GrantReadinessProfile | null
     readyForVerifiedMatching: criticalMissing.length === 0,
   };
 }
-
