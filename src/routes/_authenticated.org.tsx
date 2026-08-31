@@ -18,9 +18,6 @@ import { AppTopBar } from "@/components/AppSidebar";
 import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { useUiVersion } from "@/components/v2/ui-version";
 import { PageTransition } from "@/components/PageTransition";
-import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
-import { computeOrgProfileReadiness } from "@/lib/org-profile-readiness";
 import { GrantReadinessProfileForm } from "@/components/org/GrantReadinessProfileForm";
 import "@/i18n";
 
