@@ -34,6 +34,23 @@ CREATE POLICY knowledge_chunks_org_insert ON public.knowledge_chunks
     ))
   );
 
+DROP POLICY IF EXISTS knowledge_chunks_org_update ON public.knowledge_chunks;
+CREATE POLICY knowledge_chunks_org_update ON public.knowledge_chunks
+  FOR UPDATE TO authenticated
+  USING (org_id IS NOT NULL AND org_id = (
+    SELECT p.org_id FROM public.profiles p WHERE p.id = auth.uid()
+  ))
+  WITH CHECK (org_id = (
+    SELECT p.org_id FROM public.profiles p WHERE p.id = auth.uid()
+  ));
+
+DROP POLICY IF EXISTS knowledge_chunks_org_delete ON public.knowledge_chunks;
+CREATE POLICY knowledge_chunks_org_delete ON public.knowledge_chunks
+  FOR DELETE TO authenticated
+  USING (org_id IS NOT NULL AND org_id = (
+    SELECT p.org_id FROM public.profiles p WHERE p.id = auth.uid()
+  ));
+
 CREATE OR REPLACE FUNCTION public.match_knowledge_chunks(
   query_embedding vector,
   match_user_id uuid,
