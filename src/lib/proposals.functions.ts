@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 
 export const listProposals = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -75,11 +76,7 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
 export const ingestOrgProfileAsKnowledge = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: org, error } = await context.supabase
-      .from("org_profiles")
-      .select("org_name, sectors, jurisdictions, stage, annual_budget_cad, focus_areas")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+    const { data: org, error } = await getOrgProfileForUser(context.supabase, context.userId);
     if (error) throw new Error(error.message);
     if (!org) throw new Error("org_profile_missing");
     const chunks = [

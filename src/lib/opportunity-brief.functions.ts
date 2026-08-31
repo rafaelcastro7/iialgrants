@@ -6,6 +6,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getOrgProfileForUser } from "@/lib/org-profile.server";
 import {
   DEFAULT_RULES,
   evaluateRules,
@@ -77,11 +78,7 @@ export const generateOpportunityBrief = createServerFn({ method: "POST" })
         .eq("id", grantId)
         .maybeSingle(),
       supabase.from("fit_rules").select("*").eq("user_id", userId).maybeSingle(),
-      supabase
-        .from("org_profiles")
-        .select("org_name, sectors, jurisdictions, stage, focus_areas")
-        .eq("user_id", userId)
-        .maybeSingle(),
+      getOrgProfileForUser(supabase, userId),
     ]);
     if (gerr) throw new Error(gerr.message);
     if (!g) throw new Error("grant_not_found");
