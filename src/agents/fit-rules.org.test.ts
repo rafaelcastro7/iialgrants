@@ -56,6 +56,29 @@ describe("deriveRulesFromOrg", () => {
     expect(rules.iial_capabilities).toEqual(DEFAULT_RULES.iial_capabilities);
   });
 
+  it("uses the tenant's explicit readiness constraints instead of ignoring them", () => {
+    const rules = deriveRulesFromOrg({
+      stage: "nonprofit",
+      applicant_types: ["nonprofit", "research institution"],
+      sectors: ["education"],
+      activities: ["applied learning"],
+      capabilities: ["program evaluation"],
+      funding_min_cad: 50_000,
+      funding_max_cad: 750_000,
+      cost_share_max_pct: 20,
+    });
+
+    expect(rules.applicant_types_allowed).toEqual(["nonprofit", "research institution"]);
+    expect(rules.iial_capabilities).toEqual([
+      "education",
+      "program evaluation",
+      "applied learning",
+    ]);
+    expect(rules.min_amount_cad).toBe(50_000);
+    expect(rules.max_amount_cad).toBe(750_000);
+    expect(rules.max_cost_share_pct_org_carries).toBe(20);
+  });
+
   it("derives opposite applicant-type profiles for a for-profit SME vs. a nonprofit", () => {
     // A single hardcoded default here (the old DEFAULT_RULES shape) actively
     // mis-screened whichever org-type didn't match it: it configured
