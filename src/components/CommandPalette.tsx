@@ -16,6 +16,7 @@ import {
   RefreshCw,
   ArrowRight,
   BookOpen,
+  Library,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -121,6 +122,7 @@ export function CommandPalette() {
     { id: "dashboard", label: t("nav.dashboard"), icon: Shield, to: "/dashboard" },
     { id: "grants", label: t("nav.grants"), icon: Search, to: "/grants" },
     { id: "proposals", label: t("nav.proposals"), icon: FileText, to: "/proposals" },
+    { id: "answers", label: t("nav.answers"), icon: Library, to: "/answers" },
     { id: "submissions", label: t("nav.submissions"), icon: Send, to: "/submissions" },
     { id: "org", label: t("org.title"), icon: Building2, to: "/org" },
     { id: "manual", label: t("nav.manual"), icon: BookOpen, to: "/manual" },

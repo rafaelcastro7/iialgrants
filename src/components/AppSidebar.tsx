@@ -26,6 +26,7 @@ import {
   History,
   BrainCircuit,
   BookOpen,
+  Library,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +92,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Pipeline",
     items: [
       { to: "/proposals", labelKey: "nav.proposals", icon: FileText },
+      { to: "/answers", labelKey: "nav.answers", icon: Library },
       { to: "/quality", labelKey: "nav.quality", icon: BarChart3 },
       { to: "/submissions", labelKey: "nav.submissions", icon: Send },
     ],

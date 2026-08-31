@@ -11,6 +11,7 @@ import {
   Settings,
   Menu,
   BookOpen,
+  Library,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIsAdmin } from "@/lib/use-platform";
@@ -28,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { to: "/grants", labelKey: "nav.grants", icon: Search },
   { to: "/proposals", labelKey: "nav.proposals", icon: FileText },
+  { to: "/answers", labelKey: "nav.answers", icon: Library },
   { to: "/submissions", labelKey: "nav.submissions", icon: Send },
   { to: "/org", labelKey: "org.title", icon: Building2 },
   { to: "/manual", labelKey: "nav.manual", icon: BookOpen },
