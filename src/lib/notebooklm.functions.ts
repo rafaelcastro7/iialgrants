@@ -16,7 +16,7 @@
 // Optionally marks the included grants as Shortlisted in one batch.
 
 import { createServerFn } from "@tanstack/react-start";
-import { getOrgProfileForUser } from "@/lib/org-profile.server";
+import { getOrgProfileForUser } from "@/lib/org-profile-query";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 

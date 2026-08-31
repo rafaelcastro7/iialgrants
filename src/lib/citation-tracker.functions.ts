@@ -12,7 +12,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { assertEntityInUserOrg } from "./tenant-access.server";
-import { getOrgProfileForUser } from "@/lib/org-profile.server";
+import { getOrgProfileForUser } from "@/lib/org-profile-query";
 
 export const extractCitations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

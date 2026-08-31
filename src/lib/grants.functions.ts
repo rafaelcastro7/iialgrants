@@ -5,7 +5,7 @@ import { assertAdmin } from "@/lib/admin-guard";
 import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-stages.shared";
 import { scoreGrantForProfile } from "@/lib/grant-search-profile-ranking.shared";
 import { searchGrantCatalogHybrid } from "@/lib/grant-search-hybrid.server";
-import { getOrgProfileForUser } from "@/lib/org-profile.server";
+import { getOrgProfileForUser } from "@/lib/org-profile-query";
 
 // A single `.in("grant_id", ids)` with ~100 UUIDs produces a query string
 // long enough that the local Kong/PostgREST gateway intermittently returns

@@ -3,7 +3,7 @@
 // agent_runs (tagged with metadata.job_id so the UI can aggregate by job).
 
 import { discoverFunderImpl } from "@/agents/discoverer.impl.server";
-import { getOrgProfileForUser } from "@/lib/org-profile.server";
+import { getOrgProfileForUser } from "@/lib/org-profile-query";
 
 const FUNDER_TIMEOUT_MS = Number(process.env.DISCOVERY_FUNDER_TIMEOUT_MS ?? 90_000);
 const MAX_ATTEMPTS = 2;

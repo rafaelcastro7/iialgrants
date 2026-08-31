@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { getOrgProfileForUser } from "@/lib/org-profile.server";
+import { getOrgProfileForUser } from "@/lib/org-profile-query";
 
 export const listProposals = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
