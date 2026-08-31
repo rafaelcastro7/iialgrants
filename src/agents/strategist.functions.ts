@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PROMPTS, StrategistOutput } from "@/agents/schemas";
 import { resolveModel } from "@/agents/model-router.server";
-import { getOrgProfileForUser } from "@/lib/org-profile.server";
+import { getOrgProfileForUser } from "@/lib/org-profile-query";
 
 // Local models sometimes wrap JSON in ```fences``` or add a sentence before it.
 // Strip fences and slice to the outermost object so a strict schema parse does

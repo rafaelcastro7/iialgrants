@@ -4,12 +4,14 @@ import type { Database } from "@/integrations/supabase/types";
 /**
  * Resolve the organization profile as a tenant-owned record.
  *
- * Older callers queried org_profiles.user_id directly. That made two members
- * of IIAL evaluate the same grant against different (or missing) facts. The
- * user's own row remains a fallback for installations that have not applied
- * the tenant-profile migration yet.
+ * This module contains no credentials or server-only state: createServerFn
+ * modules may safely import it while their actual database client remains in
+ * the server handler.
  */
-export async function getOrgProfileForUser(supabase: SupabaseClient<Database>, userId: string) {
+export async function getOrgProfileForUser(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+) {
   const { data: member, error: memberError } = await supabase
     .from("profiles")
     .select("org_id")
@@ -28,3 +30,4 @@ export async function getOrgProfileForUser(supabase: SupabaseClient<Database>, u
 
   return supabase.from("org_profiles").select("*").eq("user_id", userId).maybeSingle();
 }
+
