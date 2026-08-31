@@ -14,6 +14,7 @@ import {
   FileText,
   Home,
   Landmark,
+  Library,
   LayoutGrid,
   ListChecks,
   LogOut,
@@ -80,6 +81,12 @@ const NAV_GROUPS: NavGroup[] = [
     accent: "violet",
     items: [
       { to: "/proposals", label: "Proposals", description: "Drafts and sections", icon: FileText },
+      {
+        to: "/answers",
+        label: "Answer library",
+        description: "Approved reusable language",
+        icon: Library,
+      },
       { to: "/quality", label: "Quality check", description: "Scores and gaps", icon: BarChart3 },
       { to: "/submissions", label: "Submissions", description: "Sent, won, waiting", icon: Send },
     ],

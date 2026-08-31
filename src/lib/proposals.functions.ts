@@ -90,9 +90,7 @@ export const ingestOrgProfileAsKnowledge = createServerFn({ method: "POST" })
       org.mission ? `Mission: ${org.mission}` : null,
       `Sectors: ${(org.sectors ?? []).join(", ")}.`,
       `Jurisdictions of operation: ${(org.jurisdictions ?? []).join(", ")}.`,
-      org.operating_regions.length
-        ? `Regions served: ${org.operating_regions.join(", ")}.`
-        : null,
+      org.operating_regions.length ? `Regions served: ${org.operating_regions.join(", ")}.` : null,
       org.activities.length ? `Programs and activities: ${org.activities.join(", ")}.` : null,
       org.capabilities.length ? `Delivery capabilities: ${org.capabilities.join(", ")}.` : null,
       org.populations_served.length
@@ -120,7 +118,10 @@ export const ingestOrgProfileAsKnowledge = createServerFn({ method: "POST" })
     // Delete existing org_profile chunks first, then insert new ones.
     // We can't use a true DB-level upsert because there's no unique constraint
     // on (user_id, source_kind), but this reduces the window vs the old pattern.
-    const oldChunks = context.supabase.from("knowledge_chunks").delete().eq("source_kind", "org_profile");
+    const oldChunks = context.supabase
+      .from("knowledge_chunks")
+      .delete()
+      .eq("source_kind", "org_profile");
     if (org.org_id) oldChunks.eq("org_id", org.org_id);
     else oldChunks.eq("user_id", context.userId);
     await oldChunks;

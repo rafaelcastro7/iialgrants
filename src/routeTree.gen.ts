@@ -29,6 +29,7 @@ import { Route as AuthenticatedFinancialRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedComplianceCalendarRouteImport } from './routes/_authenticated.compliance-calendar'
 import { Route as AuthenticatedAutonomyRouteImport } from './routes/_authenticated.autonomy'
+import { Route as AuthenticatedAnswersRouteImport } from './routes/_authenticated.answers'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedProposalsIndexRouteImport } from './routes/_authenticated.proposals.index'
 import { Route as AuthenticatedGrantsIndexRouteImport } from './routes/_authenticated.grants.index'
@@ -159,6 +160,11 @@ const AuthenticatedComplianceCalendarRoute =
 const AuthenticatedAutonomyRoute = AuthenticatedAutonomyRouteImport.update({
   id: '/autonomy',
   path: '/autonomy',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAnswersRoute = AuthenticatedAnswersRouteImport.update({
+  id: '/answers',
+  path: '/answers',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -339,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/answers': typeof AuthenticatedAnswersRoute
   '/autonomy': typeof AuthenticatedAutonomyRoute
   '/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -389,6 +396,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
+  '/answers': typeof AuthenticatedAnswersRoute
   '/autonomy': typeof AuthenticatedAutonomyRoute
   '/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -442,6 +450,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/compliance': typeof ComplianceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/answers': typeof AuthenticatedAnswersRoute
   '/_authenticated/autonomy': typeof AuthenticatedAutonomyRoute
   '/_authenticated/compliance-calendar': typeof AuthenticatedComplianceCalendarRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -495,6 +504,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compliance'
     | '/admin'
+    | '/answers'
     | '/autonomy'
     | '/compliance-calendar'
     | '/dashboard'
@@ -545,6 +555,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/compliance'
+    | '/answers'
     | '/autonomy'
     | '/compliance-calendar'
     | '/dashboard'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compliance'
     | '/_authenticated/admin'
+    | '/_authenticated/answers'
     | '/_authenticated/autonomy'
     | '/_authenticated/compliance-calendar'
     | '/_authenticated/dashboard'
@@ -799,6 +811,13 @@ declare module '@tanstack/react-router' {
       path: '/autonomy'
       fullPath: '/autonomy'
       preLoaderRoute: typeof AuthenticatedAutonomyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/answers': {
+      id: '/_authenticated/answers'
+      path: '/answers'
+      fullPath: '/answers'
+      preLoaderRoute: typeof AuthenticatedAnswersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin': {
@@ -1061,6 +1080,7 @@ const AuthenticatedGrantsIdRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedAnswersRoute: typeof AuthenticatedAnswersRoute
   AuthenticatedAutonomyRoute: typeof AuthenticatedAutonomyRoute
   AuthenticatedComplianceCalendarRoute: typeof AuthenticatedComplianceCalendarRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -1090,6 +1110,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedAnswersRoute: AuthenticatedAnswersRoute,
   AuthenticatedAutonomyRoute: AuthenticatedAutonomyRoute,
   AuthenticatedComplianceCalendarRoute: AuthenticatedComplianceCalendarRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,

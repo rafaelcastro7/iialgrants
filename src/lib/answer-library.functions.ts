@@ -57,10 +57,7 @@ export const saveAnswerLibraryItem = createServerFn({ method: "POST" })
       verified_at: data.verified ? savedAt : null,
     };
     const answerWrite = existing.data
-      ? context.supabase
-          .from("answer_library")
-          .update(answerPayload)
-          .eq("id", existing.data.id)
+      ? context.supabase.from("answer_library").update(answerPayload).eq("id", existing.data.id)
       : context.supabase.from("answer_library").insert({
           ...answerPayload,
           org_id: principal.orgId,
