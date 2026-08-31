@@ -44,6 +44,7 @@ import { UiVersionToggle } from "@/components/v2/UiVersionToggle";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getLlmRouteStatus, type LlmRouteStatus } from "@/lib/llm-route.functions";
+import { TenantReadinessBanner } from "@/components/org/TenantReadinessBanner";
 
 type NavItem = {
   to: string;
@@ -221,6 +222,7 @@ export function V2AuthenticatedShell({ children }: { children: ReactNode }) {
             onSignOut={signOut}
             llmRoute={llmRoute}
           />
+          <TenantReadinessBanner />
           <main className="min-h-[calc(100vh-65px)] pb-10">{children}</main>
         </div>
       </div>
