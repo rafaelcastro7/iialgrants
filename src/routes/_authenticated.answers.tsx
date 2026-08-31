@@ -57,7 +57,7 @@ function AnswerLibraryPage() {
     queryKey: ["answer-library"],
     queryFn: () => list(),
   });
-  const answers = (data?.answers ?? []) as Answer[];
+  const answers = useMemo(() => (data?.answers ?? []) as Answer[], [data?.answers]);
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState(EMPTY);
   const filtered = useMemo(() => {
