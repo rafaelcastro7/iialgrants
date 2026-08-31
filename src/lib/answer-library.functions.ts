@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { formatAnswerKnowledgeChunk } from "@/lib/answer-library.shared";
 
 const AnswerInput = z.object({
   id: z.string().uuid().optional(),
@@ -68,14 +69,7 @@ export const saveAnswerLibraryItem = createServerFn({ method: "POST" })
       .single();
     if (answerError) throw new Error(answerError.message);
 
-    const chunkContent = [
-      `Reusable response: ${data.label}`,
-      data.question ? `Question: ${data.question}` : null,
-      `Approved answer: ${data.answer_en}`,
-      data.evidence_notes ? `Evidence notes: ${data.evidence_notes}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+    const chunkContent = formatAnswerKnowledgeChunk(data);
     let embedding: string | null = null;
     try {
       const { embedText } = await import("@/agents/embeddings.server");
