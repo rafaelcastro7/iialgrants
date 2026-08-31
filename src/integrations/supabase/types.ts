@@ -8,6 +8,66 @@ export type Database = {
   };
   public: {
     Tables: {
+      answer_library: {
+        Row: {
+          answer_en: string;
+          answer_fr: string | null;
+          archived_at: string | null;
+          created_at: string;
+          created_by: string;
+          evidence_notes: string | null;
+          id: string;
+          knowledge_chunk_id: string | null;
+          label: string;
+          last_used_at: string | null;
+          org_id: string;
+          question: string | null;
+          tags: string[];
+          updated_at: string;
+          updated_by: string | null;
+          use_count: number;
+          verified_at: string | null;
+        };
+        Insert: {
+          answer_en: string;
+          answer_fr?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          evidence_notes?: string | null;
+          id?: string;
+          knowledge_chunk_id?: string | null;
+          label: string;
+          last_used_at?: string | null;
+          org_id: string;
+          question?: string | null;
+          tags?: string[];
+          updated_at?: string;
+          updated_by?: string | null;
+          use_count?: number;
+          verified_at?: string | null;
+        };
+        Update: {
+          answer_en?: string;
+          answer_fr?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          evidence_notes?: string | null;
+          id?: string;
+          knowledge_chunk_id?: string | null;
+          label?: string;
+          last_used_at?: string | null;
+          org_id?: string;
+          question?: string | null;
+          tags?: string[];
+          updated_at?: string;
+          updated_by?: string | null;
+          use_count?: number;
+          verified_at?: string | null;
+        };
+        Relationships: [];
+      };
       agent_config_audit: {
         Row: {
           agent: string;
@@ -1806,6 +1866,7 @@ export type Database = {
           id: string;
           language: Database["public"]["Enums"]["app_lang"];
           metadata: Json;
+          org_id: string | null;
           source: string;
           source_kind: string;
           user_id: string;
@@ -1817,6 +1878,7 @@ export type Database = {
           id?: string;
           language?: Database["public"]["Enums"]["app_lang"];
           metadata?: Json;
+          org_id?: string | null;
           source: string;
           source_kind?: string;
           user_id: string;
@@ -1828,6 +1890,7 @@ export type Database = {
           id?: string;
           language?: Database["public"]["Enums"]["app_lang"];
           metadata?: Json;
+          org_id?: string | null;
           source?: string;
           source_kind?: string;
           user_id?: string;
