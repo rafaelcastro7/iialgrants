@@ -278,6 +278,13 @@ export type OrgProfileLite = {
   stage?: string | null;
   annual_budget_cad?: number | null;
   focus_areas?: string | string[] | null;
+  applicant_types?: string[] | null;
+  activities?: string[] | null;
+  capabilities?: string[] | null;
+  mission?: string | null;
+  funding_min_cad?: number | null;
+  funding_max_cad?: number | null;
+  cost_share_max_pct?: number | null;
 };
 
 /**
@@ -322,7 +329,10 @@ export function deriveRulesFromOrg(
     // sectors/focus-areas ARE the org's own capabilities, so reuse them here
     // too rather than leaving a single hardcoded tenant's keywords as the
     // permanent default for every organization using this system.
-    rules.iial_capabilities = Array.from(new Set(sectors));
+    const capabilities = [...sectors, ...(org.capabilities ?? []), ...(org.activities ?? [])]
+      .map((value) => String(value).trim())
+      .filter(Boolean);
+    rules.iial_capabilities = Array.from(new Set(capabilities));
   }
 
   // Org's legal/organizational type → SOP F1's applicant-type check. A
@@ -335,6 +345,21 @@ export function deriveRulesFromOrg(
   if (stageTypes) {
     rules.applicant_types_allowed = stageTypes.allowed;
     rules.applicant_types_excluded = stageTypes.excluded;
+  }
+
+  // Explicit verified applicant categories take precedence over the coarse
+  // stage mapping (e.g. IIAL may be both nonprofit and an eligible research
+  // partner). This prevents the UI from collecting richer facts that the
+  // deterministic gate then silently ignores.
+  const applicantTypes = (org.applicant_types ?? []).map((value) => value.trim()).filter(Boolean);
+  if (applicantTypes.length > 0) {
+    rules.applicant_types_allowed = Array.from(new Set(applicantTypes));
+  }
+
+  if (org.funding_min_cad != null) rules.min_amount_cad = org.funding_min_cad;
+  if (org.funding_max_cad != null) rules.max_amount_cad = org.funding_max_cad;
+  if (org.cost_share_max_pct != null) {
+    rules.max_cost_share_pct_org_carries = org.cost_share_max_pct;
   }
 
   return rules;
