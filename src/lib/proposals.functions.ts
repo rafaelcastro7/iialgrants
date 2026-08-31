@@ -84,8 +84,23 @@ export const ingestOrgProfileAsKnowledge = createServerFn({ method: "POST" })
     if (!org) throw new Error("org_profile_missing");
     const chunks = [
       `Organization: ${org.org_name}. Stage: ${org.stage}. Annual budget (CAD): ${org.annual_budget_cad ?? "n/a"}.`,
+      org.legal_name || org.registration_status || org.applicant_types.length
+        ? `Legal profile: ${org.legal_name ?? org.org_name}; registration status: ${org.registration_status ?? "not confirmed"}; applicant types: ${(org.applicant_types ?? []).join(", ") || "not confirmed"}.`
+        : null,
+      org.mission ? `Mission: ${org.mission}` : null,
       `Sectors: ${(org.sectors ?? []).join(", ")}.`,
       `Jurisdictions of operation: ${(org.jurisdictions ?? []).join(", ")}.`,
+      org.operating_regions.length
+        ? `Regions served: ${org.operating_regions.join(", ")}.`
+        : null,
+      org.activities.length ? `Programs and activities: ${org.activities.join(", ")}.` : null,
+      org.capabilities.length ? `Delivery capabilities: ${org.capabilities.join(", ")}.` : null,
+      org.populations_served.length
+        ? `Populations served: ${org.populations_served.join(", ")}.`
+        : null,
+      org.funding_min_cad != null || org.funding_max_cad != null || org.cost_share_max_pct != null
+        ? `Pursuit constraints: useful award ${org.funding_min_cad ?? "unspecified"} to ${org.funding_max_cad ?? "unspecified"} CAD; maximum cost share ${org.cost_share_max_pct ?? "unspecified"}%.`
+        : null,
       org.focus_areas ? `Focus areas and prior work: ${org.focus_areas}` : null,
     ].filter((s): s is string => !!s && s.length >= 20);
     if (!chunks.length) return { ok: true, inserted: 0 };
