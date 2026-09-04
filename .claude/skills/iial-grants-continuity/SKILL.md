@@ -1,4 +1,4 @@
-﻿---
+---
 name: iial-grants-continuity
 description: Preserve verified Claude and Codex contracts when changing IIAL Grants tenancy, profiles, RAG, agents, migrations, or V2 workflows.
 ---
