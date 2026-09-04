@@ -113,7 +113,7 @@ Verify with `docker exec docker-db-1 psql -U postgres -d postgres -c "select
 count(*) from knowledge_chunks;"` — 0 rows after a sync means the embedding
 model is missing, not that the RAG corpus is legitimately empty.
 
-## The Writer agent needs org-profile knowledge chunks first
+## The Writer agent needs tenant knowledge first
 
 Drafting any proposal section calls `ragRetrieve()`, which throws
 `no_knowledge_chunks: ingest org profile or documents first` if the org has
