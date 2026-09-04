@@ -1,0 +1,4 @@
+interface:
+  display_name: "IIAL Grants Continuity"
+  short_description: "Preserve tenant and Claude-compatible delivery"
+  default_prompt: "Use $iial-grants-continuity to plan a safe compatible IIAL Grants change."
