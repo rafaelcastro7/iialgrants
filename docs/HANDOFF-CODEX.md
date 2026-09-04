@@ -1,8 +1,86 @@
 # Handoff for Codex / Claude - IIAL Grants
 
 Living handoff so another agent can continue safely. Read this plus
-`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-07-21
-America/Toronto.
+`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-09-04
+America/New_York.
+
+## 2026-09-04 — Claude/Codex continuity and IIAL tenant baseline
+
+This section reconciles the verified Claude work in this handoff with the
+current Codex work. It is deliberately a contract, not a claim that all
+historical notes are still current.
+
+### Read order and compatibility rule
+
+1. `AGENTS.md` and `e:/dev/grantdesk/CLAUDE.md` define active architecture and
+   successor compatibility.
+2. This handoff and `.claude/skills/iial-grants-continuity/SKILL.md` capture
+   verified operational lessons and the change protocol.
+3. Current code and the latest Supabase migrations win if documentation
+   conflicts. Never roll back a Claude fix merely because an older handoff
+   paragraph describes the pre-fix state.
+
+The product is cloud-first for inference (Cerebras/Groq/Gemini, with Ollama as
+the local floor), while storage and embeddings remain local. Do not reintroduce
+the obsolete “100% local / no data leaves the machine” claim.
+
+### Tenant and knowledge contract
+
+- `profiles.org_id` is the tenant principal. Every user-owned or shared query
+  must derive scope from it and retain the established RLS plus
+  `tenant-access.server.ts` defense for service-role paths.
+- `org_profiles` is a shared tenant profile. Matching, proposal, audit,
+  strategy, discovery, citation, NotebookLM and compliance paths must read the
+  shared profile through `getOrgProfileForUser`, rather than treating it as a
+  per-user profile.
+- `20260831140000_tenant_grant_readiness_profile.sql` added the profile facts
+  needed for trustworthy matching and migrated legacy null-org IIAL users to
+  the dedicated IIAL tenant. It creates an intentionally incomplete IIAL
+  profile; never fabricate mission, eligibility, sectors, finances or legal
+  facts just to remove a readiness warning.
+- `20260831150000_tenant_knowledge_answer_library.sql` made
+  `knowledge_chunks` tenant-aware, corrected the RAG RPC parameter from a
+  hard-coded `vector(1536)` to dimension-agnostic `vector`, and added the
+  tenant-scoped `answer_library`. An archived answer must no longer be
+  retrievable. Shared-answer changes must preserve both FTS and vector fallback.
+- The `/org` readiness workspace is deliberately the first UX gate. Core facts
+  (identity, registration, applicant types, jurisdictions, mission, sectors)
+  determine verified matching; capacity/financial facts enrich it.
+
+### Current IIAL evidence baseline
+
+At the 2026-09-04 local check: 3,125 grants and 705 funders existed, but only
+two proposals/submissions and no outcomes, tasks or compliance items. The
+catalog is mostly discovered (2,970), with 144 expired, 7 archived, 2 enriched
+and 2 submitted. IIAL has a shared profile but intentionally lacks the facts
+needed for verified matching; that is a real onboarding task, not a seed-data
+bug. The two historical profiles are now assigned to IIAL; the isolated IIAL
+Test Org remains separate.
+
+### Engineering guardrails carried forward
+
+- Claude's RLS/IDOR fixes remain mandatory. Never replace org-scoped checks
+  with `auth.role() = 'authenticated'`, or make a service-role query reachable
+  from a bare resource ID.
+- A TanStack `*.functions.ts` module can be imported into browser code. It may
+  not statically import `*.server.ts`; place shared pure helpers in a non-server
+  file or dynamically import the server module inside the server handler.
+- After local migrations, refresh PostgREST's schema cache before diagnosing a
+  new-column/table error. Run tests through real Node (`bun run test` invokes
+  it); do not use raw `bunx` for Playwright.
+- The full suite once had a browser-render resource-contention flake; its
+  focused test passed. Reproduce it in isolation before changing browser code.
+
+### Completed in this continuity pass
+
+- Shared tenant readiness profile and deterministic readiness analysis.
+- Tenant-shared answer library with RAG indexing and an `/answers` workspace.
+- V2 “Action needed” readiness banner and navigation to shared answers.
+- Profile facts now feed deterministic fit rules and profile knowledge sync.
+
+Next work should validate the full suite/e2e against this schema, connect
+answer-library usage back to proposal provenance where appropriate, and
+populate IIAL's verified facts from authoritative organizational material.
 
 ## CRITICAL SECURITY FINDING - FIXED - 2026-07-21 America/Toronto
 

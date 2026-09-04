@@ -319,6 +319,18 @@ was a real incident, not a hypothetical.
 ## Conventions
 
 - Server functions: `*.functions.ts` (thin wrapper) + `*.server.ts` (real logic)
+- **Continuity first:** before changing tenancy, profiles, RAG, agent workflow, or
+  V2 UX, read `docs/HANDOFF-CODEX.md` and
+  `.claude/skills/iial-grants-continuity/SKILL.md`. They record verified Claude
+  findings and the cross-agent contracts; code and the latest migrations remain
+  the source of truth when documentation conflicts.
+- **Tenant contract:** `profiles.org_id` establishes the principal. `org_profiles`
+  is shared tenant data, never a personal fact store; `knowledge_chunks` and the
+  answer library must be scoped to that same tenant. Do not use an unscoped
+  service-role query or invent IIAL facts to make matching appear ready.
+- **TanStack import boundary:** a `*.functions.ts` module can be imported by a
+  browser route. Do not statically import `*.server.ts` from it; use a shared
+  non-server helper or a server-side dynamic import instead.
 - Supabase client: lazy import via `@/integrations/supabase/client.server`
 - Auth: `requireSupabaseAuth` middleware + `assertAdmin` guard
 - All LLM inputs/outputs validated with Zod
