@@ -115,18 +115,10 @@ model is missing, not that the RAG corpus is legitimately empty.
 
 ## The Writer agent needs tenant knowledge first
 
-Drafting any proposal section calls `ragRetrieve()`, which throws
-`no_knowledge_chunks: ingest org profile or documents first` if the org has
-zero rows in `knowledge_chunks` — silent to a human tester who never sees a
-"writer" agent call fire at all (nothing reaches `callLlm`). A brand-new demo
-org has no profile and no chunks.
+Drafting any proposal section calls `ragRetrieve()`, which throws`r`n`no_knowledge_chunks: ingest org profile or documents first` if the tenant has`r`nzero rows in `knowledge_chunks` — silent to a human tester who never sees a`r`n"writer" agent call fire at all (nothing reaches `callLlm`). A brand-new demo`r`ntenant has no profile and no chunks. `knowledge_chunks` is tenant-scoped: do`r`nnot create a second personal corpus to make a test pass.
 
 Before drafting anything, in order:
-1. `/org` → fill in **Organization name** (required) at minimum, ideally
-   also Sectors / Focus areas for a richer RAG corpus → **Save profile**.
-2. `/proposals` → click **Sync knowledge base** (labeled "New application"
-   before this was fixed — check the button's `onClick`, not just its text,
-   if this ever looks wrong again) and wait for it to re-enable.
+1. `/org` → fill the shared tenant profile. For verified matching, complete`r`n   identity, registration, applicant types, jurisdictions, mission and sectors;`r`n   never invent IIAL facts. Save the profile.`r`n2. `/proposals` → click **Sync knowledge base** (labeled "New application"`r`n   before this was fixed — check the button's `onClick`, not just its text,`r`n   if this ever looks wrong again) and wait for it to re-enable.`r`n3. Alternatively, add a verified reusable answer at `/answers`; it indexes into`r`n   the same tenant RAG corpus. Archiving it must remove it from retrieval.
 
 Only then does `Draft "<section>"` actually produce content instead of
 failing before the first LLM call.
