@@ -1,85 +1,47 @@
----
+﻿---
 name: iial-grants-continuity
-description: [TODO: Complete and informative explanation of what the skill does and when to use it. Include WHEN to use this skill - specific scenarios, file types, or tasks that trigger it.]
+description: Preserve verified Claude and Codex contracts when changing IIAL Grants tenancy, profiles, RAG, agents, migrations, or V2 workflows.
 ---
 
-# Iial Grants Continuity
+# IIAL Grants Continuity
 
 ## Overview
 
-[TODO: 1-2 sentences explaining what this skill enables]
+Use this skill before modifying any cross-cutting IIAL Grants capability. It keeps work compatible with verified Claude findings, the current tenant model, and the GrantDesk successor without blindly porting the successor's narrower product shape.
 
-## Structuring This Skill
+## When to use
 
-[TODO: Choose the structure that best fits this skill's purpose. Common patterns:
+Use for changes to `AGENTS.md`, handoffs, Supabase migrations/RLS, tenant queries, organization profile, knowledge/RAG, agent workflows, V2 routes, or test infrastructure. Also use when resuming work after another agent or when a historical handoff conflicts with the current code.
 
-**1. Workflow-Based** (best for sequential processes)
-- Works well when there are clear step-by-step procedures
-- Example: DOCX skill with "Workflow Decision Tree" -> "Reading" -> "Creating" -> "Editing"
-- Structure: ## Overview -> ## Workflow Decision Tree -> ## Step 1 -> ## Step 2...
+## Continuity workflow
 
-**2. Task-Based** (best for tool collections)
-- Works well when the skill offers different operations/capabilities
-- Example: PDF skill with "Quick Start" -> "Merge PDFs" -> "Split PDFs" -> "Extract Text"
-- Structure: ## Overview -> ## Quick Start -> ## Task Category 1 -> ## Task Category 2...
+1. Read `AGENTS.md`, `docs/HANDOFF-CODEX.md`, this skill, and—when shared architecture is involved—`e:/dev/grantdesk/CLAUDE.md`.
+2. Inspect the current call sites, RLS policies, and latest migrations. Treat them as authoritative over stale handoff prose.
+3. State the compatibility contract before editing: principal, data owner, user-visible gate, and fallbacks.
+4. Make the smallest coherent change across schema, server functions, UI and tests. Do not introduce a parallel per-user path for shared tenant facts.
+5. Verify focused tests first, then lint and build. For schema work, ensure PostgREST has refreshed its schema cache before interpreting API failures.
+6. Update `docs/HANDOFF-CODEX.md` with facts, migration names, validation evidence, and intentionally unresolved product decisions.
 
-**3. Reference/Guidelines** (best for standards or specifications)
-- Works well for brand guidelines, coding standards, or requirements
-- Example: Brand styling with "Brand Guidelines" -> "Colors" -> "Typography" -> "Features"
-- Structure: ## Overview -> ## Guidelines -> ## Specifications -> ## Usage...
+## Non-negotiable contracts
 
-**4. Capabilities-Based** (best for integrated systems)
-- Works well when the skill provides multiple interrelated features
-- Example: Product Management with "Core Capabilities" -> numbered capability list
-- Structure: ## Overview -> ## Core Capabilities -> ### 1. Feature -> ### 2. Feature...
+- `profiles.org_id` establishes the tenant principal. Service-role handlers must enforce the existing tenant-access guard before using resource IDs.
+- `org_profiles` is tenant-shared, and its core readiness facts must be real; do not manufacture IIAL data to improve a score.
+- `knowledge_chunks` and `answer_library` are tenant-scoped shared knowledge. Preserve both lexical and vector retrieval, and remove archived answers from retrieval.
+- Cloud inference is intentional; local Ollama is the resilience floor. Do not restore obsolete absolute-locality messaging.
+- A `*.functions.ts` file may reach the client bundle. It cannot statically import a `*.server.ts` file. Use a non-server pure helper or dynamic import.
+- Never rewrite published Git history in this Lovable-connected repository.
 
-Patterns can be mixed and matched as needed. Most skills combine patterns (e.g., start with task-based, add workflow for complex operations).
+## Product compatibility lens
 
-Delete this entire "Structuring This Skill" section when done - it's just guidance.]
+GrantDesk contributes validated patterns—fast profile onboarding, explicit pass/fail/unknown eligibility, trustworthy search coverage, requirement-driven drafting, named blockers and human confirmation. Apply those patterns only when they fit IIAL's broader workflow, bilingual Canadian context, six-agent pipeline and existing audit/compliance lifecycle.
 
-## [TODO: Replace with the first main section based on chosen structure]
+## Operational checks
 
-[TODO: Add content here. See examples in existing skills:
-- Code samples for technical skills
-- Decision trees for complex workflows
-- Concrete examples with realistic user requests
-- References to scripts/templates/references as needed]
+- Run unit and Playwright runners through their existing `bun run` scripts (which use real Node); avoid raw `bunx` browser launches.
+- After dependency changes, restart Vite and clear its optimizer cache.
+- Before debugging a missing writer result, check the tenant has profile or answer/document knowledge and `nomic-embed-text` is available.
+- Reproduce browser-render failures in their focused test before treating a full-suite resource-contention failure as a source defect.
 
-## Resources (optional)
+## Reference
 
-Create only the resource directories this skill actually needs. Delete this section if no resources are required.
-
-### scripts/
-Executable code (Python/Bash/etc.) that can be run directly to perform specific operations.
-
-**Examples from other skills:**
-- PDF skill: `fill_fillable_fields.py`, `extract_form_field_info.py` - utilities for PDF manipulation
-- DOCX skill: `document.py`, `utilities.py` - Python modules for document processing
-
-**Appropriate for:** Python scripts, shell scripts, or any executable code that performs automation, data processing, or specific operations.
-
-**Note:** Scripts may be executed without loading into context, but can still be read by Codex for patching or environment adjustments.
-
-### references/
-Documentation and reference material intended to be loaded into context to inform Codex's process and thinking.
-
-**Examples from other skills:**
-- Product management: `communication.md`, `context_building.md` - detailed workflow guides
-- BigQuery: API reference documentation and query examples
-- Finance: Schema documentation, company policies
-
-**Appropriate for:** In-depth documentation, API references, database schemas, comprehensive guides, or any detailed information that Codex should reference while working.
-
-### assets/
-Files not intended to be loaded into context, but rather used within the output Codex produces.
-
-**Examples from other skills:**
-- Brand styling: PowerPoint template files (.pptx), logo files
-- Frontend builder: HTML/React boilerplate project directories
-- Typography: Font files (.ttf, .woff2)
-
-**Appropriate for:** Templates, boilerplate code, document templates, images, icons, fonts, or any files meant to be copied or used in the final output.
-
----
-
-**Not every skill requires all three types of resources.**
+Read `references/compatibility-contract.md` for the concise data-flow and verification matrix. The detailed evidence remains in `docs/HANDOFF-CODEX.md`.
