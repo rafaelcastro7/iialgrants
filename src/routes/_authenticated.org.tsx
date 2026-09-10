@@ -1,16 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useForm, type UseFormProps } from "react-hook-form";
+import { useForm, Controller, type UseFormProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { queryOptions, useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { getOrgProfile, saveOrgProfile } from "@/lib/org.functions";
+import { parseCSV, bnErrorMessage } from "@/lib/csv.shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { TagInput } from "@/components/ui/tag-input";
 import { syncClientLocale } from "@/i18n/sync";
 import { toast } from "sonner";
 import { FormField } from "@/components/FormField";
@@ -152,8 +154,8 @@ function OrgPage() {
   const onSubmit = (values: OrgFormValues) => {
     mut.mutate({
       org_name: values.org_name,
-      sectors: csv(values.sectors),
-      jurisdictions: csv(values.jurisdictions).map((value) => value.toUpperCase()),
+      sectors: parseCSV(values.sectors),
+      jurisdictions: parseCSV(values.jurisdictions).map((v) => v.toUpperCase()),
       stage: values.stage,
       annual_budget_cad: optionalNumber(values.annual_budget_cad),
       focus_areas: values.focus_areas || null,
@@ -161,12 +163,12 @@ function OrgPage() {
       business_number: values.business_number || null,
       website: values.website || null,
       mission: values.mission || null,
-      applicant_types: csv(values.applicant_types),
-      activities: csv(values.activities),
-      capabilities: csv(values.capabilities),
-      populations_served: csv(values.populations_served),
-      operating_regions: csv(values.operating_regions),
-      languages: csv(values.languages).map((value) => value.toLowerCase()),
+      applicant_types: parseCSV(values.applicant_types),
+      activities: parseCSV(values.activities),
+      capabilities: parseCSV(values.capabilities),
+      populations_served: parseCSV(values.populations_served),
+      operating_regions: parseCSV(values.operating_regions),
+      languages: parseCSV(values.languages).map((v) => v.toLowerCase()),
       years_operating: optionalNumber(values.years_operating),
       employee_count: optionalNumber(values.employee_count),
       registration_status: values.registration_status ?? null,
@@ -181,6 +183,8 @@ function OrgPage() {
     return <GrantReadinessProfileForm form={form} mut={mut} onSubmit={onSubmit} />;
   }
 
+  const bnError = bnErrorMessage(form.watch("business_number"));
+
   return (
     <div className="min-h-screen text-foreground">
       <AppTopBar title={t("org.title")} />
@@ -193,36 +197,124 @@ function OrgPage() {
         <Card>
           <CardContent className="pt-6">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField label={t("org.name")} error={form.formState.errors.org_name?.message}>
-                <Input {...form.register("org_name")} required />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label={t("org.name")} error={form.formState.errors.org_name?.message}>
+                  <Input {...form.register("org_name")} required />
+                </FormField>
+                <FormField label="Legal name">
+                  <Input {...form.register("legal_name")} placeholder="Name on incorporation records" />
+                </FormField>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Registration status" description="Critical for F1 eligibility">
+                  <select
+                    className="h-10 w-full rounded border bg-background px-3"
+                    {...form.register("registration_status")}
+                  >
+                    <option value="">Select status</option>
+                    {REGISTRATION_STATUSES.map((s) => (
+                      <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Applicant types" description="Used for F1 gate — be precise">
+                  <Controller
+                    control={form.control}
+                    name="applicant_types"
+                    render={({ field }) => (
+                      <TagInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="nonprofit, registered charity"
+                        suggestions={[
+                          { value: "nonprofit", label: "Nonprofit" },
+                          { value: "registered charity", label: "Registered Charity" },
+                          { value: "academic", label: "Academic" },
+                          { value: "municipality", label: "Municipality" },
+                          { value: "indigenous organization", label: "Indigenous Org" },
+                        ]}
+                        lowercase
+                      />
+                    )}
+                  />
+                </FormField>
+              </div>
+
+              <FormField label="Mission" description="Approved organizational wording">
+                <Textarea rows={3} {...form.register("mission")} />
               </FormField>
-              <FormField label={t("org.sectors")} description="Comma-separated: tech, retail">
-                <Input {...form.register("sectors")} placeholder="tech, retail" />
-              </FormField>
-              <FormField
-                label={t("org.jurisdictions")}
-                description="Any country or region — comma-separated. Not limited to Canada: CA, ON, US, FR..."
-              >
-                <Input {...form.register("jurisdictions")} placeholder="CA, ON, US, FR" />
-              </FormField>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label={t("org.sectors")}>
+                  <Controller
+                    control={form.control}
+                    name="sectors"
+                    render={({ field }) => (
+                      <TagInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="education, AI, workforce"
+                        lowercase
+                      />
+                    )}
+                  />
+                </FormField>
+                <FormField label={t("org.jurisdictions")} description="CA, ON, US, FR...">
+                  <Controller
+                    control={form.control}
+                    name="jurisdictions"
+                    render={({ field }) => (
+                      <TagInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="CA, ON, QC"
+                        suggestions={[
+                          { value: "CA", label: "Canada" },
+                          { value: "ON", label: "Ontario" },
+                          { value: "QC", label: "Quebec" },
+                          { value: "BC", label: "BC" },
+                          { value: "AB", label: "Alberta" },
+                        ]}
+                        uppercase
+                      />
+                    )}
+                  />
+                </FormField>
+              </div>
+
               <FormField label={t("org.stage")}>
                 <select
                   className="w-full border rounded h-10 px-3 bg-background"
                   {...form.register("stage")}
                 >
                   {STAGES.map((s) => (
-                    <option key={s} value={s}>
-                      {t(`org.stages.${s}`)}
-                    </option>
+                    <option key={s} value={s}>{t(`org.stages.${s}`)}</option>
                   ))}
                 </select>
               </FormField>
-              <FormField label={t("org.budget")}>
-                <Input type="number" min="0" {...form.register("annual_budget_cad")} />
-              </FormField>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label={t("org.budget")}>
+                  <Input type="number" min="0" {...form.register("annual_budget_cad")} />
+                </FormField>
+                <FormField
+                  label="Business / charity number"
+                  description="9-digit CRA BN"
+                  error={bnError ?? undefined}
+                >
+                  <Input
+                    {...form.register("business_number")}
+                    placeholder="123456789"
+                    className={bnError ? "border-destructive" : ""}
+                  />
+                </FormField>
+              </div>
+
               <FormField label={t("org.focus")}>
                 <Textarea rows={3} {...form.register("focus_areas")} />
               </FormField>
+
               <Button type="submit" disabled={mut.isPending}>
                 {mut.isPending ? t("app.loading") : t("org.save")}
               </Button>
