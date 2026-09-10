@@ -549,6 +549,7 @@ function GrantsPage() {
               evaluatingIds={evaluatingIds}
               onEvaluate={onEvaluate}
               filters={filtersNode}
+              isAdmin={isAdmin}
             />
           )}
 
