@@ -87,10 +87,12 @@ export function GrantExpressView({
   grants,
   evaluatingIds,
   onEvaluate,
+  filters,
 }: {
   grants: GrantRowData[];
   evaluatingIds: Set<string>;
   onEvaluate: (id: string) => void;
+  filters?: React.ReactNode;
 }) {
   const active = grants.filter((g) => isActiveGrantStatus(g.status));
 
