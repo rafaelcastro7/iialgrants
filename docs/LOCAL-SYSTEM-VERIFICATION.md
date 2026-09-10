@@ -31,17 +31,17 @@ skipped, `build` OK.
 
 ## Route-by-route browser test (local DB, demo-admin)
 
-| Route | Status | Notes |
-| --- | --- | --- |
-| `/auth` | ✅ PASS | Demo login buttons render; Admin login → `/dashboard`. |
-| `/dashboard` | ✅ PASS | Real local data (17 active, 9 eligible, NRC IRAP grants), no console errors. |
-| `/grants` | ✅ PASS | 17 grants, V2 radar; search "IRAP" → 17→8 relevant, no errors. |
-| `/grants/$id` | ✅ PASS | Grant detail (fit 88/100, evidence 4/7, completeness 57%), no errors. |
-| `/proposals` | ✅ PASS | 3 proposals from local DB, no errors. |
-| `/submissions` | ✅ PASS | Sent/Won/Waiting/Win-rate + IRAP submission, no errors. |
-| `/fit-rules` | ✅ PASS | Screening profiles render, no errors. |
-| `/funders` | ⚠️ WARN | Renders 8 funders from local DB, but React dev warning "state update on a component that hasn't mounted yet" (see Known issues). |
-| `/admin` | ⚠️ WARN | Renders; same React mount warning as /funders (shared AppTopBar/V1 layout, not on V2-shell routes). |
+| Route          | Status  | Notes                                                                                                                            |
+| -------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `/auth`        | ✅ PASS | Demo login buttons render; Admin login → `/dashboard`.                                                                           |
+| `/dashboard`   | ✅ PASS | Real local data (17 active, 9 eligible, NRC IRAP grants), no console errors.                                                     |
+| `/grants`      | ✅ PASS | 17 grants, V2 radar; search "IRAP" → 17→8 relevant, no errors.                                                                   |
+| `/grants/$id`  | ✅ PASS | Grant detail (fit 88/100, evidence 4/7, completeness 57%), no errors.                                                            |
+| `/proposals`   | ✅ PASS | 3 proposals from local DB, no errors.                                                                                            |
+| `/submissions` | ✅ PASS | Sent/Won/Waiting/Win-rate + IRAP submission, no errors.                                                                          |
+| `/fit-rules`   | ✅ PASS | Screening profiles render, no errors.                                                                                            |
+| `/funders`     | ⚠️ WARN | Renders 8 funders from local DB, but React dev warning "state update on a component that hasn't mounted yet" (see Known issues). |
+| `/admin`       | ⚠️ WARN | Renders; same React mount warning as /funders (shared AppTopBar/V1 layout, not on V2-shell routes).                              |
 
 | `/competitive` `/financial` `/impact` `/post-award` `/renewal` `/tasks` `/compliance-calendar` `/org` `/manual` `/privacy` | ✅ PASS | Swept in one SPA pass from a clean console reload; all rendered (ended on `/privacy` with correct title), no crashes. Only the shared React mount warning below appeared. |
 
@@ -112,15 +112,15 @@ input`; after it, evaluation succeeds.
 
 ### Action / lifecycle stages verified
 
-| Stage / action | Result |
-| --- | --- |
-| `/grants` search "IRAP" | ✅ 17→8 relevant |
-| `/fit-rules` Simulate impact | ✅ 3 pass / 13 review / 4 block |
-| Enricher (Check fit on discovered grant) | ✅ ran via cloud; grounding gate honestly refused `enrichment_insufficient` (source lacks amount/deadline) — correct behavior |
-| Evaluator (Re-evaluate fit, enriched grant) | ✅ Cerebras `gemma-4-31b` ok=true 438ms → `fit_score 0.96`, `eligibility_pass true` |
-| Hybrid cloud chain fallback | ✅ live: Cerebras→Groq observed in logs |
-| Writer (Draft "Problem Statement") | ✅ Cerebras `gemma-4-31b` ok=true 849ms → 1207 chars written |
-| Critic (Run critic) | ✅ after fix below → succeeded, score 62%, 8 findings, renders in Advanced view |
+| Stage / action                              | Result                                                                                                                        |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `/grants` search "IRAP"                     | ✅ 17→8 relevant                                                                                                              |
+| `/fit-rules` Simulate impact                | ✅ 3 pass / 13 review / 4 block                                                                                               |
+| Enricher (Check fit on discovered grant)    | ✅ ran via cloud; grounding gate honestly refused `enrichment_insufficient` (source lacks amount/deadline) — correct behavior |
+| Evaluator (Re-evaluate fit, enriched grant) | ✅ Cerebras `gemma-4-31b` ok=true 438ms → `fit_score 0.96`, `eligibility_pass true`                                           |
+| Hybrid cloud chain fallback                 | ✅ live: Cerebras→Groq observed in logs                                                                                       |
+| Writer (Draft "Problem Statement")          | ✅ Cerebras `gemma-4-31b` ok=true 849ms → 1207 chars written                                                                  |
+| Critic (Run critic)                         | ✅ after fix below → succeeded, score 62%, 8 findings, renders in Advanced view                                               |
 
 ### Schema-validation-aware LLM fallback ADDED + critic prompt FIXED
 
@@ -152,7 +152,7 @@ time.
 
 "Extract Citations" always reported 0 citations for every proposal, no matter
 how well-grounded. Cause: `citation-tracker.functions.ts` regexed section
-*prose* for academic `(Author, 2024)`-style inline citations — a format this
+_prose_ for academic `(Author, 2024)`-style inline citations — a format this
 app never produces. The writer already grounds every claim to a retrieved
 evidence chunk and records it in `proposal_citations` (`marker` = `[dN]`,
 `chunk_id`, `snippet`) as it drafts — visible right in the same page as each
@@ -164,7 +164,7 @@ matching the real `[d1]`-`[d4]` markers, where it previously always showed 0.
 ### Third (unfixed, flagged) bug: Compliance Matrix checks contradict its own policy badges
 
 `generateComplianceMatrix`'s `checks` list matches each requirement by taking
-only its *first word* and doing a bare substring `.includes()` with no word
+only its _first word_ and doing a bare substring `.includes()` with no word
 boundaries — so "EDI considerations addressed" reduces to "edi", which matches
 inside ordinary words like "immediate" and reports "met" even when the
 proposal never discusses EDI. This directly contradicts the same function's
@@ -328,7 +328,7 @@ Six real, confirmed bugs found and fixed — not just flagged:
    the step list could show stale state after an action that visibly
    succeeded. Fixed by invalidating both.
 
-Also fixed: `autoEvaluatePending` in `grants.functions.ts` conflated *any*
+Also fixed: `autoEvaluatePending` in `grants.functions.ts` conflated _any_
 `assertAgentEnabled` failure with "evaluator disabled" instead of checking
 for the `agent_disabled:` prefix specifically; a mislabeled button on
 `/proposals` (`Plus` icon + "New application" text on what is actually the
@@ -499,7 +499,7 @@ applied:
 - Result: 10 atomic commits (one per fix) on branch `unify-2026-07-30`,
   opened as [PR #2](https://github.com/rafaelcastro7/iialgrants/pull/2) —
   **14 files changed, +188/-22, `mergeStateStatus: CLEAN`, `mergeable:
-  MERGEABLE`** (confirmed via `gh pr view`), a direct contrast to PR #1's
+MERGEABLE`** (confirmed via `gh pr view`), a direct contrast to PR #1's
   529 files / +288k / `CONFLICTING`. PR #1 was commented with a pointer to
   #2 and left open as a historical record of the full divergence, not closed.
 
@@ -519,6 +519,7 @@ a full admin console at `/admin/sources` + `/admin/candidates`, properly
 linked from `AdminSidebar`.
 
 But checked against the live local DB, not just the code:
+
 - `funder_candidates` and `source_ingest_runs` both had **0 rows** — this
   pipeline had never executed once, despite being fully built.
 - `cron.job` (the real table, not migration files) has jobs for the
@@ -535,6 +536,7 @@ But checked against the live local DB, not just the code:
   ported into [PR #2](https://github.com/rafaelcastro7/iialgrants/pull/2).
 
 Then actually wired it end to end rather than stopping at the registry fix:
+
 - Added `20260730190000_schedule_source_curator_cron_jobs.sql` — daily Tier A,
   weekly Tier B + scout, monthly Tier C, matching the tiering already
   documented in `orchestrator.server.ts`'s own header comment.
@@ -554,7 +556,7 @@ Then actually wired it end to end rather than stopping at the registry fix:
   succeeded; `funder_scout` failed on the already-known expired Jina key
   without taking down the run. **643 new funder_candidates** now sit in
   review (22 `pending_review`, 621 low-score `candidate`) across the Tier A
-  + Tier B runs — up from 0.
+  - Tier B runs — up from 0.
 - Noted, not acted on: almost all of Tier A's new candidates are US federal
   agencies (Grants.gov is a US API) — correctly held at low score rather
   than auto-approved, but worth a product decision on whether that's desired
@@ -565,6 +567,7 @@ Then actually wired it end to end rather than stopping at the registry fix:
 Asked directly "jina funciona? sino eliminalo y crea un sistema local igual y
 mejor" — verified both Jina endpoints live rather than assuming from the
 earlier 401s seen mid-session:
+
 - **Jina Search** (`s.jina.ai`): 401 `AuthenticationRequiredError` even with
   **no** API key sent — its free/anonymous tier has been removed entirely,
   not just "our key expired." No fix short of a paid key was possible, so it
@@ -649,6 +652,7 @@ section.
 After the fixes above (Jina/SearXNG, module-flag enforcement, dead-code
 removal, tier fix), re-ran the whole local e2e suite to confirm no
 regression — not assumed from the unit suite alone:
+
 - `full-lifecycle.spec.ts` (search → enrich → evaluate → draft → critic →
   export → submit): passed, 40s.
 - `basic-user.spec.ts` + `proposal-export.spec.ts`: passed.
@@ -726,6 +730,7 @@ specific seeded grants rather than each spec re-seeding its own data).
 
 **Claims #11 (pipeline analytics) and #3 (evidence-backed extraction),
 also verified true:**
+
 - `/ops` genuinely renders a live "Pipeline analytics" card reading
   "Derived from the grant event timeline. Deterministic, no estimates." —
   confirmed real numbers matching the actual `grant_events` rows (5 total
@@ -749,7 +754,7 @@ this pass (#3, #6, #11, #12). Remaining unverified: #1, #2, #4, #5, #7, #8,
 
 ### 2026-08-01 — full local stack recovery after an external Docker reset wiped every volume
 
-A Docker Desktop cleanup done for a *different* project on this machine
+A Docker Desktop cleanup done for a _different_ project on this machine
 removed every container **and every volume** on the shared Docker daemon —
 confirmed via `docker volume ls` returning empty and `docker ps -a` showing
 only the other project's containers. This meant the entire local Postgres
@@ -758,6 +763,7 @@ data directory (every grant, funder, proposal, demo user, cron job, and the
 was gone, not just stopped.
 
 **Rebuilt from scratch, verified at each step, not assumed:**
+
 1. `docker compose up -d` in `supabase/docker` — rebuilt the custom
    `docker-db` image (pg_cron/pg_net compiled in) since the image cache was
    gone too, ~4 minutes.
@@ -780,6 +786,7 @@ was gone, not just stopped.
 
 **Real bugs found and fixed while re-verifying end to end** (not just
 "things happened to work" — each traced to a root cause):
+
 - **PostgREST schema cache staleness** — same documented class of issue as
   earlier sessions, now hit for the first time on a genuine from-scratch
   rebuild: `docker-rest-1` started before/without awareness of the final
@@ -829,6 +836,7 @@ enrich → evaluate → draft → review → export → submit) is covered by an
 automated human-style e2e test in addition to manual verification.
 
 Open items, in priority order:
+
 1. **Merge [PR #2](https://github.com/rafaelcastro7/iialgrants/pull/2)** —
    the 10 security/logic fixes, verified `MERGEABLE`/`CLEAN` against current
    `main`. This is the one piece of the reconciliation that's actually ready

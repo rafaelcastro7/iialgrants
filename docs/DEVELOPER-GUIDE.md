@@ -351,15 +351,15 @@ building something new, check whether this stack already covers it.
 used by the discoverer, enricher, and evidence-gathering steps): each engine
 is tried in order until one returns enough content.
 
-| # | Engine | File | What it's for |
-| - | ------ | ---- | -------------- |
-| 1 | `scrape_engine` | `scrape-engine.server.ts` | Fast path: conditional GET (ETag/If-Modified-Since) + `linkedom` → `@mozilla/readability` (Firefox Reader algorithm) → `turndown` markdown. Robots.txt-aware, per-host throttled (≥1.5s). |
-| 2 | `browser_render` | `browser-render.server.ts` | Local headless Chromium (Playwright, already installed for e2e tests — no new infra). Real JS execution, and best-effort clicking of "Eligibility"/"How to apply" tabs/accordions before extraction. Shares the same robots/throttle state as #1. |
-| 3 | `jina_reader` | `web-fetch.server.ts` | Remote, free-tier markdownifier. Also handles JS but is third-party and rate-limited. |
-| 4 | `raw_html` | `web-fetch.server.ts` | Plain fetch with a realistic desktop Chrome UA. |
-| 5 | `raw_html_googlebot` | `web-fetch.server.ts` | Same, with a Googlebot UA — some gov/news sites whitelist it. |
-| 6 | `wayback` | `web-fetch.server.ts` | Internet Archive snapshot, for pages that 404/moved. |
-| 7 | `archive_today` | `web-fetch.server.ts` | archive.ph snapshot, same purpose, different archive. |
+| #   | Engine               | File                       | What it's for                                                                                                                                                                                                                                     |
+| --- | -------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `scrape_engine`      | `scrape-engine.server.ts`  | Fast path: conditional GET (ETag/If-Modified-Since) + `linkedom` → `@mozilla/readability` (Firefox Reader algorithm) → `turndown` markdown. Robots.txt-aware, per-host throttled (≥1.5s).                                                         |
+| 2   | `browser_render`     | `browser-render.server.ts` | Local headless Chromium (Playwright, already installed for e2e tests — no new infra). Real JS execution, and best-effort clicking of "Eligibility"/"How to apply" tabs/accordions before extraction. Shares the same robots/throttle state as #1. |
+| 3   | `jina_reader`        | `web-fetch.server.ts`      | Remote, free-tier markdownifier. Also handles JS but is third-party and rate-limited.                                                                                                                                                             |
+| 4   | `raw_html`           | `web-fetch.server.ts`      | Plain fetch with a realistic desktop Chrome UA.                                                                                                                                                                                                   |
+| 5   | `raw_html_googlebot` | `web-fetch.server.ts`      | Same, with a Googlebot UA — some gov/news sites whitelist it.                                                                                                                                                                                     |
+| 6   | `wayback`            | `web-fetch.server.ts`      | Internet Archive snapshot, for pages that 404/moved.                                                                                                                                                                                              |
+| 7   | `archive_today`      | `web-fetch.server.ts`      | archive.ph snapshot, same purpose, different archive.                                                                                                                                                                                             |
 
 Firecrawl itself (`firecrawl.server.ts`) is also wired in as an optional
 preferred path (`discoverFunderImpl`'s "Path A") but is **off by default**

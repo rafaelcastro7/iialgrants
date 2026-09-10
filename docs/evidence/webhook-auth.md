@@ -14,10 +14,10 @@ from the database.
 
 ## Required headers
 
-| Header | Description |
-|---|---|
-| `x-iial-timestamp` | Unix seconds (string). Request rejected if ±300s outside server clock. |
-| `x-iial-nonce` | Opaque random string, 16–128 chars, `[A-Za-z0-9_-]`. Single-use within 600s. |
+| Header             | Description                                                                   |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `x-iial-timestamp` | Unix seconds (string). Request rejected if ±300s outside server clock.        |
+| `x-iial-nonce`     | Opaque random string, 16–128 chars, `[A-Za-z0-9_-]`. Single-use within 600s.  |
 | `x-iial-signature` | Hex HMAC-SHA256 over `${ts}.${nonce}.${rawBody}` using `WEBHOOK_HMAC_SECRET`. |
 
 ## Verification flow (server)
@@ -70,13 +70,13 @@ END$$;
 
 ## Failure-mode mapping (401 reasons)
 
-| Reason | Meaning |
-|---|---|
-| `missing_signature_headers` | One of the three headers absent. |
-| `invalid_nonce_format` | Length or charset failed validation. |
-| `invalid_timestamp` | Non-numeric `x-iial-timestamp`. |
-| `timestamp_out_of_window` | Clock skew > 300s. |
-| `invalid_signature_encoding` | Signature not valid hex. |
-| `signature_mismatch` | HMAC did not match. |
-| `nonce_replay` | Nonce already seen in the window. |
+| Reason                          | Meaning                                        |
+| ------------------------------- | ---------------------------------------------- |
+| `missing_signature_headers`     | One of the three headers absent.               |
+| `invalid_nonce_format`          | Length or charset failed validation.           |
+| `invalid_timestamp`             | Non-numeric `x-iial-timestamp`.                |
+| `timestamp_out_of_window`       | Clock skew > 300s.                             |
+| `invalid_signature_encoding`    | Signature not valid hex.                       |
+| `signature_mismatch`            | HMAC did not match.                            |
+| `nonce_replay`                  | Nonce already seen in the window.              |
 | `webhook_secret_not_configured` | `WEBHOOK_HMAC_SECRET` missing on server (500). |

@@ -6,24 +6,24 @@ pilot tenant are closed; #3 remains a pre-pilot gate.
 
 ## Issue register — final state
 
-| ID | Severity | Title | Remediation | Status |
-|---|---|---|---|---|
-| #1 | Medium | CSP header missing | Global `applySecurityHeaders` middleware in `src/start.ts` injects CSP on every response | ✅ Closed — `security-headers.md` |
-| #2 | Low | `X-Frame-Options` / `frame-ancestors` missing | Same middleware sets `frame-ancestors 'none'` + `X-Frame-Options: DENY` | ✅ Closed — `security-headers.md` |
-| #3 | Medium | Session-level tests with two pilot accounts | Requires real tenant credentials (email-enum parity, token rotation, cross-tenant RLS, DSAR scope, live prompt-injection) | ⏸ Pre-pilot gate |
-| #4 | Medium | Publishable-key auth on `/api/public/hooks/*` | HMAC-SHA256 + timestamp + single-use nonce; secret stored in `webhook_config` (DB-managed, no user secret needed) | ✅ Closed — `webhook-auth.md` |
-| #5 | Low | No rate limit on public webhooks | Sliding-window 60 req/60 s per IP+endpoint via `webhook_rate_limit`; 429 on excess | ✅ Closed — `webhook-rate-limit.md` |
-| #6 | Low | Agent-generated `grant_events` invisible to users | RLS policy expanded: `actor_user_id IS NULL` readable by all authenticated (grants catalog is shared) | ✅ Closed — migration 014 |
+| ID  | Severity | Title                                             | Remediation                                                                                                               | Status                              |
+| --- | -------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| #1  | Medium   | CSP header missing                                | Global `applySecurityHeaders` middleware in `src/start.ts` injects CSP on every response                                  | ✅ Closed — `security-headers.md`   |
+| #2  | Low      | `X-Frame-Options` / `frame-ancestors` missing     | Same middleware sets `frame-ancestors 'none'` + `X-Frame-Options: DENY`                                                   | ✅ Closed — `security-headers.md`   |
+| #3  | Medium   | Session-level tests with two pilot accounts       | Requires real tenant credentials (email-enum parity, token rotation, cross-tenant RLS, DSAR scope, live prompt-injection) | ⏸ Pre-pilot gate                    |
+| #4  | Medium   | Publishable-key auth on `/api/public/hooks/*`     | HMAC-SHA256 + timestamp + single-use nonce; secret stored in `webhook_config` (DB-managed, no user secret needed)         | ✅ Closed — `webhook-auth.md`       |
+| #5  | Low      | No rate limit on public webhooks                  | Sliding-window 60 req/60 s per IP+endpoint via `webhook_rate_limit`; 429 on excess                                        | ✅ Closed — `webhook-rate-limit.md` |
+| #6  | Low      | Agent-generated `grant_events` invisible to users | RLS policy expanded: `actor_user_id IS NULL` readable by all authenticated (grants catalog is shared)                     | ✅ Closed — migration 014           |
 
 ## Migrations applied
 
-| # | File | Purpose |
-|---|---|---|
-| 011 | `20260620012322_…` | `webhook_nonces` (replay protection) |
-| 012 | `20260620012517_…` | `webhook_config` (HMAC secret store) |
-| 012b | `20260620012528_…` | Auto-seed `hmac_secret` via `gen_random_bytes(48)` |
-| 013 | `20260620013640_…` | `webhook_rate_limit` table + lookup index |
-| 014 | (this run) | Expand `grant_events_read_own` to include `actor_user_id IS NULL` |
+| #    | File               | Purpose                                                           |
+| ---- | ------------------ | ----------------------------------------------------------------- |
+| 011  | `20260620012322_…` | `webhook_nonces` (replay protection)                              |
+| 012  | `20260620012517_…` | `webhook_config` (HMAC secret store)                              |
+| 012b | `20260620012528_…` | Auto-seed `hmac_secret` via `gen_random_bytes(48)`                |
+| 013  | `20260620013640_…` | `webhook_rate_limit` table + lookup index                         |
+| 014  | (this run)         | Expand `grant_events_read_own` to include `actor_user_id IS NULL` |
 
 ## Accepted risks (unchanged)
 

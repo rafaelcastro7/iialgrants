@@ -4,14 +4,14 @@ Eliminate the Firecrawl dependency and add a "crawl ledger" so the discoverer ne
 
 ## What others do (research)
 
-| System | Key technique we adopt |
-|---|---|
+| System                        | Key technique we adopt                                                      |
+| ----------------------------- | --------------------------------------------------------------------------- |
 | **Scrapy** / **Apache Nutch** | Per-URL `next_fetch_at` with adaptive recrawl interval based on change rate |
-| **Firecrawl** (OSS core) | `fetch → readability → markdown → main-content extraction` pipeline |
-| **Diffbot / Mercury** | DOM scoring (Readability algorithm) to isolate main content |
-| **Common Crawl** | `robots.txt` cache + per-host politeness window (crawl-delay) |
-| **Jina Reader** | LLM-friendly markdown output (we already use as fallback) |
-| **SingleFile / Playwright** | JS rendering only when static HTML is < N chars |
+| **Firecrawl** (OSS core)      | `fetch → readability → markdown → main-content extraction` pipeline         |
+| **Diffbot / Mercury**         | DOM scoring (Readability algorithm) to isolate main content                 |
+| **Common Crawl**              | `robots.txt` cache + per-host politeness window (crawl-delay)               |
+| **Jina Reader**               | LLM-friendly markdown output (we already use as fallback)                   |
+| **SingleFile / Playwright**   | JS rendering only when static HTML is < N chars                             |
 
 ## Architecture
 
@@ -32,6 +32,7 @@ Eliminate the Firecrawl dependency and add a "crawl ledger" so the discoverer ne
 ```
 
 ### Libraries (all MIT, ship to Worker)
+
 - `@mozilla/readability` + `linkedom` — main-content extraction (same algo Firefox Reader View uses; what Firecrawl wraps)
 - `turndown` — HTML→Markdown
 - `robots-parser` — robots.txt compliance
@@ -41,17 +42,17 @@ Eliminate the Firecrawl dependency and add a "crawl ledger" so the discoverer ne
 
 New table `crawl_ledger`:
 
-| column | purpose |
-|---|---|
-| `url` (pk) | canonical URL |
-| `host` | for per-host throttling |
-| `last_fetched_at` | when we last hit it |
-| `next_fetch_at` | adaptive: 7d if unchanged twice, 1d if changed, 24h default |
-| `content_hash` | sha256 of extracted markdown |
-| `change_count` | how many times content shifted |
-| `status` | `ok` / `gone` / `blocked` / `error` |
-| `etag`, `last_modified` | conditional GET headers for cheap re-checks |
-| `fetch_count`, `error_count` | health |
+| column                       | purpose                                                     |
+| ---------------------------- | ----------------------------------------------------------- |
+| `url` (pk)                   | canonical URL                                               |
+| `host`                       | for per-host throttling                                     |
+| `last_fetched_at`            | when we last hit it                                         |
+| `next_fetch_at`              | adaptive: 7d if unchanged twice, 1d if changed, 24h default |
+| `content_hash`               | sha256 of extracted markdown                                |
+| `change_count`               | how many times content shifted                              |
+| `status`                     | `ok` / `gone` / `blocked` / `error`                         |
+| `etag`, `last_modified`      | conditional GET headers for cheap re-checks                 |
+| `fetch_count`, `error_count` | health                                                      |
 
 Discoverer reads `WHERE next_fetch_at <= now()` and skips the rest. Admin UI shows: "X URLs due now, Y queued for next 24h, Z stable (weekly cadence)".
 

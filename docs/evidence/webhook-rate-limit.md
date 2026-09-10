@@ -6,13 +6,13 @@ Sliding-window per-IP, per-endpoint limit applied inside
 `verifyWebhookRequest()` (`src/lib/webhook-auth.server.ts`) before HMAC
 verification, so floods are deflected cheaply.
 
-| Parameter | Value |
-|---|---|
-| Window | 60 s |
-| Max requests | 60 per IP per endpoint |
-| Storage | `public.webhook_rate_limit` (service_role only, RLS deny-by-default) |
-| Client IP | `cf-connecting-ip` → `x-forwarded-for[0]` → `x-real-ip` → `"unknown"` |
-| Response on excess | `429 rate_limited` |
+| Parameter          | Value                                                                 |
+| ------------------ | --------------------------------------------------------------------- |
+| Window             | 60 s                                                                  |
+| Max requests       | 60 per IP per endpoint                                                |
+| Storage            | `public.webhook_rate_limit` (service_role only, RLS deny-by-default)  |
+| Client IP          | `cf-connecting-ip` → `x-forwarded-for[0]` → `x-real-ip` → `"unknown"` |
+| Response on excess | `429 rate_limited`                                                    |
 
 ## Notes
 

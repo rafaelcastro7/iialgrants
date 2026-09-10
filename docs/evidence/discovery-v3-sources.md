@@ -10,17 +10,17 @@ feed, charity registry, and web-wide scout query.
 
 ## Tiers & cadence
 
-| Tier  | When            | Ingestors                                                  |
-| ----- | --------------- | ---------------------------------------------------------- |
-| **A** | daily (03:00)   | `rss_grants_bundle` (Grants.gov, IDRC, NSERC, SSHRC, CIHR) |
-| **B** | weekly (Mon 04) | `bbf_programs`, `eu_ft_portal`                             |
-| **scout** | weekly (Mon 05) | `funder_scout` (Jina + LLM web-wide)                  |
-| **C** | monthly (1st)   | `tbs_gc`, `pfc_members`, `t3010_charities`, `otf_open`, `alberta_ckan` |
+| Tier      | When            | Ingestors                                                              |
+| --------- | --------------- | ---------------------------------------------------------------------- |
+| **A**     | daily (03:00)   | `rss_grants_bundle` (Grants.gov, IDRC, NSERC, SSHRC, CIHR)             |
+| **B**     | weekly (Mon 04) | `bbf_programs`, `eu_ft_portal`                                         |
+| **scout** | weekly (Mon 05) | `funder_scout` (Jina + LLM web-wide)                                   |
+| **C**     | monthly (1st)   | `tbs_gc`, `pfc_members`, `t3010_charities`, `otf_open`, `alberta_ckan` |
 
 Each tier hits a public webhook:
 
-- `POST /api/public/hooks/source-tier-a`  (daily)
-- `POST /api/public/hooks/source-tier-b`  (weekly — runs Tier B + scout)
+- `POST /api/public/hooks/source-tier-a` (daily)
+- `POST /api/public/hooks/source-tier-b` (weekly — runs Tier B + scout)
 - `POST /api/public/hooks/source-curator` (monthly — Tier C)
 
 Webhook auth: Supabase publishable key in `apikey` header (pg_cron pattern).

@@ -23,18 +23,19 @@
 
 ## Estado del Plan
 
-| Fase | Nombre | Features | Estado | % Completado |
-|------|--------|----------|--------|-------------|
-| 0 | Reingeniería Frontend | 15 | ✅ COMPLETA | 100% |
-| 1 | Inteligencia de Fundadores | 5 | ✅ COMPLETA | 100% |
-| 2 | Inteligencia Competitiva | 5 | ✅ COMPLETA | 100% |
-| 3 | Proposal Quality Premium | 7 | ✅ COMPLETA | 100% |
-| 4 | Post-Award Intelligence | 5 | ✅ COMPLETA | 100% |
-| 5 | Plataforma y Escala | 7 | ✅ COMPLETA | 100% |
+| Fase | Nombre                     | Features | Estado      | % Completado |
+| ---- | -------------------------- | -------- | ----------- | ------------ |
+| 0    | Reingeniería Frontend      | 15       | ✅ COMPLETA | 100%         |
+| 1    | Inteligencia de Fundadores | 5        | ✅ COMPLETA | 100%         |
+| 2    | Inteligencia Competitiva   | 5        | ✅ COMPLETA | 100%         |
+| 3    | Proposal Quality Premium   | 7        | ✅ COMPLETA | 100%         |
+| 4    | Post-Award Intelligence    | 5        | ✅ COMPLETA | 100%         |
+| 5    | Plataforma y Escala        | 7        | ✅ COMPLETA | 100%         |
 
 ## Criterios de Validación Global
 
 Una fase está COMPLETA cuando:
+
 1. ✅ Todos sus features están implementados
 2. ✅ `bun run build` pasa sin errores
 3. ✅ `bun run lint` pasa sin warnings nuevos
@@ -52,6 +53,7 @@ Se actualizan al final de cada fase.
 ## FASE 0: REINGENIERÍA FRONTEND
 
 ### 0.1 — Shared Authenticated Layout
+
 - [x] Crear `_authenticated.tsx` como layout shell con Sidebar + TopBar + Outlet
 - [x] Migrar `/dashboard` al nuevo layout
 - [x] Migrar `/grants` al nuevo layout
@@ -62,6 +64,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Todas las rutas authenticated renderizan dentro del layout compartido
 
 ### 0.2 — Command Palette (Cmd+K)
+
 - [x] Integrar `command.tsx` existente en el layout
 - [ ] Búsqueda de grants por nombre, funder, status
 - [ ] Búsqueda de propuestas por título
@@ -71,6 +74,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Cmd+K abre palette, resultados aparecen, Enter navega
 
 ### 0.3 — Toast System (Sonner)
+
 - [x] Integrar `<Toaster />` de sonner en root layout
 - [ ] Reemplazar `window.confirm` en proposal submission
 - [ ] Reemplazar `window.prompt` donde exista
@@ -79,6 +83,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Todas las operaciones user-facing muestran toast
 
 ### 0.4 — Skeleton Loading States
+
 - [x] Crear skeleton components reutilizables
 - [ ] Agregar `<Suspense>` con skeleton en `/grants`
 - [ ] Agregar `<Suspense>` con skeleton en `/grants/:id`
@@ -88,15 +93,17 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Ninguna página muestra contenido vacío durante carga
 
 ### 0.5 — Data Table Component
+
 - [x] Instalar `@tanstack/react-table` si no está
 - [x] Crear DataTable reutilizable con sort, filter, pagination
 - [ ] Integrar en `/proposals` (sortable por deadline, status)
-- [ ] Integrar en `/submissions` (sortable, filterable) — *deferred: inline editing complexity*
+- [ ] Integrar en `/submissions` (sortable, filterable) — _deferred: inline editing complexity_
 - [ ] Integrar en `/admin/history` (expandable rows)
 - [ ] Reemplazar `<table>` HTML crudo en `/ops`
 - [ ] **Validación:** Tablas son sortables, filterables, con CSV export
 
 ### 0.6 — Pagination
+
 - [ ] Crear PaginationBar reutilizable
 - [ ] Integrar en lista de grants (Express view)
 - [ ] Integrar en lista de proposals
@@ -104,6 +111,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Listas muestran N items por página, siguiente/anterior funcionan
 
 ### 0.7 — Mobile Responsive Navigation
+
 - [x] Crear MobileNav con Sheet component
 - [x] Hamburger menu en top bar para móvil
 - [ ] Bottom nav bar alternativo (opcional)
@@ -111,6 +119,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Navegación funciona en viewport 375px (iPhone)
 
 ### 0.8 — Form Validation
+
 - [x] Integrar react-hook-form + zod resolver
 - [ ] Migrar `/org` form a react-hook-form
 - [ ] Migrar `/auth` form a react-hook-form
@@ -120,6 +129,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Forms muestran errores inline, no window.alert
 
 ### 0.9 — Error Boundaries por Ruta
+
 - [x] Crear RouteErrorBoundary component
 - [ ] Agregar errorComponent a cada ruta authenticated
 - [ ] Error page con: título, retry button, home button
@@ -127,6 +137,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Error en una ruta no crashea la app completa
 
 ### 0.10 — Calendar View
+
 - [x] Crear GrantCalendar component
 - [x] Month view con deadlines color-coded
 - [ ] Week view alternativa
@@ -135,6 +146,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Calendar muestra deadlines, colores por status
 
 ### 0.11 — Micro-animations (Framer Motion)
+
 - [x] Instalar framer-motion
 - [x] Page transitions (fade + slide)
 - [ ] List item enter/exit animations
@@ -143,6 +155,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Transiciones suaves, no parpadeos
 
 ### 0.12 — User Profile Menu
+
 - [x] Avatar dropdown en top bar
 - [x] Profile settings link
 - [x] Organization settings link
@@ -151,6 +164,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Dropdown aparece, links funcionan
 
 ### 0.13 — Activity Feed en Dashboard
+
 - [x] Crear ActivityFeed component
 - [x] Últimos 10 eventos (grants, proposals, deadlines)
 - [x] Timeline visual con icons
@@ -159,6 +173,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Feed muestra eventos recientes, click navega
 
 ### 0.14 — Funder Profile View
+
 - [x] Crear FunderProfile page component
 - [x] Card con: nombre, misión, geographic focus
 - [ ] Financial health indicators (placeholder data initially)
@@ -168,6 +183,7 @@ Se actualizan al final de cada fase.
 - [ ] **Validación:** Funder profile muestra datos, botón funciona
 
 ### 0.15 — Compliance Dashboard
+
 - [x] Crear ComplianceMatrix component
 - [x] Grid: requisitos × secciones
 - [x] Status cells: ✅ ⚠️ ❌
@@ -180,41 +196,48 @@ Se actualizan al final de cada fase.
 ## FASE 5: PLATAFORMA Y ESCALA
 
 ### 5.1 — Activity Tracking
+
 - [x] Track user activity (grants viewed, proposals edited, etc.)
 - [x] Activity feed with entity linking
 - [ ] **Validación:** Activity logged correctamente
 
 ### 5.2 — Notification System
+
 - [x] Send notifications (info/success/warning/error)
 - [x] Get user notifications (with unread filter)
 - [x] Mark as read
 - [ ] **Validación:** Notifications delivered
 
 ### 5.3 — Platform Analytics
+
 - [x] Basic metrics (grants, proposals, submissions, funders, users)
 - [ ] Detailed usage analytics
 - [ ] Export analytics
 - [ ] **Validación:** Analytics accurate
 
 ### 5.4 — API Rate Limiting
+
 - [ ] Implement rate limiting per user
 - [ ] Usage quotas
 - [ ] Throttling for LLM calls
 - [ ] **Validación:** Rate limits enforced
 
 ### 5.5 — Caching Layer
+
 - [ ] Redis caching for hot data
 - [ ] Cache invalidation strategy
 - [ ] CDN for static assets
 - [ ] **Validación:** Cache hit rate >80%
 
 ### 5.6 — Background Jobs
+
 - [ ] Job queue for imports
 - [ ] Scheduled tasks (grant discovery, enrichment)
 - [ ] Retry logic with backoff
 - [ ] **Validación:** Jobs complete reliably
 
 ### 5.7 — Multi-tenant Support
+
 - [ ] Organization isolation
 - [ ] Role-based access control
 - [ ] Audit logging

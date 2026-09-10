@@ -48,13 +48,13 @@ rules to the RPC is not acceptable.
 After canonical bilingual documents, local `nomic-embed-text` embeddings,
 bounded taxonomy expansion, semantic pruning and lexical/semantic RRF fusion:
 
-| Metric | Lexical baseline | Hybrid RRF v1 | Target | Result |
-|---|---:|---:|---:|---|
-| Precision@10 | 0.693 | **0.756** | >= 0.75 | pass |
-| Recall@10 | 0.732 | **1.000** | >= 0.90 | pass |
-| MRR | 0.760 | **0.944** | tracked | improved |
-| nDCG@10 | 0.732 | **0.989** | >= 0.80 | pass |
-| Hard-fail leakage | 0 | **0** | 0 | pass |
+| Metric            | Lexical baseline | Hybrid RRF v1 |  Target | Result   |
+| ----------------- | ---------------: | ------------: | ------: | -------- |
+| Precision@10      |            0.693 |     **0.756** | >= 0.75 | pass     |
+| Recall@10         |            0.732 |     **1.000** | >= 0.90 | pass     |
+| MRR               |            0.760 |     **0.944** | tracked | improved |
+| nDCG@10           |            0.732 |     **0.989** | >= 0.80 | pass     |
+| Hard-fail leakage |                0 |         **0** |       0 | pass     |
 
 Command: `bun run eval:search --enforce` (exit 0).
 

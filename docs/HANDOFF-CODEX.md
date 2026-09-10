@@ -1573,6 +1573,7 @@ queues, recent run telemetry, and no console errors. Final gates: 330 tests
 passed / 4 skipped, full ESLint passed, production build passed. The source-
 curator ownership claim is released; Claude may work in this slice after
 reading this handoff and the final commit.
+
 ## 2026-07-21 Codex fit-filter proof audit (complete)
 
 The F1/F3/F4/F5 audit repaired national/provincial jurisdiction matching,
@@ -1602,6 +1603,7 @@ so this doesn't duplicate that work — `search_grant_catalog` RPC,
 bug are already fixed and live-verified by Codex; not touching those.
 
 Claiming, not yet touched by any prior cycle:
+
 - `src/lib/funder-search.functions.ts` (`searchFunders`, `suggestFunders`)
 - `src/lib/search-hybrid.server.ts` (dead code, candidate for removal)
 - Any new migration for funder-search ranking (mirroring
@@ -1617,7 +1619,7 @@ before it's trusted as done.
 
 Initial finding: `searchFunders` has a real correctness bug — it applies
 `.range()` (pagination) to an `ilike`-filtered, name-ordered query
-*before* computing its own relevance score client-side, then re-sorts
+_before_ computing its own relevance score client-side, then re-sorts
 only that one page. A highly-relevant funder that sorts alphabetically
 past the page window is silently dropped from results entirely, not
 just ranked lower. It also never uses the `funders_name_trgm_idx`
@@ -1901,7 +1903,7 @@ to unblock Phase 2. This remains separate from Claude's completed commits.
   version is authoritative; I made zero edits to either file. Codex's
   implementation exports `expandGrantSearchQuery(query, maxLexicalQueries)`
   returning `{ normalizedQuery, lexicalQueries, semanticQuery, concepts,
-  suppressSemantic }` and covers the same 5 concepts (youth-employment,
+suppressSemantic }` and covers the same 5 concepts (youth-employment,
   healthy-aging, rise-germany, quebec-ai-tax-credit, plus an extra
   international-research rule) with its own accent-stripping normalizer and a
   `suppressSemantic` regex for negative/non-grant queries (privacy/policy/
@@ -1915,13 +1917,14 @@ to unblock Phase 2. This remains separate from Claude's completed commits.
 ## 2026-07-21 Claude (Antigravity, Bun/Docker/Playwright available) — Live QA verification phase
 
 **Claim**: running the 7 browser/verification tasks originally marked "needs live/browser verification":
-  1. `/fit-rules` eligibility_pass factor verification
-  2. 14 v2 redesigned screens (v2 toggle + smoke test render/console/functionality)
-  3. `V2GrantDetail.tsx` copy/language consistency
-  4. IDOR cross-tenant smoke test (2 users, different orgs)
-  5. Full suite run (`tsc` + `eslint` + `vitest` + `build`) over Cowork's static-checked commits
-  6. Bilingual search benchmark vs baseline (if uncommitted work exists)
-  7. Daemon logs / Ollama proxy health check
+
+1. `/fit-rules` eligibility_pass factor verification
+2. 14 v2 redesigned screens (v2 toggle + smoke test render/console/functionality)
+3. `V2GrantDetail.tsx` copy/language consistency
+4. IDOR cross-tenant smoke test (2 users, different orgs)
+5. Full suite run (`tsc` + `eslint` + `vitest` + `build`) over Cowork's static-checked commits
+6. Bilingual search benchmark vs baseline (if uncommitted work exists)
+7. Daemon logs / Ollama proxy health check
 
 **Status**: starting. Dev server online (HTTP 200 on localhost:8080). Will document evidence (screenshots if needed) and report final verdict at end of session.
 
@@ -1985,7 +1988,7 @@ confirmed it works again. `tsc --noEmit` clean, full suite still
 decided, not a blind copy-paste of the same one-liner): `analytics`,
 `compliance`, `grants`, `org_profile`, `privacy`, `proposals` remain
 unenforced toggles. Whoever picks this up next: don't re-litigate whether
-this is a real gap, it's confirmed — decide *where* each module's gate
+this is a real gap, it's confirmed — decide _where_ each module's gate
 belongs (e.g. `proposals` likely belongs in `strategist.functions.ts`'s
 `createProposal`/`writer.functions.ts`'s draft handlers; `org_profile` in
 `org.functions.ts`'s `saveOrgProfile`) and wire it the same way.

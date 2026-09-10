@@ -38,10 +38,10 @@ the `localhost` origins.
 
 Two databases, one codebase:
 
-| Environment      | Database                              | Env source                                    |
-| ---------------- | ------------------------------------- | --------------------------------------------- |
-| Local dev        | Docker Supabase (`localhost:15435`)   | `.env.local` (overrides `.env`, gitignored)   |
-| Production        | Lovable Cloud Supabase (`*.supabase.co`) | Lovable dashboard env vars (NOT any repo file) |
+| Environment | Database                                 | Env source                                     |
+| ----------- | ---------------------------------------- | ---------------------------------------------- |
+| Local dev   | Docker Supabase (`localhost:15435`)      | `.env.local` (overrides `.env`, gitignored)    |
+| Production  | Lovable Cloud Supabase (`*.supabase.co`) | Lovable dashboard env vars (NOT any repo file) |
 
 How the split works:
 

@@ -5,14 +5,14 @@ Status: **active** · Closes pen-test Issue #1 (2026-06-20).
 Applied by `requestMiddleware` in `src/start.ts` to every response from the
 worker (HTML, server-fn JSON, public webhooks, error pages).
 
-| Header | Value |
-|---|---|
-| `content-security-policy` | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.lovable.app https://*.lovable.dev wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'` |
-| `x-frame-options` | `DENY` |
-| `x-content-type-options` | `nosniff` |
-| `referrer-policy` | `strict-origin-when-cross-origin` |
-| `permissions-policy` | `camera=(), microphone=(), geolocation=(), payment=()` |
-| `strict-transport-security` | `max-age=31536000; includeSubDomains` |
+| Header                      | Value                                                                                                                                                                                                                                                                                                                         |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content-security-policy`   | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.lovable.app https://*.lovable.dev wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'` |
+| `x-frame-options`           | `DENY`                                                                                                                                                                                                                                                                                                                        |
+| `x-content-type-options`    | `nosniff`                                                                                                                                                                                                                                                                                                                     |
+| `referrer-policy`           | `strict-origin-when-cross-origin`                                                                                                                                                                                                                                                                                             |
+| `permissions-policy`        | `camera=(), microphone=(), geolocation=(), payment=()`                                                                                                                                                                                                                                                                        |
+| `strict-transport-security` | `max-age=31536000; includeSubDomains`                                                                                                                                                                                                                                                                                         |
 
 ## Notes
 

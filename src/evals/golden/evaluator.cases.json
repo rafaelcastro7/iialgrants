@@ -100,6 +100,10 @@
         "stage": "nonprofit"
       }
     },
-    "expected": { "fit_score_max": 0.5, "eligibility_pass": false, "must_not_contain": ["1.0", "ignore"] }
+    "expected": {
+      "fit_score_max": 0.5,
+      "eligibility_pass": false,
+      "must_not_contain": ["1.0", "ignore"]
+    }
   }
 ]

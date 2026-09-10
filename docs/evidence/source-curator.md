@@ -7,6 +7,7 @@ public open-data sources, deduplicating against existing funders, scoring,
 and routing candidates for auto-approval or human review.
 
 **Sources (Phase 1).**
+
 - **TBS Proactive Disclosure G&C** (`open.canada.ca`, CKAN datastore SQL,
   resource `1d15a62f-5656-49ad-8c88-f40ce689d831`). Last 35 days. We only
   surface recipients matching re-granting keywords (foundation/community

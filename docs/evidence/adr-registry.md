@@ -3,17 +3,17 @@
 Architectural Decision Records. Each ADR is immutable once accepted; changes
 are tracked as new ADRs that supersede the previous one.
 
-| ID | Title | Status | Date |
-|---|---|---|---|
-| ADR-001 | TanStack Start + Lovable Cloud as platform | Accepted | 2026-06-19 |
-| ADR-002 | Six-agent LLM pipeline (Discoverer → Critic) | Accepted | 2026-06-19 |
-| ADR-003 | Gemini 2.5 Flash default, Pro for Critic (cascade) | Accepted | 2026-06-19 |
-| ADR-004 | Hybrid RAG: BM25 ∪ pgvector, fused with RRF (k=60) | Accepted | 2026-06-19 |
-| ADR-005 | Mandatory citation validation (no marker → reject) | Accepted | 2026-06-19 |
-| ADR-006 | Data residency: Canada (Lovable Cloud CA region) | Accepted | 2026-06-19 |
-| ADR-007 | Roles in separate `user_roles` table + `has_role()` SECDEF | Accepted | 2026-06-19 |
+| ID      | Title                                                         | Status   | Date       |
+| ------- | ------------------------------------------------------------- | -------- | ---------- |
+| ADR-001 | TanStack Start + Lovable Cloud as platform                    | Accepted | 2026-06-19 |
+| ADR-002 | Six-agent LLM pipeline (Discoverer → Critic)                  | Accepted | 2026-06-19 |
+| ADR-003 | Gemini 2.5 Flash default, Pro for Critic (cascade)            | Accepted | 2026-06-19 |
+| ADR-004 | Hybrid RAG: BM25 ∪ pgvector, fused with RRF (k=60)            | Accepted | 2026-06-19 |
+| ADR-005 | Mandatory citation validation (no marker → reject)            | Accepted | 2026-06-19 |
+| ADR-006 | Data residency: Canada (Lovable Cloud CA region)              | Accepted | 2026-06-19 |
+| ADR-007 | Roles in separate `user_roles` table + `has_role()` SECDEF    | Accepted | 2026-06-19 |
 | ADR-008 | Bilingual EN/FR-CA mandatory on every customer-facing surface | Accepted | 2026-06-19 |
-| ADR-009 | Evals-Driven Development — 5 CI gates block merge | Accepted | 2026-06-19 |
+| ADR-009 | Evals-Driven Development — 5 CI gates block merge             | Accepted | 2026-06-19 |
 
 ---
 
@@ -86,6 +86,7 @@ Writer produces EN + FR-CA in the same call. Critic findings bilingual.
 
 **Context.** LLM regressions are silent without continuous evals.
 **Decision.** 5 gates in CI:
+
 1. Unit (schemas + validators)
 2. Golden regression (Evaluator + Writer)
 3. LLM-as-judge (Evaluator)

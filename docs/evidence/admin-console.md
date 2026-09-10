@@ -8,11 +8,11 @@
 Professional administration console available at `/admin` for users with the
 `admin` role. Layout uses a collapsible shadcn `Sidebar` with three sections:
 
-| Path             | Purpose |
-|------------------|---------|
-| `/admin`         | Overview — totals, banned count, module status |
+| Path             | Purpose                                                           |
+| ---------------- | ----------------------------------------------------------------- |
+| `/admin`         | Overview — totals, banned count, module status                    |
 | `/admin/users`   | Full user management (roles, password reset, ban, delete, invite) |
-| `/admin/modules` | Toggle 8 product modules on/off |
+| `/admin/modules` | Toggle 8 product modules on/off                                   |
 
 ## RBAC layers
 
@@ -32,14 +32,14 @@ The console enforces admin role at three independent layers:
 
 ## User management
 
-| Action            | Backed by |
-|-------------------|-----------|
+| Action            | Backed by                                               |
+| ----------------- | ------------------------------------------------------- |
 | List users        | `auth.admin.listUsers` + join `user_roles` + `profiles` |
-| Make/revoke admin | `user_roles` upsert/delete |
-| Reset password    | `auth.resetPasswordForEmail` |
-| Ban / unban       | `auth.admin.updateUserById({ ban_duration })` |
-| Hard delete       | `auth.admin.deleteUser` (cascade via FKs) |
-| Invite            | `auth.admin.inviteUserByEmail` + optional admin grant |
+| Make/revoke admin | `user_roles` upsert/delete                              |
+| Reset password    | `auth.resetPasswordForEmail`                            |
+| Ban / unban       | `auth.admin.updateUserById({ ban_duration })`           |
+| Hard delete       | `auth.admin.deleteUser` (cascade via FKs)               |
+| Invite            | `auth.admin.inviteUserByEmail` + optional admin grant   |
 
 Self-protection: an admin cannot revoke their own admin role, ban
 themselves, or delete themselves — server-side guards.
@@ -50,15 +50,15 @@ Every action writes an entry to `audit_log` (actor, action, resource_id).
 
 Table `public.module_flags` seeds 8 modules:
 
-| Module             | Effect when OFF |
-|--------------------|-----------------|
-| `grants_discovery` | Hides `/grants` nav link |
-| `evaluator`        | `runEvaluator` server fn throws `module_disabled:evaluator` |
-| `strategist`       | `runStrategist` server fn throws `module_disabled:strategist` |
-| `writer`           | `draftSection` server fn throws `module_disabled:writer` |
-| `critic`           | `runCritic` server fn throws `module_disabled:critic` |
-| `submissions`      | Hides `/submissions` nav link |
-| `rag_org_profile`  | (reserved — UI hook hides "Sync to RAG" CTA) |
+| Module             | Effect when OFF                                                        |
+| ------------------ | ---------------------------------------------------------------------- |
+| `grants_discovery` | Hides `/grants` nav link                                               |
+| `evaluator`        | `runEvaluator` server fn throws `module_disabled:evaluator`            |
+| `strategist`       | `runStrategist` server fn throws `module_disabled:strategist`          |
+| `writer`           | `draftSection` server fn throws `module_disabled:writer`               |
+| `critic`           | `runCritic` server fn throws `module_disabled:critic`                  |
+| `submissions`      | Hides `/submissions` nav link                                          |
+| `rag_org_profile`  | (reserved — UI hook hides "Sync to RAG" CTA)                           |
 | `public_webhooks`  | (reserved — toggle informational; enforce in webhook routes next iter) |
 
 Server-side enforcement uses `assertModuleEnabled(name)` (defined in

@@ -42,6 +42,7 @@ When `FIRECRAWL_API_KEY` is absent the discoverer reverts to the v1 strategy
 ## Telemetry
 
 Each run writes one `agent_runs` row with metadata:
+
 - `engine`: `firecrawl_v2` | `fallback`
 - `urls_mapped`, `urls_scraped`, `urls_skipped`
 - `inserted`, `seen_again`
@@ -55,6 +56,7 @@ Each run writes one `agent_runs` row with metadata:
 ## Budget
 
 Per `discoverAllFunders` run (5 active funders by default):
+
 - map: 5 calls
 - scrape: ≤ 40 calls
 - LLM extraction: ≤ 40 Gemini Flash calls
