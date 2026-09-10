@@ -383,14 +383,11 @@ function GrantsPage() {
     ],
   );
 
-  // Search/jurisdiction/eligibleOnly/onlyWithDeadline live in GrantFilters,
-  // which only renders inside the Advanced/Kanban view — Express has no UI to
-  // show or clear them, so a filter left on from a prior Advanced session
-  // used to silently shrink (or empty) the Express list with no explanation.
-  // Express only ever needs sorting.
+  // Both Express and Advanced views now share the same filters UI and logic,
+  // preventing confusion where filters left on from one mode silently affect the other.
   const expressGrants = useMemo(
-    () => sortGrants(data.grants, sortKey) as GrantRowData[],
-    [data.grants, sortKey],
+    () => sortGrants(filtered, sortKey) as GrantRowData[],
+    [filtered, sortKey],
   );
 
   const activeFiltered = useMemo(
@@ -551,6 +548,7 @@ function GrantsPage() {
               grants={expressGrants}
               evaluatingIds={evaluatingIds}
               onEvaluate={onEvaluate}
+              filters={filtersNode}
             />
           )}
 
@@ -565,25 +563,7 @@ function GrantsPage() {
               onDraft={onDraft}
               onMove={isAdmin ? onMove : undefined}
               kpis={kpis}
-              filters={
-                <GrantFilters
-                  grants={data.grants}
-                  search={search}
-                  setSearch={setSearch}
-                  jurisdiction={jurisdiction}
-                  setJurisdiction={setJurisdiction}
-                  sector={sector}
-                  setSector={setSector}
-                  amountPreset={amountPreset}
-                  setAmountPreset={setAmountPreset}
-                  sortKey={sortKey}
-                  setSortKey={setSortKey}
-                  eligibleOnly={eligibleOnly}
-                  setEligibleOnly={setEligibleOnly}
-                  onlyWithDeadline={onlyWithDeadline}
-                  setOnlyWithDeadline={setOnlyWithDeadline}
-                />
-              }
+              filters={filtersNode}
               toolbarRight={
                 <>
                   <NotebookLMBridge />
