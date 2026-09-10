@@ -124,15 +124,18 @@ export function GrantExpressView({
 
   if (active.length === 0) {
     return (
-      <div className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground shadow-sm">
-        No active opportunities yet. Run discovery from the Admin panel, or switch to the Advanced
-        view.
+      <div className="space-y-4">
+        {filters}
+        <div className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground shadow-sm">
+          No active opportunities yet. Run discovery from the Admin panel, or adjust your filters.
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
+      {filters}
       {/* Pipeline at a glance */}
       <StatGrid columns={4}>
         <StatCard
