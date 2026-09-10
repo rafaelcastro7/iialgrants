@@ -2,14 +2,14 @@
 
 ## Scope map
 
-| Concern | Source of truth | Required outcome |
-|---|---|---|
-| Tenant principal | `profiles.org_id` | Same-org members see shared work; other tenants do not. |
-| Shared organization facts | `org_profiles` through `getOrgProfileForUser` | Fit, proposals, audit, discovery and compliance use the same facts. |
-| Shared reusable answers | `answer_library` + `knowledge_chunks` | Tenant answers are searchable by FTS/vector and archiving removes retrieval. |
-| RLS/service access | Migration policies + `tenant-access.server.ts` | A bare ID never authorizes cross-tenant service-role access. |
-| Agent execution | Cloud-first chain, local Ollama fallback | A provider outage degrades rather than breaks. |
-| V2 workflow | Readiness, named blockers, human confirmation | The UI explains what is needed before a consequential action. |
+| Concern                   | Source of truth                                | Required outcome                                                             |
+| ------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| Tenant principal          | `profiles.org_id`                              | Same-org members see shared work; other tenants do not.                      |
+| Shared organization facts | `org_profiles` through `getOrgProfileForUser`  | Fit, proposals, audit, discovery and compliance use the same facts.          |
+| Shared reusable answers   | `answer_library` + `knowledge_chunks`          | Tenant answers are searchable by FTS/vector and archiving removes retrieval. |
+| RLS/service access        | Migration policies + `tenant-access.server.ts` | A bare ID never authorizes cross-tenant service-role access.                 |
+| Agent execution           | Cloud-first chain, local Ollama fallback       | A provider outage degrades rather than breaks.                               |
+| V2 workflow               | Readiness, named blockers, human confirmation  | The UI explains what is needed before a consequential action.                |
 
 ## Migration discipline
 

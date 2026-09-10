@@ -317,12 +317,14 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
                 </FormField>
                 <FormField
                   label="Delivery capabilities"
-                  description={(
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <RefreshCw className="h-3 w-3" />
-                      Auto-populated from sectors and focus areas
-                    </span>
-                  ) as unknown as string}
+                  description={
+                    (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <RefreshCw className="h-3 w-3" />
+                        Auto-populated from sectors and focus areas
+                      </span>
+                    ) as unknown as string
+                  }
                 >
                   <Controller
                     control={form.control}

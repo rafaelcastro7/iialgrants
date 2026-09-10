@@ -202,7 +202,10 @@ function OrgPage() {
                   <Input {...form.register("org_name")} required />
                 </FormField>
                 <FormField label="Legal name">
-                  <Input {...form.register("legal_name")} placeholder="Name on incorporation records" />
+                  <Input
+                    {...form.register("legal_name")}
+                    placeholder="Name on incorporation records"
+                  />
                 </FormField>
               </div>
 
@@ -214,7 +217,9 @@ function OrgPage() {
                   >
                     <option value="">Select status</option>
                     {REGISTRATION_STATUSES.map((s) => (
-                      <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                      <option key={s} value={s}>
+                        {s.replace(/_/g, " ")}
+                      </option>
                     ))}
                   </select>
                 </FormField>
@@ -289,7 +294,9 @@ function OrgPage() {
                   {...form.register("stage")}
                 >
                   {STAGES.map((s) => (
-                    <option key={s} value={s}>{t(`org.stages.${s}`)}</option>
+                    <option key={s} value={s}>
+                      {t(`org.stages.${s}`)}
+                    </option>
                   ))}
                 </select>
               </FormField>

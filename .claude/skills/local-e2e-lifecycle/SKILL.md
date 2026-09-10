@@ -18,10 +18,12 @@ never completes under Bun's runtime — confirmed via `chromium.launch()` in a
 bare script: instant under real Node, indefinite hang under `bun`).
 
 Always invoke test runners through real Node:
+
 ```
 node node_modules/vitest/vitest.mjs run          # unit tests
 node node_modules/playwright/cli.js test <spec>  # e2e tests
 ```
+
 (`package.json`'s `"test"` / `"test:e2e"` scripts already do this — use `bun
 run test` / `bun run test:e2e`, not a raw `bunx`/`bun x` invocation.)
 
@@ -37,9 +39,11 @@ dep-optimizer fails with `"./v4/core" is not exported under the conditions
 [...]`).
 
 Fix: clear caches, not the dependency:
+
 ```
 rm -rf node_modules/.vite node_modules/.cache node_modules/.vitest .tanstack
 ```
+
 Then re-run. If it still reproduces after a clean cache, that's a real bug —
 investigate further before touching zod's version.
 
@@ -47,7 +51,7 @@ investigate further before touching zod's version.
 
 Vite's dependency optimizer keeps stale state across a long-running `bun run
 dev` session. After changing any dependency version, restart the dev server
-*and* clear its cache (see command above) — otherwise you get a repeating
+_and_ clear its cache (see command above) — otherwise you get a repeating
 `ENOENT ... node_modules/<pkg>/index.js` loop in the client optimizer logs
 that has nothing to do with your actual code.
 
@@ -72,6 +76,7 @@ URL's `?run=` query param (see `closeTrace()` in
 `navigate()` to strip that param — wait for the URL to actually update
 before clicking anything else, or a re-render can read the still-stale URL
 and reopen the sheet right under your next click:
+
 ```ts
 const sheet = page.getByRole("dialog", { name: /chain of thought/i });
 await sheet.getByRole("button", { name: /close/i }).click();
@@ -84,31 +89,35 @@ await expect(page).not.toHaveURL(/[?&]run=/);
 If your test does several `page.goto()` calls back to back (e.g. sign in →
 fill org profile → sync knowledge base → go to a grant), you'll sometimes
 see a console error like:
+
 ```
 TypeError: Failed to fetch
     at async SupabaseAuthClient.getUser (...@supabase_supabase-js.js...)
 ```
+
 This is the browser correctly aborting an in-flight session check because
-the *next* navigation started before it resolved — not a real connectivity
+the _next_ navigation started before it resolved — not a real connectivity
 failure. Confirmed live: Docker/Kong/the app were all immediately healthy
 right after this fired. Don't chase it as an infra bug; filter this specific
 signature the same way as the known React warning below, and don't treat
 isolated occurrences of "Failed to fetch" as proof of an outage — a genuine
-one shows up as *sustained* failures across many requests, not one
+one shows up as _sustained_ failures across many requests, not one
 transient line right at a navigation boundary.
 
 ## Ollama needs `nomic-embed-text`, not just a chat model
 
 Every `knowledge_chunks` insert (org-profile sync, document upload) calls
 `embedText()` (`src/agents/embeddings.server.ts`), which hits Ollama's
-`/api/embeddings` with model `nomic-embed-text` — a *separate* pull from
+`/api/embeddings` with model `nomic-embed-text` — a _separate_ pull from
 whatever chat model (e.g. `phi4-mini:latest`) you set up for agent calls.
 Without it, "Sync knowledge base" silently no-ops (0 rows inserted, easy to
 miss since the button just re-enables) and every later `Draft "<section>"`
 click hangs on `no_knowledge_chunks` with zero LLM calls ever firing.
+
 ```
 ollama pull nomic-embed-text
 ```
+
 Verify with `docker exec docker-db-1 psql -U postgres -d postgres -c "select
 count(*) from knowledge_chunks;"` — 0 rows after a sync means the embedding
 model is missing, not that the RAG corpus is legitimately empty.
@@ -123,6 +132,7 @@ tenant has no profile and no chunks. `knowledge_chunks` is tenant-scoped: do
 not create a second personal corpus to make a test pass.
 
 Before drafting anything, in order:
+
 1. `/org` → fill the shared tenant profile. For verified matching, complete
    identity, registration, applicant types, jurisdictions, mission and sectors;
    never invent IIAL facts. Save the profile.
@@ -140,19 +150,23 @@ failing before the first LLM call.
 `ProposalDetailExpress.tsx` shows exactly one button, in this order, driven
 by section state — not a "Draft all" + "Run critic" pair sitting side by
 side:
+
 1. `Draft "<next empty section heading>"` — repeat once per section (there
    were 9 in every run so far).
-2. Once every section has content: **Run quality review** (this *is* the
+2. Once every section has content: **Run quality review** (this _is_ the
    critic — there is no button literally labeled "Run critic" in this view).
 3. Once critic-passed: **Submit proposal**.
 
 Loop on the one visible primary button's text rather than hunting for a
 fixed set of button names:
+
 ```ts
-const primaryAction = page.getByRole("button")
+const primaryAction = page
+  .getByRole("button")
   .filter({ hasText: /^Draft "|^Run quality review|^Submit proposal$/ });
 ```
-**Export** and the standalone **Submit** button only exist in the *Advanced*
+
+**Export** and the standalone **Submit** button only exist in the _Advanced_
 view — click "Show full details →" first to reach them.
 
 ## A passing critic score doesn't guarantee "Submit proposal" appears next
@@ -170,8 +184,8 @@ review** again (there's no "ready to submit" and no "next empty section"),
 even with every section Ready and a critic score comfortably above 0.6 —
 this is the intended fallback branch, not a stuck UI.
 
-Don't assert the button's *text* changes after a critic run; assert the
-*action* happened (it goes disabled while pending, then enabled again), and
+Don't assert the button's _text_ changes after a critic run; assert the
+_action_ happened (it goes disabled while pending, then enabled again), and
 head into the Advanced view for the real submit gate regardless — a
 `submit_blocked` / "Submit Anyway" force-path is a legitimate, by-design
 outcome here, not a failure (see docs/LOCAL-SYSTEM-VERIFICATION.md's own
@@ -184,6 +198,7 @@ path).
 proposal** (a button) once a proposal already exists for that grant —
 running the same test twice against an unreset seed grant hits a different
 branch than a truly fresh run. Handle both:
+
 ```ts
 if (await page.getByRole("link", { name: /open proposal/i }).isVisible()) {
   await page.getByRole("link", { name: /open proposal/i }).click();
@@ -195,12 +210,12 @@ if (await page.getByRole("link", { name: /open proposal/i }).isVisible()) {
 ## Don't let Playwright's own action-retries fire a real click twice
 
 `locator.click()` waits for the target to be visible/stable/enabled before
-clicking — if your *next* assertion is slow to become true for an unrelated
+clicking — if your _next_ assertion is slow to become true for an unrelated
 reason (a dialog blocking it, a disabled state that takes a while to clear),
 resist the urge to loosen it by re-issuing the same click in a retry loop of
 your own on top of Playwright's built-in one. Two real clicks on an
 agent-triggering button fire two real (paid, cloud) LLM calls. Prefer:
-explicit `await expect(button).toBeEnabled({timeout})` *before* a single
+explicit `await expect(button).toBeEnabled({timeout})` _before_ a single
 `.click()`, not a click wrapped in your own retry.
 
 ## Verify the actual configured timeout before calling something "a hang"
@@ -211,7 +226,7 @@ fallback has no timeout, that's a bug" — was wrong, and was reported to the
 user before being caught. `src/agents/llm-timeouts.server.ts` defines a real
 per-agent timeout (`LOCAL_TIMEOUT_MS`, 180s by default via
 `OLLAMA_TIMEOUT_MS`, plus `SLOW_AGENT_TIMEOUT_FLOORS_MS` floors for
-writer/evaluator/strategist/critic/enricher). The discoverer *does* get the
+writer/evaluator/strategist/critic/enricher). The discoverer _does_ get the
 180s baseline. The test's own outer timeout was simply shorter than the
 thing it was waiting on. Re-run with a longer test timeout before concluding
 an agent call hangs forever — check `llm-timeouts.server.ts` for what the
@@ -220,6 +235,7 @@ real configured allowance is first.
 ## Grant discovery fallback path — what's actually live vs. what looks wired but isn't
 
 Verified empirically (live calls, not code-reading) in `discoverer.impl.server.ts`:
+
 - Firecrawl (Path A) is **disabled** in this env (`USE_FIRECRAWL=0`, empty
   key) — everything goes through the fallback (Path B): index-page link
   scoring + sitemap.xml seeding + per-page LLM extraction.
@@ -230,7 +246,7 @@ Verified empirically (live calls, not code-reading) in `discoverer.impl.server.t
   (`web-fetch.server.ts`), backed by a self-hosted SearXNG instance
   (`supabase/docker/docker-compose.yml`'s `searxng` service,
   `http://localhost:15436`) — free, local, no key, no external rate limit.
-  Separately: Jina *Reader* (`r.jina.ai`, used for page content extraction,
+  Separately: Jina _Reader_ (`r.jina.ai`, used for page content extraction,
   a different endpoint) turned out to still work completely anonymously —
   it only looked dead because its own 401-retry bug resent the same invalid
   key. Fixed in place rather than replaced, since it already worked for free.
@@ -246,10 +262,12 @@ Verified empirically (live calls, not code-reading) in `discoverer.impl.server.t
 If `git push` is rejected by GitHub secret-scanning (GH013) for a real key
 committed in `.env` history, `git filter-repo` usually isn't available here
 (needs Python) — use `filter-branch` instead:
+
 ```
 git filter-branch --force --index-filter \
   "git rm --cached --ignore-unmatch .env" --prune-empty -- --all
 ```
+
 Run this via a background task with a long explicit timeout (a full
 `--all` rewrite across 1000+ commits on several branches took several
 minutes and got killed by the tool's default 3-minute Bash timeout on the
@@ -262,19 +280,23 @@ re-running.
 After the rewrite, `git log --all --diff-filter=A -- .env` can still show
 hits — check whether those commits are actually **reachable** before
 assuming the purge failed:
+
 ```
 git branch --all --contains <hash>          # empty = unreachable, just backup refs
 git merge-base --is-ancestor <hash> <branch> # authoritative per-branch check
 ```
+
 `filter-branch` keeps the pre-rewrite state alive under `refs/original/*`
 specifically so you can recover from a bad rewrite — these are never pushed
 and don't affect `git push`, but delete them for real local hygiene once
 you've confirmed the rewrite is good:
+
 ```
 git for-each-ref --format="%(refname)" refs/original/ | xargs -n1 -r git update-ref -d
 git reflog expire --expire=now --all
 git gc --prune=now --aggressive
 ```
+
 Confirm with `git count-objects -v` (0 loose, 0 garbage) before trusting a
 push won't get blocked again.
 
@@ -290,7 +312,7 @@ silently diverged from a shared point weeks earlier. A blind
 `git push --force` here would have destroyed a month of someone else's real
 work. When a push is rejected as non-fast-forward on a branch you just
 rewrote, always check `git log <remote>/<branch> --not <local-branch>
---oneline` (commit count *and* a skim of messages/dates) before deciding
+--oneline` (commit count _and_ a skim of messages/dates) before deciding
 force-push is safe — "I rewrote this so mine must be authoritative" does not
 follow. When the two sides both contain real independent work, push the
 local side to a new branch name instead of forcing, and leave reconciliation
@@ -304,17 +326,17 @@ consumed the whole `test.setTimeout` budget and then reported only
 `waiting for locator(...)`, which never names the cause. Found and fixed
 2026-08-16; none of the nine was an application bug.
 
-| The assumption | What was actually true |
-|---|---|
-| The sign-in page loads | It had rendered the error boundary |
-| A button changes label | A modal had removed it from the a11y tree |
-| "Fetch details" re-enables | It unmounts when enrichment *succeeds* |
-| The grant will be eligible | "Not eligible" is a correct verdict |
-| Review follows drafting | Only when one is outstanding |
-| The Submit button is there | It disappears once submitted |
-| The heading is the grant's | The URL flips before the view renders |
-| A seeded grant is on page one | Auto-archived; catalog grew 47 → 3,014 |
-| A July reminder says "in 5 days" | Seed state expires by construction |
+| The assumption                   | What was actually true                    |
+| -------------------------------- | ----------------------------------------- |
+| The sign-in page loads           | It had rendered the error boundary        |
+| A button changes label           | A modal had removed it from the a11y tree |
+| "Fetch details" re-enables       | It unmounts when enrichment _succeeds_    |
+| The grant will be eligible       | "Not eligible" is a correct verdict       |
+| Review follows drafting          | Only when one is outstanding              |
+| The Submit button is there       | It disappears once submitted              |
+| The heading is the grant's       | The URL flips before the view renders     |
+| A seeded grant is on page one    | Auto-archived; catalog grew 47 → 3,014    |
+| A July reminder says "in 5 days" | Seed state expires by construction        |
 
 Concretely, when writing specs here:
 
@@ -327,7 +349,7 @@ Concretely, when writing specs here:
   will contain nothing but the dialog.
 - **Success can remove a control.** "Fetch details" unmounts when the grant
   leaves `discovered`, so waiting for it to re-enable fails precisely when
-  enrichment worked. Wait for the *next* state instead.
+  enrichment worked. Wait for the _next_ state instead.
 - **Follow the action ladder, don't assume its next rung.** `ProposalDetailExpress`
   offers exactly one primary action; re-running against an already-reviewed
   proposal lands on "Submit proposal", not "Run quality review".
@@ -336,7 +358,7 @@ Concretely, when writing specs here:
   at the submit gate reporting "not reviewed" — pointing at the wrong thing.
   Assert the success signal, not just that the pending flag cleared.
 - **Wait for a view-specific element before reading a heading.** The URL changes
-  before the detail view renders, so an immediate `h1` read returns the *list*
+  before the detail view renders, so an immediate `h1` read returns the _list_
   page's heading.
 - **Submitting is two-phase.** "Submit Anyway" does not exist on the first pass:
   the plain Submit posts, the server answers `submit_blocked:<reasons>`, and

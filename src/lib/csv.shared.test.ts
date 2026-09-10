@@ -23,19 +23,11 @@ describe("parseCSV", () => {
   });
 
   it("parses comma-separated values", () => {
-    expect(parseCSV("nonprofit, charity, academic")).toEqual([
-      "nonprofit",
-      "charity",
-      "academic",
-    ]);
+    expect(parseCSV("nonprofit, charity, academic")).toEqual(["nonprofit", "charity", "academic"]);
   });
 
   it("parses comma-separated values without spaces", () => {
-    expect(parseCSV("nonprofit,charity,academic")).toEqual([
-      "nonprofit",
-      "charity",
-      "academic",
-    ]);
+    expect(parseCSV("nonprofit,charity,academic")).toEqual(["nonprofit", "charity", "academic"]);
   });
 
   it("trims whitespace from each item", () => {
@@ -43,11 +35,7 @@ describe("parseCSV", () => {
   });
 
   it("splits on newlines as well as commas", () => {
-    expect(parseCSV("nonprofit\ncharity\nacademic")).toEqual([
-      "nonprofit",
-      "charity",
-      "academic",
-    ]);
+    expect(parseCSV("nonprofit\ncharity\nacademic")).toEqual(["nonprofit", "charity", "academic"]);
   });
 
   it("drops empty tokens from consecutive delimiters", () => {

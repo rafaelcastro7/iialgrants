@@ -15,4 +15,3 @@ export function formatAnswerKnowledgeChunk(input: AnswerKnowledgeInput): string 
     .filter((value): value is string => Boolean(value))
     .join("\n\n");
 }
-
