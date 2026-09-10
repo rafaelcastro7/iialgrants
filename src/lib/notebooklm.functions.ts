@@ -437,6 +437,7 @@ export async function buildNotebookBriefingImpl(opts: {
     // happens AFTER the markdown build succeeds, so any throw here aborts
     // before we touched user data. Surface a safe error envelope so the
     // bridge can render a retry UI instead of bubbling a 500.
+    console.error(e);
     const message = e instanceof Error ? e.message : String(e);
     return {
       ok: false as const,
