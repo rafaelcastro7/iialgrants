@@ -1,6 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseCSV, serializeCSV } from "@/lib/csv.shared";
+
 
 type TagInputProps = {
   /** Current comma-separated string value (compatible with react-hook-form register) */
@@ -18,17 +20,6 @@ type TagInputProps = {
   /** Maximum number of tags allowed */
   max?: number;
 };
-
-function parseCSV(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(/[,\n]+/)
-    .map((v) => v.trim())
-    .filter(Boolean);
-}
-
-function serializeCSV(tags: string[]): string {
-  return tags.join(", ");
-}
 
 /**
  * A chip/tag input that replaces comma-separated `<Input>` fields.
