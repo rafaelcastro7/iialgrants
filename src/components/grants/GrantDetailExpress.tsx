@@ -698,23 +698,6 @@ export function GrantDetailExpress({
             )}
           </Panel>
 
-          <Panel title="Grant facts" icon={BarChart3}>
-            <SummaryList
-              rows={[
-                [
-                  "Status",
-                  `${statusLabel} - ${STATUS_DETAIL[status] ?? "No status note available."}`,
-                ],
-                ["Funding range", amount],
-                ["Deadline", `${dl.label} (${dl.detail})`],
-                ["Language", language ? language.toUpperCase() : "Unknown"],
-                ["Discovered", formatDate(discoveredAt)],
-                ["Details fetched", formatDate(enrichedAt)],
-                ["Fit evaluated", formatDate(scoredAt ?? evaluation?.created_at)],
-                ["Official URL", url],
-              ]}
-            />
-          </Panel>
 
           <Panel title="Eligibility and fit" icon={ShieldCheck}>
             <div className="grid gap-4 xl:grid-cols-[260px_1fr]">
