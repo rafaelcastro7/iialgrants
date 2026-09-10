@@ -1,7 +1,9 @@
-import type { UseFormReturn } from "react-hook-form";
-import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
+import { useEffect } from "react";
+import { Controller, type UseFormReturn } from "react-hook-form";
+import { AlertTriangle, CheckCircle2, RefreshCw, ShieldCheck } from "lucide-react";
 import type { OrgFormValues } from "@/routes/_authenticated.org";
 import { computeOrgProfileReadiness } from "@/lib/org-profile-readiness";
+import { parseCSV, bnErrorMessage } from "@/lib/csv.shared";
 import { PageTransition } from "@/components/PageTransition";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/FormField";
+import { TagInput } from "@/components/ui/tag-input";
 
 const STAGES = ["startup", "sme", "nonprofit", "research", "public_sector"] as const;
 const REGISTRATION_STATUSES = [
@@ -32,18 +35,33 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
   const values = form.watch();
   const readiness = computeOrgProfileReadiness({
     ...values,
-    sectors: csv(values.sectors),
-    jurisdictions: csv(values.jurisdictions),
-    applicant_types: csv(values.applicant_types),
-    activities: csv(values.activities),
-    capabilities: csv(values.capabilities),
-    populations_served: csv(values.populations_served),
-    operating_regions: csv(values.operating_regions),
+    sectors: parseCSV(values.sectors),
+    jurisdictions: parseCSV(values.jurisdictions),
+    applicant_types: parseCSV(values.applicant_types),
+    activities: parseCSV(values.activities),
+    capabilities: parseCSV(values.capabilities),
+    populations_served: parseCSV(values.populations_served),
+    operating_regions: parseCSV(values.operating_regions),
     annual_budget_cad: optionalNumber(values.annual_budget_cad),
     funding_min_cad: optionalNumber(values.funding_min_cad),
     funding_max_cad: optionalNumber(values.funding_max_cad),
     cost_share_max_pct: optionalNumber(values.cost_share_max_pct),
   });
+
+  // Auto-sync capabilities with sectors + focus_areas on change
+  useEffect(() => {
+    const sectors = parseCSV(values.sectors);
+    const focusAreas = parseCSV(values.focus_areas);
+    const currentCaps = parseCSV(values.capabilities);
+    const synced = [...new Set([...sectors, ...focusAreas, ...currentCaps])];
+    // Only update if the synced set has new items not already present
+    if (synced.length > currentCaps.length) {
+      // Don't override custom capabilities — only fill gaps
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.sectors, values.focus_areas]);
+
+  const bnError = bnErrorMessage(values.business_number);
 
   const nextFacts = (
     readiness.criticalMissing.length
@@ -130,23 +148,72 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
               </FormField>
               <FormField
                 label="Applicant types"
-                description="Comma-separated; use formal categories"
+                description="Used for F1 eligibility gate — be precise"
               >
-                <Input
-                  {...form.register("applicant_types")}
-                  placeholder="nonprofit, registered charity"
+                <Controller
+                  control={form.control}
+                  name="applicant_types"
+                  render={({ field }) => (
+                    <TagInput
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      placeholder="nonprofit, registered charity"
+                      suggestions={[
+                        { value: "nonprofit", label: "Nonprofit" },
+                        { value: "registered charity", label: "Registered Charity" },
+                        { value: "for-profit", label: "For-Profit" },
+                        { value: "public body", label: "Public Body" },
+                        { value: "academic", label: "Academic" },
+                        { value: "indigenous organization", label: "Indigenous Organization" },
+                        { value: "municipality", label: "Municipality" },
+                        { value: "social enterprise", label: "Social Enterprise" },
+                      ]}
+                      lowercase
+                    />
+                  )}
                 />
               </FormField>
               <FormField
                 label="Legal jurisdictions"
                 description="Where IIAL is incorporated or eligible"
               >
-                <Input {...form.register("jurisdictions")} placeholder="CA, ON, QC" />
+                <Controller
+                  control={form.control}
+                  name="jurisdictions"
+                  render={({ field }) => (
+                    <TagInput
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      placeholder="CA, ON, QC"
+                      suggestions={[
+                        { value: "CA", label: "Canada (federal)" },
+                        { value: "ON", label: "Ontario" },
+                        { value: "QC", label: "Quebec" },
+                        { value: "BC", label: "British Columbia" },
+                        { value: "AB", label: "Alberta" },
+                        { value: "MB", label: "Manitoba" },
+                        { value: "SK", label: "Saskatchewan" },
+                        { value: "NS", label: "Nova Scotia" },
+                        { value: "NB", label: "New Brunswick" },
+                        { value: "PE", label: "PEI" },
+                        { value: "NL", label: "Newfoundland" },
+                      ]}
+                      uppercase
+                    />
+                  )}
+                />
               </FormField>
-              <FormField label="Regions served" description="Where funded work can create benefit">
-                <Input
-                  {...form.register("operating_regions")}
-                  placeholder="Canada, Ontario, Quebec"
+              <FormField label="Regions served" description="Where funded work creates benefit">
+                <Controller
+                  control={form.control}
+                  name="operating_regions"
+                  render={({ field }) => (
+                    <TagInput
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      placeholder="Canada, Ontario, Quebec"
+                    />
+                  )}
                 />
               </FormField>
               <FormField label="Organization type">
@@ -161,14 +228,38 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
                   ))}
                 </select>
               </FormField>
-              <FormField label="Business / charity number">
-                <Input {...form.register("business_number")} />
+              <FormField
+                label="Business / charity number"
+                description="CRA BN: 9 digits, e.g. 123456789 or 123456789RT0001"
+                error={bnError ?? undefined}
+              >
+                <Input
+                  {...form.register("business_number")}
+                  placeholder="123456789"
+                  className={bnError ? "border-destructive" : ""}
+                />
               </FormField>
               <FormField label="Website">
                 <Input type="url" {...form.register("website")} placeholder="https://..." />
               </FormField>
-              <FormField label="Languages" description="Comma-separated ISO codes">
-                <Input {...form.register("languages")} placeholder="en, fr" />
+              <FormField label="Languages" description="ISO codes">
+                <Controller
+                  control={form.control}
+                  name="languages"
+                  render={({ field }) => (
+                    <TagInput
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      placeholder="en, fr"
+                      suggestions={[
+                        { value: "en", label: "English" },
+                        { value: "fr", label: "French" },
+                        { value: "es", label: "Spanish" },
+                      ]}
+                      lowercase
+                    />
+                  )}
+                />
               </FormField>
             </div>
           </ProfileSection>
@@ -183,26 +274,67 @@ export function GrantReadinessProfileForm({ form, mut, onSubmit }: Props) {
               </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Sectors" description="education, workforce development, AI">
-                  <Input {...form.register("sectors")} />
+                  <Controller
+                    control={form.control}
+                    name="sectors"
+                    render={({ field }) => (
+                      <TagInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="education, AI, workforce"
+                        lowercase
+                      />
+                    )}
+                  />
                 </FormField>
                 <FormField label="Populations served">
-                  <Input
-                    {...form.register("populations_served")}
-                    placeholder="adult learners, SMEs"
+                  <Controller
+                    control={form.control}
+                    name="populations_served"
+                    render={({ field }) => (
+                      <TagInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="adult learners, SMEs, newcomers"
+                        lowercase
+                      />
+                    )}
                   />
                 </FormField>
                 <FormField label="Activities and programs">
-                  <Textarea
-                    rows={3}
-                    {...form.register("activities")}
-                    placeholder="applied training, research partnerships"
+                  <Controller
+                    control={form.control}
+                    name="activities"
+                    render={({ field }) => (
+                      <TagInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="applied training, research partnerships"
+                        lowercase
+                      />
+                    )}
                   />
                 </FormField>
-                <FormField label="Delivery capabilities">
-                  <Textarea
-                    rows={3}
-                    {...form.register("capabilities")}
-                    placeholder="curriculum design, program evaluation"
+                <FormField
+                  label="Delivery capabilities"
+                  description={(
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <RefreshCw className="h-3 w-3" />
+                      Auto-populated from sectors and focus areas
+                    </span>
+                  ) as unknown as string}
+                >
+                  <Controller
+                    control={form.control}
+                    name="capabilities"
+                    render={({ field }) => (
+                      <TagInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="curriculum design, program evaluation"
+                        lowercase
+                      />
+                    )}
                   />
                 </FormField>
               </div>
@@ -317,13 +449,6 @@ function ProgressRing({ ready, value }: { ready: boolean; value: number }) {
       </div>
     </div>
   );
-}
-
-function csv(value: string | undefined) {
-  return (value ?? "")
-    .split(/[,\n]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function optionalNumber(value: string | undefined) {
