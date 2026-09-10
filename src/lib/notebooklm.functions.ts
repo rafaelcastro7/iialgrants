@@ -138,7 +138,14 @@ export async function buildNotebookBriefingImpl(opts: {
     const orgName = org?.org_name?.trim() || "your organization";
     const orgCapabilities: string[] = [
       ...(Array.isArray(org?.sectors) ? org.sectors : []),
-      ...(typeof org?.focus_areas === "string" ? org.focus_areas.split(",").map((s) => s.trim()).filter(Boolean) : Array.isArray(org?.focus_areas) ? org.focus_areas : []),
+      ...(typeof org?.focus_areas === "string"
+        ? org.focus_areas
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : Array.isArray(org?.focus_areas)
+          ? org.focus_areas
+          : []),
       ...(Array.isArray(org?.capabilities) ? org.capabilities : []),
       ...(Array.isArray(org?.activities) ? org.activities : []),
     ];
