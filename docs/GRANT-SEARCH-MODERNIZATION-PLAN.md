@@ -1,9 +1,11 @@
 # IialGrants Grant Search Modernization Plan
 
-Status: **approved implementation plan — execution in progress**
-Owner: Codex (grant opportunity retrieval); Claude owns the separate funder-search slice documented in `docs/HANDOFF-CODEX.md`.
-Last updated: 2026-07-21
-Target: local-first, bilingual Canadian grant search with measurable relevance and complete decision provenance.
+Status: **execution in progress — phases 0–2 shipped; phase 3 is next**
+Owner: Codex / Claude continuity workflow. Historical file claims in the handoff
+are released unless a new active workspace claim says otherwise.
+Last updated: 2026-09-11
+Target: bilingual Canadian grant search with measurable relevance, complete
+decision provenance, cloud-first inference, and a local Ollama resilience floor.
 
 ## 1. Outcome
 
@@ -43,6 +45,25 @@ looks plausible” is not an acceptance criterion.
 7. There is no retrieval golden set or Recall@K/nDCG quality gate.
 8. Facets do not cover applicant type, population served, funding use, funder
    type, evidence confidence, or deadline confidence.
+
+This is the historical pre-implementation baseline. The live catalog has grown
+substantially since July; re-run `bun run eval:search --enforce` before using
+these counts or metrics as current evidence.
+
+### Delivery checkpoint (2026-09-11)
+
+| Phase | State | Evidence |
+| --- | --- | --- |
+| 0 — benchmark | Shipped | 25 bilingual golden cases, deterministic metrics, enforce mode, and a reviewable July baseline/checkpoint. |
+| 1 — profiles/feedback | Shipped | Tenant-scoped profile CRUD, reversible feedback plus append-only events, profile-aware ranking, and RLS tests. |
+| 2 — hybrid retrieval | Shipped | Canonical bilingual documents, 768d local embeddings, bounded taxonomy expansion, hybrid RRF, and lexical fallback. July checkpoint passed all thresholds. |
+| 3 — faceted evidence | Next | Some source fields/evidence already exist, but the canonical facet schema, conflict semantics, filters, counts, and positive/unknown/conflict tests are not complete. |
+| 4 — giving/deadline intelligence | Partial | T3010, recipient and giving functions exist; they are not yet proven as bounded ranking features and recurrence confidence is not first-class. |
+| 5 — coverage operations | Partial | Crawl ledger, source curator, scheduled hooks and monitoring exist; coverage SLA and accountable gap reporting still need a current proof pass. |
+
+The organization-readiness work shipped on 2026-08-31 and the org/rule drift
+warning completed on 2026-09-11 are trust gates around this plan: they prevent
+generic or stale applicant facts from silently driving eligibility decisions.
 
 ## 3. Target architecture
 
@@ -293,6 +314,10 @@ test proves graceful lexical fallback.
 
 Exit: each facet has positive, unknown and conflicting-evidence tests.
 
+Next coherent slice: define the canonical typed facet/evidence contract and its
+unknown/conflict behavior before adding columns or filters. Reuse persisted
+`evidence_spans`; do not infer confidence from the presence of display text.
+
 ### Phase 4 — giving and deadline intelligence
 
 - Recipient normalization and peer selection.
@@ -357,7 +382,8 @@ benchmark review; never lower them solely to make CI green.
 ### Operational
 
 - Migration and embedding rebuild instructions work from a clean machine.
-- No cloud LLM calls; all embeddings/inference stay local.
+- Embeddings and storage stay local. Inference follows the configured
+  cloud-first provider chain and degrades to local Ollama when providers fail.
 - Every score is reconstructable from persisted inputs/version metadata.
 - Manual and DR documentation match the shipped UI.
 

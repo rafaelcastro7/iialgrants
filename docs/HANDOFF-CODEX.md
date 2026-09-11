@@ -1,8 +1,30 @@
 # Handoff for Codex / Claude - IIAL Grants
 
 Living handoff so another agent can continue safely. Read this plus
-`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-09-04
+`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-09-11
 America/New_York.
+
+## 2026-09-11 — Context refresh and org/rules drift integration
+
+The live implementation is ahead of the July search masterplan. Phases 0–2 are
+shipped: golden benchmark, tenant-scoped project profiles/feedback, canonical
+bilingual search documents, local 768d embeddings, bounded EN/FR expansion,
+hybrid RRF and lexical fallback. The July hybrid checkpoint passed its targets,
+but it must be re-run against the current 3k+ catalog before being described as
+current performance. Phase 3 (canonical evidence-backed facets with explicit
+unknown/conflict behavior) is the next coherent search slice.
+
+The unfinished 2026-09-10 org/rules drift work is now wired into both V2 and
+classic `/grants`. Saving `/org` or `/fit-rules` invalidates the drift query so
+users see contradictions immediately. `fit-rules.drift.test.ts` covers missing
+inputs, jurisdiction/applicant conflicts, funding-range warnings and the
+consistent case. Focused result: 15/15 tests passed; full ESLint passed. Full
+suite/build and browser validation remain to be recorded below before handoff.
+
+Compatibility contract: `profiles.org_id` remains the principal;
+`org_profiles` remains shared tenant truth; the banner is advisory and never
+rewrites rules or evaluations; deterministic gates remain authoritative;
+cloud-first inference and local Ollama fallback are unchanged.
 
 ## 2026-09-04 — Claude/Codex continuity and IIAL tenant baseline
 

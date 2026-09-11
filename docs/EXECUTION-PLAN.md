@@ -1,8 +1,26 @@
-# EXECUTION-PLAN.md — Orquestación Maestra IialGrants v2.0
+# EXECUTION-PLAN.md — Inventario histórico IialGrants v2.0
 
 > Sistema autónomo de ejecución, validación y auditoría continua.
-> Generado: 2026-07-05 | Última actualización: 2026-07-05
-> **44/44 features completadas (100%)** — 30 commits en sesión
+> Generado: 2026-07-05 | Revisado: 2026-09-11
+> **Estado corregido:** este archivo mezcla implementación y validaciones
+> pendientes, por lo que la antigua declaración “44/44 (100%)” no era una
+> definición de terminado fiable.
+
+El masterplan activo para búsqueda y calidad de resultados es
+`docs/GRANT-SEARCH-MODERNIZATION-PLAN.md`; el contrato transversal está en
+`docs/HANDOFF-CODEX.md`. Este inventario se conserva para no perder alcance de
+producto, pero sus casillas no sustituyen pruebas, RLS, benchmark, lint o build.
+
+## Prioridad vigente (2026-09-11)
+
+1. Mantener reales y tenant-scoped los datos de preparación de la organización.
+2. Terminar la fase 3 del masterplan: facetas canónicas con evidencia y estados
+   `positive` / `unknown` / `conflicting`.
+3. Revalidar el benchmark híbrido contra el catálogo actual antes de ajustar
+   ranking o umbrales.
+4. Conectar respuestas reutilizadas con procedencia de propuestas sin crear una
+   ruta paralela por usuario.
+5. Validar la suite completa y E2E contra las migraciones 2026-08-31.
 
 ## Ciclo de Ejecución
 
@@ -25,12 +43,12 @@
 
 | Fase | Nombre                     | Features | Estado      | % Completado |
 | ---- | -------------------------- | -------- | ----------- | ------------ |
-| 0    | Reingeniería Frontend      | 15       | ✅ COMPLETA | 100%         |
-| 1    | Inteligencia de Fundadores | 5        | ✅ COMPLETA | 100%         |
-| 2    | Inteligencia Competitiva   | 5        | ✅ COMPLETA | 100%         |
-| 3    | Proposal Quality Premium   | 7        | ✅ COMPLETA | 100%         |
-| 4    | Post-Award Intelligence    | 5        | ✅ COMPLETA | 100%         |
-| 5    | Plataforma y Escala        | 7        | ✅ COMPLETA | 100%         |
+| 0    | Reingeniería Frontend      | 15       | Implementada; validación parcial | — |
+| 1    | Inteligencia de Fundadores | 5        | Implementada; requiere prueba actual | — |
+| 2    | Inteligencia Competitiva   | 5        | Implementada; requiere prueba actual | — |
+| 3    | Proposal Quality Premium   | 7        | Implementada; requiere prueba actual | — |
+| 4    | Post-Award Intelligence    | 5        | Implementada; pocos datos reales | — |
+| 5    | Plataforma y Escala        | 7        | Parcial; ver casillas y handoff | — |
 
 ## Criterios de Validación Global
 
