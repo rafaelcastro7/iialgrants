@@ -19,7 +19,7 @@ classic `/grants`. Saving `/org` or `/fit-rules` invalidates the drift query so
 users see contradictions immediately. `fit-rules.drift.test.ts` covers missing
 inputs, jurisdiction/applicant conflicts, funding-range warnings and the
 consistent case. Focused result: 15/15 tests passed; full ESLint passed. Full
-suite/build are now green: 511 passed, 4 skipped, and the Vite production build
+suite/build are now green: 513 passed, 4 skipped, and the Vite production build
 completed. Browser validation remains outstanding.
 
 The same pass found and fixed a false-green search gate. The current catalog
