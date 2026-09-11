@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { DEFAULT_RULES, evaluateRules, type FitRules } from "@/agents/fit-rules.server";
+import { detectOrgRulesDrift, type DriftIssue } from "@/agents/fit-rules.shared";
+import { getOrgProfileForUser } from "@/lib/org-profile-query";
 
 const FitRulesInput = z.object({
   min_amount_cad: z.number().nonnegative().nullable(),
