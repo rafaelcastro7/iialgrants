@@ -54,7 +54,7 @@ these counts or metrics as current evidence.
 
 | Phase                            | State   | Evidence                                                                                                                                                              |
 | -------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — benchmark                    | Shipped | 25 bilingual golden cases, deterministic metrics, enforce mode, and a reviewable July baseline/checkpoint.                                                            |
+| 0 — benchmark                    | Repair required | The runner and 25 cases exist, but 24/25 labels no longer reference active grants. Coverage enforcement now prevents this from passing as a one-case benchmark.                                   |
 | 1 — profiles/feedback            | Shipped | Tenant-scoped profile CRUD, reversible feedback plus append-only events, profile-aware ranking, and RLS tests.                                                        |
 | 2 — hybrid retrieval             | Shipped | Canonical bilingual documents, 768d local embeddings, bounded taxonomy expansion, hybrid RRF, and lexical fallback. July checkpoint passed all thresholds.            |
 | 3 — faceted evidence             | Next    | Some source fields/evidence already exist, but the canonical facet schema, conflict semantics, filters, counts, and positive/unknown/conflict tests are not complete. |
@@ -64,6 +64,12 @@ these counts or metrics as current evidence.
 The organization-readiness work shipped on 2026-08-31 and the org/rule drift
 warning completed on 2026-09-11 are trust gates around this plan: they prevent
 generic or stale applicant facts from silently driving eligibility decisions.
+
+Current blocker: the 2026-09-11 live run found only 1/25 executable cases and
+zero executable positive cases. `--enforce` now exits non-zero when fewer than
+70% of maintained cases are executable or no positive case remains. Relabel the
+golden set against current active canonical grants before using it to accept
+phase 3 ranking/filter work.
 
 ## 3. Target architecture
 
@@ -284,6 +290,10 @@ Files: `src/evals/search/*`, fixtures, test runner, admin/report function.
 - Store baseline output in a reviewable JSON artifact.
 
 Exit: deterministic benchmark runs locally and CI fails on agreed regression.
+
+Repair checkpoint (2026-09-11): refresh the stale grant IDs while preserving
+the bilingual intents and graded judgments. Do not weaken the 70% executable
+coverage floor merely to restore green.
 
 ### Phase 1 — project profiles and feedback
 

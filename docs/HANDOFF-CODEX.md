@@ -19,7 +19,17 @@ classic `/grants`. Saving `/org` or `/fit-rules` invalidates the drift query so
 users see contradictions immediately. `fit-rules.drift.test.ts` covers missing
 inputs, jurisdiction/applicant conflicts, funding-range warnings and the
 consistent case. Focused result: 15/15 tests passed; full ESLint passed. Full
-suite/build and browser validation remain to be recorded below before handoff.
+suite/build are now green: 511 passed, 4 skipped, and the Vite production build
+completed. Browser validation remains outstanding.
+
+The same pass found and fixed a false-green search gate. The current catalog
+made 24/25 golden cases stale, leaving only the negative no-result query; the
+old `--enforce` still exited 0 with perfect-looking averages. The benchmark now
+reports coverage and requires at least 70% executable cases plus one executable
+positive case. Focused metric/golden tests pass 8/8. A live non-enforced run
+reports 1/25 executable, 0 positive, and `sufficient=false`; an enforced run
+now exits 1 as intended. Next action is to relabel existing bilingual intents
+against current active canonical grants, not lower the coverage floor.
 
 Compatibility contract: `profiles.org_id` remains the principal;
 `org_profiles` remains shared tenant truth; the banner is advisory and never

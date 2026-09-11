@@ -14,13 +14,16 @@ producto, pero sus casillas no sustituyen pruebas, RLS, benchmark, lint o build.
 ## Prioridad vigente (2026-09-11)
 
 1. Mantener reales y tenant-scoped los datos de preparación de la organización.
-2. Terminar la fase 3 del masterplan: facetas canónicas con evidencia y estados
+2. Relabelar el golden set de búsqueda: el catálogo actual dejó 24/25 casos
+   obsoletos y el gate exige al menos 70% ejecutable y un caso positivo.
+3. Terminar la fase 3 del masterplan: facetas canónicas con evidencia y estados
    `positive` / `unknown` / `conflicting`.
-3. Revalidar el benchmark híbrido contra el catálogo actual antes de ajustar
+4. Revalidar el benchmark híbrido contra el catálogo actual antes de ajustar
    ranking o umbrales.
-4. Conectar respuestas reutilizadas con procedencia de propuestas sin crear una
+5. Conectar respuestas reutilizadas con procedencia de propuestas sin crear una
    ruta paralela por usuario.
-5. Validar la suite completa y E2E contra las migraciones 2026-08-31.
+6. Validar E2E contra las migraciones 2026-08-31; la suite unitaria y el build
+   ya pasaron el 2026-09-11.
 
 ## Ciclo de Ejecución
 
