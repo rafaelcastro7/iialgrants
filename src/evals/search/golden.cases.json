@@ -182,7 +182,7 @@
     "id": "quebec-ai-tax-credit",
     "query": "Quebec AI tax credit",
     "language": "en",
-    "relevance": { "302cfc7d-1cb3-4ce3-9de4-c7ef1d426660": 3 },
+    "relevance": { "d001e11c-84d0-4d33-97b6-6ac9e0522281": 3 },
     "tags": ["jurisdiction", "semantic"]
   },
   {
@@ -196,7 +196,7 @@
     "id": "forestry-financing",
     "query": "Quebec forestry financing",
     "language": "en",
-    "relevance": { "d001e11c-84d0-4d33-97b6-6ac9e0522281": 3 },
+    "relevance": { "302cfc7d-1cb3-4ce3-9de4-c7ef1d426660": 3 },
     "tags": ["sector"]
   },
   {
