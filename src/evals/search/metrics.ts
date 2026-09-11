@@ -21,6 +21,7 @@ export type SearchCaseMetrics = {
 export type SearchBenchmarkCoverage = {
   totalCases: number;
   executableCases: number;
+  executableHardBlockCases: number;
   executablePositiveCases: number;
   staleCases: number;
   executableRatio: number;
@@ -96,13 +97,20 @@ export function evaluateSearchBenchmarkCoverage(
   const executablePositiveCases = executable.filter((testCase) =>
     Object.values(testCase.relevance).some(relevant),
   ).length;
+  const executableHardBlockCases = executable.filter(
+    (testCase) => (testCase.hardBlocked?.length ?? 0) > 0,
+  ).length;
 
   return {
     totalCases,
     executableCases: executable.length,
+    executableHardBlockCases,
     executablePositiveCases,
     staleCases: stale.size,
     executableRatio,
-    sufficient: executableRatio >= minimumExecutableRatio && executablePositiveCases > 0,
+    sufficient:
+      executableRatio >= minimumExecutableRatio &&
+      executablePositiveCases > 0 &&
+      executableHardBlockCases > 0,
   };
 }
