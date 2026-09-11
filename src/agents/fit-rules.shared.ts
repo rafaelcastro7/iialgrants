@@ -387,3 +387,111 @@ const STAGE_APPLICANT_TYPES: Record<string, { allowed: string[]; excluded: strin
     excluded: ["for_profit_only", "charity_only", "university_only", "individual_only"],
   },
 };
+
+// ─── Org ↔ Fit Rules drift detection ─────────────────────────────────────────
+// Pure function: compares what deriveRulesFromOrg would produce from the current
+// org profile against the actually-stored fit rules and returns a list of human-
+// readable inconsistencies that could silently corrupt evaluation quality.
+
+export type DriftIssue = {
+  id: string;
+  level: "error" | "warn";
+  label: string;
+  hint: string;
+};
+
+/**
+ * Detect inconsistencies between the org profile and the stored fit rules.
+ * Returns an empty array when rules are consistent or when either input is
+ * missing (no false alarms).
+ */
+export function detectOrgRulesDrift(
+  org: OrgProfileLite | null | undefined,
+  storedRules: FitRules | null | undefined,
+): DriftIssue[] {
+  if (!org || !storedRules) return [];
+
+  const derived = deriveRulesFromOrg(org, DEFAULT_RULES);
+  const issues: DriftIssue[] = [];
+  const norm = (s: string) => s.trim().toLowerCase();
+
+  // 1. Jurisdiction mismatch: org says ON but rules say AB
+  const orgJuris = new Set((derived.required_jurisdictions ?? []).map(norm));
+  const rulesJuris = new Set((storedRules.required_jurisdictions ?? []).map(norm));
+  if (orgJuris.size > 0 && rulesJuris.size > 0) {
+    const missing = [...orgJuris].filter((j) => !rulesJuris.has(j));
+    const extra = [...rulesJuris].filter((j) => !orgJuris.has(j));
+    if (missing.length > 0 || extra.length > 0) {
+      issues.push({
+        id: "jurisdiction_drift",
+        level: "error",
+        label: `Jurisdiction mismatch: org profile says [${[...orgJuris].join(", ").toUpperCase()}] but screening rules have [${[...rulesJuris].join(", ").toUpperCase()}]`,
+        hint: "Re-sync your screening rules from the org profile, or update the org profile.",
+      });
+    }
+  }
+
+  // 2. Sector/capability mismatch: org declares sectors/focus_areas but rules
+  //    have completely different capabilities
+  const orgCaps = new Set((derived.iial_capabilities ?? []).map(norm));
+  const rulesCaps = new Set((storedRules.iial_capabilities ?? []).map(norm));
+  if (orgCaps.size > 0 && rulesCaps.size > 0) {
+    const overlap = [...orgCaps].filter((c) => rulesCaps.has(c));
+    if (overlap.length === 0) {
+      issues.push({
+        id: "capability_drift",
+        level: "error",
+        label: "Capability mismatch: org sectors/focus areas share no overlap with screening rule capabilities",
+        hint: "The screening rules may be filtering for a different organization's strengths.",
+      });
+    } else if (overlap.length < orgCaps.size * 0.5) {
+      issues.push({
+        id: "capability_partial_drift",
+        level: "warn",
+        label: `Only ${overlap.length} of ${orgCaps.size} org capabilities are reflected in screening rules`,
+        hint: "Some org sectors may not be screened for. Consider re-syncing.",
+      });
+    }
+  }
+
+  // 3. Applicant type mismatch: org stage says nonprofit but rules say for-profit
+  const orgAllowed = new Set((derived.applicant_types_allowed ?? []).map(norm));
+  const rulesAllowed = new Set((storedRules.applicant_types_allowed ?? []).map(norm));
+  if (orgAllowed.size > 0 && rulesAllowed.size > 0) {
+    const overlap = [...orgAllowed].filter((t) => rulesAllowed.has(t));
+    if (overlap.length === 0) {
+      issues.push({
+        id: "applicant_type_drift",
+        level: "error",
+        label: "Applicant type conflict: org profile and screening rules disagree on organization type",
+        hint: `Org profile implies [${[...orgAllowed].join(", ")}] but rules allow [${[...rulesAllowed].join(", ")}]. Grants will be mis-screened.`,
+      });
+    }
+  }
+
+  // 4. Budget range mismatch
+  if (derived.min_amount_cad != null && storedRules.min_amount_cad != null) {
+    const diff = Math.abs(derived.min_amount_cad - storedRules.min_amount_cad);
+    if (diff > 0 && diff / Math.max(derived.min_amount_cad, storedRules.min_amount_cad) > 0.5) {
+      issues.push({
+        id: "min_amount_drift",
+        level: "warn",
+        label: `Min amount differs: org profile ${derived.min_amount_cad.toLocaleString()} vs rules ${storedRules.min_amount_cad.toLocaleString()}`,
+        hint: "Screening rules may filter out grants the org would pursue.",
+      });
+    }
+  }
+  if (derived.max_amount_cad != null && storedRules.max_amount_cad != null) {
+    const diff = Math.abs(derived.max_amount_cad - storedRules.max_amount_cad);
+    if (diff > 0 && diff / Math.max(derived.max_amount_cad, storedRules.max_amount_cad) > 0.5) {
+      issues.push({
+        id: "max_amount_drift",
+        level: "warn",
+        label: `Max amount differs: org profile ${derived.max_amount_cad.toLocaleString()} vs rules ${storedRules.max_amount_cad.toLocaleString()}`,
+        hint: "Screening rules may filter out grants the org would pursue.",
+      });
+    }
+  }
+
+  return issues;
+}
