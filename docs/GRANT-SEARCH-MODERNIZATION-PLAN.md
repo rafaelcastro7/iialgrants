@@ -52,14 +52,14 @@ these counts or metrics as current evidence.
 
 ### Delivery checkpoint (2026-09-11)
 
-| Phase                            | State   | Evidence                                                                                                                                                              |
-| -------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — benchmark                    | Repair required | The runner and 25 cases exist, but 24/25 labels no longer reference active grants. Coverage enforcement now prevents this from passing as a one-case benchmark.                                   |
-| 1 — profiles/feedback            | Shipped | Tenant-scoped profile CRUD, reversible feedback plus append-only events, profile-aware ranking, and RLS tests.                                                        |
-| 2 — hybrid retrieval             | Shipped | Canonical bilingual documents, 768d local embeddings, bounded taxonomy expansion, hybrid RRF, and lexical fallback. July checkpoint passed all thresholds.            |
-| 3 — faceted evidence             | Next    | Some source fields/evidence already exist, but the canonical facet schema, conflict semantics, filters, counts, and positive/unknown/conflict tests are not complete. |
-| 4 — giving/deadline intelligence | Partial | T3010, recipient and giving functions exist; they are not yet proven as bounded ranking features and recurrence confidence is not first-class.                        |
-| 5 — coverage operations          | Partial | Crawl ledger, source curator, scheduled hooks and monitoring exist; coverage SLA and accountable gap reporting still need a current proof pass.                       |
+| Phase                            | State           | Evidence                                                                                                                                                              |
+| -------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — benchmark                    | Repair required | The runner and 25 cases exist, but 24/25 labels no longer reference active grants. Coverage enforcement now prevents this from passing as a one-case benchmark.       |
+| 1 — profiles/feedback            | Shipped         | Tenant-scoped profile CRUD, reversible feedback plus append-only events, profile-aware ranking, and RLS tests.                                                        |
+| 2 — hybrid retrieval             | Shipped         | Canonical bilingual documents, 768d local embeddings, bounded taxonomy expansion, hybrid RRF, and lexical fallback. July checkpoint passed all thresholds.            |
+| 3 — faceted evidence             | Next            | Some source fields/evidence already exist, but the canonical facet schema, conflict semantics, filters, counts, and positive/unknown/conflict tests are not complete. |
+| 4 — giving/deadline intelligence | Partial         | T3010, recipient and giving functions exist; they are not yet proven as bounded ranking features and recurrence confidence is not first-class.                        |
+| 5 — coverage operations          | Partial         | Crawl ledger, source curator, scheduled hooks and monitoring exist; coverage SLA and accountable gap reporting still need a current proof pass.                       |
 
 The organization-readiness work shipped on 2026-08-31 and the org/rule drift
 warning completed on 2026-09-11 are trust gates around this plan: they prevent

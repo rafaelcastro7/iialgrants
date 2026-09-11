@@ -104,7 +104,7 @@ IIAL (Institute for Innovation in Applied Learning) grant discovery and proposal
 - **Local models**: `phi4-mini` + `dolphin3` (agents), `nomic-embed-text` (embeddings). All three are required — a missing agent model fails as `ollama_prewarm_404` mid-run and silently pushes work to the cloud fallback
 - **Validation**: Zod schemas for all inputs/outputs
 - **Build**: Vite 8 + Lovable TanStack config plugin
-- **Testing**: Vitest (unit + jsdom) + Playwright e2e — **452 unit / 39 e2e passing**
+- **Testing**: Vitest (unit + jsdom) + Playwright e2e — **511 unit passing / 4 skipped** on 2026-09-11; **39 e2e** last recorded
 - **Linting**: ESLint 9 + Prettier
 - **Package manager**: Bun
 
@@ -303,7 +303,7 @@ A provider with no key is skipped by the chain rather than failing it.
 bun run dev          # Vite dev server (:8080) + auto-sync watcher
 bun run build        # Production build
 bun run lint         # ESLint
-bun run test         # Unit tests (452)
+bun run test         # Unit tests (511 passing / 4 skipped as of 2026-09-11)
 bun run test:e2e     # Playwright e2e (39) — real Node, never `bunx`
 
 bun run scripts/startup-validate.ts        # 10 live checks; non-zero on failure
