@@ -41,14 +41,14 @@ producto, pero sus casillas no sustituyen pruebas, RLS, benchmark, lint o build.
 
 ## Estado del Plan
 
-| Fase | Nombre                     | Features | Estado      | % Completado |
-| ---- | -------------------------- | -------- | ----------- | ------------ |
-| 0    | Reingeniería Frontend      | 15       | Implementada; validación parcial | — |
-| 1    | Inteligencia de Fundadores | 5        | Implementada; requiere prueba actual | — |
-| 2    | Inteligencia Competitiva   | 5        | Implementada; requiere prueba actual | — |
-| 3    | Proposal Quality Premium   | 7        | Implementada; requiere prueba actual | — |
-| 4    | Post-Award Intelligence    | 5        | Implementada; pocos datos reales | — |
-| 5    | Plataforma y Escala        | 7        | Parcial; ver casillas y handoff | — |
+| Fase | Nombre                     | Features | Estado                               | % Completado |
+| ---- | -------------------------- | -------- | ------------------------------------ | ------------ |
+| 0    | Reingeniería Frontend      | 15       | Implementada; validación parcial     | —            |
+| 1    | Inteligencia de Fundadores | 5        | Implementada; requiere prueba actual | —            |
+| 2    | Inteligencia Competitiva   | 5        | Implementada; requiere prueba actual | —            |
+| 3    | Proposal Quality Premium   | 7        | Implementada; requiere prueba actual | —            |
+| 4    | Post-Award Intelligence    | 5        | Implementada; pocos datos reales     | —            |
+| 5    | Plataforma y Escala        | 7        | Parcial; ver casillas y handoff      | —            |
 
 ## Criterios de Validación Global
 
