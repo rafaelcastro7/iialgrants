@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import {
+  evaluateSearchBenchmarkCoverage,
   evaluateSearchCase,
   summarizeSearchBenchmark,
   type SearchBenchmarkCase,
@@ -70,6 +71,7 @@ const report = {
   ranking: "hybrid_rrf_v1",
   k: 10,
   summary: summarizeSearchBenchmark(rows),
+  coverage: evaluateSearchBenchmarkCoverage(cases, staleCaseIds),
   staleCaseIds,
   cases: rows,
 };
@@ -77,7 +79,13 @@ console.log(JSON.stringify(report, null, 2));
 
 if (process.argv.includes("--enforce")) {
   const { recallAtK, precisionAtK, ndcgAtK, hardFailLeakage } = report.summary;
-  if (recallAtK < 0.9 || precisionAtK < 0.75 || ndcgAtK < 0.8 || hardFailLeakage > 0) {
+  if (
+    !report.coverage.sufficient ||
+    recallAtK < 0.9 ||
+    precisionAtK < 0.75 ||
+    ndcgAtK < 0.8 ||
+    hardFailLeakage > 0
+  ) {
     process.exitCode = 1;
   }
 }

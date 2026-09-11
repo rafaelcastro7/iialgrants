@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { evaluateSearchCase, summarizeSearchBenchmark } from "./metrics";
+import {
+  evaluateSearchBenchmarkCoverage,
+  evaluateSearchCase,
+  summarizeSearchBenchmark,
+} from "./metrics";
 
 const testCase = {
   id: "research",
@@ -48,5 +52,36 @@ describe("search benchmark metrics", () => {
     const negative = { ...testCase, relevance: {} };
     expect(evaluateSearchCase(negative, [], 10).precisionAtK).toBe(1);
     expect(evaluateSearchCase(negative, ["irrelevant"], 10).precisionAtK).toBe(0);
+  });
+
+  it("rejects a benchmark whose positive judgments have gone stale", () => {
+    const negative = { ...testCase, id: "negative", relevance: {} };
+    const coverage = evaluateSearchBenchmarkCoverage(
+      [testCase, { ...testCase, id: "second" }, negative],
+      [testCase.id, "second"],
+    );
+
+    expect(coverage).toMatchObject({
+      executableCases: 1,
+      executablePositiveCases: 0,
+      staleCases: 2,
+      sufficient: false,
+    });
+  });
+
+  it("accepts the historical 18-of-25 executable-case floor", () => {
+    const cases = Array.from({ length: 25 }, (_, index) => ({
+      ...testCase,
+      id: `case-${index}`,
+    }));
+    const stale = cases.slice(0, 7).map((item) => item.id);
+
+    expect(evaluateSearchBenchmarkCoverage(cases, stale)).toMatchObject({
+      executableCases: 18,
+      executablePositiveCases: 18,
+      staleCases: 7,
+      executableRatio: 0.72,
+      sufficient: true,
+    });
   });
 });

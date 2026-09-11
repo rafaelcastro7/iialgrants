@@ -18,6 +18,17 @@ export type SearchCaseMetrics = {
   hardFailLeakage: number;
 };
 
+export type SearchBenchmarkCoverage = {
+  totalCases: number;
+  executableCases: number;
+  executablePositiveCases: number;
+  staleCases: number;
+  executableRatio: number;
+  sufficient: boolean;
+};
+
+export const MIN_EXECUTABLE_CASE_RATIO = 0.7;
+
 const relevant = (grade: number | undefined) => (grade ?? 0) > 0;
 
 export function evaluateSearchCase(
@@ -70,5 +81,28 @@ export function summarizeSearchBenchmark(rows: SearchCaseMetrics[]) {
     mrr: mean("reciprocalRank"),
     ndcgAtK: mean("ndcgAtK"),
     hardFailLeakage: rows.reduce((sum, row) => sum + row.hardFailLeakage, 0),
+  };
+}
+
+export function evaluateSearchBenchmarkCoverage(
+  cases: SearchBenchmarkCase[],
+  staleCaseIds: Iterable<string>,
+  minimumExecutableRatio = MIN_EXECUTABLE_CASE_RATIO,
+): SearchBenchmarkCoverage {
+  const stale = new Set(staleCaseIds);
+  const executable = cases.filter((testCase) => !stale.has(testCase.id));
+  const totalCases = cases.length;
+  const executableRatio = totalCases === 0 ? 0 : executable.length / totalCases;
+  const executablePositiveCases = executable.filter(
+    (testCase) => Object.values(testCase.relevance).some(relevant),
+  ).length;
+
+  return {
+    totalCases,
+    executableCases: executable.length,
+    executablePositiveCases,
+    staleCases: stale.size,
+    executableRatio,
+    sufficient: executableRatio >= minimumExecutableRatio && executablePositiveCases > 0,
   };
 }
