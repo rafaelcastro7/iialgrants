@@ -132,3 +132,29 @@ export const previewFitRules = createServerFn({ method: "POST" })
     });
     return { items: out };
   });
+
+/**
+ * Fetch the user's org profile and stored fit rules, then return any
+ * inconsistencies between them. The grants page shows these as an
+ * actionable banner so evaluations aren't silently corrupted.
+ */
+export const checkOrgRulesDrift = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ issues: DriftIssue[] }> => {
+    const [{ data: org }, { data: rulesRow }] = await Promise.all([
+      getOrgProfileForUser(context.supabase, context.userId),
+      context.supabase
+        .from("fit_rules")
+        .select("*")
+        .eq("user_id", context.userId)
+        .maybeSingle(),
+    ]);
+
+    // No stored rules = user hasn't customized; deriveRulesFromOrg runs at
+    // eval time anyway, so there's nothing to drift against.
+    if (!rulesRow) return { issues: [] };
+
+    const issues = detectOrgRulesDrift(org, rulesRow as FitRules);
+    return { issues };
+  });
+
