@@ -143,11 +143,7 @@ export const checkOrgRulesDrift = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<{ issues: DriftIssue[] }> => {
     const [{ data: org }, { data: rulesRow }] = await Promise.all([
       getOrgProfileForUser(context.supabase, context.userId),
-      context.supabase
-        .from("fit_rules")
-        .select("*")
-        .eq("user_id", context.userId)
-        .maybeSingle(),
+      context.supabase.from("fit_rules").select("*").eq("user_id", context.userId).maybeSingle(),
     ]);
 
     // No stored rules = user hasn't customized; deriveRulesFromOrg runs at
@@ -157,4 +153,3 @@ export const checkOrgRulesDrift = createServerFn({ method: "GET" })
     const issues = detectOrgRulesDrift(org, rulesRow as FitRules);
     return { issues };
   });
-

@@ -54,9 +54,7 @@ export function OrgRulesDriftBanner() {
                   >
                     {issue.label}
                   </span>
-                  {issue.hint && (
-                    <span className="text-muted-foreground"> — {issue.hint}</span>
-                  )}
+                  {issue.hint && <span className="text-muted-foreground"> — {issue.hint}</span>}
                 </li>
               ))}
             </ul>

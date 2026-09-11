@@ -129,11 +129,9 @@ export function GrantExpressView({
       <div className="space-y-4">
         {filters}
         <div className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground shadow-sm">
-          {isAdmin ? (
-            "No active opportunities yet. Run discovery from the Admin panel, or adjust your filters."
-          ) : (
-            "No active opportunities yet. An administrator will need to run the discovery process to find new grants."
-          )}
+          {isAdmin
+            ? "No active opportunities yet. Run discovery from the Admin panel, or adjust your filters."
+            : "No active opportunities yet. An administrator will need to run the discovery process to find new grants."}
         </div>
       </div>
     );

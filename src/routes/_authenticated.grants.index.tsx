@@ -323,7 +323,7 @@ function GrantsPage() {
         setActiveJob({ jobId: r.jobId, queued: r.queued ?? 0 });
         const scope = funderIds ? ` (${funderIds.length} selected)` : "";
         setDiscoveryMsg(
-          `Discovery ${r.status === "failed" ? "finished with errors" : "complete"}. Checked ${r.queued} funder(s)${scope}. Found ${r.totalInserted ?? 0} new opportunities and ${r.totalSeenAgain ?? 0} we were already tracking.`
+          `Discovery ${r.status === "failed" ? "finished with errors" : "complete"}. Checked ${r.queued} funder(s)${scope}. Found ${r.totalInserted ?? 0} new opportunities and ${r.totalSeenAgain ?? 0} we were already tracking.`,
         );
       } else setDiscoveryMsg("Discovery enqueued.");
       autoRan.current = false;

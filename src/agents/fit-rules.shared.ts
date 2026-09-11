@@ -441,7 +441,8 @@ export function detectOrgRulesDrift(
       issues.push({
         id: "capability_drift",
         level: "error",
-        label: "Capability mismatch: org sectors/focus areas share no overlap with screening rule capabilities",
+        label:
+          "Capability mismatch: org sectors/focus areas share no overlap with screening rule capabilities",
         hint: "The screening rules may be filtering for a different organization's strengths.",
       });
     } else if (overlap.length < orgCaps.size * 0.5) {
@@ -463,7 +464,8 @@ export function detectOrgRulesDrift(
       issues.push({
         id: "applicant_type_drift",
         level: "error",
-        label: "Applicant type conflict: org profile and screening rules disagree on organization type",
+        label:
+          "Applicant type conflict: org profile and screening rules disagree on organization type",
         hint: `Org profile implies [${[...orgAllowed].join(", ")}] but rules allow [${[...rulesAllowed].join(", ")}]. Grants will be mis-screened.`,
       });
     }

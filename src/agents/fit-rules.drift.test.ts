@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_RULES,
-  detectOrgRulesDrift,
-  type FitRules,
-} from "@/agents/fit-rules.shared";
+import { DEFAULT_RULES, detectOrgRulesDrift, type FitRules } from "@/agents/fit-rules.shared";
 
 const storedRules = (patch: Partial<FitRules> = {}): FitRules => ({
   ...DEFAULT_RULES,

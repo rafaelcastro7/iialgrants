@@ -698,7 +698,6 @@ export function GrantDetailExpress({
             )}
           </Panel>
 
-
           <Panel title="Eligibility and fit" icon={ShieldCheck}>
             <div className="grid gap-4 xl:grid-cols-[260px_1fr]">
               <div className="rounded-lg border bg-muted/20 p-4">
