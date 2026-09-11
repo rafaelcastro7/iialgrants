@@ -40,6 +40,7 @@ import { useUiVersion } from "@/components/v2/ui-version";
 import type { GrantRowData } from "@/components/grants/GrantRow";
 import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import { GrantSearchProfileBar } from "@/components/grants/GrantSearchProfileBar";
+import { OrgRulesDriftBanner } from "@/components/grants/OrgRulesDriftBanner";
 import { recordGrantSearchFeedback } from "@/lib/grant-search-profiles.functions";
 import "@/i18n";
 
@@ -424,6 +425,7 @@ function GrantsPage() {
   if (version === "v2") {
     return (
       <PageTransition>
+        <OrgRulesDriftBanner />
         <GrantSearchProfileBar selectedProfileId={searchProfileId} onSelect={setSearchProfileId} />
         <V2GrantsWorkspace
           activeJob={activeJob}
@@ -506,6 +508,7 @@ function GrantsPage() {
             }
           />
 
+          <OrgRulesDriftBanner />
           <GrantSearchProfileBar
             selectedProfileId={searchProfileId}
             onSelect={setSearchProfileId}

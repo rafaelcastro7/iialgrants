@@ -155,7 +155,10 @@ function FitRulesPage() {
 
   const mut = useMutation({
     mutationFn: () => save({ data: r }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["fit-rules"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fit-rules"] });
+      qc.invalidateQueries({ queryKey: ["org-rules-drift"] });
+    },
   });
   const prev = useMutation({ mutationFn: () => preview({ data: { rules: r, limit: 20 } }) });
 

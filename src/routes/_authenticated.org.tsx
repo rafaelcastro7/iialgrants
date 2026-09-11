@@ -108,6 +108,7 @@ function OrgPage() {
     }) => save({ data: input }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org"] });
+      qc.invalidateQueries({ queryKey: ["org-rules-drift"] });
       toast.success(t("org.saved"));
     },
     onError: (error) => {
