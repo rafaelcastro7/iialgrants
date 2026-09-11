@@ -93,8 +93,8 @@ export function evaluateSearchBenchmarkCoverage(
   const executable = cases.filter((testCase) => !stale.has(testCase.id));
   const totalCases = cases.length;
   const executableRatio = totalCases === 0 ? 0 : executable.length / totalCases;
-  const executablePositiveCases = executable.filter(
-    (testCase) => Object.values(testCase.relevance).some(relevant),
+  const executablePositiveCases = executable.filter((testCase) =>
+    Object.values(testCase.relevance).some(relevant),
   ).length;
 
   return {
