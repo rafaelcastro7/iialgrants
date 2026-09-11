@@ -19,7 +19,39 @@ const rules: Array<{ concept: string; patterns: string[]; expansions: string[] }
   {
     concept: "youth-employment",
     patterns: ["hire young graduates", "young graduates", "youth employment"],
-    expansions: ["youth employment program", "graduate employment"],
+    expansions: [
+      "youth employment program",
+      "graduate employment",
+      "youth internship recent graduate",
+    ],
+  },
+  {
+    concept: "indigenous-innovation",
+    patterns: [
+      "indigenous science outreach",
+      "indigenous innovation",
+      "rayonnement autochtone",
+      "innovation autochtone",
+    ],
+    expansions: [
+      "Indigenous Innovation Initiative",
+      "Indigenous Intellectual Property Program Grant",
+      "innovation autochtone propriété intellectuelle",
+    ],
+  },
+  {
+    concept: "defence-research",
+    patterns: [
+      "defence security applied research",
+      "defense security applied research",
+      "defence research",
+      "defense research",
+    ],
+    expansions: [
+      "DRDC Defence Research Partnerships",
+      "Innovation for Defence Excellence and Security IDEaS",
+      "Canadian defence applied research",
+    ],
   },
   {
     concept: "healthy-aging",
@@ -87,7 +119,15 @@ const rules: Array<{ concept: string; patterns: string[]; expansions: string[] }
   },
   {
     concept: "canadian-innovation-agencies",
-    patterns: ["irap", "nrc irap", "cnrc", "pari", "national research council"],
+    patterns: [
+      "irap",
+      "nrc irap",
+      "cnrc",
+      "pari",
+      "national research council",
+      "industrial reserch assistance",
+      "industrial research assistance",
+    ],
     expansions: ["National Research Council Canada", "Industrial Research Assistance Program"],
   },
   {
