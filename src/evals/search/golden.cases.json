@@ -24,7 +24,10 @@
     "language": "en",
     "relevance": {
       "d380bf4d-bc5e-4add-a064-4cf7c15c89e3": 3,
-      "beb3373f-a69d-45dd-9673-fa5186ec24f3": 2
+      "beb3373f-a69d-45dd-9673-fa5186ec24f3": 2,
+      "e9075bac-b9c9-4375-b1d0-e11450f24f91": 2,
+      "2d9428ac-e8d1-4fc2-8ea3-3416d0cb1857": 2,
+      "7a63b823-285c-48be-b4b3-f1ef52485a39": 2
     },
     "tags": ["synonym"]
   },
@@ -35,7 +38,8 @@
     "relevance": {
       "1ce14f35-d820-45d4-b5ac-8df87615457a": 3,
       "a8be49ff-9bb8-4270-97d9-df7fd25b5816": 1,
-      "9c0ba477-4336-4d03-aac6-ef09788e3187": 1
+      "9c0ba477-4336-4d03-aac6-ef09788e3187": 1,
+      "29fc962d-5a41-4a30-9c3b-09b81c527e05": 1
     },
     "tags": ["population"]
   },
@@ -45,7 +49,9 @@
     "language": "fr",
     "relevance": {
       "1ce14f35-d820-45d4-b5ac-8df87615457a": 3,
-      "a8be49ff-9bb8-4270-97d9-df7fd25b5816": 1
+      "a8be49ff-9bb8-4270-97d9-df7fd25b5816": 1,
+      "9c0ba477-4336-4d03-aac6-ef09788e3187": 1,
+      "29fc962d-5a41-4a30-9c3b-09b81c527e05": 1
     },
     "tags": ["fr", "population"]
   },
@@ -69,7 +75,10 @@
     "language": "en",
     "relevance": {
       "e0731ff0-a5bd-43e5-8e38-32d533737ac8": 3,
-      "4f362d40-6e89-445a-8b35-1ed6ce659f5c": 2
+      "4f362d40-6e89-445a-8b35-1ed6ce659f5c": 2,
+      "4b224ea1-4a49-47ce-9b00-28f3aea706db": 2,
+      "e1ce6584-0283-491d-8fc2-32615e817a81": 2,
+      "8af88857-2d0e-4766-8132-327b6f433a71": 1
     },
     "tags": ["exact"]
   },
@@ -111,7 +120,9 @@
     "relevance": {
       "1205019f-a4b4-49dc-bb18-de0296bafc88": 3,
       "4da2db20-4bf9-4b53-aa1f-04043a6c4396": 2,
-      "3b69b961-dd7c-47cb-96fa-ef8bd0a8e17b": 1
+      "3b69b961-dd7c-47cb-96fa-ef8bd0a8e17b": 1,
+      "a834289b-a24d-46f6-89b8-8b0bc4c9a7e9": 3,
+      "3cf2bfec-f65a-4c0c-9a92-519031c88818": 2
     },
     "tags": ["semantic"]
   },
@@ -159,7 +170,10 @@
     "id": "professional-training",
     "query": "professional skills training",
     "language": "en",
-    "relevance": { "1084372b-0d5a-4517-ab00-b052e6d0479d": 3 },
+    "relevance": {
+      "1084372b-0d5a-4517-ab00-b052e6d0479d": 3,
+      "8ed73b42-7295-41f4-8c08-758d8d5ceac9": 2
+    },
     "tags": ["funding-use"]
   },
   {
@@ -167,7 +181,8 @@
     "query": "faculty host international undergraduate researcher",
     "language": "en",
     "relevance": {
-      "0c996630-f01a-49db-a813-90d40b6c603c": 3
+      "0c996630-f01a-49db-a813-90d40b6c603c": 3,
+      "fc3e1d30-fc0d-4d97-bd5d-0986cb6c1a0e": 2
     },
     "tags": ["semantic"]
   },

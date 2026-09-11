@@ -54,6 +54,19 @@ const rules: Array<{ concept: string; patterns: string[]; expansions: string[] }
     ],
   },
   {
+    concept: "fisheries-science-partnerships",
+    patterns: [
+      "partenariats scientifiques peche",
+      "partenariats scientifiques pêche",
+      "fisheries science partnerships",
+    ],
+    expansions: [
+      "Quebec Fisheries Fund Science partnerships",
+      "Atlantic Fisheries Fund Science Partnerships",
+      "partenariats scientifiques fonds des pêches",
+    ],
+  },
+  {
     concept: "healthy-aging",
     patterns: ["healthy aging", "vieillissement en sante", "age in place"],
     expansions: ["healthy aging", "older Canadians age in place", "community living lab"],
@@ -128,7 +141,7 @@ const rules: Array<{ concept: string; patterns: string[]; expansions: string[] }
       "industrial reserch assistance",
       "industrial research assistance",
     ],
-    expansions: ["National Research Council Canada", "Industrial Research Assistance Program"],
+    expansions: ["Industrial Research Assistance Program", "NRC IRAP financial assistance"],
   },
   {
     concept: "us-health-research",

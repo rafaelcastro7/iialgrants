@@ -24,6 +24,9 @@ describe("bilingual grant query taxonomy", () => {
     expect(expandGrantSearchQuery("defence security applied research")).toMatchObject({
       concepts: ["defence-research"],
     });
+    expect(expandGrantSearchQuery("partenariats scientifiques pêche Québec")).toMatchObject({
+      concepts: ["fisheries-science-partnerships"],
+    });
   });
 
   it("is bounded and leaves unrelated negative queries untouched", () => {
