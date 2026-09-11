@@ -3,21 +3,29 @@
     "id": "irap-acronym",
     "query": "IRAP",
     "language": "en",
-    "relevance": { "5630d71b-373a-411e-a69e-92a19dc2a6b1": 3 },
+    "relevance": {
+      "0ff0046c-0a81-486e-9c6d-bc9d1257117d": 3,
+      "5c52c433-b0d0-4484-a886-87d93342cd1e": 2,
+      "d380bf4d-bc5e-4add-a064-4cf7c15c89e3": 2,
+      "4a874f6f-f69d-4488-8c62-f88502157357": 2
+    },
     "tags": ["acronym"]
   },
   {
     "id": "irap-typo",
     "query": "industrial reserch assistance",
     "language": "en",
-    "relevance": { "5630d71b-373a-411e-a69e-92a19dc2a6b1": 3 },
+    "relevance": { "0ff0046c-0a81-486e-9c6d-bc9d1257117d": 3 },
     "tags": ["typo"]
   },
   {
     "id": "youth-employment",
     "query": "hire young graduates",
     "language": "en",
-    "relevance": { "e32f366b-9823-497b-b46b-8be6b4d10e52": 3 },
+    "relevance": {
+      "d380bf4d-bc5e-4add-a064-4cf7c15c89e3": 3,
+      "beb3373f-a69d-45dd-9673-fa5186ec24f3": 2
+    },
     "tags": ["synonym"]
   },
   {
@@ -25,10 +33,9 @@
     "query": "Indigenous science outreach",
     "language": "en",
     "relevance": {
-      "d65f9fd5-5cbe-41e8-8cdd-7751531d4412": 3,
-      "7d68693b-e5b8-4ba3-a81e-22ce86bf6687": 3,
-      "2bc8bca3-0b98-48d3-a977-76d8743874c6": 1,
-      "0c02f878-f23e-4773-9226-526a4681f3a1": 1
+      "1ce14f35-d820-45d4-b5ac-8df87615457a": 3,
+      "a8be49ff-9bb8-4270-97d9-df7fd25b5816": 1,
+      "9c0ba477-4336-4d03-aac6-ef09788e3187": 1
     },
     "tags": ["population"]
   },
@@ -37,8 +44,8 @@
     "query": "rayonnement autochtone innovation",
     "language": "fr",
     "relevance": {
-      "d65f9fd5-5cbe-41e8-8cdd-7751531d4412": 3,
-      "7d68693b-e5b8-4ba3-a81e-22ce86bf6687": 3
+      "1ce14f35-d820-45d4-b5ac-8df87615457a": 3,
+      "a8be49ff-9bb8-4270-97d9-df7fd25b5816": 1
     },
     "tags": ["fr", "population"]
   },
@@ -60,7 +67,10 @@
     "id": "collaborative-science",
     "query": "collaborative science technology innovation",
     "language": "en",
-    "relevance": { "62090a56-c1e9-4c59-8c5a-0b8929db9072": 3 },
+    "relevance": {
+      "e0731ff0-a5bd-43e5-8e38-32d533737ac8": 3,
+      "4f362d40-6e89-445a-8b35-1ed6ce659f5c": 2
+    },
     "tags": ["exact"]
   },
   {
@@ -68,10 +78,8 @@
     "query": "Mitacs Accelerate",
     "language": "en",
     "relevance": {
-      "3981d4a8-131d-4a51-9cf9-8d20035996e0": 3,
-      "f1eff9ae-5df6-4a5e-8dfa-9e17853a4487": 2,
-      "3ada4e71-f04a-403f-b966-72f98e753ac2": 2,
-      "21b87449-036e-4c97-a4eb-6aa9f68801dc": 2
+      "0909e660-b4f8-4002-9ef2-3941aa399364": 3,
+      "0cdbd463-d013-424e-8209-c9126cfc67bc": 2
     },
     "tags": ["family"]
   },
@@ -79,14 +87,21 @@
     "id": "defence-security",
     "query": "defence security applied research",
     "language": "en",
-    "relevance": { "f1eff9ae-5df6-4a5e-8dfa-9e17853a4487": 3 },
+    "relevance": {
+      "32068e95-9187-484f-a0aa-c6c264956387": 3,
+      "f57f5c3b-19e1-40fd-901e-169938d644fb": 3
+    },
     "tags": ["sector"]
   },
   {
     "id": "entrepreneur-commercialization",
     "query": "student entrepreneur commercialization",
     "language": "en",
-    "relevance": { "3ada4e71-f04a-403f-b966-72f98e753ac2": 3 },
+    "relevance": {
+      "0cdbd463-d013-424e-8209-c9126cfc67bc": 3,
+      "01894fc0-7b1d-4151-9b6d-48e0c46375fb": 2,
+      "8e66ea57-d37e-4265-8381-505c9621a4fd": 1
+    },
     "tags": ["funding-use"]
   },
   {
@@ -94,11 +109,9 @@
     "query": "international research collaboration",
     "language": "en",
     "relevance": {
-      "21b87449-036e-4c97-a4eb-6aa9f68801dc": 3,
-      "fb21494e-8853-4071-a919-f2cd271628e9": 2,
-      "96eef917-7f2a-4282-b7e6-809f7277be90": 1,
-      "f5f45961-6422-4ac1-b010-08d6ca635d00": 1,
-      "f3166bb4-de2e-4727-adfc-4a0200849c37": 1
+      "1205019f-a4b4-49dc-bb18-de0296bafc88": 3,
+      "4da2db20-4bf9-4b53-aa1f-04043a6c4396": 2,
+      "3b69b961-dd7c-47cb-96fa-ef8bd0a8e17b": 1
     },
     "tags": ["semantic"]
   },
@@ -117,9 +130,7 @@
     "query": "Globalink research internship",
     "language": "en",
     "relevance": {
-      "f5f45961-6422-4ac1-b010-08d6ca635d00": 3,
-      "96eef917-7f2a-4282-b7e6-809f7277be90": 2,
-      "f3166bb4-de2e-4727-adfc-4a0200849c37": 2
+      "0c996630-f01a-49db-a813-90d40b6c603c": 3
     },
     "tags": ["family"]
   },
@@ -134,21 +145,21 @@
     "id": "business-strategy",
     "query": "business strategy internship innovation",
     "language": "en",
-    "relevance": { "696fbe8f-d804-4f24-9820-a24338a7fde8": 3 },
+    "relevance": { "5aab29f9-217e-42fc-bbc4-83a700cc7262": 3 },
     "tags": ["exact"]
   },
   {
     "id": "social-innovation",
     "query": "social environmental innovation research",
     "language": "en",
-    "relevance": { "e072fdbb-12bc-4d72-8faf-a21edfe8b0ba": 3 },
+    "relevance": { "4f362d40-6e89-445a-8b35-1ed6ce659f5c": 3 },
     "tags": ["semantic"]
   },
   {
     "id": "professional-training",
     "query": "professional skills training",
     "language": "en",
-    "relevance": { "7e7b0289-41c5-4b12-9368-03043ae3a904": 3 },
+    "relevance": { "1084372b-0d5a-4517-ab00-b052e6d0479d": 3 },
     "tags": ["funding-use"]
   },
   {
@@ -156,8 +167,7 @@
     "query": "faculty host international undergraduate researcher",
     "language": "en",
     "relevance": {
-      "96eef917-7f2a-4282-b7e6-809f7277be90": 3,
-      "f5f45961-6422-4ac1-b010-08d6ca635d00": 2
+      "0c996630-f01a-49db-a813-90d40b6c603c": 3
     },
     "tags": ["semantic"]
   },
@@ -172,7 +182,7 @@
     "id": "quebec-ai-tax-credit",
     "query": "Quebec AI tax credit",
     "language": "en",
-    "relevance": { "d001e11c-84d0-4d33-97b6-6ac9e0522281": 3 },
+    "relevance": { "302cfc7d-1cb3-4ce3-9de4-c7ef1d426660": 3 },
     "tags": ["jurisdiction", "semantic"]
   },
   {
@@ -201,6 +211,39 @@
     },
     "hardBlocked": ["5630d71b-373a-411e-a69e-92a19dc2a6b1"],
     "tags": ["eligibility"]
+  },
+  {
+    "id": "science-horizons-youth",
+    "query": "environmental STEM youth internship",
+    "language": "en",
+    "relevance": {
+      "8ee8a592-db8c-461f-b610-3cbce24e2aea": 3,
+      "ecb0645d-4090-476a-808f-e758e0b37e2f": 3,
+      "2b518312-cd8a-4a08-b7df-ed0f039a73bd": 2
+    },
+    "tags": ["population", "funding-use", "semantic"]
+  },
+  {
+    "id": "partenariats-scientifiques-peche",
+    "query": "partenariats scientifiques pêche Québec",
+    "language": "fr",
+    "relevance": {
+      "55f87ffb-5828-4a30-af02-5762b6501b27": 3,
+      "6a6ffb01-9e68-4861-ad19-ae547b834655": 2
+    },
+    "tags": ["fr", "sector", "jurisdiction"]
+  },
+  {
+    "id": "regional-innovation-nonprofit",
+    "query": "nonprofit regional innovation ecosystem",
+    "language": "en",
+    "relevance": {
+      "f3a58812-22a3-4746-a6ba-825f62536488": 3,
+      "a38e13a4-6863-4093-8e88-4abebd00147b": 2,
+      "22e67ac4-7df1-46f2-9c2f-f153759b72e6": 2,
+      "f1917bd9-a5cc-4f68-add5-d4a588815b4b": 2
+    },
+    "tags": ["eligibility", "family"]
   },
   {
     "id": "no-grant-policy",
