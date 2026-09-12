@@ -97,7 +97,10 @@ export const listGrants = createServerFn({ method: "GET" })
           .array(z.enum(["confirmed", "predicted", "rolling", "closed", "unknown"]))
           .max(5)
           .optional(),
-        evidenceStates: z.array(z.enum(["known", "unknown", "conflicting"])).max(3).optional(),
+        evidenceStates: z
+          .array(z.enum(["known", "unknown", "conflicting"]))
+          .max(3)
+          .optional(),
         limit: z.number().int().min(1).max(100).default(50),
       })
       .parse(input ?? {}),
@@ -385,16 +388,19 @@ export const listGrants = createServerFn({ method: "GET" })
     );
 
     const facetCounts = Object.fromEntries(
-      ([
-        "applicant_types",
-        "populations_served",
-        "funding_uses",
-        "funder_type",
-        "deadline_kind",
-      ] as GrantFacetField[]).map((field) => {
+      (
+        [
+          "applicant_types",
+          "populations_served",
+          "funding_uses",
+          "funder_type",
+          "deadline_kind",
+        ] as GrantFacetField[]
+      ).map((field) => {
         const counts = new Map<string, number>();
         for (const row of grantsWithProfile) {
-          for (const value of row.facets[field].values) counts.set(value, (counts.get(value) ?? 0) + 1);
+          for (const value of row.facets[field].values)
+            counts.set(value, (counts.get(value) ?? 0) + 1);
         }
         return [field, Object.fromEntries([...counts].sort(([a], [b]) => a.localeCompare(b)))];
       }),
