@@ -1662,6 +1662,48 @@ export type Database = {
           },
         ];
       };
+      grant_deadline_observations: {
+        Row: {
+          evidence_span_id: string | null;
+          grant_id: string;
+          id: string;
+          observed_at: string;
+          observed_deadline: string;
+          source_url: string;
+        };
+        Insert: {
+          evidence_span_id?: string | null;
+          grant_id: string;
+          id?: string;
+          observed_at?: string;
+          observed_deadline: string;
+          source_url: string;
+        };
+        Update: {
+          evidence_span_id?: string | null;
+          grant_id?: string;
+          id?: string;
+          observed_at?: string;
+          observed_deadline?: string;
+          source_url?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "grant_deadline_observations_evidence_span_id_fkey";
+            columns: ["evidence_span_id"];
+            isOneToOne: false;
+            referencedRelation: "evidence_spans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "grant_deadline_observations_grant_id_fkey";
+            columns: ["grant_id"];
+            isOneToOne: false;
+            referencedRelation: "grants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       grant_search_profiles: {
         Row: {
           active: boolean;
@@ -1677,6 +1719,7 @@ export type Database = {
           mission: string;
           name: string;
           org_id: string | null;
+          peer_organizations: string[];
           populations_served: string[];
           project_end: string | null;
           project_start: string | null;
@@ -1700,6 +1743,7 @@ export type Database = {
           mission?: string;
           name: string;
           org_id?: string | null;
+          peer_organizations?: string[];
           populations_served?: string[];
           project_end?: string | null;
           project_start?: string | null;
@@ -1723,6 +1767,7 @@ export type Database = {
           mission?: string;
           name?: string;
           org_id?: string | null;
+          peer_organizations?: string[];
           populations_served?: string[];
           project_end?: string | null;
           project_start?: string | null;

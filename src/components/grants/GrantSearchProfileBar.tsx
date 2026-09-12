@@ -29,6 +29,10 @@ export function GrantSearchProfileBar({ selectedProfileId, onSelect }: Props) {
   const [mission, setMission] = useState("");
   const [activities, setActivities] = useState("");
   const [sectors, setSectors] = useState("");
+  const [populations, setPopulations] = useState("");
+  const [fundingUses, setFundingUses] = useState("");
+  const [applicantTypes, setApplicantTypes] = useState("");
+  const [peerOrganizations, setPeerOrganizations] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { data, isPending } = useQuery({
     queryKey: ["grant-search-profiles"],
@@ -43,9 +47,10 @@ export function GrantSearchProfileBar({ selectedProfileId, onSelect }: Props) {
           activities: splitTerms(activities),
           sectors: splitTerms(sectors),
           jurisdictions: ["CA"],
-          populations_served: [],
-          funding_uses: [],
-          applicant_types: [],
+          populations_served: splitTerms(populations),
+          funding_uses: splitTerms(fundingUses),
+          applicant_types: splitTerms(applicantTypes),
+          peer_organizations: splitTerms(peerOrganizations),
           amount_min_cad: null,
           amount_max_cad: null,
           project_start: null,
@@ -64,6 +69,10 @@ export function GrantSearchProfileBar({ selectedProfileId, onSelect }: Props) {
       setMission("");
       setActivities("");
       setSectors("");
+      setPopulations("");
+      setFundingUses("");
+      setApplicantTypes("");
+      setPeerOrganizations("");
       setError(null);
     },
     onError: (cause) => setError(cause instanceof Error ? cause.message : String(cause)),
@@ -138,6 +147,26 @@ export function GrantSearchProfileBar({ selectedProfileId, onSelect }: Props) {
             value={sectors}
             onChange={(e) => setSectors(e.target.value)}
           />
+          <Input
+            placeholder="Applicant types, comma separated"
+            value={applicantTypes}
+            onChange={(e) => setApplicantTypes(e.target.value)}
+          />
+          <Input
+            placeholder="Populations served, comma separated"
+            value={populations}
+            onChange={(e) => setPopulations(e.target.value)}
+          />
+          <Input
+            placeholder="Funding uses, comma separated"
+            value={fundingUses}
+            onChange={(e) => setFundingUses(e.target.value)}
+          />
+          <Input
+            placeholder="Peer organizations, comma separated"
+            value={peerOrganizations}
+            onChange={(e) => setPeerOrganizations(e.target.value)}
+          />
           <div className="flex items-center gap-3 md:col-span-2">
             <Button
               type="button"
@@ -148,8 +177,8 @@ export function GrantSearchProfileBar({ selectedProfileId, onSelect }: Props) {
               {createMutation.isPending ? "Creating…" : "Create and apply"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Add precise populations, funding uses, amounts and exclusions in the next profile
-              editor iteration.
+              Peer organizations are used only as a bounded historical signal; eligibility rules
+              remain authoritative.
             </p>
           </div>
           {error && <p className="text-sm text-destructive md:col-span-2">{error}</p>}
