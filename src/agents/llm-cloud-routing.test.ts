@@ -19,17 +19,17 @@ describe("cloud model maps", () => {
     // gpt-oss-120b and zai-glm-4.7 are larger but returned empty content
     // intermittently depending on whether response_format was set.
     for (const agent of AGENTS) {
-      expect(CEREBRAS_MODEL_MAP[agent]).toBe("gemma-4-31b");
+      expect(CEREBRAS_MODEL_MAP[agent]).toBe("qwen-3.8-27b");
     }
   });
 
   it("gives the judgement agents Groq's 70B and the volume agents the fast 8B", () => {
-    expect(GROQ_MODEL_MAP.evaluator).toBe("llama-3.3-70b-versatile");
-    expect(GROQ_MODEL_MAP.critic).toBe("llama-3.3-70b-versatile");
-    expect(GROQ_MODEL_MAP.strategist).toBe("llama-3.3-70b-versatile");
-    expect(GROQ_MODEL_MAP.writer).toBe("llama-3.3-70b-versatile");
-    expect(GROQ_MODEL_MAP.discoverer).toBe("llama-3.1-8b-instant");
-    expect(GROQ_MODEL_MAP.enricher).toBe("llama-3.1-8b-instant");
+    expect(GROQ_MODEL_MAP.evaluator).toBe("openai/gpt-oss-120b");
+    expect(GROQ_MODEL_MAP.critic).toBe("openai/gpt-oss-120b");
+    expect(GROQ_MODEL_MAP.strategist).toBe("openai/gpt-oss-120b");
+    expect(GROQ_MODEL_MAP.writer).toBe("openai/gpt-oss-120b");
+    expect(GROQ_MODEL_MAP.discoverer).toBe("openai/gpt-oss-20b");
+    expect(GROQ_MODEL_MAP.enricher).toBe("openai/gpt-oss-20b");
   });
 
   it("does not reference Gemini models this account cannot call", () => {

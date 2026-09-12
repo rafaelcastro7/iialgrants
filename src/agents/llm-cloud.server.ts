@@ -66,22 +66,22 @@ type CloudProvider = {
 // Quality for the reasoning agents comes from provider ORDER instead: they try
 // Groq's 70B first (see agentProviderOrder below).
 export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
-  discoverer: "gemma-4-31b",
-  enricher: "gemma-4-31b",
-  evaluator: "gemma-4-31b",
-  critic: "gemma-4-31b",
-  strategist: "gemma-4-31b",
-  writer: "gemma-4-31b",
+  discoverer: "qwen-3.8-27b",
+  enricher: "qwen-3.8-27b",
+  evaluator: "qwen-3.8-27b",
+  critic: "qwen-3.8-27b",
+  strategist: "qwen-3.8-27b",
+  writer: "qwen-3.8-27b",
 };
 
 // Groq — secondary cloud source (free tier) if Cerebras is unavailable.
 export const GROQ_MODEL_MAP: Record<AgentName, string> = {
-  discoverer: "llama-3.1-8b-instant",
-  enricher: "llama-3.1-8b-instant",
-  evaluator: "llama-3.3-70b-versatile",
-  strategist: "llama-3.3-70b-versatile",
-  writer: "llama-3.3-70b-versatile",
-  critic: "llama-3.3-70b-versatile",
+  discoverer: "openai/gpt-oss-20b",
+  enricher: "openai/gpt-oss-20b",
+  evaluator: "openai/gpt-oss-120b",
+  strategist: "openai/gpt-oss-120b",
+  writer: "openai/gpt-oss-120b",
+  critic: "openai/gpt-oss-120b",
 };
 
 // Gemini — tertiary cloud source via Google's OpenAI-compatible endpoint.
@@ -100,12 +100,12 @@ export const GROQ_MODEL_MAP: Record<AgentName, string> = {
 // measure, don't assume. This is the last rung before local Ollama anyway, so
 // one known-good model beats a nominally better one that might not answer.
 export const GEMINI_MODEL_MAP: Record<AgentName, string> = {
-  discoverer: "gemini-2.5-flash",
-  enricher: "gemini-2.5-flash",
-  evaluator: "gemini-2.5-flash",
-  strategist: "gemini-2.5-flash",
-  writer: "gemini-2.5-flash",
-  critic: "gemini-2.5-flash",
+  discoverer: "gemini-3-flash-preview",
+  enricher: "gemini-3-flash-preview",
+  evaluator: "gemini-3-flash-preview",
+  strategist: "gemini-3-flash-preview",
+  writer: "gemini-3-flash-preview",
+  critic: "gemini-3-flash-preview",
 };
 
 /**
