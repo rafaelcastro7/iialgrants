@@ -8,4 +8,3 @@ if (!["A", "B", "C", "scout", "all"].includes(requested)) {
 const result = await runSourceCurator(requested);
 console.log(JSON.stringify(result, null, 2));
 if (result.totals.err > 0) process.exitCode = 1;
-

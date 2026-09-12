@@ -207,8 +207,15 @@ if (JSON_OUT) {
 } else {
   console.log("\nCloud LLM chain — Cerebras -> Groq -> Gemini\n" + "=".repeat(64));
   for (const r of reports) {
-    const providerUsable = r.keyPresent && r.keyValid && !r.missing.length && r.chat.every((c) => c.ok);
-    const status = !r.keyPresent ? "NO KEY" : providerUsable ? "OK" : r.keyValid ? "DEGRADED" : "FAIL";
+    const providerUsable =
+      r.keyPresent && r.keyValid && !r.missing.length && r.chat.every((c) => c.ok);
+    const status = !r.keyPresent
+      ? "NO KEY"
+      : providerUsable
+        ? "OK"
+        : r.keyValid
+          ? "DEGRADED"
+          : "FAIL";
     console.log(`\n[${status}] ${r.provider}`);
     console.log(`  ${r.detail}`);
     for (const c of r.chat) {
