@@ -34,6 +34,7 @@ export async function enrichGrantImpl(
   const { extractDeadline } = await import("@/agents/extractors/deadlines.server");
   const { extractEligibility } = await import("@/agents/extractors/eligibility.server");
   const { extractSectors } = await import("@/agents/extractors/sectors.server");
+  const { extractGrantFacets } = await import("@/agents/extractors/facets.server");
   const { recordEvidence, snippetIsGrounded } = await import("@/agents/evidence.server");
   const { traceStep } = await import("@/agents/trace.server");
   const db = opts?.db ?? supabaseAdmin;
@@ -63,7 +64,7 @@ export async function enrichGrantImpl(
   const { data: g, error } = await db
     .from("grants")
     .select(
-      "id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, enrich_attempts, confirmed_source_urls",
+      "id, title, summary, language, url, status, amount_cad_min, amount_cad_max, deadline, eligibility, sectors, applicant_types, populations_served, funding_uses, funder_type, deadline_kind, source_freshness_at, enrich_attempts, confirmed_source_urls",
     )
     .eq("id", data.grantId)
     .maybeSingle();
@@ -192,6 +193,7 @@ export async function enrichGrantImpl(
   const titleTokens = grantTitleTokens(g.title);
   const isRelevantPage = (page: { url: string; markdown: string }) =>
     pageLooksRelevantToGrant(page, titleTokens);
+  const supportedFacetValues = new Map<string, Set<string>>();
 
   await trace("scrape", `Scraped ${scraped.markdown.length} chars via ${scraped.via}`, "done", {
     via: scraped.via,
@@ -206,6 +208,36 @@ export async function enrichGrantImpl(
     page: { url: string; markdown: string },
     stage: "main" | "deep",
   ) => {
+    const facetMatches = extractGrantFacets(page.markdown);
+    for (const match of facetMatches) {
+      methodCounts.rule++;
+      await recordEvidence({
+        grantId: g.id,
+        agent: "enricher",
+        field: `facet.${match.field}`,
+        value: { assertion: match.assertion, values: [match.value] },
+        sourceUrl: page.url,
+        snippet: match.snippet,
+        snippetOffset: match.matchOffset,
+        method: "rule",
+        runId,
+        db,
+      });
+      if (match.assertion === "supports") {
+        const values = supportedFacetValues.get(match.field) ?? new Set<string>();
+        values.add(match.value);
+        supportedFacetValues.set(match.field, values);
+      }
+    }
+    for (const field of ["applicant_types", "populations_served", "funding_uses"] as const) {
+      const values = supportedFacetValues.get(field);
+      if (values?.size) patch[field] = [...values];
+    }
+    const funderTypes = supportedFacetValues.get("funder_type");
+    // Multiple supported scalar claims are retained in evidence as a conflict;
+    // avoid choosing one arbitrarily for the display column.
+    if (funderTypes?.size === 1) patch.funder_type = [...funderTypes][0];
+
     const needAmountMin = !hasAmountMin && patch.amount_cad_min == null;
     const needAmountMax = !hasAmountMax && patch.amount_cad_max == null;
     if (needAmountMin || needAmountMax) {
@@ -276,6 +308,20 @@ export async function enrichGrantImpl(
       // intake from the grant's stored text, so leaving deadline unset here
       // loses nothing.
       if (deadlineMatch && deadlineMatch.iso === "Rolling") {
+        patch.deadline_kind = "rolling";
+        patch.deadline_confidence = 0.95;
+        await recordEvidence({
+          grantId: g.id,
+          agent: "enricher",
+          field: "facet.deadline_kind",
+          value: { assertion: "supports", values: ["rolling"] },
+          sourceUrl: page.url,
+          snippet: deadlineMatch.snippet,
+          snippetOffset: deadlineMatch.matchOffset,
+          method: "chrono",
+          runId,
+          db,
+        });
         await trace(
           "chrono_deadline",
           `Rolling/continuous intake detected on ${stage} page (leaving deadline unset)`,
@@ -284,6 +330,8 @@ export async function enrichGrantImpl(
         );
       } else if (deadlineMatch) {
         patch.deadline = deadlineMatch.iso;
+        patch.deadline_kind = "confirmed";
+        patch.deadline_confidence = 0.95;
         methodCounts.chrono++;
         await trace(
           "chrono_deadline",
@@ -299,6 +347,18 @@ export async function enrichGrantImpl(
           agent: "enricher",
           field: "deadline",
           value: deadlineMatch.iso,
+          sourceUrl: page.url,
+          snippet: deadlineMatch.snippet,
+          snippetOffset: deadlineMatch.matchOffset,
+          method: "chrono",
+          runId,
+          db,
+        });
+        await recordEvidence({
+          grantId: g.id,
+          agent: "enricher",
+          field: "facet.deadline_kind",
+          value: { assertion: "supports", values: ["confirmed"] },
           sourceUrl: page.url,
           snippet: deadlineMatch.snippet,
           snippetOffset: deadlineMatch.matchOffset,
@@ -927,6 +987,8 @@ export async function enrichGrantImpl(
 
   patch.status = "enriched";
   patch.enriched_at = new Date().toISOString();
+  patch.source_freshness_at = new Date().toISOString();
+  patch.source_confidence = scraped.via === "direct" ? 0.95 : 0.85;
   patch.enrich_last_error = null;
   patch.enrich_last_attempt_at = new Date().toISOString();
   const { error: updateError } = await db
