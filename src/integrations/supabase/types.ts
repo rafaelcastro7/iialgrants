@@ -863,9 +863,11 @@ export type Database = {
           auto_approved_30d: number;
           cadence_cron: string | null;
           candidates_30d: number;
+          coverage_dimensions: string[];
           created_at: string;
           dataset_key: string;
           enabled: boolean;
+          expected_refresh_hours: number;
           format: string;
           id: string;
           label: string;
@@ -873,6 +875,8 @@ export type Database = {
           last_run_at: string | null;
           last_status: string | null;
           notes: string | null;
+          owner_label: string;
+          recovery_playbook: string;
           rows_30d: number;
           source_url: string | null;
           tier: string;
@@ -882,9 +886,11 @@ export type Database = {
           auto_approved_30d?: number;
           cadence_cron?: string | null;
           candidates_30d?: number;
+          coverage_dimensions?: string[];
           created_at?: string;
           dataset_key: string;
           enabled?: boolean;
+          expected_refresh_hours: number;
           format: string;
           id?: string;
           label: string;
@@ -892,6 +898,8 @@ export type Database = {
           last_run_at?: string | null;
           last_status?: string | null;
           notes?: string | null;
+          owner_label: string;
+          recovery_playbook: string;
           rows_30d?: number;
           source_url?: string | null;
           tier: string;
@@ -901,9 +909,11 @@ export type Database = {
           auto_approved_30d?: number;
           cadence_cron?: string | null;
           candidates_30d?: number;
+          coverage_dimensions?: string[];
           created_at?: string;
           dataset_key?: string;
           enabled?: boolean;
+          expected_refresh_hours?: number;
           format?: string;
           id?: string;
           label?: string;
@@ -911,6 +921,8 @@ export type Database = {
           last_run_at?: string | null;
           last_status?: string | null;
           notes?: string | null;
+          owner_label?: string;
+          recovery_playbook?: string;
           rows_30d?: number;
           source_url?: string | null;
           tier?: string;
@@ -2922,6 +2934,25 @@ export type Database = {
           rows_in_total: number | null;
           runs: number | null;
           success_rate: number | null;
+        };
+        Relationships: [];
+      };
+      source_coverage_accountability: {
+        Row: {
+          accountable_state: string | null;
+          age_hours: number | null;
+          coverage_dimensions: string[] | null;
+          dataset_key: string | null;
+          enabled: boolean | null;
+          expected_refresh_hours: number | null;
+          id: string | null;
+          label: string | null;
+          last_error: string | null;
+          last_run_at: string | null;
+          last_status: string | null;
+          owner_label: string | null;
+          recovery_playbook: string | null;
+          tier: string | null;
         };
         Relationships: [];
       };

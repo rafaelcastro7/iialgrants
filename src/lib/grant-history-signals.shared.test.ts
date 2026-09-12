@@ -7,7 +7,9 @@ import {
 
 describe("predictNextDeadline", () => {
   it("requires two observations when cadence is not explicit", () => {
-    expect(predictNextDeadline({ observedDeadlines: ["2025-03-31"], asOf: "2025-04-01" })).toBeNull();
+    expect(
+      predictNextDeadline({ observedDeadlines: ["2025-03-31"], asOf: "2025-04-01" }),
+    ).toBeNull();
   });
 
   it("predicts a stable observed cycle without calling it confirmed", () => {

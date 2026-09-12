@@ -26,9 +26,9 @@ export function predictNextDeadline(input: {
   const explicit = input.explicitCadenceDays;
   if (dates.length < 2 && !(explicit && explicit >= 7 && explicit <= 730)) return null;
 
-  const intervals = dates.slice(1).map((date, index) =>
-    Math.round((date.getTime() - dates[index].getTime()) / DAY_MS),
-  );
+  const intervals = dates
+    .slice(1)
+    .map((date, index) => Math.round((date.getTime() - dates[index].getTime()) / DAY_MS));
   const observedCadence = intervals.length ? median(intervals) : 0;
   const annualCycle = !explicit && observedCadence >= 360 && observedCadence <= 370;
   const cadenceDays = explicit ?? (annualCycle ? 365 : Math.round(observedCadence));
@@ -42,8 +42,7 @@ export function predictNextDeadline(input: {
   do {
     if (annualCycle) predicted.setUTCFullYear(predicted.getUTCFullYear() + 1);
     else predicted.setUTCDate(predicted.getUTCDate() + cadenceDays);
-  }
-  while (predicted <= asOf);
+  } while (predicted <= asOf);
 
   const variability =
     intervals.length > 1
@@ -71,11 +70,19 @@ export function summarizeGivingRecords(
   raw: unknown,
   peerOrganizations: string[],
   asOfYear = new Date().getUTCFullYear(),
-): { peerAwardCount: number; repeatRecipientRate: number | null; yearsSinceLatestAward: number | null } {
+): {
+  peerAwardCount: number;
+  repeatRecipientRate: number | null;
+  yearsSinceLatestAward: number | null;
+} {
   if (!Array.isArray(raw) || raw.length === 0) {
     return { peerAwardCount: 0, repeatRecipientRate: null, yearsSinceLatestAward: null };
   }
-  const normalizeName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const normalizeName = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
   const peers = peerOrganizations.map(normalizeName).filter(Boolean);
   const counts = new Map<string, number>();
   let latestYear: number | null = null;
@@ -86,10 +93,12 @@ export function summarizeGivingRecords(
     const recipient = normalizeName(String(row.recipient_name ?? row.recipient ?? row.name ?? ""));
     if (recipient) {
       counts.set(recipient, (counts.get(recipient) ?? 0) + 1);
-      if (peers.some((peer) => recipient.includes(peer) || peer.includes(recipient))) peerAwardCount++;
+      if (peers.some((peer) => recipient.includes(peer) || peer.includes(recipient)))
+        peerAwardCount++;
     }
     const year = Number(row.year ?? row.data_year ?? String(row.date ?? "").slice(0, 4));
-    if (Number.isInteger(year) && year >= 1900 && year <= asOfYear) latestYear = Math.max(latestYear ?? year, year);
+    if (Number.isInteger(year) && year >= 1900 && year <= asOfYear)
+      latestYear = Math.max(latestYear ?? year, year);
   }
   const repeatRecipients = [...counts.values()].filter((count) => count > 1).length;
   return {
@@ -112,7 +121,9 @@ export function computeHistoryBoost(input: {
   if (input.peerAwardCount > 0) {
     const contribution = Math.min(0.04, input.peerAwardCount * 0.01);
     boost += contribution;
-    factors.push(`${input.peerAwardCount} award(s) to selected peers (+${contribution.toFixed(2)})`);
+    factors.push(
+      `${input.peerAwardCount} award(s) to selected peers (+${contribution.toFixed(2)})`,
+    );
   }
   if ((input.repeatRecipientRate ?? 0) >= 0.25) {
     boost += 0.02;

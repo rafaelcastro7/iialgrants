@@ -429,7 +429,10 @@ function SourcesPage() {
                           <div className="mt-1 text-muted-foreground">
                             {s.owner_label} · SLA {s.expected_refresh_hours}h
                           </div>
-                          <div className="truncate text-muted-foreground" title={s.recovery_playbook}>
+                          <div
+                            className="truncate text-muted-foreground"
+                            title={s.recovery_playbook}
+                          >
                             {s.coverage_dimensions.join(", ")}
                           </div>
                         </TableCell>
