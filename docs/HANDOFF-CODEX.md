@@ -41,7 +41,8 @@ Verification on 2026-09-12: ESLint passed; Vitest passed 544 tests with 4
 skipped; production build passed; `bun run eval:search --enforce` passed with
 20/28 executable cases, Precision@10 0.9283, Recall@10 0.9317, MRR 0.95,
 nDCG@10 0.8839 and hard-fail leakage 0; `startup-validate.ts` ended `ALL
-SYSTEMS GO` with 712 funders, 3,143 grants and 3,140 embeddings. Playwright
+SYSTEMS GO` with 712 funders, 3,143 grants, 3,140 embeddings and 419 funders
+linked to grants. Playwright
 targeted smoke passed 35/35 for basic user, navigation audit and routes,
 including `/grants` and `/admin/sources`. The full Playwright suite was
 attempted but timed out after 15 minutes without actionable output, likely in
