@@ -12,6 +12,10 @@ import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { cn } from "@/lib/utils";
 import { canTransition, isGrantStatus, type GrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "./GrantRow";
+import {
+  GrantFeedbackControls,
+  type GrantFeedbackDecision,
+} from "./GrantFeedbackControls";
 
 type Stage = {
   key: string;
@@ -155,6 +159,7 @@ export type KanbanProps = {
   onEnrich: (id: string) => void;
   onEvaluate: (id: string) => void;
   onDraft: (id: string) => void;
+  onFeedback?: (grant: GrantRowData, decision: GrantFeedbackDecision) => void;
   /** Present for admins only. Enables drag-to-move and bulk actions. */
   onMove?: (grantIds: string[], toStatus: GrantStatus) => void;
   filters: React.ReactNode;
@@ -176,6 +181,7 @@ export function GrantKanban({
   onEnrich,
   onEvaluate,
   onDraft,
+  onFeedback,
   onMove,
   filters,
   kpis,
@@ -316,6 +322,7 @@ export function GrantKanban({
                         onEnrich={onEnrich}
                         onEvaluate={onEvaluate}
                         onDraft={onDraft}
+                        onFeedback={onFeedback}
                         draggable={!!onMove}
                         selected={selected.has(g.id)}
                         onToggleSelect={onMove ? toggleSelected : undefined}
@@ -414,6 +421,7 @@ function KanbanCard({
   onEnrich,
   onEvaluate,
   onDraft,
+  onFeedback,
   draggable,
   selected,
   onToggleSelect,
@@ -427,6 +435,7 @@ function KanbanCard({
   onEnrich: (id: string) => void;
   onEvaluate: (id: string) => void;
   onDraft: (id: string) => void;
+  onFeedback?: (grant: GrantRowData, decision: GrantFeedbackDecision) => void;
   draggable?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
@@ -562,6 +571,11 @@ function KanbanCard({
           </Link>
         </Button>
       </div>
+      {onFeedback && (
+        <div className="mt-2 border-t border-border/60 pt-2">
+          <GrantFeedbackControls grant={g} onFeedback={onFeedback} compact />
+        </div>
+      )}
     </div>
   );
 }

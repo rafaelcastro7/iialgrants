@@ -4,13 +4,11 @@ import {
   AlertTriangle,
   ArrowRight,
   Bot,
-  Bookmark,
   CalendarClock,
   CheckCircle2,
   ClipboardList,
   ExternalLink,
   FileText,
-  EyeOff,
   Landmark,
   Loader2,
   MapPin,
@@ -30,6 +28,10 @@ import { EventLog } from "@/components/grants/EventLog";
 import { FunderSelector } from "@/components/grants/FunderSelector";
 import { NotebookLMBridge } from "@/components/grants/NotebookLMBridge";
 import type { GrantRowData } from "@/components/grants/GrantRow";
+import {
+  GrantFeedbackControls,
+  type GrantFeedbackDecision,
+} from "@/components/grants/GrantFeedbackControls";
 import {
   AMOUNT_PRESETS,
   collectCountries,
@@ -95,7 +97,7 @@ type V2GrantsWorkspaceProps = {
   onEligibleOnlyChange: (next: boolean) => void;
   onEnrich: (grantId: string) => void;
   onEvaluate: (grantId: string) => void;
-  onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
+  onFeedback?: (grant: GrantRowData, decision: GrantFeedbackDecision) => void;
   onJurisdictionChange: (next: string) => void;
   onCountryChange: (next: string) => void;
   onSectorChange: (next: string) => void;
@@ -832,7 +834,7 @@ function DecisionQueue({
   onDraft: (grantId: string) => void;
   onEnrich: (grantId: string) => void;
   onEvaluate: (grantId: string) => void;
-  onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
+  onFeedback?: (grant: GrantRowData, decision: GrantFeedbackDecision) => void;
 }) {
   if (grants.length === 0) {
     return (
@@ -879,7 +881,7 @@ function QueueCard({
   onDraft: (grantId: string) => void;
   onEnrich: (grantId: string) => void;
   onEvaluate: (grantId: string) => void;
-  onFeedback?: (grant: GrantRowData, action: "saved" | "hidden") => void;
+  onFeedback?: (grant: GrantRowData, decision: GrantFeedbackDecision) => void;
 }) {
   const deadline = deadlineState(grant.deadline);
   const fit = fitValue(grant);
@@ -959,28 +961,7 @@ function QueueCard({
           </Link>
         </Button>
         {onFeedback && (
-          <div className="flex gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1"
-              aria-label={`Save ${grant.title}`}
-              onClick={() => onFeedback(grant, "saved")}
-            >
-              <Bookmark className="h-3.5 w-3.5" /> Save
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="flex-1 gap-1 text-muted-foreground"
-              aria-label={`Hide ${grant.title}`}
-              onClick={() => onFeedback(grant, "hidden")}
-            >
-              <EyeOff className="h-3.5 w-3.5" /> Hide
-            </Button>
-          </div>
+          <GrantFeedbackControls grant={grant} onFeedback={onFeedback} compact />
         )}
       </div>
     </div>
