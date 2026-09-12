@@ -12,6 +12,7 @@ export const SearchProfileInput = z
     sectors: terms,
     jurisdictions: terms.default(["CA"]),
     applicant_types: terms,
+    peer_organizations: terms,
     amount_min_cad: z.number().nonnegative().nullable().default(null),
     amount_max_cad: z.number().nonnegative().nullable().default(null),
     project_start: z.string().date().nullable().default(null),

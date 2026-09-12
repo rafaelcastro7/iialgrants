@@ -6,6 +6,7 @@ export type SearchProfileForRanking = {
   sectors: string[];
   jurisdictions: string[];
   applicant_types: string[];
+  peer_organizations?: string[];
   amount_min_cad: number | null;
   amount_max_cad: number | null;
   required_terms: string[];
