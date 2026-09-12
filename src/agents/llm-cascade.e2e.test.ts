@@ -42,7 +42,6 @@ describe("local-only LLM cascade", () => {
     delete process.env.CEREBRAS_API_KEY;
     delete process.env.GROQ_API_KEY;
     delete process.env.GOOGLE_AI_STUDIO_KEY;
-    vi.resetModules();
   });
 
   afterEach(() => {
