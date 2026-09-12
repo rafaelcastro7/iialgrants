@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 import { assertAdmin } from "@/lib/admin-guard";
 import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-stages.shared";
 import { scoreGrantForProfile } from "@/lib/grant-search-profile-ranking.shared";
-import { searchGrantCatalogHybrid } from "@/lib/grant-search-hybrid.server";
 import { getOrgProfileForUser } from "@/lib/org-profile-query";
 import {
   grantFacetEvidenceState,
@@ -14,6 +14,12 @@ import {
   type GrantFacetState,
 } from "@/lib/grant-facets.shared";
 import { computeHistoryBoost, summarizeGivingRecords } from "@/lib/grant-history-signals.shared";
+import {
+  computeSearchQuality,
+  SEARCH_INDEX_VERSION,
+  SEARCH_RANKING_VERSION,
+  SEARCH_TAXONOMY_VERSION,
+} from "@/lib/grant-search-ranking.shared";
 
 // A single `.in("grant_id", ids)` with ~100 UUIDs produces a query string
 // long enough that the local Kong/PostgREST gateway intermittently returns
@@ -103,6 +109,8 @@ export const listGrants = createServerFn({ method: "GET" })
           .array(z.enum(["known", "unknown", "conflicting"]))
           .max(3)
           .optional(),
+        includeHardBlocked: z.boolean().default(false),
+        includeDismissed: z.boolean().default(false),
         limit: z.number().int().min(1).max(100).default(50),
       })
       .parse(input ?? {}),
@@ -120,7 +128,7 @@ export const listGrants = createServerFn({ method: "GET" })
     const feedbackPromise = data.profileId
       ? context.supabase
           .from("grant_search_feedback")
-          .select("grant_id, action")
+          .select("grant_id, action, updated_at, score_snapshot")
           .eq("profile_id", data.profileId)
           .eq("user_id", context.userId)
       : Promise.resolve({ data: [], error: null });
@@ -131,21 +139,41 @@ export const listGrants = createServerFn({ method: "GET" })
     // side of the country at the top — the evaluator then correctly failed
     // them on jurisdiction, after the user had already spent a click.
     const orgProfilePromise = getOrgProfileForUser(context.supabase, context.userId);
+    const principalPromise = context.supabase
+      .from("profiles")
+      .select("org_id")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const searchConfigPromise = context.supabase
+      .from("grant_search_runtime_config")
+      .select("hybrid_enabled,shadow_mode,ranking_version")
+      .eq("is_singleton", true)
+      .maybeSingle();
 
     const [
       { data: searchProfile, error: profileError },
       { data: feedback, error: feedbackError },
       { data: orgProfile },
-    ] = await Promise.all([profilePromise, feedbackPromise, orgProfilePromise]);
+      { data: principal, error: principalError },
+      { data: searchConfig, error: searchConfigError },
+    ] = await Promise.all([
+      profilePromise,
+      feedbackPromise,
+      orgProfilePromise,
+      principalPromise,
+      searchConfigPromise,
+    ]);
     if (profileError) throw new Error(profileError.message);
     if (feedbackError) throw new Error(feedbackError.message);
+    if (principalError) throw new Error(principalError.message);
+    if (searchConfigError) throw new Error(searchConfigError.message);
     if (data.profileId && !searchProfile) throw new Error("Search profile not found");
 
     const orgJurisdictions = new Set(
       ((orgProfile?.jurisdictions as string[] | null) ?? []).map((j) => j.toUpperCase()),
     );
 
-    const feedbackByGrant = new Map((feedback ?? []).map((row) => [row.grant_id, row.action]));
+    const feedbackByGrant = new Map((feedback ?? []).map((row) => [row.grant_id, row]));
     const rankById = new Map<
       string,
       {
@@ -153,14 +181,33 @@ export const listGrants = createServerFn({ method: "GET" })
         matched_on: string;
         lexical_score: number;
         semantic_score: number;
-        retrieval_mode: "hybrid" | "lexical-fallback";
+        retrieval_mode: "hybrid" | "lexical-fallback" | "lexical-only" | "shadow";
         query_concepts: string[];
       }
     >();
     let searchDegradedReason: string | null = null;
+    let searchDiagnostics = {
+      lexicalCandidates: 0,
+      semanticCandidates: 0,
+      fusedCandidates: 0,
+      latencyMs: 0,
+    };
+    const hasSearch = !!data.search && data.search.length >= 2;
     if (data.search && data.search.length >= 2) {
-      const hybrid = await searchGrantCatalogHybrid(context.supabase, data.search, 100);
+      const { searchGrantCatalogHybrid } = await import("@/lib/grant-search-hybrid.server");
+      const searchMode = !searchConfig?.hybrid_enabled
+        ? "lexical-only"
+        : searchConfig.shadow_mode
+          ? "shadow"
+          : "hybrid";
+      const hybrid = await searchGrantCatalogHybrid(
+        context.supabase,
+        data.search,
+        100,
+        searchMode,
+      );
       searchDegradedReason = hybrid.degradedReason;
+      searchDiagnostics = hybrid.diagnostics;
       for (const row of hybrid.matches) {
         rankById.set(row.grantId, {
           relevance: row.relevance,
@@ -171,8 +218,6 @@ export const listGrants = createServerFn({ method: "GET" })
           query_concepts: row.queryConcepts,
         });
       }
-      if (rankById.size === 0)
-        return { grants: [], searchDegradedReason, availableCountries: [] as string[] };
     }
 
     const GRANT_COLUMNS =
@@ -194,7 +239,7 @@ export const listGrants = createServerFn({ method: "GET" })
     // to make Kong return "invalid response from upstream server", which the
     // UI surfaced as a blank error page. Chunk the id filter the same way.
     let rows: Awaited<ReturnType<typeof buildQuery>>["data"] = [];
-    if (rankById.size > 0) {
+    if (hasSearch && rankById.size > 0) {
       // The matched set is already capped at 100 ids, so every match is
       // fetched and the Canada boost below can reorder the full result.
       const collected: NonNullable<typeof rows> = [];
@@ -204,6 +249,8 @@ export const listGrants = createServerFn({ method: "GET" })
         collected.push(...(chunkRows ?? []));
       }
       rows = collected;
+    } else if (hasSearch) {
+      rows = [];
     } else if (data.country) {
       const { data: allRows, error } = await buildQuery();
       if (error) throw new Error(error.message);
