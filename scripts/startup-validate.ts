@@ -175,19 +175,19 @@ await check("cloud llm chain", false, async () => {
       name: "cerebras",
       url: "https://api.cerebras.ai/v1",
       key: process.env.CEREBRAS_API_KEY,
-      model: CEREBRAS_MODEL_MAP.evaluator,
+      model: CEREBRAS_MODEL_MAP.discoverer,
     },
     {
       name: "groq",
       url: "https://api.groq.com/openai/v1",
       key: process.env.GROQ_API_KEY,
-      model: GROQ_MODEL_MAP.evaluator,
+      model: GROQ_MODEL_MAP.discoverer,
     },
     {
       name: "gemini",
       url: "https://generativelanguage.googleapis.com/v1beta/openai",
       key: process.env.GOOGLE_AI_STUDIO_KEY,
-      model: GEMINI_MODEL_MAP.evaluator,
+      model: GEMINI_MODEL_MAP.discoverer,
     },
   ];
 
@@ -206,8 +206,9 @@ await check("cloud llm chain", false, async () => {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
           body: JSON.stringify({
             model: p.model,
-            messages: [{ role: "user", content: "Reply with the single word: ready" }],
-            max_tokens: 8,
+              messages: [{ role: "user", content: 'Reply with only JSON: {"status":"ready"}' }],
+              response_format: { type: "json_object" },
+              max_tokens: 32,
             temperature: 0,
           }),
         },
@@ -220,12 +221,13 @@ await check("cloud llm chain", false, async () => {
       results.push(`${p.name}:FAIL`);
     }
   }
-  if (broken.length) {
+  const usable = results.filter((r) => r.endsWith(":ok"));
+  if (!usable.length) {
     throw new Error(
       `${broken.join("; ")} — run "bun run scripts/check-cloud-llm.ts" for the model list`,
     );
   }
-  return results.join(", ");
+  return broken.length ? `${results.join(", ")}; degraded: ${broken.join("; ")}` : results.join(", ");
 });
 
 // --- 6. The real hybrid search path the /grants page uses --------------------
