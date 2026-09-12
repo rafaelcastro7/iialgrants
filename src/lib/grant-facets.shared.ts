@@ -40,6 +40,10 @@ const normalize = (value: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
+// Facet values are controlled labels, where punctuation is not semantic
+// (`nonprofit`, `non-profit`, and `non profit` describe the same value).
+const identity = (value: string) => normalize(value).replace(/\s+/g, "");
+
 function stringsFrom(value: unknown): string[] {
   if (typeof value === "string") return value.trim() ? [value.trim()] : [];
   if (Array.isArray(value)) return value.flatMap(stringsFrom);
@@ -57,7 +61,7 @@ function assertionFrom(value: unknown): "supports" | "excludes" {
 function unique(values: string[]): string[] {
   const byNormalized = new Map<string, string>();
   for (const value of values) {
-    const key = normalize(value);
+    const key = identity(value);
     if (key && !byNormalized.has(key)) byNormalized.set(key, value.trim());
   }
   return [...byNormalized.values()];
@@ -89,8 +93,8 @@ export function resolveGrantFacet(input: {
       .filter((row) => assertionFrom(row.value) === "excludes")
       .flatMap((row) => stringsFrom(row.value)),
   );
-  const supportedKeys = new Set(supported.map(normalize));
-  const overlap = excluded.some((value) => supportedKeys.has(normalize(value)));
+  const supportedKeys = new Set(supported.map(identity));
+  const overlap = excluded.some((value) => supportedKeys.has(identity(value)));
   const incompatibleScalarClaims = !ARRAY_FIELDS.has(input.field) && supported.length > 1;
   const state: GrantFacetState =
     overlap || incompatibleScalarClaims
@@ -127,4 +131,3 @@ export function resolveGrantFacets(input: {
     ]),
   ) as Record<GrantFacetField, ResolvedGrantFacet>;
 }
-
