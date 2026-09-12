@@ -71,17 +71,17 @@ rather than breaks.
 | strategist, writer                    | Groq -> Cerebras -> Gemini | Plain-text reasoning/prose agents use Groq `openai/gpt-oss-120b`, which answers plain mode reliably on this account.                                                |
 | discoverer, enricher                  | Cerebras -> Groq -> Gemini | High-volume JSON extraction still tries Cerebras first, but current account quota returns 402; Groq `qwen/qwen3.8-27b` and Gemini are the live cloud rungs.          |
 
-Three findings that cost real quality, all from live probes on 2026-08-16:
+Current findings from live probes on 2026-09-12:
 
-- **Gemini's whole rung was dead.** Both mapped `gemini-2.0-*` models had been
-  retired (404). `gemini-2.5-pro` and `gemini-2.5-flash-lite` are _listed_ by
-  `GET /models` but also answer 404 on this account — **being listed is not
-  evidence a model can be called.** Only `gemini-2.5-flash` works.
-- **A stale comment cost every judgement a 31B model.** The note claiming
-  Cerebras `gpt-oss-120b` "truncates" and `zai-glm-4.7` "returns empty" pinned
-  all six agents to `gemma-4-31b`. Re-measured: both produce valid structured
-  JSON — but `gpt-oss-120b` is _inconsistent_ between plain and JSON modes, so
-  Cerebras stays on `gemma-4-31b` and quality comes from provider order.
+- **Cerebras is listed but not callable right now.** `qwen-3.8-27b`,
+  `gemma-4-31b` and `gpt-oss-120b` appear in `/models`, but chat currently
+  returns `402 payment_required` on this account. Treat Cerebras as degraded
+  until billing/quota changes.
+- **Groq must be mapped by mode.** `openai/gpt-oss-120b` is good for plain
+  strategist/writer calls. JSON agents use `qwen/qwen3.8-27b`; `gpt-oss-20b`
+  can be intermittent under `response_format=json_object`.
+- **Gemini is the reliable tertiary rung.** `gemini-3-flash-preview` answered
+  both plain and JSON probes and is the current mapped fallback before Ollama.
 - **Plain and JSON modes are not equivalent.** `response_format=json_object`
   changes whether some models answer at all. evaluator / critic / discoverer /
   enricher request JSON; writer / strategist do not.
@@ -105,7 +105,7 @@ IIAL (Institute for Innovation in Applied Learning) grant discovery and proposal
 - **Local models**: `phi4-mini` + `dolphin3` (agents), `nomic-embed-text` (embeddings). All three are required — a missing agent model fails as `ollama_prewarm_404` mid-run and silently pushes work to the cloud fallback
 - **Validation**: Zod schemas for all inputs/outputs
 - **Build**: Vite 8 + Lovable TanStack config plugin
-- **Testing**: Vitest (unit + jsdom) + Playwright e2e — **513 unit passing / 4 skipped** on 2026-09-11; **39 e2e** last recorded
+- **Testing**: Vitest (unit + jsdom) + Playwright e2e — **544 passing / 4 skipped** on 2026-09-12; **35 targeted Playwright e2e passing** on 2026-09-12; full Playwright attempted but timed out in the long lifecycle suite
 - **Linting**: ESLint 9 + Prettier
 - **Package manager**: Bun
 
@@ -293,7 +293,7 @@ hand-edit `.env` to switch backends, create or remove `.env.local` instead.
 | `OLLAMA_TIMEOUT_MS`          | 3 min timeout for cold starts                       |
 | `CEREBRAS_API_KEY`           | Cloud rung 1 — leads for discoverer/enricher        |
 | `GROQ_API_KEY`               | Cloud rung 1 for evaluator/critic/strategist/writer |
-| `GOOGLE_AI_STUDIO_KEY`       | Cloud rung 3 (`gemini-2.5-flash`)                   |
+| `GOOGLE_AI_STUDIO_KEY`       | Cloud rung 3 (`gemini-3-flash-preview`)             |
 | `JINA_API_KEY`               | Web fetch (Jina Reader)                             |
 
 A provider with no key is skipped by the chain rather than failing it.
@@ -304,7 +304,7 @@ A provider with no key is skipped by the chain rather than failing it.
 bun run dev          # Vite dev server (:8080) + auto-sync watcher
 bun run build        # Production build
 bun run lint         # ESLint
-bun run test         # Unit tests (513 passing / 4 skipped as of 2026-09-11)
+bun run test         # Vitest suite (544 passing / 4 skipped as of 2026-09-12)
 bun run test:e2e     # Playwright e2e (39) — real Node, never `bunx`
 
 bun run scripts/startup-validate.ts        # 10 live checks; non-zero on failure
