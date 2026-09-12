@@ -23,9 +23,9 @@ describe("cloud model maps", () => {
     }
   });
 
-  it("gives the judgement agents Groq's 70B and the volume agents the fast 8B", () => {
-    expect(GROQ_MODEL_MAP.evaluator).toBe("openai/gpt-oss-120b");
-    expect(GROQ_MODEL_MAP.critic).toBe("openai/gpt-oss-120b");
+  it("maps Groq by the mode each agent actually uses", () => {
+    expect(GROQ_MODEL_MAP.evaluator).toBe("openai/gpt-oss-20b");
+    expect(GROQ_MODEL_MAP.critic).toBe("openai/gpt-oss-20b");
     expect(GROQ_MODEL_MAP.strategist).toBe("openai/gpt-oss-120b");
     expect(GROQ_MODEL_MAP.writer).toBe("openai/gpt-oss-120b");
     expect(GROQ_MODEL_MAP.discoverer).toBe("openai/gpt-oss-20b");
