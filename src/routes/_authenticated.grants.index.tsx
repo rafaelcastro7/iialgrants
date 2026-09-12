@@ -42,7 +42,11 @@ import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import { GrantSearchProfileBar } from "@/components/grants/GrantSearchProfileBar";
 import { OrgRulesDriftBanner } from "@/components/grants/OrgRulesDriftBanner";
 import { GrantFacetFilters, type GrantFacetSelection } from "@/components/grants/GrantFacetFilters";
-import { recordGrantSearchFeedback } from "@/lib/grant-search-profiles.functions";
+import {
+  markGrantSearchProfileReviewed,
+  recordGrantSearchFeedback,
+} from "@/lib/grant-search-profiles.functions";
+import type { GrantFeedbackDecision } from "@/components/grants/GrantFeedbackControls";
 import "@/i18n";
 
 const grantsQueryOptions = (search = "", profileId?: string) =>
@@ -87,6 +91,7 @@ function GrantsPage() {
   const enrichOne = useServerFn(enrichGrant);
   const autoEvaluate = useServerFn(autoEvaluatePending);
   const recordSearchFeedback = useServerFn(recordGrantSearchFeedback);
+  const markProfileReviewed = useServerFn(markGrantSearchProfileReviewed);
 
   const qc = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
@@ -123,6 +128,12 @@ function GrantsPage() {
     deadlineKind: ss.get("grants.facet.deadlineKind") ?? "all",
     evidenceState: ss.get("grants.facet.evidenceState") ?? "all",
   }));
+  const [includeHardBlocked, setIncludeHardBlocked] = useState(
+    () => ss.get("grants.includeHardBlocked") === "1",
+  );
+  const [includeDismissed, setIncludeDismissed] = useState(
+    () => ss.get("grants.includeDismissed") === "1",
+  );
   const previouslySearching = useRef(search.trim().length >= 2);
   const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
   // Progressive disclosure: "express" is the simple default (prioritized list,
@@ -163,6 +174,11 @@ function GrantsPage() {
   }, [facetSelection]);
 
   useEffect(() => {
+    ss.set("grants.includeHardBlocked", includeHardBlocked ? "1" : "0");
+    ss.set("grants.includeDismissed", includeDismissed ? "1" : "0");
+  }, [includeHardBlocked, includeDismissed]);
+
+  useEffect(() => {
     ss.set("grants.searchProfileId", searchProfileId ?? "");
     if (searchProfileId) setSortKey("relevance");
   }, [searchProfileId]);
@@ -191,6 +207,8 @@ function GrantsPage() {
       searchProfileId ?? "general",
       country,
       facetSelection,
+      includeHardBlocked,
+      includeDismissed,
     ],
     queryFn: () =>
       fetchGrants({
@@ -222,6 +240,8 @@ function GrantsPage() {
             facetSelection.evidenceState === "all"
               ? undefined
               : [facetSelection.evidenceState as "known" | "unknown" | "conflicting"],
+          includeHardBlocked,
+          includeDismissed,
         },
       }),
   });
@@ -268,31 +288,51 @@ function GrantsPage() {
     moveMutation.mutate({ grantIds, toStatus });
 
   const feedbackMutation = useMutation({
-    mutationFn: ({ grant, action }: { grant: GrantRowData; action: "saved" | "hidden" }) => {
+    mutationFn: ({ grant, decision }: { grant: GrantRowData; decision: GrantFeedbackDecision }) => {
       if (!searchProfileId) throw new Error("Select a project profile before saving feedback.");
       return recordSearchFeedback({
         data: {
           profile_id: searchProfileId,
           grant_id: grant.id,
-          action,
-          reason: null,
-          note: null,
+          action: decision.action,
+          reason: decision.reason ?? null,
+          note: decision.note ?? null,
           query_text: serverSearch || null,
           rank_position: data.grants.findIndex((item) => item.id === grant.id) + 1,
           score_snapshot: {
             combined_relevance: grant.combinedRelevance ?? null,
             profile_match: grant.profileMatch ?? null,
             lexical_match: grant.searchMatch ?? null,
+            ranking_breakdown: grant.rankingBreakdown ?? null,
           },
         },
       });
     },
     onSuccess: async (_result, variables) => {
       setAutoMsg(
-        variables.action === "hidden"
+        variables.decision.action === "hidden"
           ? "Grant hidden for this project profile."
-          : "Grant saved to this project profile.",
+          : variables.decision.action === "rejected"
+            ? "Not-relevant feedback recorded for this project profile."
+            : variables.decision.action === "restored"
+              ? "Grant restored to this project profile."
+              : variables.decision.action === "pursued"
+                ? "Grant marked as pursued for this project profile."
+                : "Grant saved to this project profile.",
       );
+      await qc.invalidateQueries({ queryKey: ["grants"] });
+    },
+    onError: (cause) => setEvalError(cause instanceof Error ? cause.message : String(cause)),
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: () => {
+      if (!searchProfileId) throw new Error("Select a project profile before marking a review.");
+      return markProfileReviewed({ data: { id: searchProfileId } });
+    },
+    onSuccess: async () => {
+      setAutoMsg("Project results marked as reviewed. Future discoveries will be labelled new.");
+      await qc.invalidateQueries({ queryKey: ["grant-search-profiles"] });
       await qc.invalidateQueries({ queryKey: ["grants"] });
     },
     onError: (cause) => setEvalError(cause instanceof Error ? cause.message : String(cause)),
