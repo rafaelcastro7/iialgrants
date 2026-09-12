@@ -40,35 +40,22 @@ const MARKDOWN = [
   "Non-profit organizations registered in Ontario may apply.",
 ].join("\n\n");
 
-vi.mock("@/lib/web-fetch.server", () => ({
-  // Explicitly include all runtime exports to avoid "export not found" errors
-  // when other tests import the real module after this mock is applied.
-  CHROME_UA:
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-  GOOGLEBOT_UA: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-  JINA_READER_BASE: "https://r.jina.ai/",
-  SEARXNG_BASE_URL: "http://localhost:15436",
-  scrapeWithFallback: async (url: string) => ({
-    ok: true,
-    url,
-    via: "jina_reader" as const,
-    markdown: MARKDOWN,
-    title: "Innovation Boost Program",
-    attempts: [],
-  }),
-  localWebSearch: async () => ({ ok: true, hits: [] }),
-  searchWeb: async () => [],
-  jinaReader: async () => ({
-    page: { ok: false, url: "", error: "mocked", via: "none", attempts: [] },
-    attempt: { engine: "jina_reader", ok: false, latency_ms: 0, error: "mocked", ts: new Date().toISOString() },
-  }),
-  scrapeEngineFetch: async () => ({ ok: false, url: "", error: "mocked", via: "scrape_engine", attempts: [] }),
-  renderWithBrowser: async () => ({ ok: false, url: "", error: "mocked", via: "browser_render", attempts: [] }),
-  firecrawlScrape: async () => ({ ok: false, url: "", error: "mocked" }),
-  firecrawlAvailable: () => false,
-  firecrawlMap: async () => ({ ok: false, error: "mocked" }),
-  filterProgramUrls: (l: string[]) => l,
-}));
+vi.mock("@/lib/web-fetch.server", async () => {
+  const actual = await import("@/lib/web-fetch.server");
+  return {
+    ...actual,
+    scrapeWithFallback: async (url: string) => ({
+      ok: true,
+      url,
+      via: "jina_reader" as const,
+      markdown: MARKDOWN,
+      title: "Innovation Boost Program",
+      attempts: [],
+    }),
+    localWebSearch: async () => ({ ok: true, hits: [] }),
+    searchWeb: async () => [],
+  };
+});
 vi.mock("@/lib/firecrawl.server", () => ({
   firecrawlAvailable: () => false,
   firecrawlScrape: async () => ({ ok: false, url: "", error: "no_api_key" }),
