@@ -15,7 +15,13 @@ export const listDiscoverySources = createServerFn({ method: "GET" })
       .order("dataset_key");
     if (error) throw error;
     const { data: health } = await context.supabase.from("source_health_summary").select("*");
-    return { sources: sources ?? [], health: health ?? [] };
+    const { data: accountability, error: accountabilityError } = await context.supabase
+      .from("source_coverage_accountability")
+      .select("*")
+      .order("tier")
+      .order("dataset_key");
+    if (accountabilityError) throw accountabilityError;
+    return { sources: sources ?? [], health: health ?? [], accountability: accountability ?? [] };
   });
 
 export const setSourceEnabled = createServerFn({ method: "POST" })

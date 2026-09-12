@@ -53,6 +53,16 @@ type SourceRow = {
   last_status: string | null;
   last_error: string | null;
   notes: string | null;
+  owner_label: string;
+  recovery_playbook: string;
+  expected_refresh_hours: number;
+  coverage_dimensions: string[];
+};
+
+type AccountabilityRow = {
+  dataset_key: string;
+  accountable_state: "healthy" | "overdue" | "failed" | "never_run" | "disabled";
+  age_hours: number | null;
 };
 
 type HealthRow = {
@@ -137,6 +147,11 @@ function SourcesPage() {
   const sources: SourceRow[] = q.data?.sources ?? [];
   const health: HealthRow[] = q.data?.health ?? [];
   const healthMap = new Map(health.map((h) => [h.dataset ?? "", h]));
+  const accountability: AccountabilityRow[] = q.data?.accountability ?? [];
+  const accountabilityMap = new Map(accountability.map((row) => [row.dataset_key, row]));
+  const openGaps = accountability.filter((row) =>
+    ["overdue", "failed", "never_run"].includes(row.accountable_state),
+  );
 
   const byTier = sources.reduce<Record<string, SourceRow[]>>((acc, s) => {
     (acc[s.tier] ??= []).push(s);
@@ -225,6 +240,25 @@ function SourcesPage() {
 
       <CrawlLedgerWidget />
 
+      <Card className={openGaps.length ? "border-warning/50" : "border-emerald-500/40"}>
+        <CardHeader>
+          <CardTitle className="text-base">Coverage SLA: {openGaps.length} open gap(s)</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Every registered source has an owner, refresh interval, coverage dimensions, and a
+            recovery playbook. Disabled sources are accountable but do not count as overdue.
+          </p>
+        </CardHeader>
+        {openGaps.length > 0 && (
+          <CardContent className="flex flex-wrap gap-2">
+            {openGaps.map((gap) => (
+              <Badge key={gap.dataset_key} variant="outline">
+                {gap.dataset_key}: {gap.accountable_state}
+              </Badge>
+            ))}
+          </CardContent>
+        )}
+      </Card>
+
       {(() => {
         const gates: RegistrationGateRow[] = qGates.data ?? [];
         const pending = gates.filter((g) => g.status === "pending");
@@ -250,6 +284,7 @@ function SourcesPage() {
                     <TableHead>Why</TableHead>
                     <TableHead>Seen</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Accountability</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -341,6 +376,7 @@ function SourcesPage() {
                         : s.last_status === "failed"
                           ? "destructive"
                           : "secondary";
+                    const accountable = accountabilityMap.get(s.dataset_key);
                     return (
                       <TableRow key={s.id}>
                         <TableCell>
@@ -377,6 +413,25 @@ function SourcesPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={statusVariant}>{s.last_status ?? "never run"}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs text-xs">
+                          <Badge
+                            variant={
+                              accountable?.accountable_state === "healthy"
+                                ? "default"
+                                : accountable?.accountable_state === "disabled"
+                                  ? "secondary"
+                                  : "destructive"
+                            }
+                          >
+                            {accountable?.accountable_state ?? "unknown"}
+                          </Badge>
+                          <div className="mt-1 text-muted-foreground">
+                            {s.owner_label} · SLA {s.expected_refresh_hours}h
+                          </div>
+                          <div className="truncate text-muted-foreground" title={s.recovery_playbook}>
+                            {s.coverage_dimensions.join(", ")}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Switch
