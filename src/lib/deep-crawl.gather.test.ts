@@ -8,16 +8,24 @@ const mocks = {
   buildOfficialSearchQueries: vi.fn(),
 };
 
-vi.mock("@/lib/web-fetch.server", () => ({
-  scrapeWithFallback: mocks.scrapeWithFallback,
-  searchWeb: mocks.searchWeb,
-}));
+vi.mock("@/lib/web-fetch.server", async () => {
+  const actual = await vi.importActual("@/lib/web-fetch.server");
+  return {
+    ...actual,
+    scrapeWithFallback: mocks.scrapeWithFallback,
+    searchWeb: mocks.searchWeb,
+  };
+});
 
-vi.mock("@/lib/site-candidates.server", () => ({
-  fetchCandidateLinksFromPage: mocks.fetchCandidateLinksFromPage,
-  fetchCandidateLinksFromSitemaps: mocks.fetchCandidateLinksFromSitemaps,
-  buildOfficialSearchQueries: mocks.buildOfficialSearchQueries,
-}));
+vi.mock("@/lib/site-candidates.server", async () => {
+  const actual = await vi.importActual("@/lib/site-candidates.server");
+  return {
+    ...actual,
+    fetchCandidateLinksFromPage: mocks.fetchCandidateLinksFromPage,
+    fetchCandidateLinksFromSitemaps: mocks.fetchCandidateLinksFromSitemaps,
+    buildOfficialSearchQueries: mocks.buildOfficialSearchQueries,
+  };
+});
 
 const BASE = "https://example.gov/program";
 const INLINE_DETAIL = "https://example.gov/program/eligibility";
