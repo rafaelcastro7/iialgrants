@@ -24,12 +24,12 @@ describe("cloud model maps", () => {
   });
 
   it("maps Groq by the mode each agent actually uses", () => {
-    expect(GROQ_MODEL_MAP.evaluator).toBe("openai/gpt-oss-20b");
-    expect(GROQ_MODEL_MAP.critic).toBe("openai/gpt-oss-20b");
+    expect(GROQ_MODEL_MAP.evaluator).toBe("qwen/qwen3.8-27b");
+    expect(GROQ_MODEL_MAP.critic).toBe("qwen/qwen3.8-27b");
     expect(GROQ_MODEL_MAP.strategist).toBe("openai/gpt-oss-120b");
     expect(GROQ_MODEL_MAP.writer).toBe("openai/gpt-oss-120b");
-    expect(GROQ_MODEL_MAP.discoverer).toBe("openai/gpt-oss-20b");
-    expect(GROQ_MODEL_MAP.enricher).toBe("openai/gpt-oss-20b");
+    expect(GROQ_MODEL_MAP.discoverer).toBe("qwen/qwen3.8-27b");
+    expect(GROQ_MODEL_MAP.enricher).toBe("qwen/qwen3.8-27b");
   });
 
   it("does not reference Gemini models this account cannot call", () => {
