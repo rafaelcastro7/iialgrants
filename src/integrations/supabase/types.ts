@@ -1806,6 +1806,8 @@ export type Database = {
           last_seen_at: string;
           org_id: string | null;
           next_expected_deadline: string | null;
+          next_expected_deadline_basis: string | null;
+          next_expected_deadline_confidence: number | null;
           next_expected_open: string | null;
           populations_served: string[] | null;
           requirements: Json | null;
@@ -1849,6 +1851,8 @@ export type Database = {
           last_seen_at?: string;
           org_id?: string | null;
           next_expected_deadline?: string | null;
+          next_expected_deadline_basis?: string | null;
+          next_expected_deadline_confidence?: number | null;
           next_expected_open?: string | null;
           populations_served?: string[] | null;
           requirements?: Json | null;
@@ -1892,6 +1896,8 @@ export type Database = {
           last_seen_at?: string;
           org_id?: string | null;
           next_expected_deadline?: string | null;
+          next_expected_deadline_basis?: string | null;
+          next_expected_deadline_confidence?: number | null;
           next_expected_open?: string | null;
           populations_served?: string[] | null;
           requirements?: Json | null;

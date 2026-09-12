@@ -310,7 +310,7 @@ export async function enrichGrantImpl(
       if (deadlineMatch && deadlineMatch.iso === "Rolling") {
         patch.deadline_kind = "rolling";
         patch.deadline_confidence = 0.95;
-        await recordEvidence({
+        const deadlineEvidence = await recordEvidence({
           grantId: g.id,
           agent: "enricher",
           field: "facet.deadline_kind",
@@ -322,6 +322,31 @@ export async function enrichGrantImpl(
           runId,
           db,
         });
+        await db.from("grant_deadline_observations").upsert(
+          {
+            grant_id: g.id,
+            observed_deadline: deadlineMatch.iso,
+            source_url: page.url,
+            evidence_span_id: deadlineEvidence.id ?? null,
+          },
+          { onConflict: "grant_id,observed_deadline,source_url", ignoreDuplicates: true },
+        );
+        const { data: observations } = await db
+          .from("grant_deadline_observations")
+          .select("observed_deadline")
+          .eq("grant_id", g.id)
+          .order("observed_deadline", { ascending: true });
+        const { predictNextDeadline } = await import("@/lib/grant-history-signals.shared");
+        const prediction = predictNextDeadline({
+          observedDeadlines: (observations ?? []).map(
+            (row: { observed_deadline: string }) => row.observed_deadline,
+          ),
+        });
+        if (prediction) {
+          patch.next_expected_deadline = prediction.date;
+          patch.next_expected_deadline_confidence = prediction.confidence;
+          patch.next_expected_deadline_basis = prediction.basis;
+        }
         await trace(
           "chrono_deadline",
           `Rolling/continuous intake detected on ${stage} page (leaving deadline unset)`,
