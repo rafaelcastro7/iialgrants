@@ -310,11 +310,43 @@ export async function enrichGrantImpl(
       if (deadlineMatch && deadlineMatch.iso === "Rolling") {
         patch.deadline_kind = "rolling";
         patch.deadline_confidence = 0.95;
-        const deadlineEvidence = await recordEvidence({
+        await recordEvidence({
           grantId: g.id,
           agent: "enricher",
           field: "facet.deadline_kind",
           value: { assertion: "supports", values: ["rolling"] },
+          sourceUrl: page.url,
+          snippet: deadlineMatch.snippet,
+          snippetOffset: deadlineMatch.matchOffset,
+          method: "chrono",
+          runId,
+          db,
+        });
+        await trace(
+          "chrono_deadline",
+          `Rolling/continuous intake detected on ${stage} page (leaving deadline unset)`,
+          "info",
+          { page: page.url, snippet: deadlineMatch.snippet.slice(0, 200) },
+        );
+      } else if (deadlineMatch) {
+        patch.deadline = deadlineMatch.iso;
+        patch.deadline_kind = "confirmed";
+        patch.deadline_confidence = 0.95;
+        methodCounts.chrono++;
+        await trace(
+          "chrono_deadline",
+          `Found deadline on ${stage} page: ${deadlineMatch.iso}`,
+          "ok",
+          {
+            page: page.url,
+            snippet: deadlineMatch.snippet.slice(0, 200),
+          },
+        );
+        const deadlineEvidence = await recordEvidence({
+          grantId: g.id,
+          agent: "enricher",
+          field: "deadline",
+          value: deadlineMatch.iso,
           sourceUrl: page.url,
           snippet: deadlineMatch.snippet,
           snippetOffset: deadlineMatch.matchOffset,
@@ -347,38 +379,6 @@ export async function enrichGrantImpl(
           patch.next_expected_deadline_confidence = prediction.confidence;
           patch.next_expected_deadline_basis = prediction.basis;
         }
-        await trace(
-          "chrono_deadline",
-          `Rolling/continuous intake detected on ${stage} page (leaving deadline unset)`,
-          "info",
-          { page: page.url, snippet: deadlineMatch.snippet.slice(0, 200) },
-        );
-      } else if (deadlineMatch) {
-        patch.deadline = deadlineMatch.iso;
-        patch.deadline_kind = "confirmed";
-        patch.deadline_confidence = 0.95;
-        methodCounts.chrono++;
-        await trace(
-          "chrono_deadline",
-          `Found deadline on ${stage} page: ${deadlineMatch.iso}`,
-          "ok",
-          {
-            page: page.url,
-            snippet: deadlineMatch.snippet.slice(0, 200),
-          },
-        );
-        await recordEvidence({
-          grantId: g.id,
-          agent: "enricher",
-          field: "deadline",
-          value: deadlineMatch.iso,
-          sourceUrl: page.url,
-          snippet: deadlineMatch.snippet,
-          snippetOffset: deadlineMatch.matchOffset,
-          method: "chrono",
-          runId,
-          db,
-        });
         await recordEvidence({
           grantId: g.id,
           agent: "enricher",
