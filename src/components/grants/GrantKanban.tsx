@@ -516,6 +516,21 @@ function KanbanCard({
             Match: {g.searchMatch.matched_on}
           </span>
         )}
+        {g.isNewSinceLastReview && (
+          <span className="rounded border border-blue-500/35 bg-blue-500/10 px-1.5 py-0.5 text-[9px] text-blue-700">
+            New since review
+          </span>
+        )}
+        {g.changedSinceFeedback && (
+          <span className="rounded border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700">
+            Changed since saved
+          </span>
+        )}
+        {g.hardBlocked && (
+          <span className="rounded border border-destructive/35 bg-destructive/10 px-1.5 py-0.5 text-[9px] text-destructive">
+            Blocked · inspection only
+          </span>
+        )}
         {g.facets && Object.values(g.facets).some((facet) => facet.state === "conflicting") && (
           <span
             className="rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[9px] text-warning"
@@ -538,6 +553,14 @@ function KanbanCard({
             title={g.historyMatch?.factors.join("; ")}
           >
             Giving history +{Math.round((g.historyMatch?.boost ?? 0) * 100)}
+          </span>
+        )}
+        {g.rankingBreakdown && (
+          <span
+            className="rounded border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[9px] text-muted-foreground"
+            title={`retrieval ${g.rankingBreakdown.retrieval.toFixed(3)}; profile ${g.rankingBreakdown.profile.toFixed(3)}; feedback ${g.rankingBreakdown.feedback.toFixed(3)}; history ${g.rankingBreakdown.history.toFixed(3)}; quality ${g.rankingBreakdown.quality.toFixed(3)}; jurisdiction ${g.rankingBreakdown.jurisdiction.toFixed(3)}; country ${g.rankingBreakdown.country.toFixed(3)}`}
+          >
+            Explain rank
           </span>
         )}
         {/* Was inline Math.round(.../1000)+"K" with no scale switch or sanity
