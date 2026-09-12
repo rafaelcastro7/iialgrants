@@ -9,17 +9,30 @@ export type HybridGrantMatch = {
   lexicalScore: number;
   semanticScore: number;
   matchedOn: string;
-  retrievalMode: "hybrid" | "lexical-fallback";
+  retrievalMode: "hybrid" | "lexical-fallback" | "lexical-only" | "shadow";
   queryConcepts: string[];
 };
 
 const RRF_K = 60;
 
+export type GrantSearchDiagnostics = {
+  lexicalCandidates: number;
+  semanticCandidates: number;
+  fusedCandidates: number;
+  latencyMs: number;
+};
+
 export async function searchGrantCatalogHybrid(
   supabase: SupabaseClient<Database>,
   query: string,
   limit = 100,
-): Promise<{ matches: HybridGrantMatch[]; degradedReason: string | null }> {
+  mode: "hybrid" | "lexical-only" | "shadow" = "hybrid",
+): Promise<{
+  matches: HybridGrantMatch[];
+  degradedReason: string | null;
+  diagnostics: GrantSearchDiagnostics;
+}> {
+  const startedAt = Date.now();
   const boundedLimit = Math.min(Math.max(limit, 1), 100);
   const expansion = expandGrantSearchQuery(query);
   const lexicalResponses = await Promise.all(
@@ -47,6 +60,7 @@ export async function searchGrantCatalogHybrid(
   let semantic: Array<{ grant_id: string; semantic_similarity: number }> = [];
   let degradedReason: string | null = null;
   try {
+    if (mode === "lexical-only") throw new ForcedLexicalError();
     if (expansion.suppressSemantic) throw new SemanticSuppressedError();
     const embedding = await getEmbeddingCached(expansion.semanticQuery);
     if (embedding.length !== 768) throw new Error(`embedding_dimension_${embedding.length}`);
@@ -62,7 +76,7 @@ export async function searchGrantCatalogHybrid(
       .filter((candidate) => candidate.semantic_similarity >= topSimilarity - 0.05)
       .slice(0, 5);
   } catch (error) {
-    if (!(error instanceof SemanticSuppressedError)) {
+    if (!(error instanceof SemanticSuppressedError) && !(error instanceof ForcedLexicalError)) {
       degradedReason = error instanceof Error ? error.message : String(error);
     }
   }
@@ -77,7 +91,14 @@ export async function searchGrantCatalogHybrid(
       lexicalScore: 0,
       semanticScore: 0,
       matchedOn: "semantic meaning",
-      retrievalMode: degradedReason ? "lexical-fallback" : "hybrid",
+      retrievalMode:
+        mode === "lexical-only"
+          ? "lexical-only"
+          : mode === "shadow"
+            ? "shadow"
+            : degradedReason
+              ? "lexical-fallback"
+              : "hybrid",
       queryConcepts: expansion.concepts,
     };
     byId.set(grantId, created);
@@ -100,14 +121,32 @@ export async function searchGrantCatalogHybrid(
   const theoreticalMaximum = 1 / (RRF_K + 1);
   const matches = [...byId.values()]
     .map((match) => ({ ...match, relevance: match.relevance / theoreticalMaximum }))
-    .sort(
-      (a, b) =>
+    .sort((a, b) => {
+      if (mode === "shadow") {
+        const aLexicalRank = lexical.findIndex((row) => row.grant_id === a.grantId);
+        const bLexicalRank = lexical.findIndex((row) => row.grant_id === b.grantId);
+        const aRank = aLexicalRank < 0 ? Number.MAX_SAFE_INTEGER : aLexicalRank;
+        const bRank = bLexicalRank < 0 ? Number.MAX_SAFE_INTEGER : bLexicalRank;
+        if (aRank !== bRank) return aRank - bRank;
+      }
+      return (
         b.relevance - a.relevance ||
         b.semanticScore - a.semanticScore ||
-        b.lexicalScore - a.lexicalScore,
-    )
+        b.lexicalScore - a.lexicalScore
+      );
+    })
     .slice(0, boundedLimit);
-  return { matches, degradedReason };
+  return {
+    matches,
+    degradedReason,
+    diagnostics: {
+      lexicalCandidates: lexical.length,
+      semanticCandidates: semantic.length,
+      fusedCandidates: byId.size,
+      latencyMs: Date.now() - startedAt,
+    },
+  };
 }
 
 class SemanticSuppressedError extends Error {}
+class ForcedLexicalError extends Error {}
