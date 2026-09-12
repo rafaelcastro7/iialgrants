@@ -6,6 +6,12 @@ import { GRANT_STATUSES, canTransition, isGrantStatus } from "@/agents/pipeline-
 import { scoreGrantForProfile } from "@/lib/grant-search-profile-ranking.shared";
 import { searchGrantCatalogHybrid } from "@/lib/grant-search-hybrid.server";
 import { getOrgProfileForUser } from "@/lib/org-profile-query";
+import {
+  resolveGrantFacets,
+  type GrantFacetEvidence,
+  type GrantFacetField,
+  type GrantFacetState,
+} from "@/lib/grant-facets.shared";
 
 // A single `.in("grant_id", ids)` with ~100 UUIDs produces a query string
 // long enough that the local Kong/PostgREST gateway intermittently returns
@@ -83,6 +89,15 @@ export const listGrants = createServerFn({ method: "GET" })
         // ISO country of the opportunity (CA, US, INTL, …). Omitted = all.
         country: z.string().trim().min(2).max(8).optional(),
         profileId: z.string().uuid().optional(),
+        applicantTypes: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+        populationsServed: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+        fundingUses: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+        funderTypes: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+        deadlineKinds: z
+          .array(z.enum(["confirmed", "predicted", "rolling", "closed", "unknown"]))
+          .max(5)
+          .optional(),
+        evidenceStates: z.array(z.enum(["known", "unknown", "conflicting"])).max(3).optional(),
         limit: z.number().int().min(1).max(100).default(50),
       })
       .parse(input ?? {}),
@@ -156,7 +171,7 @@ export const listGrants = createServerFn({ method: "GET" })
     }
 
     const GRANT_COLUMNS =
-      "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, country, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder_id, funder:funders(name, name_fr, jurisdiction, country)";
+      "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, applicant_types, populations_served, funding_uses, funder_type, deadline_kind, deadline_confidence, next_expected_open, next_expected_deadline, source_freshness_at, source_confidence, country, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder_id, funder:funders(name, name_fr, jurisdiction, country)";
     const buildQuery = () => {
       let q = context.supabase
         .from("grants")
@@ -206,6 +221,44 @@ export const listGrants = createServerFn({ method: "GET" })
       }
       rows = collected;
     }
+    const facetEvidenceByGrant = new Map<string, GrantFacetEvidence[]>();
+    for (const chunk of chunkIds((rows ?? []).map((row) => row.id))) {
+      const { data: evidenceRows, error: evidenceError } = await context.supabase
+        .from("evidence_spans")
+        .select("id, grant_id, field, value, confidence, source_url, snippet")
+        .in("grant_id", chunk)
+        .like("field", "facet.%");
+      if (evidenceError) throw new Error(`facet_evidence: ${evidenceError.message}`);
+      for (const evidence of evidenceRows ?? []) {
+        const existing = facetEvidenceByGrant.get(evidence.grant_id) ?? [];
+        existing.push(evidence as GrantFacetEvidence);
+        facetEvidenceByGrant.set(evidence.grant_id, existing);
+      }
+    }
+
+    const includesNormalized = (actual: string[], selected: string[] | undefined) => {
+      if (!selected?.length) return true;
+      const actualValues = new Set(actual.map((value) => value.toLowerCase()));
+      return selected.some((value) => actualValues.has(value.toLowerCase()));
+    };
+    const facetsMatch = (
+      facets: ReturnType<typeof resolveGrantFacets>,
+      selectedStates: GrantFacetState[] | undefined,
+    ) => {
+      if (
+        !includesNormalized(facets.applicant_types.values, data.applicantTypes) ||
+        !includesNormalized(facets.populations_served.values, data.populationsServed) ||
+        !includesNormalized(facets.funding_uses.values, data.fundingUses) ||
+        !includesNormalized(facets.funder_type.values, data.funderTypes) ||
+        !includesNormalized(facets.deadline_kind.values, data.deadlineKinds)
+      )
+        return false;
+      return (
+        !selectedStates?.length ||
+        Object.values(facets).some((facet) => selectedStates.includes(facet.state))
+      );
+    };
+
     const grantsWithProfile = (rows ?? [])
       .map((grant) => {
         const profileMatch = searchProfile ? scoreGrantForProfile(grant, searchProfile) : null;
@@ -238,13 +291,24 @@ export const listGrants = createServerFn({ method: "GET" })
             : profileRelevance + feedbackBoost) +
           canadaBoost +
           jurisdictionAdjustment;
-        return { grant, profileMatch, feedbackAction, combinedRelevance };
+        const facets = resolveGrantFacets({
+          grant: {
+            applicant_types: grant.applicant_types,
+            populations_served: grant.populations_served,
+            funding_uses: grant.funding_uses,
+            funder_type: grant.funder_type,
+            deadline_kind: grant.deadline_kind,
+          },
+          evidence: facetEvidenceByGrant.get(grant.id) ?? [],
+        });
+        return { grant, profileMatch, feedbackAction, combinedRelevance, facets };
       })
       .filter(
-        ({ profileMatch, feedbackAction }) =>
+        ({ profileMatch, feedbackAction, facets }) =>
           feedbackAction !== "hidden" &&
           feedbackAction !== "rejected" &&
-          profileMatch?.hardBlocked !== true,
+          profileMatch?.hardBlocked !== true &&
+          facetsMatch(facets, data.evidenceStates),
       )
       .sort(
         (a, b) =>
@@ -320,12 +384,30 @@ export const listGrants = createServerFn({ method: "GET" })
       (a, b) => (a === "CA" ? -1 : b === "CA" ? 1 : a.localeCompare(b)),
     );
 
+    const facetCounts = Object.fromEntries(
+      ([
+        "applicant_types",
+        "populations_served",
+        "funding_uses",
+        "funder_type",
+        "deadline_kind",
+      ] as GrantFacetField[]).map((field) => {
+        const counts = new Map<string, number>();
+        for (const row of grantsWithProfile) {
+          for (const value of row.facets[field].values) counts.set(value, (counts.get(value) ?? 0) + 1);
+        }
+        return [field, Object.fromEntries([...counts].sort(([a], [b]) => a.localeCompare(b)))];
+      }),
+    );
+
     return {
       searchDegradedReason,
       availableCountries,
+      facetCounts,
       grants: grantsWithProfile.map(
-        ({ grant: g, profileMatch, feedbackAction, combinedRelevance }) => ({
+        ({ grant: g, profileMatch, feedbackAction, combinedRelevance, facets }) => ({
           ...g,
+          facets,
           searchMatch: rankById.get(g.id) ?? null,
           profileMatch,
           feedbackAction,
