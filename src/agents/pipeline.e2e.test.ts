@@ -56,7 +56,13 @@ vi.mock("@/lib/web-fetch.server", () => ({
   searchWeb: async () => [],
   jinaReader: async () => ({
     page: { ok: false, url: "", error: "mocked", via: "none", attempts: [] },
-    attempt: { engine: "jina_reader", ok: false, latency_ms: 0, error: "mocked", ts: new Date().toISOString() },
+    attempt: {
+      engine: "jina_reader",
+      ok: false,
+      latency_ms: 0,
+      error: "mocked",
+      ts: new Date().toISOString(),
+    },
   }),
 }));
 vi.mock("@/lib/firecrawl.server", () => ({

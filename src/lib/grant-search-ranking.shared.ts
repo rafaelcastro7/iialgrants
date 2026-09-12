@@ -76,4 +76,3 @@ export function computeSearchQuality(input: SearchQualityInput): SearchQualityBr
     factors,
   };
 }
-

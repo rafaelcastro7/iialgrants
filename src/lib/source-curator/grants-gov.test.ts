@@ -67,7 +67,9 @@ describe("fetchGrantsGovAgencies", () => {
   });
 
   it("throws on a non-JSON / HTML response instead of returning zero candidates silently", async () => {
-    global.fetch = vi.fn(async () => new Response("<!DOCTYPE html><html>...</html>", { status: 200 }));
+    global.fetch = vi.fn(
+      async () => new Response("<!DOCTYPE html><html>...</html>", { status: 200 }),
+    );
     await expect(fetchGrantsGovAgencies()).rejects.toThrow();
   });
 });

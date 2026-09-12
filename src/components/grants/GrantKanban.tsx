@@ -12,10 +12,7 @@ import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
 import { cn } from "@/lib/utils";
 import { canTransition, isGrantStatus, type GrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "./GrantRow";
-import {
-  GrantFeedbackControls,
-  type GrantFeedbackDecision,
-} from "./GrantFeedbackControls";
+import { GrantFeedbackControls, type GrantFeedbackDecision } from "./GrantFeedbackControls";
 
 type Stage = {
   key: string;

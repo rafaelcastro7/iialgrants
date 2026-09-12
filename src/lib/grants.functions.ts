@@ -347,7 +347,8 @@ export const listGrants = createServerFn({ method: "GET" })
         const lexicalRelevance = rankById.get(grant.id)?.relevance ?? 0;
         const profileRelevance = profileMatch ? profileMatch.score / 100 : 0;
         const evaluation = evalsByGrant.get(grant.id) ?? null;
-        const hardBlocked = profileMatch?.hardBlocked === true || evaluation?.eligibility_pass === false;
+        const hardBlocked =
+          profileMatch?.hardBlocked === true || evaluation?.eligibility_pass === false;
         // The product is a Canadian grant operation: with the catalog now
         // holding more US federal opportunities than Canadian ones, an
         // unweighted ranking buries domestic programs. Boost Canadian grants
@@ -392,9 +393,7 @@ export const listGrants = createServerFn({ method: "GET" })
         const retrievalContribution = rankById.size
           ? lexicalRelevance * (searchProfile ? 0.75 : 1)
           : 0;
-        const profileContribution = rankById.size
-          ? profileRelevance * 0.25
-          : profileRelevance;
+        const profileContribution = rankById.size ? profileRelevance * 0.25 : profileRelevance;
         const combinedRelevance =
           retrievalContribution +
           profileContribution +
@@ -440,7 +439,8 @@ export const listGrants = createServerFn({ method: "GET" })
       })
       .filter(
         ({ hardBlocked, feedbackAction }) =>
-          (data.includeDismissed || (feedbackAction !== "hidden" && feedbackAction !== "rejected")) &&
+          (data.includeDismissed ||
+            (feedbackAction !== "hidden" && feedbackAction !== "rejected")) &&
           (data.includeHardBlocked || !hardBlocked),
       );
 

@@ -30,4 +30,3 @@ describe("search ranking quality contribution", () => {
     expect(result.factors).toContain("deadline:predicted");
   });
 });
-

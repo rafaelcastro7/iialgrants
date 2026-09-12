@@ -971,9 +971,7 @@ function QueueCard({
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
-        {onFeedback && (
-          <GrantFeedbackControls grant={grant} onFeedback={onFeedback} compact />
-        )}
+        {onFeedback && <GrantFeedbackControls grant={grant} onFeedback={onFeedback} compact />}
       </div>
     </div>
   );
