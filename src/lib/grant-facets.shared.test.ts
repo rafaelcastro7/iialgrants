@@ -51,4 +51,3 @@ it("does not infer an exclusion from ordinary eligibility prose", () => {
   expect(result.state).toBe("unknown");
   expect(result.excludedValues).toEqual([]);
 });
-

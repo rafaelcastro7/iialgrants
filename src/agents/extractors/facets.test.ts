@@ -8,7 +8,11 @@ describe("extractGrantFacets", () => {
     );
     expect(rows).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ field: "applicant_types", value: "nonprofit", assertion: "supports" }),
+        expect.objectContaining({
+          field: "applicant_types",
+          value: "nonprofit",
+          assertion: "supports",
+        }),
         expect.objectContaining({ field: "populations_served", value: "Indigenous peoples" }),
         expect.objectContaining({ field: "populations_served", value: "youth" }),
         expect.objectContaining({ field: "funding_uses", value: "wages" }),
@@ -33,4 +37,3 @@ describe("extractGrantFacets", () => {
     expect(extractGrantFacets("Applications close in October.")).toEqual([]);
   });
 });
-

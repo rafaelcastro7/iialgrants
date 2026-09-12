@@ -39,7 +39,13 @@ const RULES: FacetRule[] = [
   {
     field: "populations_served",
     value: "Indigenous peoples",
-    patterns: [/\bIndigenous\b/i, /\bFirst Nations?\b/i, /\bM[eé]tis\b/i, /\bInuit\b/i, /\bAutochtones?\b/i],
+    patterns: [
+      /\bIndigenous\b/i,
+      /\bFirst Nations?\b/i,
+      /\bM[eé]tis\b/i,
+      /\bInuit\b/i,
+      /\bAutochtones?\b/i,
+    ],
   },
   {
     field: "populations_served",
@@ -120,4 +126,3 @@ export function extractGrantFacets(text: string): FacetExtraction[] {
   }
   return results;
 }
-
