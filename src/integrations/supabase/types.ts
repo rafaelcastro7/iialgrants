@@ -1728,6 +1728,7 @@ export type Database = {
           funding_uses: string[];
           id: string;
           jurisdictions: string[];
+          last_reviewed_at: string | null;
           mission: string;
           name: string;
           org_id: string | null;
@@ -1752,6 +1753,7 @@ export type Database = {
           funding_uses?: string[];
           id?: string;
           jurisdictions?: string[];
+          last_reviewed_at?: string | null;
           mission?: string;
           name: string;
           org_id?: string | null;
@@ -1776,6 +1778,7 @@ export type Database = {
           funding_uses?: string[];
           id?: string;
           jurisdictions?: string[];
+          last_reviewed_at?: string | null;
           mission?: string;
           name?: string;
           org_id?: string | null;
@@ -1787,6 +1790,129 @@ export type Database = {
           role?: string;
           sectors?: string[];
           updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      grant_search_benchmark_runs: {
+        Row: {
+          coverage: Json;
+          created_at: string;
+          generated_at: string;
+          id: string;
+          k: number;
+          ranking_version: string;
+          stale_case_ids: string[];
+          summary: Json;
+          thresholds_passed: boolean;
+        };
+        Insert: {
+          coverage: Json;
+          created_at?: string;
+          generated_at: string;
+          id?: string;
+          k: number;
+          ranking_version: string;
+          stale_case_ids?: string[];
+          summary: Json;
+          thresholds_passed: boolean;
+        };
+        Update: {
+          coverage?: Json;
+          created_at?: string;
+          generated_at?: string;
+          id?: string;
+          k?: number;
+          ranking_version?: string;
+          stale_case_ids?: string[];
+          summary?: Json;
+          thresholds_passed?: boolean;
+        };
+        Relationships: [];
+      };
+      grant_search_runtime_config: {
+        Row: {
+          hybrid_enabled: boolean;
+          is_singleton: boolean;
+          ranking_version: string;
+          shadow_mode: boolean;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          hybrid_enabled?: boolean;
+          is_singleton?: boolean;
+          ranking_version?: string;
+          shadow_mode?: boolean;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          hybrid_enabled?: boolean;
+          is_singleton?: boolean;
+          ranking_version?: string;
+          shadow_mode?: boolean;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
+      grant_search_runs: {
+        Row: {
+          candidate_counts: Json;
+          created_at: string;
+          degraded_reason: string | null;
+          embedding_model: string | null;
+          filters: Json;
+          fusion_weights: Json;
+          id: string;
+          index_version: string;
+          latency_ms: number;
+          org_id: string | null;
+          profile_id: string | null;
+          query_text: string;
+          ranking_version: string;
+          result_snapshot: Json;
+          retrieval_mode: string;
+          taxonomy_version: string;
+          user_id: string;
+        };
+        Insert: {
+          candidate_counts?: Json;
+          created_at?: string;
+          degraded_reason?: string | null;
+          embedding_model?: string | null;
+          filters?: Json;
+          fusion_weights?: Json;
+          id?: string;
+          index_version: string;
+          latency_ms: number;
+          org_id?: string | null;
+          profile_id?: string | null;
+          query_text: string;
+          ranking_version: string;
+          result_snapshot?: Json;
+          retrieval_mode: string;
+          taxonomy_version: string;
+          user_id: string;
+        };
+        Update: {
+          candidate_counts?: Json;
+          created_at?: string;
+          degraded_reason?: string | null;
+          embedding_model?: string | null;
+          filters?: Json;
+          fusion_weights?: Json;
+          id?: string;
+          index_version?: string;
+          latency_ms?: number;
+          org_id?: string | null;
+          profile_id?: string | null;
+          query_text?: string;
+          ranking_version?: string;
+          result_snapshot?: Json;
+          retrieval_mode?: string;
+          taxonomy_version?: string;
           user_id?: string;
         };
         Relationships: [];

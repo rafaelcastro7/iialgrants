@@ -68,6 +68,24 @@ export const deleteGrantSearchProfile = createServerFn({ method: "POST" })
     return { ok: true, archived: true };
   });
 
+export const markGrantSearchProfileReviewed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const reviewedAt = new Date().toISOString();
+    const { data: updated, error } = await context.supabase
+      .from("grant_search_profiles")
+      .update({ last_reviewed_at: reviewedAt })
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .eq("active", true)
+      .select("id,last_reviewed_at")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("Search profile not found");
+    return { reviewedAt: updated.last_reviewed_at };
+  });
+
 export const recordGrantSearchFeedback = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => SearchFeedbackInput.parse(input))
