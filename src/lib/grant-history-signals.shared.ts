@@ -67,6 +67,38 @@ export type HistoryBoost = {
   factors: string[];
 };
 
+export function summarizeGivingRecords(
+  raw: unknown,
+  peerOrganizations: string[],
+  asOfYear = new Date().getUTCFullYear(),
+): { peerAwardCount: number; repeatRecipientRate: number | null; yearsSinceLatestAward: number | null } {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { peerAwardCount: 0, repeatRecipientRate: null, yearsSinceLatestAward: null };
+  }
+  const normalizeName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const peers = peerOrganizations.map(normalizeName).filter(Boolean);
+  const counts = new Map<string, number>();
+  let latestYear: number | null = null;
+  let peerAwardCount = 0;
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const recipient = normalizeName(String(row.recipient_name ?? row.recipient ?? row.name ?? ""));
+    if (recipient) {
+      counts.set(recipient, (counts.get(recipient) ?? 0) + 1);
+      if (peers.some((peer) => recipient.includes(peer) || peer.includes(recipient))) peerAwardCount++;
+    }
+    const year = Number(row.year ?? row.data_year ?? String(row.date ?? "").slice(0, 4));
+    if (Number.isInteger(year) && year >= 1900 && year <= asOfYear) latestYear = Math.max(latestYear ?? year, year);
+  }
+  const repeatRecipients = [...counts.values()].filter((count) => count > 1).length;
+  return {
+    peerAwardCount,
+    repeatRecipientRate: counts.size ? repeatRecipients / counts.size : null,
+    yearsSinceLatestAward: latestYear == null ? null : asOfYear - latestYear,
+  };
+}
+
 /** History is explanatory and bounded; it can never reverse a hard fail. */
 export function computeHistoryBoost(input: {
   hardBlocked: boolean;

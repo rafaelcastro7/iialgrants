@@ -13,6 +13,7 @@ import {
   type GrantFacetField,
   type GrantFacetState,
 } from "@/lib/grant-facets.shared";
+import { computeHistoryBoost, summarizeGivingRecords } from "@/lib/grant-history-signals.shared";
 
 // A single `.in("grant_id", ids)` with ~100 UUIDs produces a query string
 // long enough that the local Kong/PostgREST gateway intermittently returns
@@ -175,7 +176,7 @@ export const listGrants = createServerFn({ method: "GET" })
     }
 
     const GRANT_COLUMNS =
-      "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, applicant_types, populations_served, funding_uses, funder_type, deadline_kind, deadline_confidence, next_expected_open, next_expected_deadline, source_freshness_at, source_confidence, country, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder_id, funder:funders(name, name_fr, jurisdiction, country)";
+      "id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max, deadline, sectors, applicant_types, populations_served, funding_uses, funder_type, deadline_kind, deadline_confidence, next_expected_open, next_expected_deadline, next_expected_deadline_confidence, next_expected_deadline_basis, source_freshness_at, source_confidence, country, language, url, status, fit_score, discovered_at, enriched_at, scored_at, funder_id, funder:funders(name, name_fr, jurisdiction, country, giving_history)";
     const buildQuery = () => {
       let q = context.supabase
         .from("grants")
@@ -284,12 +285,21 @@ export const listGrants = createServerFn({ method: "GET" })
             : jurisdictionFit === "mismatch"
               ? -JURISDICTION_MISMATCH_PENALTY
               : 0;
+        const givingSignals = summarizeGivingRecords(
+          (funderRecord as { giving_history?: unknown } | null)?.giving_history,
+          searchProfile?.peer_organizations ?? [],
+        );
+        const historyMatch = computeHistoryBoost({
+          hardBlocked: profileMatch?.hardBlocked ?? false,
+          ...givingSignals,
+        });
         const combinedRelevance =
           (rankById.size
             ? lexicalRelevance * (searchProfile ? 0.75 : 1) +
               profileRelevance * 0.25 +
-              feedbackBoost
-            : profileRelevance + feedbackBoost) +
+              feedbackBoost +
+              historyMatch.boost
+            : profileRelevance + feedbackBoost + historyMatch.boost) +
           canadaBoost +
           jurisdictionAdjustment;
         const facets = resolveGrantFacets({
@@ -302,7 +312,7 @@ export const listGrants = createServerFn({ method: "GET" })
           },
           evidence: facetEvidenceByGrant.get(grant.id) ?? [],
         });
-        return { grant, profileMatch, feedbackAction, combinedRelevance, facets };
+        return { grant, profileMatch, feedbackAction, combinedRelevance, facets, historyMatch };
       })
       .filter(
         ({ profileMatch, feedbackAction }) =>
@@ -417,10 +427,11 @@ export const listGrants = createServerFn({ method: "GET" })
       availableCountries,
       facetCounts,
       grants: grantsWithProfile.map(
-        ({ grant: g, profileMatch, feedbackAction, combinedRelevance, facets }) => ({
+        ({ grant: g, profileMatch, feedbackAction, combinedRelevance, facets, historyMatch }) => ({
           ...g,
           facets,
           facetEvidenceState: grantFacetEvidenceState(facets),
+          historyMatch,
           searchMatch: rankById.get(g.id) ?? null,
           profileMatch,
           feedbackAction,

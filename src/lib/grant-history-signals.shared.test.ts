@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { computeHistoryBoost, predictNextDeadline } from "./grant-history-signals.shared";
+import {
+  computeHistoryBoost,
+  predictNextDeadline,
+  summarizeGivingRecords,
+} from "./grant-history-signals.shared";
 
 describe("predictNextDeadline", () => {
   it("requires two observations when cadence is not explicit", () => {
@@ -31,6 +35,20 @@ describe("predictNextDeadline", () => {
 });
 
 describe("computeHistoryBoost", () => {
+  it("normalizes selected peers and derives inspectable giving features", () => {
+    expect(
+      summarizeGivingRecords(
+        [
+          { recipient_name: "Example Learning Inc.", year: 2025 },
+          { recipient: "Example Learning Inc", data_year: 2024 },
+          { name: "Another Org", date: "2023-06-01" },
+        ],
+        ["Example Learning"],
+        2026,
+      ),
+    ).toEqual({ peerAwardCount: 2, repeatRecipientRate: 0.5, yearsSinceLatestAward: 1 });
+  });
+
   it("caps all historical signals at eight points", () => {
     expect(
       computeHistoryBoost({
@@ -53,4 +71,3 @@ describe("computeHistoryBoost", () => {
     ).toEqual({ boost: 0, factors: ["Eligibility hard fail; history ignored"] });
   });
 });
-

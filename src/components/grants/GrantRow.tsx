@@ -61,6 +61,7 @@ export type GrantRowData = {
     }
   >;
   facetEvidenceState?: "known" | "unknown" | "conflicting";
+  historyMatch?: { boost: number; factors: string[] };
   // >1 means other active grants share this funder + a near-identical title —
   // a real, recurring data-quality issue (contaminated test-seed rows, or
   // genuine re-discovery not yet deduped). UI-only signal, never merges data.
