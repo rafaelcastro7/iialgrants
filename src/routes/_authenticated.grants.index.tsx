@@ -41,6 +41,11 @@ import type { GrantRowData } from "@/components/grants/GrantRow";
 import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import { GrantSearchProfileBar } from "@/components/grants/GrantSearchProfileBar";
 import { OrgRulesDriftBanner } from "@/components/grants/OrgRulesDriftBanner";
+import {
+  EMPTY_GRANT_FACETS,
+  GrantFacetFilters,
+  type GrantFacetSelection,
+} from "@/components/grants/GrantFacetFilters";
 import { recordGrantSearchFeedback } from "@/lib/grant-search-profiles.functions";
 import "@/i18n";
 
@@ -114,6 +119,14 @@ function GrantsPage() {
   const [onlyWithDeadline, setOnlyWithDeadline] = useState(
     () => ss.get("grants.onlyWithDeadline") === "1",
   );
+  const [facetSelection, setFacetSelection] = useState<GrantFacetSelection>(() => ({
+    applicantType: ss.get("grants.facet.applicantType") ?? "all",
+    population: ss.get("grants.facet.population") ?? "all",
+    fundingUse: ss.get("grants.facet.fundingUse") ?? "all",
+    funderType: ss.get("grants.facet.funderType") ?? "all",
+    deadlineKind: ss.get("grants.facet.deadlineKind") ?? "all",
+    evidenceState: ss.get("grants.facet.evidenceState") ?? "all",
+  }));
   const previouslySearching = useRef(search.trim().length >= 2);
   const [selectedFunders, setSelectedFunders] = useState<Set<string>>(new Set());
   // Progressive disclosure: "express" is the simple default (prioritized list,
@@ -148,6 +161,12 @@ function GrantsPage() {
   ]);
 
   useEffect(() => {
+    for (const [key, value] of Object.entries(facetSelection)) {
+      ss.set(`grants.facet.${key}`, value);
+    }
+  }, [facetSelection]);
+
+  useEffect(() => {
     ss.set("grants.searchProfileId", searchProfileId ?? "");
     if (searchProfileId) setSortKey("relevance");
   }, [searchProfileId]);
@@ -169,7 +188,14 @@ function GrantsPage() {
   // a Canada-first page of 100, so filtering that page for another country
   // would show almost nothing. Changing it refetches instead.
   const { data } = useSuspenseQuery({
-    queryKey: ["grants", "all", serverSearch, searchProfileId ?? "general", country],
+    queryKey: [
+      "grants",
+      "all",
+      serverSearch,
+      searchProfileId ?? "general",
+      country,
+      facetSelection,
+    ],
     queryFn: () =>
       fetchGrants({
         data: {
@@ -177,6 +203,29 @@ function GrantsPage() {
           search: serverSearch.length >= 2 ? serverSearch : undefined,
           profileId: searchProfileId ?? undefined,
           country: country !== "all" ? country : undefined,
+          applicantTypes:
+            facetSelection.applicantType === "all" ? undefined : [facetSelection.applicantType],
+          populationsServed:
+            facetSelection.population === "all" ? undefined : [facetSelection.population],
+          fundingUses:
+            facetSelection.fundingUse === "all" ? undefined : [facetSelection.fundingUse],
+          funderTypes:
+            facetSelection.funderType === "all" ? undefined : [facetSelection.funderType],
+          deadlineKinds:
+            facetSelection.deadlineKind === "all"
+              ? undefined
+              : [
+                  facetSelection.deadlineKind as
+                    | "confirmed"
+                    | "predicted"
+                    | "rolling"
+                    | "closed"
+                    | "unknown",
+                ],
+          evidenceStates:
+            facetSelection.evidenceState === "all"
+              ? undefined
+              : [facetSelection.evidenceState as "known" | "unknown" | "conflicting"],
         },
       }),
   });
@@ -427,6 +476,11 @@ function GrantsPage() {
       <PageTransition>
         <OrgRulesDriftBanner />
         <GrantSearchProfileBar selectedProfileId={searchProfileId} onSelect={setSearchProfileId} />
+        <GrantFacetFilters
+          counts={data.facetCounts}
+          value={facetSelection}
+          onChange={setFacetSelection}
+        />
         <V2GrantsWorkspace
           activeJob={activeJob}
           allGrants={data.grants as GrantRowData[]}
@@ -512,6 +566,11 @@ function GrantsPage() {
           <GrantSearchProfileBar
             selectedProfileId={searchProfileId}
             onSelect={setSearchProfileId}
+          />
+          <GrantFacetFilters
+            counts={data.facetCounts}
+            value={facetSelection}
+            onChange={setFacetSelection}
           />
 
           {activeJob && (

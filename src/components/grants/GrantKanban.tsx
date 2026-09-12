@@ -507,6 +507,22 @@ function KanbanCard({
             Match: {g.searchMatch.matched_on}
           </span>
         )}
+        {g.facets && Object.values(g.facets).some((facet) => facet.state === "conflicting") && (
+          <span
+            className="rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[9px] text-warning"
+            title="Official evidence contains conflicting facet claims. Open the grant audit before relying on this field."
+          >
+            Conflicting evidence
+          </span>
+        )}
+        {g.facets?.deadline_kind.state === "known" && g.facets.deadline_kind.values[0] && (
+          <span
+            className="rounded border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[9px] text-muted-foreground"
+            title={`Deadline classification backed by ${g.facets.deadline_kind.evidence.length} evidence span(s).`}
+          >
+            {g.facets.deadline_kind.values[0]} deadline
+          </span>
+        )}
         {/* Was inline Math.round(.../1000)+"K" with no scale switch or sanity
             bound: $10 rendered as "up to $0K" and $336,000,000 as an unscaled
             six-digit "up to $336000K" — both observed on real duplicate-grant

@@ -50,6 +50,16 @@ export type GrantRowData = {
   } | null;
   feedbackAction?: "saved" | "hidden" | "rejected" | "restored" | "pursued" | null;
   combinedRelevance?: number;
+  facets?: Record<
+    "applicant_types" | "populations_served" | "funding_uses" | "funder_type" | "deadline_kind",
+    {
+      state: "known" | "unknown" | "conflicting";
+      values: string[];
+      excludedValues: string[];
+      confidence: number | null;
+      evidence: Array<{ id: string; source_url: string; snippet: string }>;
+    }
+  >;
   // >1 means other active grants share this funder + a near-identical title —
   // a real, recurring data-quality issue (contaminated test-seed rows, or
   // genuine re-discovery not yet deduped). UI-only signal, never merges data.
