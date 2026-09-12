@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import type { GrantRowData } from "@/components/grants/GrantRow";
+import {
+  GrantFeedbackControls,
+  type GrantFeedbackDecision,
+} from "@/components/grants/GrantFeedbackControls";
 import { StatCard, StatGrid } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { ExternalLinkPreview } from "@/components/ExternalLinkPreview";
@@ -89,12 +93,14 @@ export function GrantExpressView({
   onEvaluate,
   filters,
   isAdmin,
+  onFeedback,
 }: {
   grants: GrantRowData[];
   evaluatingIds: Set<string>;
   onEvaluate: (id: string) => void;
   filters?: React.ReactNode;
   isAdmin?: boolean;
+  onFeedback?: (grant: GrantRowData, decision: GrantFeedbackDecision) => void;
 }) {
   const active = grants.filter((g) => isActiveGrantStatus(g.status));
 
@@ -179,7 +185,7 @@ export function GrantExpressView({
           />
           <ul className="space-y-3">
             {inProgress.map((g) => (
-              <MatchCard key={g.id} g={g} mode="progress" />
+              <MatchCard key={g.id} g={g} mode="progress" onFeedback={onFeedback} />
             ))}
           </ul>
         </section>
@@ -194,7 +200,7 @@ export function GrantExpressView({
           />
           <ul className="space-y-3">
             {matches.map((g) => (
-              <MatchCard key={g.id} g={g} mode="match" />
+              <MatchCard key={g.id} g={g} mode="match" onFeedback={onFeedback} />
             ))}
           </ul>
         </section>
@@ -214,6 +220,7 @@ export function GrantExpressView({
                 g={g}
                 evaluating={evaluatingIds.has(g.id)}
                 onEvaluate={onEvaluate}
+                onFeedback={onFeedback}
               />
             ))}
           </ul>
@@ -243,7 +250,15 @@ function GroupHeader({ title, count, hint }: { title: string; count: number; hin
  * one action. The rail keeps every score in the same spot so the eye can run
  * down the list comparing opportunities.
  */
-function MatchCard({ g, mode }: { g: GrantRowData; mode: "progress" | "match" }) {
+function MatchCard({
+  g,
+  mode,
+  onFeedback,
+}: {
+  g: GrantRowData;
+  mode: "progress" | "match";
+  onFeedback?: (grant: GrantRowData, decision: GrantFeedbackDecision) => void;
+}) {
   const fit = fitOf(g);
   const tier = fit != null ? tierOf(fit) : null;
   const dl = deadlineInfo(g);
@@ -376,6 +391,7 @@ function MatchCard({ g, mode }: { g: GrantRowData; mode: "progress" | "match" })
           >
             Official page
           </ExternalLinkPreview>
+          {onFeedback && <GrantFeedbackControls grant={g} onFeedback={onFeedback} compact />}
         </div>
       </div>
     </li>
@@ -387,10 +403,12 @@ function UncheckedRow({
   g,
   evaluating,
   onEvaluate,
+  onFeedback,
 }: {
   g: GrantRowData;
   evaluating: boolean;
   onEvaluate: (id: string) => void;
+  onFeedback?: (grant: GrantRowData, decision: GrantFeedbackDecision) => void;
 }) {
   const dl = deadlineInfo(g);
   return (
@@ -423,6 +441,7 @@ function UncheckedRow({
           "Check my fit"
         )}
       </Button>
+      {onFeedback && <GrantFeedbackControls grant={g} onFeedback={onFeedback} compact />}
     </li>
   );
 }
