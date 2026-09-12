@@ -67,8 +67,9 @@ rather than breaks.
 
 | Agents                                | Order                    | Why                                                                                                                                                                   |
 | ------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| evaluator, critic, strategist, writer | Groq → Cerebras → Gemini | These produce the judgements and prose a person acts on. Groq's `llama-3.3-70b-versatile` is the largest model that answered reliably, and is not slower in practice. |
-| discoverer, enricher                  | Cerebras → Groq → Gemini | High-volume extraction where latency × volume dominates; Cerebras `gemma-4-31b` leads.                                                                                |
+| evaluator, critic                     | Groq -> Cerebras -> Gemini | JSON judgement agents use Groq `qwen/qwen3.8-27b`, the fastest stable JSON model measured on 2026-09-12.                                                             |
+| strategist, writer                    | Groq -> Cerebras -> Gemini | Plain-text reasoning/prose agents use Groq `openai/gpt-oss-120b`, which answers plain mode reliably on this account.                                                |
+| discoverer, enricher                  | Cerebras -> Groq -> Gemini | High-volume JSON extraction still tries Cerebras first, but current account quota returns 402; Groq `qwen/qwen3.8-27b` and Gemini are the live cloud rungs.          |
 
 Three findings that cost real quality, all from live probes on 2026-08-16:
 
