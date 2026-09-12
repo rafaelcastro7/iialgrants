@@ -35,7 +35,7 @@ describe("hybrid grant retrieval", () => {
   });
 
   it("supports an explicit lexical-only rollback without calling embeddings", async () => {
-    vi.mocked(getEmbeddingCached).mockClear();
+    getEmbeddingCached.mockClear();
     const rpc = vi.fn(async (name: string) => {
       if (name === "search_grant_catalog") {
         return { data: [{ grant_id: "lex", relevance: 0.8, matched_on: "title" }], error: null };
