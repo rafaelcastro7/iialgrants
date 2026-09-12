@@ -406,18 +406,6 @@ export const listGrants = createServerFn({ method: "GET" })
       )
       .slice(0, data.limit);
     const grants = grantsWithProfile.map(({ grant }) => grant);
-
-    const ids = grants.map((g) => g.id);
-    const evalsByGrant = new Map<
-      string,
-      {
-        fit_score: number;
-        eligibility_pass: boolean;
-        rationale_en: string;
-        rationale_fr: string;
-        created_at: string;
-      }
-    >();
     // Previously a single `.in("grant_id", ids)` call with ~100 UUIDs — and
     // since only `data` was destructured, the resulting gateway error was
     // silently swallowed, leaving every grant's evaluation blank (frontend
@@ -425,24 +413,6 @@ export const listGrants = createServerFn({ method: "GET" })
     // already scored). Chunking (see chunkIds above) avoids the oversized
     // request; checking `error` here surfaces any future failure instead of
     // masking it.
-    for (const chunk of chunkIds(ids)) {
-      const { data: evals, error: evalsError } = await context.supabase
-        .from("grant_evaluations")
-        .select("grant_id, fit_score, eligibility_pass, rationale_en, rationale_fr, created_at")
-        .eq("user_id", context.userId)
-        .in("grant_id", chunk);
-      if (evalsError) throw new Error(`grant_evaluations: ${evalsError.message}`);
-      for (const e of evals ?? []) {
-        evalsByGrant.set(e.grant_id, {
-          fit_score: Number(e.fit_score),
-          eligibility_pass: !!e.eligibility_pass,
-          rationale_en: e.rationale_en ?? "",
-          rationale_fr: e.rationale_fr ?? "",
-          created_at: e.created_at,
-        });
-      }
-    }
-
     // Duplicate-record signal: group by (funder_id, normalized title) — the
     // canonical_key unique index only protects rows where canonical_key was
     // actually set (a test-seed bug left ~17 rows with canonical_key NULL,
