@@ -916,6 +916,17 @@ function QueueCard({
             {elig.icon}
             {elig.label}
           </span>
+          {grant.isNewSinceLastReview && <Badge variant="secondary">New since review</Badge>}
+          {grant.changedSinceFeedback && <Badge variant="outline">Changed since saved</Badge>}
+          {grant.hardBlocked && <Badge variant="destructive">Blocked · inspection only</Badge>}
+          {grant.rankingBreakdown && (
+            <Badge
+              variant="outline"
+              title={`retrieval ${grant.rankingBreakdown.retrieval.toFixed(3)}; profile ${grant.rankingBreakdown.profile.toFixed(3)}; feedback ${grant.rankingBreakdown.feedback.toFixed(3)}; history ${grant.rankingBreakdown.history.toFixed(3)}; quality ${grant.rankingBreakdown.quality.toFixed(3)}`}
+            >
+              Explain rank
+            </Badge>
+          )}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
