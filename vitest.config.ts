@@ -9,7 +9,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
-    exclude: ["tests/**", "**/*.spec.ts"],
+    exclude: ["**/tests/**", "**/*.spec.ts", "**/node_modules/**"],
     testTimeout: 30_000,
     // Machine-readable reports for CI artifact upload on failure.
     reporters: process.env.CI
