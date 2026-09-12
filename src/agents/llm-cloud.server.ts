@@ -1,12 +1,12 @@
-// Cloud LLM adapter — the app's INITIAL source everywhere (dev + Lovable prod).
-// Cloud chain: Cerebras (primary) -> Groq (secondary). Both are OpenAI-compatible.
+// Cloud LLM adapter - the app's INITIAL source everywhere (dev + Lovable prod).
+// Cloud chain: Cerebras, Groq, Gemini. All are OpenAI-compatible.
 // callLlm/callFreeLlm fall back to local Ollama only if this whole chain fails
 // (e.g. no cloud keys set), so the dev machine still works fully offline.
 //
-// Model mapping mirrors local agent roles:
-//   discoverer/enricher → fast 8B model  (structured extraction, high volume)
-//   evaluator/critic    → 70B model      (honest evaluation)
-//   strategist/writer   → 70B model      (deep reasoning)
+// Model mapping mirrors agent roles:
+//   discoverer/enricher -> fast structured extraction, high volume
+//   evaluator/critic    -> honest scoring and structured judgement
+//   strategist/writer   -> deep reasoning and prose
 
 import { logGenAI, newRunId } from "@/lib/otel";
 import type { AgentName } from "@/lib/agent-config.server";
@@ -44,27 +44,13 @@ type CloudProvider = {
   modelMap: Record<AgentName, string>;
 };
 
-// Cerebras — primary cloud source ("los cerebros"). OpenAI-compatible API.
+// Cerebras - primary cloud source for high-volume extraction.
 // Model IDs are account-specific; verify with `GET /v1/models`.
 //
-// Every agent used to be pinned to gemma-4-31b on the strength of a note that
-// gpt-oss-120b "truncates (harmony/reasoning tokens)" and zai-glm-4.7 "returns
-// empty content". Re-measured 2026-08-16 with
-// `bun run scripts/benchmark-cloud-models.ts`, which asks for the same shape of
-// structured JSON the evaluator does: all three now return valid, complete
-// objects (gemma-4-31b 451ms, gpt-oss-120b 1255ms, zai-glm-4.7 1854ms). The
-// note was stale, and it was costing every judgement call a 31B model.
-//
-// gemma-4-31b for every role, deliberately: it is the only model on this
-// account that answered correctly in BOTH plain and json modes across repeated
-// probes. gpt-oss-120b is larger but inconsistent — one run returned valid
-// structured JSON and empty plain text, the next the reverse — and zai-glm-4.7
-// is slower without being more reliable. A model that intermittently returns
-// nothing is worse than a smaller one that always answers, because the caller
-// pays a full provider timeout before falling through.
-//
-// Quality for the reasoning agents comes from provider ORDER instead: they try
-// Groq's 70B first (see agentProviderOrder below).
+// Re-measured 2026-09-12 after the previous gemma-4-31b map started returning
+// 404 on chat even though it still appeared in /models. This account's current
+// callable Cerebras fallback is qwen-3.8-27b; judgement quality comes from
+// provider order, because judgement agents try Groq's 120B model first.
 export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "qwen-3.8-27b",
   enricher: "qwen-3.8-27b",
@@ -74,7 +60,7 @@ export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
   writer: "qwen-3.8-27b",
 };
 
-// Groq — secondary cloud source (free tier) if Cerebras is unavailable.
+// Groq - primary for judgement/prose agents and secondary for extraction.
 export const GROQ_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "openai/gpt-oss-20b",
   enricher: "openai/gpt-oss-20b",
@@ -84,21 +70,12 @@ export const GROQ_MODEL_MAP: Record<AgentName, string> = {
   critic: "openai/gpt-oss-120b",
 };
 
-// Gemini — tertiary cloud source via Google's OpenAI-compatible endpoint.
+// Gemini - tertiary cloud source via Google's OpenAI-compatible endpoint.
 //
-// The 2.0 IDs this used to name (gemini-2.0-flash / -flash-lite) were retired
-// by Google and answer 404 "no longer available"; the whole tertiary rung was
-// therefore dead, and a Cerebras+Groq outage fell straight through to local
-// Ollama. Confirmed live 2026-08-16 against this account's model list.
-// Pinned rather than tracking the -latest aliases so behaviour is stable;
-// `bun run scripts/check-cloud-llm.ts` catches the next retirement.
-//
-// One model for every role here, unlike the Groq map's fast-8B/70B split.
-// Both gemini-2.5-flash-lite and gemini-2.5-pro are listed by GET /models but
-// answer 404 ("no longer available to new users" / "no longer available") on
-// this account, so being listed is not evidence a model can be called —
-// measure, don't assume. This is the last rung before local Ollama anyway, so
-// one known-good model beats a nominally better one that might not answer.
+// Re-measured 2026-09-12: gemini-3-flash-preview answered structured JSON on
+// this account while the old 2.5 map was quota/availability-sensitive. This is
+// the last rung before local Ollama, so the check script probes real chat calls
+// rather than trusting model-list presence.
 export const GEMINI_MODEL_MAP: Record<AgentName, string> = {
   discoverer: "gemini-3-flash-preview",
   enricher: "gemini-3-flash-preview",
@@ -115,11 +92,11 @@ export const GEMINI_MODEL_MAP: Record<AgentName, string> = {
  * run over the whole catalog, so their cost is latency × volume and Cerebras's
  * 31B model is the right lead. Evaluation, criticism, strategy and drafting
  * produce the judgements and prose a person acts on, and there the best
- * available model wins: Groq's llama-3.3-70b-versatile is more than twice the
- * parameters, answered reliably in both plain and JSON modes, and is not
- * slower in practice (~110ms vs ~300ms to first response on these probes).
+ * available model wins: Groq's `openai/gpt-oss-120b` is the measured lead for
+ * those roles on 2026-09-12. Discovery/enrichment use Groq's faster
+ * `openai/gpt-oss-20b` when the Cerebras rung is unavailable.
  *
- * Every agent still traverses the whole chain — this only decides the order,
+ * Every agent still traverses the whole chain - this only decides the order,
  * so a provider outage degrades rather than breaks.
  */
 const QUALITY_FIRST_AGENTS: ReadonlySet<AgentName> = new Set([
