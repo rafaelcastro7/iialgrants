@@ -8,14 +8,22 @@
 // pure server-side fetch-mocking with no DOM dependency, so run it under
 // Node's real fetch/Response instead of the project-wide jsdom default.
 import ExcelJS from "exceljs";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchAlbertaGrants } from "./alberta-ckan.server";
 import { fetchBbfPrograms } from "./bbf-programs.server";
 import { fetchEuCalls } from "./eu-ft.server";
 import { fetchOtfRecipients } from "./otf.server";
 import { extractT3010Candidates } from "./t3010.server";
 
-afterEach(() => vi.unstubAllGlobals());
+let originalFetch: typeof fetch;
+
+beforeEach(() => {
+  originalFetch = global.fetch;
+});
+
+afterEach(() => {
+  global.fetch = originalFetch;
+});
 
 describe("source ingester contracts", () => {
   it("uses EU POST search and retains only current English calls", async () => {
@@ -49,7 +57,7 @@ describe("source ingester contracts", () => {
         }),
       ),
     );
-    vi.stubGlobal("fetch", fetchMock);
+    global.fetch = fetchMock;
     const result = await fetchEuCalls();
     expect(result.map((candidate) => candidate.name)).toEqual([
       "European Commission — Horizon Europe",
@@ -107,7 +115,7 @@ describe("source ingester contracts", () => {
         ),
       )
       .mockResolvedValueOnce(new Response(workbookBytes));
-    vi.stubGlobal("fetch", fetchMock);
+    global.fetch = fetchMock;
 
     const result = await fetchBbfPrograms();
     expect(result).toHaveLength(1);
@@ -123,7 +131,7 @@ describe("source ingester contracts", () => {
       '"Toronto Community Foundation","$150,000"',
       '"Community Living Toronto","$500,000"',
     ].join("\n");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(csv)));
+    global.fetch = vi.fn().mockResolvedValue(new Response(csv));
     const result = await fetchOtfRecipients();
     expect(result.map((candidate) => candidate.name)).toEqual(["Toronto Community Foundation"]);
   });
@@ -144,7 +152,7 @@ describe("source ingester contracts", () => {
   });
 
   it("surfaces upstream HTTP failures rather than returning a successful empty run", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("gone", { status: 400 })));
+    global.fetch = vi.fn().mockResolvedValue(new Response("gone", { status: 400 }));
     await expect(fetchAlbertaGrants()).rejects.toThrow("alberta_ckan_http_400");
     await expect(fetchOtfRecipients()).rejects.toThrow("otf_csv_http_400");
   });
