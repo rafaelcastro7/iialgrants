@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { GRANT_FACET_FIELDS, resolveGrantFacet } from "./grant-facets.shared";
+import {
+  grantFacetEvidenceState,
+  GRANT_FACET_FIELDS,
+  resolveGrantFacet,
+  resolveGrantFacets,
+} from "./grant-facets.shared";
 
 const evidence = (field: string, value: unknown, confidence = 0.9) => ({
   id: crypto.randomUUID(),
@@ -50,4 +55,18 @@ it("does not infer an exclusion from ordinary eligibility prose", () => {
   });
   expect(result.state).toBe("unknown");
   expect(result.excludedValues).toEqual([]);
+});
+
+it("summarizes evidence quality conservatively", () => {
+  const unknown = resolveGrantFacets({ grant: {}, evidence: [] });
+  expect(grantFacetEvidenceState(unknown)).toBe("unknown");
+
+  const known = resolveGrantFacets({
+    grant: {},
+    evidence: GRANT_FACET_FIELDS.map((field) => evidence(field, [field])),
+  });
+  expect(grantFacetEvidenceState(known)).toBe("known");
+
+  known.applicant_types.state = "conflicting";
+  expect(grantFacetEvidenceState(known)).toBe("conflicting");
 });

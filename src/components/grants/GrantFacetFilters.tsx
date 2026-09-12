@@ -47,6 +47,7 @@ export function GrantFacetFilters({
     },
     {
       key: "evidenceState",
+      countKey: "evidence_state",
       label: "Evidence state",
       fixed: ["known", "unknown", "conflicting"],
     },
@@ -96,4 +97,3 @@ export function GrantFacetFilters({
     </div>
   );
 }
-

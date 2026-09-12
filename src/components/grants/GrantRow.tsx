@@ -60,6 +60,7 @@ export type GrantRowData = {
       evidence: Array<{ id: string; source_url: string; snippet: string }>;
     }
   >;
+  facetEvidenceState?: "known" | "unknown" | "conflicting";
   // >1 means other active grants share this funder + a near-identical title —
   // a real, recurring data-quality issue (contaminated test-seed rows, or
   // genuine re-discovery not yet deduped). UI-only signal, never merges data.

@@ -41,11 +41,7 @@ import type { GrantRowData } from "@/components/grants/GrantRow";
 import { isActiveGrantStatus } from "@/agents/pipeline-stages.shared";
 import { GrantSearchProfileBar } from "@/components/grants/GrantSearchProfileBar";
 import { OrgRulesDriftBanner } from "@/components/grants/OrgRulesDriftBanner";
-import {
-  EMPTY_GRANT_FACETS,
-  GrantFacetFilters,
-  type GrantFacetSelection,
-} from "@/components/grants/GrantFacetFilters";
+import { GrantFacetFilters, type GrantFacetSelection } from "@/components/grants/GrantFacetFilters";
 import { recordGrantSearchFeedback } from "@/lib/grant-search-profiles.functions";
 import "@/i18n";
 

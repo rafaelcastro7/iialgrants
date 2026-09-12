@@ -131,3 +131,11 @@ export function resolveGrantFacets(input: {
     ]),
   ) as Record<GrantFacetField, ResolvedGrantFacet>;
 }
+
+export function grantFacetEvidenceState(
+  facets: Record<GrantFacetField, ResolvedGrantFacet>,
+): GrantFacetState {
+  const states = Object.values(facets).map((facet) => facet.state);
+  if (states.includes("conflicting")) return "conflicting";
+  return states.every((state) => state === "known") ? "known" : "unknown";
+}
