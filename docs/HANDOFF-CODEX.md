@@ -1,8 +1,52 @@
 # Handoff for Codex / Claude - IIAL Grants
 
 Living handoff so another agent can continue safely. Read this plus
-`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-09-11
+`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-09-12
 America/New_York.
+
+## 2026-09-12 - Search modernization phases 3-5 verified
+
+The active masterplan slice is now implemented and verified through Phases 3,
+4 and 5. Phase 3 added evidence-backed canonical grant facets
+(`applicant_types`, `populations_served`, `funding_uses`, `funder_type`,
+`deadline_kind`) with explicit `known` / `unknown` / `conflicting` behavior,
+conservative extraction, facet filters/counts on `/grants`, and badges for
+conflicting evidence and deadline classification. Phase 4 added deadline
+observations, recurrence prediction provenance, profile peer organizations and
+bounded giving-history boosts that cannot override hard fails. Phase 5 added
+source accountability fields/playbooks, the `source_coverage_accountability`
+view, admin coverage UI and durable `bun run sources:run <tier>`.
+
+Live source runs completed after the model map repair: A/B/C tiers succeeded,
+then `bun run sources:run scout` succeeded with 4 new low-signal candidates
+held for corroboration and 0 errors. Accountability query at 2026-09-12
+01:09 America/New_York: all enabled sources are `healthy`; retired
+`grants_gov`, `idrc_rss`, `pfc_members` and `alberta_ckan` are intentionally
+`disabled` with retained error notes. `tbs_gc` can be healthy with 0 rows when
+the official API answers successfully but yields no candidates; health is SLA
+execution state, not a positive-yield guarantee.
+
+Cloud routing was re-measured on 2026-09-12. Cerebras models are listed but the
+account returns `402 payment_required` on chat, so treat that rung as degraded.
+Groq is usable with `qwen/qwen3.8-27b` for JSON agents
+(discoverer/enricher/evaluator/critic) and `openai/gpt-oss-120b` for plain
+strategist/writer calls. Gemini `gemini-3-flash-preview` answers both modes.
+`scripts/check-cloud-llm.ts` now checks the modes each mapped model actually
+needs; `startup-validate.ts` reports degraded rungs but passes when at least one
+cloud provider is callable. If all cloud providers fail or fill quota, the
+normal router falls back to local Ollama; this is covered by
+`src/agents/llm-cascade.e2e.test.ts`.
+
+Verification on 2026-09-12: ESLint passed; Vitest passed 544 tests with 4
+skipped; production build passed; `bun run eval:search --enforce` passed with
+20/28 executable cases, Precision@10 0.9283, Recall@10 0.9317, MRR 0.95,
+nDCG@10 0.8839 and hard-fail leakage 0; `startup-validate.ts` ended `ALL
+SYSTEMS GO` with 712 funders, 3,143 grants and 3,140 embeddings. Playwright
+targeted smoke passed 35/35 for basic user, navigation audit and routes,
+including `/grants` and `/admin/sources`. The full Playwright suite was
+attempted but timed out after 15 minutes without actionable output, likely in
+the long full-lifecycle spec; treat that as not completed, not as a product
+regression.
 
 ## 2026-09-11 — Context refresh and org/rules drift integration
 
