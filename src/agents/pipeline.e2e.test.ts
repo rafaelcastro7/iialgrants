@@ -40,20 +40,22 @@ const MARKDOWN = [
   "Non-profit organizations registered in Ontario may apply.",
 ].join("\n\n");
 
-vi.mock("@/lib/web-fetch.server", () => ({
-  scrapeWithFallback: async (url: string) => ({
-    ok: true,
-    url,
-    via: "jina_reader" as const,
-    markdown: MARKDOWN,
-    title: "Innovation Boost Program",
-    attempts: [],
-  }),
-  localWebSearch: async () => ({ ok: true, hits: [] }),
-  searchWeb: async () => [],
-  CHROME_UA:
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-}));
+vi.mock("@/lib/web-fetch.server", () => {
+  const actual = await vi.importActual("@/lib/web-fetch.server");
+  return {
+    ...actual,
+    scrapeWithFallback: async (url: string) => ({
+      ok: true,
+      url,
+      via: "jina_reader" as const,
+      markdown: MARKDOWN,
+      title: "Innovation Boost Program",
+      attempts: [],
+    }),
+    localWebSearch: async () => ({ ok: true, hits: [] }),
+    searchWeb: async () => [],
+  };
+});
 vi.mock("@/lib/firecrawl.server", () => ({
   firecrawlAvailable: () => false,
   firecrawlScrape: async () => ({ ok: false, url: "", error: "no_api_key" }),
