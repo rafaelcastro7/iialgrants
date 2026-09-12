@@ -507,6 +507,58 @@ function GrantsPage() {
     return { total, needsAction, avgFit, pipelineValueCad };
   }, [activeFiltered]);
 
+  const searchTrustControls = (
+    <div className="mb-4 space-y-2 rounded-lg border bg-card px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={includeHardBlocked}
+              onChange={(event) => setIncludeHardBlocked(event.target.checked)}
+            />
+            Show blocked grants
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={includeDismissed}
+              onChange={(event) => setIncludeDismissed(event.target.checked)}
+            />
+            Show hidden / rejected
+          </label>
+        </div>
+        {searchProfileId && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={reviewMutation.isPending}
+            onClick={() => reviewMutation.mutate()}
+          >
+            {reviewMutation.isPending ? "Marking…" : "Mark current results reviewed"}
+          </Button>
+        )}
+      </div>
+      {serverSearch.length >= 2 && (
+        <p className="text-xs text-muted-foreground">
+          Ranking {data.rankingVersion} · mode {data.searchMode ?? "catalog"}
+        </p>
+      )}
+      {data.searchDegradedReason && (
+        <p role="status" className="text-xs text-amber-700 dark:text-amber-300">
+          Semantic search is degraded ({data.searchDegradedReason}). Results are from the lexical
+          fallback, not an empty provider response.
+        </p>
+      )}
+      {data.searchTelemetryError && (
+        <p role="status" className="text-xs text-destructive">
+          Search results loaded, but this run could not be recorded: {data.searchTelemetryError}
+        </p>
+      )}
+    </div>
+  );
+
   if (version === "v2") {
     return (
       <PageTransition>
@@ -517,6 +569,7 @@ function GrantsPage() {
           value={facetSelection}
           onChange={setFacetSelection}
         />
+        {searchTrustControls}
         <V2GrantsWorkspace
           activeJob={activeJob}
           allGrants={data.grants as GrantRowData[]}
@@ -551,7 +604,7 @@ function GrantsPage() {
           onEvaluate={onEvaluate}
           onFeedback={
             searchProfileId
-              ? (grant, action) => feedbackMutation.mutate({ grant, action })
+              ? (grant, decision) => feedbackMutation.mutate({ grant, decision })
               : undefined
           }
           onJurisdictionChange={setJurisdiction}
@@ -608,6 +661,7 @@ function GrantsPage() {
             value={facetSelection}
             onChange={setFacetSelection}
           />
+          {searchTrustControls}
 
           {activeJob && (
             <DiscoveryProgress
@@ -648,6 +702,11 @@ function GrantsPage() {
               onEvaluate={onEvaluate}
               filters={filtersNode}
               isAdmin={isAdmin}
+              onFeedback={
+                searchProfileId
+                  ? (grant, decision) => feedbackMutation.mutate({ grant, decision })
+                  : undefined
+              }
             />
           )}
 
@@ -660,6 +719,11 @@ function GrantsPage() {
               onEnrich={onEnrich}
               onEvaluate={onEvaluate}
               onDraft={onDraft}
+              onFeedback={
+                searchProfileId
+                  ? (grant, decision) => feedbackMutation.mutate({ grant, decision })
+                  : undefined
+              }
               onMove={isAdmin ? onMove : undefined}
               kpis={kpis}
               filters={filtersNode}
