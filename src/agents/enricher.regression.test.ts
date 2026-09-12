@@ -10,7 +10,7 @@
 //
 // To refresh fixtures, re-curl the source URL into __fixtures__/pages/.
 
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { scrapeEngineFetch, toFetchedPage } from "@/lib/scrape-engine.server";
@@ -27,14 +27,20 @@ function mockFetch(html: string, status = 200, headers: Record<string, string> =
   );
 }
 
+let originalFetch: typeof fetch;
+
+beforeEach(() => {
+  originalFetch = global.fetch;
+});
+
 afterEach(() => {
-  vi.restoreAllMocks();
+  global.fetch = originalFetch;
 });
 
 describe("enrichment click flow — real fixtures", () => {
   it("extracts a valid Wikipedia article into markdown with title and attempts trail", async () => {
     const html = FIX("ised-wiki.html");
-    vi.stubGlobal("fetch", mockFetch(html));
+    global.fetch = mockFetch(html);
 
     const r = await scrapeEngineFetch("https://en.wikipedia.org/wiki/ISED");
     expect(r.ok).toBe(true);
@@ -51,7 +57,7 @@ describe("enrichment click flow — real fixtures", () => {
   });
 
   it("returns a typed failure (no throw) on HTTP 403 — used to trigger fallback chain", async () => {
-    vi.stubGlobal("fetch", mockFetch("<html><body>blocked</body></html>", 403));
+    global.fetch = mockFetch("<html><body>blocked</body></html>", 403);
     const r = await scrapeEngineFetch("https://example.org/blocked");
     expect(r.ok).toBe(false);
     if (r.ok) return;
@@ -65,7 +71,7 @@ describe("enrichment click flow — real fixtures", () => {
   });
 
   it("returns extracted_too_short when fixture has no real content", async () => {
-    vi.stubGlobal("fetch", mockFetch("<html><body><p>hi</p></body></html>".padEnd(300, " "), 200));
+    global.fetch = mockFetch("<html><body><p>hi</p></body></html>".padEnd(300, " "), 200);
     const r = await scrapeEngineFetch("https://example.org/empty");
     expect(r.ok).toBe(false);
     if (r.ok) return;
