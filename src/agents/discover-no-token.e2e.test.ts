@@ -164,8 +164,6 @@ describe("Discovery runs with zero external API keys (local-only)", () => {
       source_urls: [],
       source_type: "manual",
     });
-
-    vi.resetModules();
   });
 
   afterEach(() => {
