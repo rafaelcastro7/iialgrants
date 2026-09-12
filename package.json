@@ -13,6 +13,7 @@
     "test:e2e": "node node_modules/playwright/cli.js test",
     "eval:search": "bun scripts/run-search-benchmark.ts",
     "search:backfill": "bun scripts/backfill-grant-search-embeddings.ts",
+    "sources:run": "bun scripts/run-source-curator.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
