@@ -62,12 +62,12 @@ export const CEREBRAS_MODEL_MAP: Record<AgentName, string> = {
 
 // Groq - primary for judgement/prose agents and secondary for extraction.
 export const GROQ_MODEL_MAP: Record<AgentName, string> = {
-  discoverer: "openai/gpt-oss-20b",
-  enricher: "openai/gpt-oss-20b",
-  evaluator: "openai/gpt-oss-20b",
+  discoverer: "qwen/qwen3.8-27b",
+  enricher: "qwen/qwen3.8-27b",
+  evaluator: "qwen/qwen3.8-27b",
   strategist: "openai/gpt-oss-120b",
   writer: "openai/gpt-oss-120b",
-  critic: "openai/gpt-oss-20b",
+  critic: "qwen/qwen3.8-27b",
 };
 
 // Gemini - tertiary cloud source via Google's OpenAI-compatible endpoint.
@@ -94,8 +94,8 @@ export const GEMINI_MODEL_MAP: Record<AgentName, string> = {
  * produce the judgements and prose a person acts on, and there the best
  * available model wins within the mode each role actually uses. On 2026-09-12,
  * Groq's `openai/gpt-oss-120b` answered plain mode for strategist/writer, while
- * `openai/gpt-oss-20b` was the callable JSON model for evaluator/critic and
- * the extraction agents.
+ * `qwen/qwen3.8-27b` was the fastest stable JSON model for evaluator/critic
+ * and the extraction agents.
  *
  * Every agent still traverses the whole chain - this only decides the order,
  * so a provider outage degrades rather than breaks.
