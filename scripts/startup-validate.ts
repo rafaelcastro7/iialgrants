@@ -206,9 +206,9 @@ await check("cloud llm chain", false, async () => {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
           body: JSON.stringify({
             model: p.model,
-              messages: [{ role: "user", content: 'Reply with only JSON: {"status":"ready"}' }],
-              response_format: { type: "json_object" },
-              max_tokens: 32,
+            messages: [{ role: "user", content: 'Reply with only JSON: {"status":"ready"}' }],
+            response_format: { type: "json_object" },
+            max_tokens: 32,
             temperature: 0,
           }),
         },
@@ -227,7 +227,9 @@ await check("cloud llm chain", false, async () => {
       `${broken.join("; ")} — run "bun run scripts/check-cloud-llm.ts" for the model list`,
     );
   }
-  return broken.length ? `${results.join(", ")}; degraded: ${broken.join("; ")}` : results.join(", ");
+  return broken.length
+    ? `${results.join(", ")}; degraded: ${broken.join("; ")}`
+    : results.join(", ");
 });
 
 // --- 6. The real hybrid search path the /grants page uses --------------------
