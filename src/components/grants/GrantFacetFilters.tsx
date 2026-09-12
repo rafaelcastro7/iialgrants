@@ -10,7 +10,7 @@ export type GrantFacetSelection = {
   evidenceState: string;
 };
 
-export const EMPTY_GRANT_FACETS: GrantFacetSelection = {
+const EMPTY_GRANT_FACETS: GrantFacetSelection = {
   applicantType: "all",
   population: "all",
   fundingUse: "all",
