@@ -60,8 +60,20 @@ type ProviderReport = {
   available: string[];
   mapped: string[];
   missing: string[];
-  chat: Array<{ model: string; ok: boolean; ms: number; detail: string }>;
+  chat: Array<{ model: string; ok: boolean; ms: number; detail: string; requiredModes: string[] }>;
 };
+
+const JSON_MODE_AGENTS = new Set(["discoverer", "enricher", "evaluator", "critic"]);
+
+function requiredModesByModel(models: Record<string, string>): Map<string, Set<"plain" | "json">> {
+  const modes = new Map<string, Set<"plain" | "json">>();
+  for (const [agent, model] of Object.entries(models)) {
+    const required = JSON_MODE_AGENTS.has(agent) ? "json" : "plain";
+    if (!modes.has(model)) modes.set(model, new Set());
+    modes.get(model)?.add(required);
+  }
+  return modes;
+}
 
 // Google returns ids as "models/gemini-2.5-flash" from /models but expects
 // "gemini-2.5-flash" as the request model, so compare on the bare id.
@@ -169,17 +181,21 @@ for (const p of PROVIDERS) {
   // Probe every distinct mapped model, not just the first: the maps assign
   // different models per agent role, so a dead 70B model behind a healthy 8B
   // one would otherwise pass unnoticed.
+  const requiredModes = requiredModesByModel(p.models);
   for (const model of mapped) {
     const plain = await probeChat(p, model, false);
     const json = await probeChat(p, model, true);
-    // A model is usable if it answers in at least one mode; the label says
-    // which, because the role it is mapped to determines the mode it needs.
+    const required = [...(requiredModes.get(model) ?? new Set<"plain" | "json">())];
+    const hasRequiredModes = required.every((mode) => (mode === "plain" ? plain.ok : json.ok));
     const modes = [plain.ok ? "plain" : null, json.ok ? "json" : null].filter(Boolean).join("+");
     report.chat.push({
       model,
-      ok: plain.ok || json.ok,
+      ok: hasRequiredModes,
       ms: Math.max(plain.ms, json.ms),
-      detail: modes ? `modes: ${modes}` : `plain: ${plain.detail} | json: ${json.detail}`,
+      detail: modes
+        ? `modes: ${modes}; required: ${required.join("+")}`
+        : `plain: ${plain.detail} | json: ${json.detail}; required: ${required.join("+")}`,
+      requiredModes: required,
     });
   }
   if (report.keyValid === null) report.keyValid = report.chat.some((c) => c.ok);
@@ -212,7 +228,10 @@ if (JSON_OUT) {
   );
 }
 
-// Exit non-zero only when the whole chain is unusable: a single dead provider
-// is survivable by design, no cloud at all is not (for a cloud deployment).
-const anyUsable = reports.some((r) => r.keyPresent && r.keyValid && r.chat.some((c) => c.ok));
+// Exit non-zero when every keyed provider has a mapped model that cannot satisfy
+// the modes its assigned agents actually use. A single dead provider is still
+// survivable by design; a false-green mapped model is not.
+const anyUsable = reports.some(
+  (r) => r.keyPresent && r.keyValid && !r.missing.length && r.chat.every((c) => c.ok),
+);
 process.exit(anyUsable ? 0 : 1);
