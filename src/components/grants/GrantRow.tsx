@@ -39,7 +39,7 @@ export type GrantRowData = {
     matched_on: string;
     lexical_score: number;
     semantic_score: number;
-    retrieval_mode: "hybrid" | "lexical-fallback";
+    retrieval_mode: "hybrid" | "lexical-fallback" | "lexical-only" | "shadow";
     query_concepts: string[];
   } | null;
   profileMatch?: {
@@ -62,6 +62,28 @@ export type GrantRowData = {
   >;
   facetEvidenceState?: "known" | "unknown" | "conflicting";
   historyMatch?: { boost: number; factors: string[] };
+  qualityMatch?: {
+    evidence: number;
+    freshness: number;
+    sourceConfidence: number;
+    deadline: number;
+    total: number;
+    factors: string[];
+  };
+  rankingBreakdown?: {
+    retrieval: number;
+    profile: number;
+    feedback: number;
+    history: number;
+    quality: number;
+    country: number;
+    jurisdiction: number;
+    final: number;
+    version: string;
+  };
+  hardBlocked?: boolean;
+  isNewSinceLastReview?: boolean;
+  changedSinceFeedback?: boolean;
   // >1 means other active grants share this funder + a near-identical title —
   // a real, recurring data-quality issue (contaminated test-seed rows, or
   // genuine re-discovery not yet deduped). UI-only signal, never merges data.
