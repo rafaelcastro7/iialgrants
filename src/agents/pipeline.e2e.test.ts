@@ -40,22 +40,22 @@ const MARKDOWN = [
   "Non-profit organizations registered in Ontario may apply.",
 ].join("\n\n");
 
-vi.mock("@/lib/web-fetch.server", () => {
-  const actual = await vi.importActual("@/lib/web-fetch.server");
-  return {
-    ...actual,
-    scrapeWithFallback: async (url: string) => ({
-      ok: true,
-      url,
-      via: "jina_reader" as const,
-      markdown: MARKDOWN,
-      title: "Innovation Boost Program",
-      attempts: [],
-    }),
-    localWebSearch: async () => ({ ok: true, hits: [] }),
-    searchWeb: async () => [],
-  };
-});
+// Import actual web-fetch to preserve all exports (searchWeb, CHROME_UA, etc.)
+import * as webFetchActual from "@/lib/web-fetch.server";
+
+vi.mock("@/lib/web-fetch.server", () => ({
+  ...webFetchActual,
+  scrapeWithFallback: async (url: string) => ({
+    ok: true,
+    url,
+    via: "jina_reader" as const,
+    markdown: MARKDOWN,
+    title: "Innovation Boost Program",
+    attempts: [],
+  }),
+  localWebSearch: async () => ({ ok: true, hits: [] }),
+  searchWeb: async () => [],
+}));
 vi.mock("@/lib/firecrawl.server", () => ({
   firecrawlAvailable: () => false,
   firecrawlScrape: async () => ({ ok: false, url: "", error: "no_api_key" }),
