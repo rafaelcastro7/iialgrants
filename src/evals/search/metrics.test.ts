@@ -63,7 +63,7 @@ describe("search benchmark metrics", () => {
 
     expect(coverage).toMatchObject({
       executableCases: 1,
-      executableHardBlockCases: 0,
+      executableHardBlockCases: 1,
       executablePositiveCases: 0,
       staleCases: 2,
       sufficient: false,
