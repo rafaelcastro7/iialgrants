@@ -515,8 +515,62 @@ export const listGrants = createServerFn({ method: "GET" })
       ]),
     );
 
+    let searchTelemetryError: string | null = null;
+    if (hasSearch && data.search) {
+      const resultSnapshot = grantsWithProfile.map((row, index) => ({
+        grant_id: row.grant.id,
+        rank: index + 1,
+        hard_blocked: row.hardBlocked,
+        feedback_action: row.feedbackAction,
+        scores: row.rankingBreakdown,
+      }));
+      const firstMatch = rankById.values().next().value;
+      const retrievalMode =
+        firstMatch?.retrieval_mode ??
+        (effectiveSearchMode === "hybrid" && searchDegradedReason
+          ? "lexical-fallback"
+          : effectiveSearchMode);
+      const { error: telemetryError } = await context.supabase.from("grant_search_runs").insert({
+        user_id: context.userId,
+        org_id: principal?.org_id ?? null,
+        profile_id: data.profileId ?? null,
+        query_text: data.search,
+        filters: {
+          country: data.country ?? null,
+          applicant_types: data.applicantTypes ?? [],
+          populations_served: data.populationsServed ?? [],
+          funding_uses: data.fundingUses ?? [],
+          funder_types: data.funderTypes ?? [],
+          deadline_kinds: data.deadlineKinds ?? [],
+          evidence_states: data.evidenceStates ?? [],
+          include_hard_blocked: data.includeHardBlocked,
+          include_dismissed: data.includeDismissed,
+        } as Json,
+        candidate_counts: {
+          lexical: searchDiagnostics.lexicalCandidates,
+          semantic: searchDiagnostics.semanticCandidates,
+          fused: searchDiagnostics.fusedCandidates,
+          policy_visible: rankedCandidates.length,
+          returned: grantsWithProfile.length,
+        } as Json,
+        latency_ms: searchDiagnostics.latencyMs,
+        fusion_weights: { lexical: 0.7, semantic: 0.3, rrf_k: 60 } as Json,
+        index_version: SEARCH_INDEX_VERSION,
+        embedding_model: "nomic-embed-text",
+        taxonomy_version: SEARCH_TAXONOMY_VERSION,
+        ranking_version: searchConfig?.ranking_version ?? SEARCH_RANKING_VERSION,
+        retrieval_mode: retrievalMode,
+        degraded_reason: searchDegradedReason,
+        result_snapshot: resultSnapshot as Json,
+      });
+      if (telemetryError) searchTelemetryError = telemetryError.message;
+    }
+
     return {
       searchDegradedReason,
+      searchTelemetryError,
+      searchMode: hasSearch ? effectiveSearchMode : null,
+      rankingVersion: searchConfig?.ranking_version ?? SEARCH_RANKING_VERSION,
       availableCountries,
       facetCounts,
       grants: grantsWithProfile.map(
