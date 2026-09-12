@@ -193,18 +193,18 @@ export const listGrants = createServerFn({ method: "GET" })
       latencyMs: 0,
     };
     const hasSearch = !!data.search && data.search.length >= 2;
+    const effectiveSearchMode: "hybrid" | "lexical-only" | "shadow" = !searchConfig?.hybrid_enabled
+      ? "lexical-only"
+      : searchConfig.shadow_mode
+        ? "shadow"
+        : "hybrid";
     if (data.search && data.search.length >= 2) {
       const { searchGrantCatalogHybrid } = await import("@/lib/grant-search-hybrid.server");
-      const searchMode = !searchConfig?.hybrid_enabled
-        ? "lexical-only"
-        : searchConfig.shadow_mode
-          ? "shadow"
-          : "hybrid";
       const hybrid = await searchGrantCatalogHybrid(
         context.supabase,
         data.search,
         100,
-        searchMode,
+        effectiveSearchMode,
       );
       searchDegradedReason = hybrid.degradedReason;
       searchDiagnostics = hybrid.diagnostics;
