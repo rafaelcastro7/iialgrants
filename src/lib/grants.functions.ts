@@ -340,11 +340,14 @@ export const listGrants = createServerFn({ method: "GET" })
     const rankedCandidates = (rows ?? [])
       .map((grant) => {
         const profileMatch = searchProfile ? scoreGrantForProfile(grant, searchProfile) : null;
-        const feedbackAction = feedbackByGrant.get(grant.id) ?? null;
+        const feedbackRecord = feedbackByGrant.get(grant.id) ?? null;
+        const feedbackAction = feedbackRecord?.action ?? null;
         const feedbackBoost =
           feedbackAction === "saved" ? 0.08 : feedbackAction === "pursued" ? 0.12 : 0;
         const lexicalRelevance = rankById.get(grant.id)?.relevance ?? 0;
         const profileRelevance = profileMatch ? profileMatch.score / 100 : 0;
+        const evaluation = evalsByGrant.get(grant.id) ?? null;
+        const hardBlocked = profileMatch?.hardBlocked === true || evaluation?.eligibility_pass === false;
         // The product is a Canadian grant operation: with the catalog now
         // holding more US federal opportunities than Canadian ones, an
         // unweighted ranking buries domestic programs. Boost Canadian grants
@@ -366,18 +369,9 @@ export const listGrants = createServerFn({ method: "GET" })
           searchProfile?.peer_organizations ?? [],
         );
         const historyMatch = computeHistoryBoost({
-          hardBlocked: profileMatch?.hardBlocked ?? false,
+          hardBlocked,
           ...givingSignals,
         });
-        const combinedRelevance =
-          (rankById.size
-            ? lexicalRelevance * (searchProfile ? 0.75 : 1) +
-              profileRelevance * 0.25 +
-              feedbackBoost +
-              historyMatch.boost
-            : profileRelevance + feedbackBoost + historyMatch.boost) +
-          canadaBoost +
-          jurisdictionAdjustment;
         const facets = resolveGrantFacets({
           grant: {
             applicant_types: grant.applicant_types,
@@ -388,13 +382,66 @@ export const listGrants = createServerFn({ method: "GET" })
           },
           evidence: facetEvidenceByGrant.get(grant.id) ?? [],
         });
-        return { grant, profileMatch, feedbackAction, combinedRelevance, facets, historyMatch };
+        const qualityMatch = computeSearchQuality({
+          evidenceState: grantFacetEvidenceState(facets),
+          sourceFreshnessAt: grant.source_freshness_at,
+          sourceConfidence: grant.source_confidence,
+          deadlineKind: grant.deadline_kind,
+          deadlineConfidence: grant.deadline_confidence,
+        });
+        const retrievalContribution = rankById.size
+          ? lexicalRelevance * (searchProfile ? 0.75 : 1)
+          : 0;
+        const profileContribution = rankById.size
+          ? profileRelevance * 0.25
+          : profileRelevance;
+        const combinedRelevance =
+          retrievalContribution +
+          profileContribution +
+          (hardBlocked ? 0 : feedbackBoost + historyMatch.boost + qualityMatch.total) +
+          canadaBoost +
+          jurisdictionAdjustment;
+        const rankingBreakdown = {
+          retrieval: retrievalContribution,
+          profile: profileContribution,
+          feedback: hardBlocked ? 0 : feedbackBoost,
+          history: historyMatch.boost,
+          quality: hardBlocked ? 0 : qualityMatch.total,
+          country: canadaBoost,
+          jurisdiction: jurisdictionAdjustment,
+          final: combinedRelevance,
+          version: searchConfig?.ranking_version ?? SEARCH_RANKING_VERSION,
+        };
+        const isNewSinceLastReview = !!(
+          searchProfile?.last_reviewed_at &&
+          grant.discovered_at &&
+          grant.discovered_at > searchProfile.last_reviewed_at
+        );
+        const changedSinceFeedback = !!(
+          feedbackRecord?.updated_at &&
+          (grant.enriched_at ?? grant.discovered_at) &&
+          (grant.enriched_at ?? grant.discovered_at)! > feedbackRecord.updated_at
+        );
+        return {
+          grant,
+          profileMatch,
+          feedbackAction,
+          feedbackRecord,
+          combinedRelevance,
+          facets,
+          historyMatch,
+          qualityMatch,
+          rankingBreakdown,
+          evaluation,
+          hardBlocked,
+          isNewSinceLastReview,
+          changedSinceFeedback,
+        };
       })
       .filter(
-        ({ profileMatch, feedbackAction }) =>
-          feedbackAction !== "hidden" &&
-          feedbackAction !== "rejected" &&
-          profileMatch?.hardBlocked !== true,
+        ({ hardBlocked, feedbackAction }) =>
+          (data.includeDismissed || (feedbackAction !== "hidden" && feedbackAction !== "rejected")) &&
+          (data.includeHardBlocked || !hardBlocked),
       );
 
     const grantsWithProfile = rankedCandidates
