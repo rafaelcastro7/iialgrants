@@ -273,6 +273,35 @@ export const listGrants = createServerFn({ method: "GET" })
       }
       rows = collected;
     }
+
+    const evalsByGrant = new Map<
+      string,
+      {
+        fit_score: number;
+        eligibility_pass: boolean;
+        rationale_en: string;
+        rationale_fr: string;
+        created_at: string;
+      }
+    >();
+    for (const chunk of chunkIds((rows ?? []).map((row) => row.id))) {
+      const { data: evals, error: evalsError } = await context.supabase
+        .from("grant_evaluations")
+        .select("grant_id, fit_score, eligibility_pass, rationale_en, rationale_fr, created_at")
+        .eq("user_id", context.userId)
+        .in("grant_id", chunk);
+      if (evalsError) throw new Error(`grant_evaluations: ${evalsError.message}`);
+      for (const evaluation of evals ?? []) {
+        evalsByGrant.set(evaluation.grant_id, {
+          fit_score: Number(evaluation.fit_score),
+          eligibility_pass: !!evaluation.eligibility_pass,
+          rationale_en: evaluation.rationale_en ?? "",
+          rationale_fr: evaluation.rationale_fr ?? "",
+          created_at: evaluation.created_at,
+        });
+      }
+    }
+
     const facetEvidenceByGrant = new Map<string, GrantFacetEvidence[]>();
     for (const chunk of chunkIds((rows ?? []).map((row) => row.id))) {
       const { data: evidenceRows, error: evidenceError } = await context.supabase
