@@ -1,7 +1,15 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchCkanRecords } from "./canada-ckan.server";
 
-afterEach(() => vi.unstubAllGlobals());
+let originalFetch: typeof fetch;
+
+beforeEach(() => {
+  originalFetch = global.fetch;
+});
+
+afterEach(() => {
+  global.fetch = originalFetch;
+});
 
 describe("fetchCkanRecords", () => {
   it("pages current datastore_search results and applies acceptance rules", async () => {
@@ -15,7 +23,7 @@ describe("fetchCkanRecords", () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ success: true, result: { records: [{ id: 3 }] } })),
       );
-    vi.stubGlobal("fetch", fetchMock);
+    global.fetch = fetchMock;
 
     const rows = await fetchCkanRecords<{ id: number }>({
       resourceId: "resource",
@@ -34,21 +42,18 @@ describe("fetchCkanRecords", () => {
   });
 
   it("fails honestly when CKAN rejects a request", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ success: false, error: { message: "Bad resource id" } })),
-        ),
-    );
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: false, error: { message: "Bad resource id" } })),
+      );
     await expect(fetchCkanRecords({ resourceId: "retired", maxRows: 1 })).rejects.toThrow(
       "ckan_datastore_error:Bad resource id",
     );
   });
 
   it("surfaces HTTP failures instead of converting them to empty results", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("missing", { status: 404 })));
+    global.fetch = vi.fn().mockResolvedValue(new Response("missing", { status: 404 }));
     await expect(fetchCkanRecords({ resourceId: "missing", maxRows: 1 })).rejects.toThrow(
       "ckan_datastore_404",
     );
