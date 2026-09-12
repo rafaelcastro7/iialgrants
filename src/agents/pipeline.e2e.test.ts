@@ -40,22 +40,25 @@ const MARKDOWN = [
   "Non-profit organizations registered in Ontario may apply.",
 ].join("\n\n");
 
-vi.mock("@/lib/web-fetch.server", async () => {
-  const actual = await import("@/lib/web-fetch.server");
-  return {
-    ...actual,
-    scrapeWithFallback: async (url: string) => ({
-      ok: true,
-      url,
-      via: "jina_reader" as const,
-      markdown: MARKDOWN,
-      title: "Innovation Boost Program",
-      attempts: [],
-    }),
-    localWebSearch: async () => ({ ok: true, hits: [] }),
-    searchWeb: async () => [],
-  };
-});
+vi.mock("@/lib/web-fetch.server", () => ({
+  // Only include actual exports from web-fetch.server to avoid "export not found" errors
+  CHROME_UA:
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  scrapeWithFallback: async (url: string) => ({
+    ok: true,
+    url,
+    via: "jina_reader" as const,
+    markdown: MARKDOWN,
+    title: "Innovation Boost Program",
+    attempts: [],
+  }),
+  localWebSearch: async () => ({ ok: true, hits: [] }),
+  searchWeb: async () => [],
+  jinaReader: async () => ({
+    page: { ok: false, url: "", error: "mocked", via: "none", attempts: [] },
+    attempt: { engine: "jina_reader", ok: false, latency_ms: 0, error: "mocked", ts: new Date().toISOString() },
+  }),
+}));
 vi.mock("@/lib/firecrawl.server", () => ({
   firecrawlAvailable: () => false,
   firecrawlScrape: async () => ({ ok: false, url: "", error: "no_api_key" }),
