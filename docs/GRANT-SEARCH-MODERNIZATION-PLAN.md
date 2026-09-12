@@ -326,9 +326,13 @@ test proves graceful lexical fallback.
 
 Exit: each facet has positive, unknown and conflicting-evidence tests.
 
-Next coherent slice: define the canonical typed facet/evidence contract and its
-unknown/conflict behavior before adding columns or filters. Reuse persisted
-`evidence_spans`; do not infer confidence from the presence of display text.
+Status 2026-09-12: shipped. The canonical typed contract lives in
+`src/lib/grant-facets.shared.ts`, backed by migration
+`20260911230000_grant_faceted_evidence.sql`, conservative deterministic
+extraction in `src/agents/extractors/facets.server.ts`, persisted `facet.*`
+evidence from the enricher, `/grants` facet filters/counts and UI badges for
+unknown/conflicting evidence. Tests cover positive, unknown and conflict states
+for all five facets.
 
 ### Phase 4 — giving and deadline intelligence
 
@@ -339,6 +343,13 @@ unknown/conflict behavior before adding columns or filters. Reuse persisted
 Exit: historical signals improve ordering but cannot override a hard fail;
 predicted dates are never displayed as confirmed.
 
+Status 2026-09-12: shipped. `grant_deadline_observations`, deadline prediction
+confidence/basis fields, peer organizations on search profiles, and
+`src/lib/grant-history-signals.shared.ts` are implemented. Ranking adds bounded
+history boosts capped at 0.08 and returns inspectable `historyMatch`; hard-block
+grants receive no boost. Confirmed deadlines are recorded as observations and
+predicted dates remain explicitly separate from confirmed deadlines.
+
 ### Phase 5 — coverage operations
 
 - Expand official Canadian source registry.
@@ -346,6 +357,15 @@ predicted dates are never displayed as confirmed.
 - Scheduled discovery and change alerts.
 
 Exit: coverage dashboard exposes gaps and every source has an accountable state.
+
+Status 2026-09-12: shipped. Migration
+`20260911233000_source_coverage_accountability.sql` adds owner/playbook/SLA
+metadata and the `source_coverage_accountability` view. `/admin/sources` now
+surfaces source accountability, and `bun run sources:run <A|B|C|scout|all>`
+provides a durable CLI. Live A/B/C/scout runs succeeded; all enabled sources
+are currently `healthy`, while retired sources are intentionally `disabled`.
+Health means the source ran within SLA, not that it necessarily yielded new
+candidates.
 
 ## 11. File ownership map
 
