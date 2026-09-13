@@ -79,7 +79,12 @@ async function getInstalledModels(): Promise<Set<string> | null> {
     const res = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(5_000) });
     if (!res.ok) return null;
     const data = await res.json();
-    const rows = Array.isArray(data?.models) ? data.models : [];
+    // Do not cache an arbitrary successful payload as “no installed models”.
+    // Proxies and test doubles can answer 200 with a chat-shaped response; a
+    // 30-second empty cache would then skip a later, valid tag check and try
+    // unavailable models unnecessarily.
+    if (!Array.isArray(data?.models)) return null;
+    const rows = data.models;
     const models = new Set<string>();
     for (const row of rows) {
       if (typeof row?.name === "string") models.add(row.name);
