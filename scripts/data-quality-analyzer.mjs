@@ -12,6 +12,7 @@ const client = new Client({
 });
 
 const LOG = "scripts/data-quality-analysis.md";
+const ASSESSED_STATUSES = ["enriched", "scored", "in_proposal", "submitted"];
 
 function log(text = "") {
   console.log(text);
@@ -31,6 +32,20 @@ log();
 
 await client.connect();
 try {
+  const pipeline = await client.query(`
+    SELECT status, COUNT(*)::int AS count
+    FROM grants
+    GROUP BY status
+    ORDER BY count DESC, status
+  `);
+
+  log("## Pipeline coverage");
+  log();
+  for (const row of pipeline.rows) {
+    log(`- ${row.status}: ${row.count}`);
+  }
+  log();
+
   const grants = await client.query(`
     SELECT
       id,
@@ -45,12 +60,17 @@ try {
       sectors,
       scored_at
     FROM grants
-    WHERE status IN ('scored', 'in_proposal')
+    WHERE status::text = ANY($1::text[])
     ORDER BY title
     LIMIT 100
-  `);
+  `, [ASSESSED_STATUSES]);
 
-  log(`## Coverage Analysis (${grants.rows.length} grants)`);
+  log(`## Field coverage (${grants.rows.length} grants assessed)`);
+  log();
+  log(
+    "Scope: grants that reached enriched, scored, in_proposal, or submitted. " +
+      "Discovered grants are intentionally excluded because enrichment has not yet attempted these fields.",
+  );
   log();
 
   const stats = {
@@ -115,7 +135,11 @@ try {
     stats.total * 5,
   );
   log();
-  log(`**Overall Completeness: ${avgCoverage}%** (target: 85%)`);
+  if (stats.total === 0) {
+    log("**Overall Completeness: not assessed** — no grants have reached an enrichment-or-later stage.");
+  } else {
+    log(`**Overall Completeness: ${avgCoverage}%** (target: 85%)`);
+  }
   log();
 
   const integrity = await client.query(`
@@ -144,11 +168,13 @@ try {
   log("## Top Missing Fields");
   log();
   log("### Grants missing DEADLINE (highest impact)");
-  missing.deadline.slice(0, 10).forEach((title) => log(`- ${title}`));
+  if (missing.deadline.length === 0) log("- None in the assessed sample.");
+  else missing.deadline.slice(0, 10).forEach((title) => log(`- ${title}`));
 
   log();
   log("### Grants missing AMOUNT");
-  missing.amount.slice(0, 10).forEach((title) => log(`- ${title}`));
+  if (missing.amount.length === 0) log("- None in the assessed sample.");
+  else missing.amount.slice(0, 10).forEach((title) => log(`- ${title}`));
 
   log();
   log("## Validation Rules Needed");
