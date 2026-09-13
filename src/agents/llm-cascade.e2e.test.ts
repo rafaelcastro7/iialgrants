@@ -194,6 +194,11 @@ describe("local-only LLM cascade", () => {
     });
     (globalThis as unknown as { fetch: unknown }).fetch = spy;
 
+    // The preceding case deliberately caches its /api/tags response. This
+    // case verifies the separate failure-path contract where tags is
+    // unavailable, so load the client without that prior cache.
+    vi.resetModules();
+
     const { callLlm } = await import("@/agents/llm.server");
     const r = await callLlm({
       agent: "strategist",
