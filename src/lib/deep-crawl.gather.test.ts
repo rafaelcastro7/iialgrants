@@ -1,23 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as webFetch from "@/lib/web-fetch.server";
-import * as siteCandidates from "@/lib/site-candidates.server";
 
-const mocks = {
+const mocks = vi.hoisted(() => ({
   scrapeWithFallback: vi.fn(),
   searchWeb: vi.fn(),
   fetchCandidateLinksFromPage: vi.fn(),
   fetchCandidateLinksFromSitemaps: vi.fn(),
   buildOfficialSearchQueries: vi.fn(),
-};
+}));
 
 vi.mock("@/lib/web-fetch.server", () => ({
-  ...webFetch,
   scrapeWithFallback: mocks.scrapeWithFallback,
   searchWeb: mocks.searchWeb,
 }));
 
 vi.mock("@/lib/site-candidates.server", () => ({
-  ...siteCandidates,
   fetchCandidateLinksFromPage: mocks.fetchCandidateLinksFromPage,
   fetchCandidateLinksFromSitemaps: mocks.fetchCandidateLinksFromSitemaps,
   buildOfficialSearchQueries: mocks.buildOfficialSearchQueries,

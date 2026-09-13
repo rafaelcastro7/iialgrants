@@ -35,6 +35,11 @@ describe("local-only LLM cascade", () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
+    // The client caches the Ollama tag list for production latency. Each case
+    // deliberately provides a different installed-model response, so it must
+    // receive a fresh module instance rather than inheriting a previous case's
+    // cached result.
+    vi.resetModules();
     process.env.OLLAMA_BASE_URL = "http://localhost:11434";
     // Isolate the local Ollama cascade: with no cloud key, callLlm/callFreeLlm
     // skip the cloud chain and go straight to Ollama. The cloud-first path has
