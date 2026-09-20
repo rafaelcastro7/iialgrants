@@ -105,13 +105,28 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
       // caller's own row (profiles_self_update) and would work under RLS too,
       // but sharing one client keeps this block's error handling uniform.
       const admin = await createSupabaseAdmin();
-      const slug = slugify(data.org_name);
+      let slug = slugify(data.org_name);
+
+      // Strict multi-tenant isolation: check if this slug is already taken by another organization.
+      // If it exists, append a unique random suffix so this new client receives their own
+      // private organization rather than accidentally colliding into another client's workspace.
+      const { data: existingOrg } = await admin
+        .from("organizations")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+
+      if (existingOrg) {
+        slug = `${slug}-${Math.random().toString(36).slice(2, 8)}`;
+      }
+
       const { data: org, error: orgErr } = await admin
         .from("organizations")
-        .upsert({ name: data.org_name, slug }, { onConflict: "slug", ignoreDuplicates: false })
+        .insert({ name: data.org_name, slug })
         .select("id")
         .single();
       if (orgErr) throw new Error(orgErr.message);
+
       const { error: linkErr } = await admin
         .from("profiles")
         .update({ org_id: org.id })
