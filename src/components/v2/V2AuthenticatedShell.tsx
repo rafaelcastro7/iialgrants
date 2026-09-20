@@ -451,7 +451,6 @@ function V2TopBar({
         </div>
       </div>
 
-
       <div className="hidden border-t border-border/55 px-5 py-2 xl:block">
         <div className="flex items-center gap-2 overflow-hidden text-[11px] text-muted-foreground">
           {LIFECYCLE.map((stage, index) => {
