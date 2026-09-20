@@ -46,7 +46,8 @@ try {
   }
   log();
 
-  const grants = await client.query(`
+  const grants = await client.query(
+    `
     SELECT
       id,
       title,
@@ -63,7 +64,9 @@ try {
     WHERE status::text = ANY($1::text[])
     ORDER BY title
     LIMIT 100
-  `, [ASSESSED_STATUSES]);
+  `,
+    [ASSESSED_STATUSES],
+  );
 
   log(`## Field coverage (${grants.rows.length} grants assessed)`);
   log();
@@ -136,7 +139,9 @@ try {
   );
   log();
   if (stats.total === 0) {
-    log("**Overall Completeness: not assessed** — no grants have reached an enrichment-or-later stage.");
+    log(
+      "**Overall Completeness: not assessed** — no grants have reached an enrichment-or-later stage.",
+    );
   } else {
     log(`**Overall Completeness: ${avgCoverage}%** (target: 85%)`);
   }
