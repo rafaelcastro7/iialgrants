@@ -622,24 +622,24 @@ function V2Metric({
 }) {
   const toneClass =
     tone === "success"
-      ? "text-emerald-600"
+      ? "text-emerald-600 dark:text-emerald-400"
       : tone === "warning"
-        ? "text-amber-600"
+        ? "text-amber-600 dark:text-amber-400"
         : "text-primary";
 
   return (
     <Link to={to} className="group block">
-      <div className="rounded-md border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
+      <div className="card-hover rounded-xl border border-border/60 bg-card p-4 shadow-2xs">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
             {label}
           </div>
-          <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+          <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
         </div>
-        <div className={`mt-3 text-3xl font-semibold leading-none tabular-nums ${toneClass}`}>
+        <div className={`mt-3 text-3xl font-bold leading-none tabular-nums tracking-tight ${toneClass}`}>
           {value}
         </div>
-        <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
+        <div className="mt-1.5 text-xs text-muted-foreground">{detail}</div>
       </div>
     </Link>
   );
@@ -665,14 +665,16 @@ function V2MatchRow({ grant, now }: { grant: MatchGrant; now: number }) {
     <Link
       to="/grants/$id"
       params={{ id: grant.id }}
-      className="grid gap-3 px-5 py-4 transition-colors hover:bg-accent/55 md:grid-cols-[minmax(0,1fr)_160px_88px]"
+      className="group grid gap-3 px-5 py-4 transition-colors hover:bg-accent/40 md:grid-cols-[minmax(0,1fr)_160px_88px]"
     >
       <div className="min-w-0">
-        <div className="truncate text-sm font-semibold">{grant.title}</div>
+        <div className="truncate text-sm font-semibold tracking-tight group-hover:text-primary transition-colors">
+          {grant.title}
+        </div>
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="truncate">{f?.name ?? "Unknown funder"}</span>
           <span className="h-1 w-1 rounded-full bg-border" />
-          <span className={days != null && days >= 0 && days <= 7 ? "text-rose-600" : ""}>
+          <span className={days != null && days >= 0 && days <= 7 ? "font-semibold text-rose-600 dark:text-rose-400" : ""}>
             {deadlineLabel}
           </span>
         </div>
@@ -681,9 +683,9 @@ function V2MatchRow({ grant, now }: { grant: MatchGrant; now: number }) {
         <Badge
           variant="outline"
           className={cn(
-            "rounded-md",
+            "rounded-lg px-2.5 py-0.5 text-xs font-medium",
             eligible
-              ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-700"
+              ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
               : "text-muted-foreground",
           )}
         >
@@ -692,14 +694,13 @@ function V2MatchRow({ grant, now }: { grant: MatchGrant; now: number }) {
       </div>
       <div className="flex items-center gap-2 md:justify-end">
         <div className="text-right">
-          <div className="text-2xl font-semibold leading-none tabular-nums">
+          <div className="text-2xl font-bold leading-none tabular-nums tracking-tight text-primary">
             {fit == null ? "-" : fit}
           </div>
-          <div className="text-[10px] font-semibold uppercase tracking-normal text-muted-foreground">
-            match
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            fit score
           </div>
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground" />
       </div>
     </Link>
   );
