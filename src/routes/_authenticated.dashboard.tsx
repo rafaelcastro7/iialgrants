@@ -636,7 +636,12 @@ function V2Metric({
           </div>
           <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
         </div>
-        <div className={`mt-3 text-3xl font-bold leading-none tabular-nums tracking-tight ${toneClass}`}>
+        <div
+          className={cn(
+            "mt-3 text-3xl font-bold leading-none tabular-nums tracking-tight",
+            toneClass,
+          )}
+        >
           {value}
         </div>
         <div className="mt-1.5 text-xs text-muted-foreground">{detail}</div>
@@ -668,13 +673,19 @@ function V2MatchRow({ grant, now }: { grant: MatchGrant; now: number }) {
       className="group grid gap-3 px-5 py-4 transition-colors hover:bg-accent/40 md:grid-cols-[minmax(0,1fr)_160px_88px]"
     >
       <div className="min-w-0">
-        <div className="truncate text-sm font-semibold tracking-tight group-hover:text-primary transition-colors">
+        <div className="truncate text-sm font-semibold tracking-tight transition-colors group-hover:text-primary">
           {grant.title}
         </div>
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="truncate">{f?.name ?? "Unknown funder"}</span>
           <span className="h-1 w-1 rounded-full bg-border" />
-          <span className={days != null && days >= 0 && days <= 7 ? "font-semibold text-rose-600 dark:text-rose-400" : ""}>
+          <span
+            className={
+              days != null && days >= 0 && days <= 7
+                ? "font-semibold text-rose-600 dark:text-rose-400"
+                : ""
+            }
+          >
             {deadlineLabel}
           </span>
         </div>
