@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createSupabaseAdmin } from "./supabase-admin";
 import { getOrgProfileForUser } from "@/lib/org-profile-query";
+import { resolveUniqueOrgSlug } from "./org-slug.shared";
 
 export const getOrgProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -57,15 +58,7 @@ const OrgInput = z
     { message: "Funding minimum cannot exceed maximum", path: ["funding_max_cad"] },
   );
 
-function slugify(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 64) || "org"
-  );
-}
+import { resolveUniqueOrgSlug } from "./org-slug.shared";
 
 export const saveOrgProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -105,20 +98,14 @@ export const saveOrgProfile = createServerFn({ method: "POST" })
       // caller's own row (profiles_self_update) and would work under RLS too,
       // but sharing one client keeps this block's error handling uniform.
       const admin = await createSupabaseAdmin();
-      let slug = slugify(data.org_name);
-
-      // Strict multi-tenant isolation: check if this slug is already taken by another organization.
-      // If it exists, append a unique random suffix so this new client receives their own
-      // private organization rather than accidentally colliding into another client's workspace.
-      const { data: existingOrg } = await admin
-        .from("organizations")
-        .select("id")
-        .eq("slug", slug)
-        .maybeSingle();
-
-      if (existingOrg) {
-        slug = `${slug}-${Math.random().toString(36).slice(2, 8)}`;
-      }
+      const slug = await resolveUniqueOrgSlug(data.org_name, async (candidate) => {
+        const { data: existingOrg } = await admin
+          .from("organizations")
+          .select("id")
+          .eq("slug", candidate)
+          .maybeSingle();
+        return Boolean(existingOrg);
+      });
 
       const { data: org, error: orgErr } = await admin
         .from("organizations")
