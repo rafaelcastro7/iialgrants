@@ -58,8 +58,6 @@ const OrgInput = z
     { message: "Funding minimum cannot exceed maximum", path: ["funding_max_cad"] },
   );
 
-import { resolveUniqueOrgSlug } from "./org-slug.shared";
-
 export const saveOrgProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => OrgInput.parse(input))
