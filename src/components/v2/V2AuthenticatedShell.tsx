@@ -361,7 +361,7 @@ function V2TopBar({
   const Icon = activeItem?.icon ?? Sparkles;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md transition-colors">
       <div className="flex h-16 items-center justify-between gap-3 px-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <V2MobileNav
@@ -370,17 +370,17 @@ function V2TopBar({
             onSignOut={onSignOut}
             llmRoute={llmRoute}
           />
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-card text-primary shadow-sm">
-            <Icon className="h-4 w-4" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary shadow-xs">
+            <Icon className="h-4.5 w-4.5" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
-              V2 workspace
-              <ChevronRight className="h-3 w-3" />
-              Local-first
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              IIAL Grants
+              <ChevronRight className="h-3 w-3 opacity-60" />
+              <span>Workspace</span>
             </div>
-            <div className="truncate text-sm font-semibold tracking-normal">
-              {activeItem?.label ?? "IIAL command surface"}
+            <div className="truncate text-sm font-semibold tracking-tight text-foreground">
+              {activeItem?.label ?? "IIAL Command Center"}
             </div>
           </div>
         </div>
@@ -389,13 +389,13 @@ function V2TopBar({
           <Button
             variant="outline"
             size="sm"
-            className="hidden min-w-[220px] justify-start gap-2 text-muted-foreground md:flex"
+            className="hidden min-w-[240px] justify-start gap-2 border-border/60 bg-card/60 text-muted-foreground shadow-2xs hover:border-primary/40 hover:bg-card md:flex"
             onClick={openCommandPalette}
           >
-            <Search className="h-4 w-4" />
-            Search workspace
-            <kbd className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-              Cmd K
+            <Search className="h-4 w-4 text-primary/70" />
+            <span className="text-xs">Search grants, funders...</span>
+            <kbd className="ml-auto rounded border border-border/80 bg-muted/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+              ⌘K
             </kbd>
           </Button>
 
@@ -403,21 +403,29 @@ function V2TopBar({
             <TooltipTrigger asChild>
               <Badge
                 variant="outline"
-                className="hidden cursor-help gap-1.5 rounded-md px-2.5 py-1 md:inline-flex"
+                className="hidden cursor-help items-center gap-2 rounded-lg border-border/60 bg-card/60 px-2.5 py-1 text-xs font-medium md:inline-flex"
               >
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    llmRoute.localOnly ? "bg-emerald-500" : "bg-amber-500",
-                  )}
-                />
-                {llmRoute.localOnly ? "Local only" : `Cloud + local`}
+                <span className="relative flex h-2 w-2">
+                  <span
+                    className={cn(
+                      "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                      llmRoute.localOnly ? "bg-emerald-400" : "bg-teal-400",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "relative inline-flex h-2 w-2 rounded-full",
+                      llmRoute.localOnly ? "bg-emerald-500" : "bg-teal-500",
+                    )}
+                  />
+                </span>
+                {llmRoute.localOnly ? "Local Ollama" : "Cloud AI + Local"}
               </Badge>
             </TooltipTrigger>
             <TooltipContent className="max-w-72 text-xs">
               {llmRoute.localOnly
-                ? "No cloud AI key is set, so every prompt is answered by Ollama on this machine — smaller models, lower quality."
-                : `Judgement and drafting run on the strongest available model (${llmRoute.cloudProviders.join(" → ")}), falling back to local Ollama only if every provider fails.`}
+                ? "No cloud AI key is set, so prompts run via Ollama on this machine."
+                : `Judgement and drafting run on top-tier models (${llmRoute.cloudProviders.join(" → ")}), with local Ollama fallback.`}
             </TooltipContent>
           </Tooltip>
 
@@ -431,7 +439,7 @@ function V2TopBar({
                 type="button"
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 border-border/60"
                 onClick={openCommandPalette}
               >
                 <Command className="h-4 w-4" />
@@ -442,6 +450,7 @@ function V2TopBar({
           </Tooltip>
         </div>
       </div>
+
 
       <div className="hidden border-t border-border/55 px-5 py-2 xl:block">
         <div className="flex items-center gap-2 overflow-hidden text-[11px] text-muted-foreground">
