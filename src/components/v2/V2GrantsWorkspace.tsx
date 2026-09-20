@@ -517,34 +517,34 @@ function NextBestAction({ grant }: { grant: GrantRowData }) {
   const fit = fitValue(grant);
   const funder = funderOf(grant);
   return (
-    <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/85 px-6 py-5 text-primary-foreground sm:flex-row sm:items-center sm:gap-5">
-      <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-brand/20" />
-      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground">
+    <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/95 to-primary/85 p-6 text-primary-foreground shadow-md transition-all duration-300 hover:shadow-lg sm:flex-row sm:items-center sm:gap-6">
+      <div className="pointer-events-none absolute -right-12 -top-12 h-52 w-52 rounded-full bg-brand/25 blur-xl" />
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-sm">
         <Sparkles className="h-7 w-7" />
       </div>
       <div className="z-10 min-w-0 flex-1">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-brand">
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-brand">
           <Zap className="h-3.5 w-3.5" />
-          Do this next
+          Recommended Next Action
         </div>
-        <div className="mt-1.5 text-lg font-semibold leading-snug">{nextFocusHeadline(grant)}</div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-primary-foreground/70">
-          <span className="inline-flex items-center gap-1.5">
-            <CalendarClock className="h-3.5 w-3.5" />
+        <div className="mt-1 text-lg font-semibold leading-snug">{nextFocusHeadline(grant)}</div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-medium text-primary-foreground/80">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 backdrop-blur-xs">
+            <CalendarClock className="h-3.5 w-3.5 text-brand" />
             {deadline.days != null && deadline.days >= 0
               ? `${deadline.days} days runway`
               : deadline.label}
           </span>
           {funder?.name && (
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 backdrop-blur-xs">
               <Landmark className="h-3.5 w-3.5" />
               {funder.name}
             </span>
           )}
           {fit != null && (
-            <span className="inline-flex items-center gap-1.5">
-              <SearchCheck className="h-3.5 w-3.5" />
-              {Math.round(fit * 100)}% fit
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 backdrop-blur-xs">
+              <SearchCheck className="h-3.5 w-3.5 text-emerald-300" />
+              {Math.round(fit * 100)}% fit score
             </span>
           )}
         </div>
@@ -552,7 +552,7 @@ function NextBestAction({ grant }: { grant: GrantRowData }) {
       <Button
         asChild
         variant="secondary"
-        className="z-10 shrink-0 gap-2 bg-white text-primary hover:bg-white/90"
+        className="z-10 shrink-0 gap-2 bg-white text-primary shadow-xs transition-transform duration-200 hover:scale-[1.02] hover:bg-white"
       >
         <Link to="/grants/$id" params={{ id: grant.id }}>
           Open this grant
@@ -570,10 +570,10 @@ function NextBestAction({ grant }: { grant: GrantRowData }) {
 type Accent = "primary" | "success" | "danger" | "warning" | "violet" | "neutral";
 const ACCENT_TEXT: Record<Accent, string> = {
   primary: "text-primary",
-  success: "text-emerald-600",
-  danger: "text-rose-600",
-  warning: "text-amber-600",
-  violet: "text-violet-600",
+  success: "text-emerald-600 dark:text-emerald-400",
+  danger: "text-rose-600 dark:text-rose-400",
+  warning: "text-amber-600 dark:text-amber-400",
+  violet: "text-violet-600 dark:text-violet-400",
   neutral: "text-foreground",
 };
 const ACCENT_BAR: Record<Accent, string> = {
@@ -599,22 +599,22 @@ function KpiCard({
   accent: Accent;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border bg-card p-4">
-      <span className={cn("absolute inset-y-0 left-0 w-[3px]", ACCENT_BAR[accent])} />
-      <div className="flex items-center gap-2">
+    <div className="card-hover relative overflow-hidden rounded-xl border border-border/60 bg-card p-4 shadow-xs">
+      <span className={cn("absolute inset-y-0 left-0 w-[3.5px]", ACCENT_BAR[accent])} />
+      <div className="flex items-center gap-2.5">
         <span
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg bg-muted/60",
+            "flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-muted/50 border border-border/40",
             ACCENT_TEXT[accent],
           )}
         >
           <Icon className="h-4 w-4" />
         </span>
-        <span className={cn("text-2xl font-semibold tabular-nums", ACCENT_TEXT[accent])}>
+        <span className={cn("text-2xl font-bold tabular-nums tracking-tight", ACCENT_TEXT[accent])}>
           {value}
         </span>
       </div>
-      <div className="mt-2.5 text-sm font-semibold">{label}</div>
+      <div className="mt-2.5 text-sm font-semibold tracking-tight text-foreground">{label}</div>
       <div className="mt-0.5 text-xs leading-4 text-muted-foreground">{help}</div>
     </div>
   );
