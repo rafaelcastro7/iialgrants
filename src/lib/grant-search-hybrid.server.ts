@@ -66,15 +66,15 @@ export async function searchGrantCatalogHybrid(
     if (embedding.length !== 768) throw new Error(`embedding_dimension_${embedding.length}`);
     const { data, error } = await supabase.rpc("match_grant_search_documents", {
       query_embedding: embedding as unknown as string,
-      match_threshold: 0.45,
-      match_count: Math.min(boundedLimit, 20),
+      match_threshold: 0.35,
+      match_count: Math.min(Math.max(boundedLimit * 2, 40), 100),
     });
     if (error) throw new Error(error.message);
     const candidates = data ?? [];
     const topSimilarity = candidates[0]?.semantic_similarity ?? 0;
     semantic = candidates
-      .filter((candidate) => candidate.semantic_similarity >= topSimilarity - 0.05)
-      .slice(0, 5);
+      .filter((candidate) => candidate.semantic_similarity >= Math.max(0.4, topSimilarity - 0.18))
+      .slice(0, Math.min(boundedLimit, 30));
   } catch (error) {
     if (!(error instanceof SemanticSuppressedError) && !(error instanceof ForcedLexicalError)) {
       degradedReason = error instanceof Error ? error.message : String(error);
@@ -105,20 +105,25 @@ export async function searchGrantCatalogHybrid(
     return created;
   };
 
+  const hasLexical = (lexical ?? []).length > 0;
+  const hasSemantic = semantic.length > 0;
+  const lexicalWeight = hasLexical ? (hasSemantic ? 0.55 : 1.0) : 0.0;
+  const semanticWeight = hasSemantic ? (hasLexical ? 0.45 : 1.0) : 0.0;
+  const theoreticalMaximum = 1 / (RRF_K + 1);
+
   for (const [index, row] of (lexical ?? []).entries()) {
     const match = ensure(row.grant_id);
     match.lexicalScore = row.relevance;
     match.matchedOn = row.matched_on;
-    match.relevance += 0.7 / (RRF_K + index + 1);
+    match.relevance += lexicalWeight / (RRF_K + index + 1);
   }
   for (const [index, row] of semantic.entries()) {
     const match = ensure(row.grant_id);
     match.semanticScore = row.semantic_similarity;
     if (!match.lexicalScore) match.matchedOn = "semantic meaning";
-    match.relevance += 0.3 / (RRF_K + index + 1);
+    match.relevance += semanticWeight / (RRF_K + index + 1);
   }
 
-  const theoreticalMaximum = 1 / (RRF_K + 1);
   const matches = [...byId.values()]
     .map((match) => ({ ...match, relevance: match.relevance / theoreticalMaximum }))
     .sort((a, b) => {
