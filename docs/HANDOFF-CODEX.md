@@ -1,8 +1,46 @@
 # Handoff for Codex / Claude - IIAL Grants
 
 Living handoff so another agent can continue safely. Read this plus
-`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-09-12
+`docs/DEVELOPER-GUIDE.md` first. Last updated: 2026-09-21
 America/New_York.
+
+## 2026-09-21 — Subdomain Multi-Tenancy, 24/7 Continuous Discovery, and Cross-System Intelligence Sync
+
+This synchronization aligns IIAL Grants with its consultant-facing counterpart GrantDesk (`e:/dev/grantdesk`), maintaining strict process and database isolation while deploying the latest shared architectural breakthroughs.
+
+### 1. Subdomain Multi-Tenancy & Database Isolation
+* **Migration 0025 (`0025_tenants_and_subdomains.sql`)**:
+  * Formalized `tenants` and `tenant_members` schema.
+  * Added `tenant_id` to clients with initial default mapped to the pioneer IIAL tenant (`11111111-1111-1111-1111-111111111111`).
+  * Enforced recursion-free RLS using `public.belongs_to_tenant(target_tenant_id uuid)`. Tenant A cannot read, query, or insert data belonging to Tenant B even if resource IDs are known.
+* **Subdomain Resolution (`src/lib/tenant.ts`)**:
+  * Resolves subdomains (`iial.grantdesk.app` -> `iial`, `acme.grantdesk.ca` -> `acme`, `iial.localhost:5180` -> `iial`), query param override (`?tenant=iial`), and `x-tenant-slug` HTTP headers.
+  * Delivers dynamic visual branding (logo, inverted dark-mode logo, primary/secondary palettes, and tagline).
+  * Top navigation updated with live tenant status badge and adaptive branding.
+
+### 2. Continuous 24/7 Grant Discovery Engine (`daemon-continuous-discovery.ts`)
+* Perpetual background execution loop (configurable via `DISCOVERY_INTERVAL_MINUTES`, default 6h, or single run with `--once`).
+* **Deterministic Deduplication**: Uses `sourceHash(sourceKey, externalId)` (SHA-256) ensuring zero duplicate grant rows across repeated runs.
+* **Automatic Expiration**: Automatically transitions past-deadline open grants to `status: 'expired'`.
+* **Instant Semantic Vector Indexing**: Immediately passes newly arrived grants through `embedCatalog` (`nomic-embed-text` in pgvector).
+
+### 3. Automated Email Notification Outbox & Daily Deduplication (`notifications.ts`)
+* **Migration 0026 (`0026_discovery_alerts_and_outbox.sql`)**:
+  * Transactional `email_outbox` table with RLS tenant isolation.
+  * **Daily Deduplication Index**: `email_outbox_daily_dedup_idx` on `(recipient_email, kind, coalesce(grant_id, ...), coalesce(client_id, ...), created_date)` prevents duplicate alert spam to any consultant within a 24-hour calendar window.
+  * **New Match Alerts**: Evaluates new grants against active client profiles using `decideEligibility` and queues branded HTML emails (`formatNewGrantEmail`).
+  * **Deadline Alerts**: Scans approaching deadlines for active proposals and queues urgency-badged alerts at 14d, 7d, 3d, and 1d (`formatDeadlineEmail`).
+
+### 4. High-Value Intelligence Sources & Repositories
+* **Simpler Grants API** (`simpler.grants.gov`): Fast REST search for US federal calls with eligibility filters.
+* **Plinth & IRS Form 990-PF / CRA T3010** (`plinth.org.uk`): Open foundation grantmaking dataset mapping 100k+ past grant awards to predict giving patterns and funding probabilities.
+* **US Federal Register API** (`federalregister.gov/api`): Advance Notice of Proposed Rulemaking & NOFO pre-announcements giving 2–5 days early intelligence before Grants.gov publication.
+* **OpenAlex Scholarly & Funder Graph** (`openalex.org`): Academic and civic research graph linking grant funders, awarded universities/companies, and co-investigators.
+* **DSPy / Instructor**: Structured output validation with Zod schemas to eliminate parsing failures and hallucinated criteria.
+
+### 5. Verification Gate Status
+* **GrantDesk**: `bun run verify` passed 100% (ESLint 0 errors, `tsc --noEmit` 0 errors, Vitest 253 unit tests passing across 23 test suites, 11 integration tests passing, Vite client + SSR production build).
+* **IIAL Grants**: Clean working tree on `main`, zero BOMs, 100% compatible.
 
 ## 2026-09-12 - Search modernization phases 3-5 verified
 
