@@ -286,7 +286,7 @@ export async function scanAndAlertDeadlines({
   // Find open proposals with deadline between today and 14 days
   const { data: proposals, error } = await supabase
     .from("proposals")
-    .select("id, client_id, grant:grants!inner(id, title, deadline, status), client:clients!inner(name, consultant_id, tenant_id)")
+    .select("id, client_id, grant:grants!inner(id, title, deadline, status), client:clients!inner(id, name, consultant_id, tenant_id)")
     .gte("grant.deadline", todayStr)
     .lte("grant.deadline", horizonStr);
 
@@ -299,7 +299,7 @@ export async function scanAndAlertDeadlines({
 
   for (const row of proposals) {
     const grant = (Array.isArray(row.grant) ? row.grant[0] : row.grant) as { id: string; title: string; deadline: string | null; status: string } | null;
-    const client = (Array.isArray(row.client) ? row.client[0] : row.client) as { name: string; consultant_id: string; tenant_id: string | null } | null;
+    const client = (Array.isArray(row.client) ? row.client[0] : row.client) as { id: string; name: string; consultant_id: string; tenant_id: string | null } | null;
     if (!grant?.deadline || !client) continue;
 
     const daysLeft = Math.ceil((new Date(grant.deadline).getTime() - today.getTime()) / 86_400_000);
