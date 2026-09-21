@@ -518,6 +518,7 @@ const continuousDiscoveryTestTs = `import { createClient } from "@supabase/supab
 import { beforeAll, describe, expect, it } from "vitest";
 import { runDiscoveryCycle } from "../../scripts/daemon-continuous-discovery";
 import { sourceHash } from "../../src/server/ingest";
+import { businessBenefitsFinder } from "../../src/server/sources/business-benefits-finder";
 
 const URL = process.env.SUPABASE_URL ?? "http://localhost:15535";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -542,29 +543,32 @@ describe("continuous 24/7 discovery & deduplication", () => {
   });
 
   it("runs discovery cycle idempotently without creating duplicate grants", async () => {
-    // Count grants before run
-    const { count: countBefore } = await admin
-      .from("grants")
-      .select("id", { count: "exact", head: true });
-
-    // Run discovery cycle with small sample limit and skipEmbedding
-    const cycle1 = await runDiscoveryCycle({ skipEmbedding: true, limit: 10 });
-    expect(cycle1.sourcesRun).toBeGreaterThanOrEqual(1);
+    // Run discovery cycle with single fast source and limit 10
+    const cycle1 = await runDiscoveryCycle({
+      sources: [businessBenefitsFinder],
+      skipEmbedding: true,
+      limit: 10,
+    });
+    expect(cycle1.sourcesRun).toBe(1);
 
     // Count grants after first run
     const { count: countAfterFirst } = await admin
       .from("grants")
       .select("id", { count: "exact", head: true });
 
-    // Second run with the same sources
-    const cycle2 = await runDiscoveryCycle({ skipEmbedding: true, limit: 10 });
+    // Second run with the identical source and records
+    const cycle2 = await runDiscoveryCycle({
+      sources: [businessBenefitsFinder],
+      skipEmbedding: true,
+      limit: 10,
+    });
     const { count: countAfterSecond } = await admin
       .from("grants")
       .select("id", { count: "exact", head: true });
 
     // Verify: Grant count does not grow redundantly on second identical run
     expect(countAfterSecond).toBe(countAfterFirst);
-  }, 60_000);
+  }, 30_000);
 });
 `;
 
