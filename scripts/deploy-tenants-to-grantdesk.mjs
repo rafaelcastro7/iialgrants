@@ -565,7 +565,7 @@ describe("multi-tenant RLS isolation", () => {
       .eq("id", clientOfIial);
     expect(error).toBeNull();
     expect(data).toHaveLength(1);
-    expect(data![0].tenant_id).toBe(tenantIialId);
+    expect(data?.[0]?.tenant_id).toBe(tenantIialId);
   });
 
   it("strictly hides IIAL client from ACME tenant user", async () => {
