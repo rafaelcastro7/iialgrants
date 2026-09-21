@@ -641,7 +641,7 @@ import { resolveTenantSlug, getTenantBranding } from "@/lib/tenant";
 import { assessProfile } from "@/lib/profile-completeness";
 import { assessSubmission } from "@/lib/submit-gate";
 import { fabrications } from "@/lib/fabrication";
-import { evaluateRules } from "@/lib/eligibility";
+import { decideEligibility } from "@/lib/eligibility";
 
 describe("synthetic actions & deterministic automation", () => {
   it("determines tenant context from subdomain or host without ambiguity", () => {
@@ -666,9 +666,9 @@ describe("synthetic actions & deterministic automation", () => {
       leadTimeWeeks: null,
     };
     const emptyAssessment = assessProfile(emptyProfile);
-    expect(emptyAssessment.complete).toBe(false);
-    expect(emptyAssessment.completenessScore).toBeLessThan(1);
-    expect(emptyAssessment.missingFields).toContain("sectors");
+    expect(emptyAssessment.canMatch).toBe(false);
+    expect(emptyAssessment.score).toBeLessThan(100);
+    expect(emptyAssessment.missing.some((m) => m.key === "sectors")).toBe(true);
 
     const completeProfile = {
       sectors: ["technology", "education"],
@@ -680,41 +680,39 @@ describe("synthetic actions & deterministic automation", () => {
       leadTimeWeeks: 4,
     };
     const fullAssessment = assessProfile(completeProfile);
-    expect(fullAssessment.complete).toBe(true);
-    expect(fullAssessment.completenessScore).toBe(1);
-    expect(fullAssessment.missingFields).toHaveLength(0);
+    expect(fullAssessment.canMatch).toBe(true);
+    expect(fullAssessment.score).toBe(100);
+    expect(fullAssessment.missing).toHaveLength(0);
   });
 
   it("evaluates eligibility rules deterministically without hallucinations", () => {
     const grant = {
       country: "CA",
-      amount_min: 10000,
-      amount_max: 50000,
+      amountMin: 10000,
+      amountMax: 50000,
       deadline: "2026-12-31",
-      language: "en",
+      status: "open",
     };
-    const profile = {
+    const client = {
       jurisdictions: ["CA"],
-      sectors: ["technology"],
       stage: "nonprofit",
       annualBudget: 250000,
-      capabilities: "Tech training",
-      beneficiaries: "Youth",
       leadTimeWeeks: 4,
     };
-    const result = evaluateRules(grant as any, profile as any);
-    expect(["pass", "fail", "unknown"]).toContain(result.verdict);
+    const result = decideEligibility({ grant, client, today: new Date("2026-09-20") });
+    expect(["eligible", "ineligible", "needs_input"]).toContain(result.verdict);
+    expect(result.checks.length).toBeGreaterThanOrEqual(4);
   });
 
   it("runs anti-fabrication scanner deterministically on proposal content", () => {
     const groundedText = "We request $50,000 to train 200 participants across 3 cohorts.";
-    const sourceContext = "Program budget: $50,000. Target: 200 participants in 3 cohorts.";
-    const cleanCheck = fabrications(groundedText, sourceContext);
+    const sourceFacts = ["Program budget: $50,000.", "Target: 200 participants in 3 cohorts."];
+    const cleanCheck = fabrications(groundedText, sourceFacts);
     expect(cleanCheck).toHaveLength(0);
 
     const hallucinatedText = "We served 15,420 beneficiaries and won $4,200,000 in previous federal funding.";
-    const restrictedContext = "Our organization was founded in 2024 with a seed budget of $10,000.";
-    const flagged = fabrications(hallucinatedText, restrictedContext);
+    const restrictedFacts = ["Our organization was founded in 2024 with a seed budget of $10,000."];
+    const flagged = fabrications(hallucinatedText, restrictedFacts);
     expect(flagged.length).toBeGreaterThan(0);
     expect(flagged.some((f) => f.kind === "ungrounded_number")).toBe(true);
   });
