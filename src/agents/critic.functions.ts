@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CriticOutput, PROMPTS } from "@/agents/schemas";
 import { bumpProposalVersion } from "@/lib/proposal-versioning";
 import { detectAiCliches } from "@/agents/genericity-check.shared";
+import { fabrications } from "@/lib/fabrication";
 
 export const runCritic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -104,6 +105,24 @@ export const runCritic = createServerFn({ method: "POST" })
     const validIds = new Set((sections ?? []).map((s) => s.id));
     const findings = parsed.findings.filter((f) => validIds.has(f.section_id));
 
+    const grantRecord = grant as {
+      title?: string | null;
+      summary?: string | null;
+      amount_cad_min?: number | null;
+      amount_cad_max?: number | null;
+      deadline?: string | null;
+    } | null;
+
+    const facts: string[] = [
+      grantRecord?.title,
+      grantRecord?.summary,
+      grantRecord?.deadline,
+      grantRecord?.amount_cad_min?.toString(),
+      grantRecord?.amount_cad_min?.toLocaleString("en-US"),
+      grantRecord?.amount_cad_max?.toString(),
+      grantRecord?.amount_cad_max?.toLocaleString("en-US"),
+    ].filter((f): f is string => Boolean(f));
+
     // Deterministic homogenization check, independent of the LLM's own
     // judgment — an LLM can miss generic phrasing it would itself produce.
     // Real reviewers name this as the #1 tell of an AI-drafted proposal, so
@@ -116,6 +135,16 @@ export const runCritic = createServerFn({ method: "POST" })
           severity: "warn",
           message_en: `Sounds AI-generic ("${hit.snippet}") — a reviewer who reads many proposals will recognize this pattern. Rewrite with a concrete, org-specific detail instead.`,
           message_fr: "",
+        });
+      }
+
+      const fabs = fabrications(s.content_en ?? "", facts);
+      for (const fab of fabs) {
+        findings.push({
+          section_id: s.id,
+          severity: "warn",
+          message_en: `Potential unverified claim ("${fab.text}") not found in grant requirements or profile facts. Verify evidence before submission.`,
+          message_fr: `Donnée non vérifiée potentielle ("${fab.text}") non trouvée dans les faits de la subvention ou du profil.`,
         });
       }
     }
