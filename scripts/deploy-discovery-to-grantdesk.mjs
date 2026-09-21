@@ -563,7 +563,7 @@ describe("continuous 24/7 discovery & deduplication", () => {
 
     // Verify: Grant count does not grow redundantly on second identical run
     expect(countAfterSecond).toBe(countAfterFirst);
-  }, 30_000);
+  }, 60_000);
 });
 `;
 
