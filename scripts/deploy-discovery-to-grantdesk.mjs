@@ -19,6 +19,7 @@ create table if not exists email_outbox (
   status text not null check (status in ('pending', 'sent', 'failed')) default 'pending',
   error text,
   sent_at timestamptz,
+  created_date date not null default current_date,
   created_at timestamptz not null default now()
 );
 
@@ -28,7 +29,7 @@ create unique index if not exists email_outbox_daily_dedup_idx on email_outbox (
   kind,
   coalesce(grant_id, '00000000-0000-0000-0000-000000000000'::uuid),
   coalesce(client_id, '00000000-0000-0000-0000-000000000000'::uuid),
-  (created_at::date)
+  created_date
 );
 
 create index if not exists email_outbox_pending_idx on email_outbox (status) where status = 'pending';
