@@ -408,7 +408,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 });
 
 export async function runDiscoveryCycle(
-  options: { skipEmbedding?: boolean; limit?: number } = {},
+  options: { skipEmbedding?: boolean; limit?: number; sources?: any[] } = {},
 ): Promise<{
   sourcesRun: number;
   grantsUpserted: number;
@@ -421,8 +421,9 @@ export async function runDiscoveryCycle(
   let totalGrantsUpserted = 0;
   let sourcesRun = 0;
   const newlyDiscoveredGrantIds: string[] = [];
+  const activeSources = options.sources ?? SOURCES;
 
-  for (const source of SOURCES) {
+  for (const source of activeSources) {
     try {
       process.stdout.write(\`Ingesting \${source.key} ... \`);
       const result = await runSource(source, { client: supabase, limit: options.limit });
