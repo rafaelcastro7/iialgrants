@@ -207,17 +207,21 @@ DROP POLICY IF EXISTS "aw_auth" ON public.approval_workflows;
 DROP POLICY IF EXISTS "as_auth" ON public.approval_steps;
 DROP POLICY IF EXISTS "ai_auth" ON public.approval_instances;
 
+DROP POLICY IF EXISTS "approval_workflows_admin_all" ON public.approval_workflows;
 CREATE POLICY "approval_workflows_admin_all" ON public.approval_workflows
   FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "approval_steps_admin_all" ON public.approval_steps;
 CREATE POLICY "approval_steps_admin_all" ON public.approval_steps
   FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "approval_instances_admin_all" ON public.approval_instances;
 CREATE POLICY "approval_instances_admin_all" ON public.approval_instances
   FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
