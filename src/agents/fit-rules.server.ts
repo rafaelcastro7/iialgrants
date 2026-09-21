@@ -222,6 +222,39 @@ export function detectPartnerType(
 }
 
 /**
+ * "Foreign entities are eligible to apply" — read from the funder's own text,
+ * never guessed from the absence of a restriction.
+ *
+ * The country field stored is the funder's country, not a nationality
+ * restriction. US federal calls (Grants.gov) are stored as `country: "US"`
+ * whether or not its actual synopsis restricts applicants to US entities.
+ * Many explicitly do not restrict to US applicants.
+ *
+ * If the synopsis explicitly affirms foreign entity eligibility, we downgrade
+ * what would have been a hard jurisdiction fail into a "warn" check
+ * requiring human/consultant confirmation ("needs_input").
+ */
+export function statesForeignEligibility(text: string | null | undefined): boolean {
+  if (!text) return false;
+  const hay = text.toLowerCase();
+
+  const subject =
+    "(foreign|international|non-u\\.s\\.|non-united states|outside the united states)";
+  const negated = new RegExp(
+    `\\b(not eligible|ineligible|except|excluding|only|restricted to)\\b.{0,40}${subject}` +
+      `|${subject}.{0,40}\\b(not eligible|ineligible|are not|is not|may not)\\b`,
+  ).test(hay);
+  if (negated) return false;
+
+  const affirms = new RegExp(
+    `${subject}.{0,60}\\b(are eligible|is eligible|may apply|entities are eligible|` +
+      `organizations are eligible|institutions are eligible|applicants are eligible)\\b` +
+      `|\\b(eligible applicants include|open to)[^.]{0,60}${subject}`,
+  ).test(hay);
+  return affirms;
+}
+
+/**
  * Estimate the percentage the ORGANIZATION carries out of pocket. Two
  * semantically opposite phrasings appear in grant text, and they must NOT be
  * handled the same way:
