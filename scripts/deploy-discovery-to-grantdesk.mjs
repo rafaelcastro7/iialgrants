@@ -520,10 +520,10 @@ if (import.meta.main || process.argv[1]?.includes("daemon-continuous-discovery")
     setInterval(runDiscoveryCycle, INTERVAL_MINUTES * 60 * 1000);
   }
 }
-\`;
+`;
 
 // 5. tests/integration/continuous-discovery.test.ts
-const continuousDiscoveryTestTs = \`import { createClient } from "@supabase/supabase-js";
+const continuousDiscoveryTestTs = `import { createClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { runDiscoveryCycle } from "../../scripts/daemon-continuous-discovery";
 import { sourceHash } from "../../src/server/ingest";
