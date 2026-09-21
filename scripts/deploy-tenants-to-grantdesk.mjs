@@ -535,7 +535,8 @@ beforeAll(async () => {
   iialUser = await signUpAndIn(USER_IIAL);
   acmeUser = await signUpAndIn(USER_ACME);
 
-  // 4. Assign memberships
+  // 4. Assign memberships: ensure ACME user only belongs to ACME tenant
+  await admin.from("tenant_members").delete().eq("user_id", acmeUser.userId);
   await admin.from("tenant_members").insert([
     { tenant_id: tenantIialId, user_id: iialUser.userId, role: "member" },
     { tenant_id: tenantAcmeId, user_id: acmeUser.userId, role: "member" },
