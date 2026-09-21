@@ -672,7 +672,8 @@ export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date(
   const rule_score = evaluable.length === 0 ? 50 : Math.round((passed / evaluable.length) * 100);
 
   const hasIncompleteHardGates = checks.some(
-    (c) => (c.hard || c.id === "jurisdiction_required") && (c.status === "warn" || c.status === "skip"),
+    (c) =>
+      (c.hard || c.id === "jurisdiction_required") && (c.status === "warn" || c.status === "skip"),
   );
   const verdict: Verdict = hard_fail
     ? "ineligible"

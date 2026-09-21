@@ -146,9 +146,14 @@ describe("fit-rule audit boundaries", () => {
     const usGrantWithForeignAffirmation = {
       ...grant,
       country: "US",
-      summary: "NIH Biomedical research fund. Foreign organizations and entities are eligible to apply.",
+      summary:
+        "NIH Biomedical research fund. Foreign organizations and entities are eligible to apply.",
     };
-    const result = evaluateRules(rules, usGrantWithForeignAffirmation, new Date("2026-07-21T12:00:00Z"));
+    const result = evaluateRules(
+      rules,
+      usGrantWithForeignAffirmation,
+      new Date("2026-07-21T12:00:00Z"),
+    );
     const jurisdictionCheck = check(result, "jurisdiction_required");
     expect(jurisdictionCheck?.status).toBe("warn");
     expect(jurisdictionCheck?.hard).toBe(false);
