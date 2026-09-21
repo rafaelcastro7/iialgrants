@@ -550,6 +550,7 @@ describe("continuous 24/7 discovery & deduplication", () => {
     const cycle1 = await runDiscoveryCycle({
       sources: [businessBenefitsFinder],
       skipEmbedding: true,
+      skipAlerts: true,
       limit: 10,
     });
     expect(cycle1.sourcesRun).toBe(1);
@@ -563,6 +564,7 @@ describe("continuous 24/7 discovery & deduplication", () => {
     const cycle2 = await runDiscoveryCycle({
       sources: [businessBenefitsFinder],
       skipEmbedding: true,
+      skipAlerts: true,
       limit: 10,
     });
     const { count: countAfterSecond } = await admin
