@@ -377,7 +377,11 @@ describe("notifications formatting and logic", () => {
 
     expect(upcoming.subject).toContain("14d");
     expect(upcoming.html).toContain("14 Days Remaining");
- // 4. scripts/daemon-continuous-discovery.ts
+  });
+});
+`;
+
+// 4. scripts/daemon-continuous-discovery.ts
 const daemonContinuousDiscoveryTs = `/**
  * 24/7 Continuous Grant Discovery & Notification Daemon
  *
@@ -576,8 +580,6 @@ describe("continuous 24/7 discovery & deduplication", () => {
     // Verify: Grant count does not grow redundantly on second identical run
     expect(countAfterSecond).toBe(countAfterFirst);
   }, 30_000);
-});
-\`;_000);
 });
 `;
 
