@@ -714,7 +714,7 @@ describe("synthetic actions & deterministic automation", () => {
     const restrictedFacts = ["Our organization was founded in 2024 with a seed budget of $10,000."];
     const flagged = fabrications(hallucinatedText, restrictedFacts);
     expect(flagged.length).toBeGreaterThan(0);
-    expect(flagged.some((f) => f.kind === "ungrounded_number")).toBe(true);
+    expect(flagged.some((f) => f.kind === "number")).toBe(true);
   });
 
   it("strictly enforces submission gate checklist and prevents premature submits", () => {
