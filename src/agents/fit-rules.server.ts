@@ -439,16 +439,19 @@ export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date(
     const ok = normGrant
       ? rules.required_jurisdictions.some((required) => jurisdictionMatches(required, grantCountry))
       : false;
+    const foreignAllowed = !ok && statesForeignEligibility(hay);
     checks.push({
       id: "jurisdiction_required",
       label: "Required jurisdiction",
-      status: !normGrant ? "skip" : ok ? "pass" : "fail",
-      hard: rules.hard_fail_on_jurisdiction,
+      status: !normGrant ? "skip" : ok ? "pass" : foreignAllowed ? "warn" : "fail",
+      hard: foreignAllowed ? false : rules.hard_fail_on_jurisdiction,
       detail: ok
         ? `${grantCountry} is in {${rules.required_jurisdictions.join(", ")}}`
         : !normGrant
           ? "Grant jurisdiction is unknown"
-          : `${grantCountry} is incompatible with {${rules.required_jurisdictions.join(", ")}}`,
+          : foreignAllowed
+            ? "US federal program synopsis explicitly affirms foreign/international entities may apply; verify specific conditions."
+            : `${grantCountry} is incompatible with {${rules.required_jurisdictions.join(", ")}}`,
     });
   }
 
@@ -668,6 +671,15 @@ export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date(
   const passed = evaluable.filter((c) => c.status === "pass").length;
   const rule_score = evaluable.length === 0 ? 50 : Math.round((passed / evaluable.length) * 100);
 
+  const hasIncompleteHardGates = checks.some(
+    (c) => (c.hard || c.id === "jurisdiction_required") && (c.status === "warn" || c.status === "skip"),
+  );
+  const verdict: Verdict = hard_fail
+    ? "ineligible"
+    : hasIncompleteHardGates
+      ? "needs_input"
+      : "eligible";
+
   const w = rules.weight_llm;
   const combined_score = (llm: number) => Math.round(w * llm * 100 + (1 - w) * rule_score);
   const pass = (llm: number) => !hard_fail && combined_score(llm) >= rules.threshold_fit_pass;
@@ -675,6 +687,7 @@ export function evaluateRules(rules: FitRules, g: GrantForRules, now = new Date(
   return {
     checks,
     hard_fail,
+    verdict,
     rule_score,
     combined_score,
     pass,
