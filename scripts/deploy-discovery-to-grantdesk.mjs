@@ -377,11 +377,7 @@ describe("notifications formatting and logic", () => {
 
     expect(upcoming.subject).toContain("14d");
     expect(upcoming.html).toContain("14 Days Remaining");
-  });
-});
-`;
-
-// 4. scripts/daemon-continuous-discovery.ts
+ // 4. scripts/daemon-continuous-discovery.ts
 const daemonContinuousDiscoveryTs = `/**
  * 24/7 Continuous Grant Discovery & Notification Daemon
  *
@@ -399,7 +395,7 @@ const daemonContinuousDiscoveryTs = `/**
 
 import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { SOURCES } from "../src/server/sources";
+import { SOURCES, type SourceAdapter } from "../src/server/sources";
 import { runSource } from "../src/server/ingest";
 import { embedCatalog } from "../src/server/embed";
 import { scanAndAlertNewGrants, scanAndAlertDeadlines } from "../src/server/notifications";
@@ -414,7 +410,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 });
 
 export async function runDiscoveryCycle(
-  options: { skipEmbedding?: boolean; limit?: number; sources?: any[]; skipAlerts?: boolean } = {},
+  options: { skipEmbedding?: boolean; limit?: number; sources?: SourceAdapter[]; skipAlerts?: boolean } = {},
 ): Promise<{
   sourcesRun: number;
   grantsUpserted: number;
@@ -464,7 +460,7 @@ export async function runDiscoveryCycle(
       .limit(10);
     
     if (recentGrants) {
-      newlyDiscoveredGrantIds.push(...recentGrants.map((g: any) => g.id));
+      newlyDiscoveredGrantIds.push(...recentGrants.map((g: { id: string }) => g.id));
     }
 
     // 3. Run notifications for new matches
@@ -520,10 +516,10 @@ if (import.meta.main || process.argv[1]?.includes("daemon-continuous-discovery")
     setInterval(runDiscoveryCycle, INTERVAL_MINUTES * 60 * 1000);
   }
 }
-`;
+\`;
 
 // 5. tests/integration/continuous-discovery.test.ts
-const continuousDiscoveryTestTs = `import { createClient } from "@supabase/supabase-js";
+const continuousDiscoveryTestTs = \`import { createClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { runDiscoveryCycle } from "../../scripts/daemon-continuous-discovery";
 import { sourceHash } from "../../src/server/ingest";
@@ -567,7 +563,7 @@ describe("continuous 24/7 discovery & deduplication", () => {
       .select("id", { count: "exact", head: true });
 
     // Second run with the identical source and records
-    const cycle2 = await runDiscoveryCycle({
+    await runDiscoveryCycle({
       sources: [businessBenefitsFinder],
       skipEmbedding: true,
       skipAlerts: true,
@@ -580,6 +576,8 @@ describe("continuous 24/7 discovery & deduplication", () => {
     // Verify: Grant count does not grow redundantly on second identical run
     expect(countAfterSecond).toBe(countAfterFirst);
   }, 30_000);
+});
+\`;_000);
 });
 `;
 
