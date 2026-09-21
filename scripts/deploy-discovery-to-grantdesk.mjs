@@ -137,9 +137,10 @@ export function formatDeadlineEmail({
   deadline: string;
   tenantSlug?: string;
 }): { subject: string; html: string } {
-  const _branding = getTenantBranding(tenantSlug);
-  const urgencyEmoji = daysLeft <= 3 ? "🚨" : daysLeft <= 7 ? "⚠️" : "📅";
-  const subject = \`\${urgencyEmoji} [Deadline in \${daysLeft}d] \${clientName}: \${grantTitle}\`;
+  const branding = getTenantBranding(tenantSlug);
+  const urgencyLabel =
+    daysLeft <= 1 ? "🚨 Final Day" : daysLeft <= 3 ? "🚨 Urgent" : daysLeft <= 7 ? "⚠️ Attention" : "📅 Upcoming";
+  const subject = \`[\${branding.shortName}] \${urgencyLabel}: \${daysLeft}d left for \${clientName} - \${grantTitle}\`;
 
   const html = \`
 <!DOCTYPE html>
@@ -156,6 +157,7 @@ export function formatDeadlineEmail({
 </head>
 <body>
   <div class="card">
+    <div style="margin-bottom: 12px; font-size: 12px; font-weight: 600; color: \${branding.primaryColor};">\${branding.name}</div>
     <div class="urgency">\${daysLeft} Days Remaining</div>
     <div class="title">\${grantTitle}</div>
     <p>This is an automated deadline reminder for <strong>\${clientName}</strong>.</p>
