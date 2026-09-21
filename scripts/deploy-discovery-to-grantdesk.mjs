@@ -589,34 +589,30 @@ describe("continuous 24/7 discovery & deduplication", () => {
 fs.writeFileSync(
   path.join(grantDeskRoot, "supabase/migrations/0026_discovery_alerts_and_outbox.sql"),
   migrationSql,
-  "utf8"
+  "utf8",
 );
 console.log("Wrote 0026_discovery_alerts_and_outbox.sql");
 
-fs.writeFileSync(
-  path.join(grantDeskRoot, "src/server/notifications.ts"),
-  notificationsTs,
-  "utf8"
-);
+fs.writeFileSync(path.join(grantDeskRoot, "src/server/notifications.ts"), notificationsTs, "utf8");
 console.log("Wrote src/server/notifications.ts");
 
 fs.writeFileSync(
   path.join(grantDeskRoot, "src/server/notifications.test.ts"),
   notificationsTestTs,
-  "utf8"
+  "utf8",
 );
 console.log("Wrote src/server/notifications.test.ts");
 
 fs.writeFileSync(
   path.join(grantDeskRoot, "scripts/daemon-continuous-discovery.ts"),
   daemonContinuousDiscoveryTs,
-  "utf8"
+  "utf8",
 );
 console.log("Wrote scripts/daemon-continuous-discovery.ts");
 
 fs.writeFileSync(
   path.join(grantDeskRoot, "tests/integration/continuous-discovery.test.ts"),
   continuousDiscoveryTestTs,
-  "utf8"
+  "utf8",
 );
 console.log("Wrote tests/integration/continuous-discovery.test.ts");

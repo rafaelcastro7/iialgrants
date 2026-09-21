@@ -603,35 +603,23 @@ describe("multi-tenant RLS isolation", () => {
 fs.writeFileSync(
   path.join(grantDeskRoot, "supabase/migrations/0025_tenants_and_subdomains.sql"),
   migrationSql,
-  "utf8"
+  "utf8",
 );
 console.log("Wrote 0025_tenants_and_subdomains.sql");
 
-fs.writeFileSync(
-  path.join(grantDeskRoot, "src/lib/tenant.ts"),
-  tenantTs,
-  "utf8"
-);
+fs.writeFileSync(path.join(grantDeskRoot, "src/lib/tenant.ts"), tenantTs, "utf8");
 console.log("Wrote src/lib/tenant.ts");
 
-fs.writeFileSync(
-  path.join(grantDeskRoot, "src/lib/tenant.test.ts"),
-  tenantTestTs,
-  "utf8"
-);
+fs.writeFileSync(path.join(grantDeskRoot, "src/lib/tenant.test.ts"), tenantTestTs, "utf8");
 console.log("Wrote src/lib/tenant.test.ts");
 
-fs.writeFileSync(
-  path.join(grantDeskRoot, "src/components/Nav.tsx"),
-  navTsx,
-  "utf8"
-);
+fs.writeFileSync(path.join(grantDeskRoot, "src/components/Nav.tsx"), navTsx, "utf8");
 console.log("Wrote src/components/Nav.tsx");
 
 fs.writeFileSync(
   path.join(grantDeskRoot, "tests/integration/tenant-isolation.test.ts"),
   tenantIntegrationTestTs,
-  "utf8"
+  "utf8",
 );
 console.log("Wrote tests/integration/tenant-isolation.test.ts");
 
@@ -751,7 +739,6 @@ describe("synthetic actions & deterministic automation", () => {
 fs.writeFileSync(
   path.join(grantDeskRoot, "tests/integration/synthetic-actions.test.ts"),
   syntheticActionsTestTs,
-  "utf8"
+  "utf8",
 );
 console.log("Wrote tests/integration/synthetic-actions.test.ts");
-

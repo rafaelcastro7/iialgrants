@@ -18,7 +18,7 @@ bun run scripts/daemon-continuous-discovery.ts --once # single discovery pass an
 
 claudeMd = claudeMd.replace(
   /bun run db:up[\s\S]*?bun run embed\s+# brings embeddings up to date \(only re-embeds changed text\)/,
-  runItReplacement
+  runItReplacement,
 );
 
 const costRealTimeAddition = `- **Postgres unique index expressions must be strictly IMMUTABLE.**
@@ -38,10 +38,7 @@ const costRealTimeAddition = `- **Postgres unique index expressions must be stri
   scoping.`;
 
 if (!claudeMd.includes("Postgres unique index expressions must be strictly IMMUTABLE")) {
-  claudeMd = claudeMd.replace(
-    "## House style",
-    `${costRealTimeAddition}\n\n## House style`
-  );
+  claudeMd = claudeMd.replace("## House style", `${costRealTimeAddition}\n\n## House style`);
 }
 
 fs.writeFileSync(claudeMdPath, claudeMd, "utf8");
@@ -70,10 +67,7 @@ const phase6Section = `---
 `;
 
 if (!phasesMd.includes("## Phase 6 — Subdomain Multi-Tenancy")) {
-  phasesMd = phasesMd.replace(
-    "## Working method",
-    `${phase6Section}\n## Working method`
-  );
+  phasesMd = phasesMd.replace("## Working method", `${phase6Section}\n## Working method`);
 }
 
 fs.writeFileSync(phasesMdPath, phasesMd, "utf8");
