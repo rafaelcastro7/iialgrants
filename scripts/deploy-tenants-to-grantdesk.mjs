@@ -636,7 +636,7 @@ fs.writeFileSync(
 console.log("Wrote tests/integration/tenant-isolation.test.ts");
 
 // 6. Write synthetic actions test in tests/integration/synthetic-actions.test.ts
-const syntheticActionsTestTs = \`import { describe, expect, it } from "vitest";
+const syntheticActionsTestTs = `import { describe, expect, it } from "vitest";
 import { resolveTenantSlug, getTenantBranding } from "@/lib/tenant";
 import { assessProfile } from "@/lib/profile-completeness";
 import { assessSubmission } from "@/lib/submit-gate";
@@ -748,7 +748,7 @@ describe("synthetic actions & deterministic automation", () => {
     expect(check2.blockers).toHaveLength(0);
   });
 });
-\`;
+`;
 
 fs.writeFileSync(
   path.join(grantDeskRoot, "tests/integration/synthetic-actions.test.ts"),
