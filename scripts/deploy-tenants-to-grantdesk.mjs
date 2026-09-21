@@ -32,9 +32,9 @@ create table if not exists tenant_members (
 
 create index if not exists tenant_members_user_idx on tenant_members (user_id);
 
--- Add tenant_id to clients
+-- Add tenant_id to clients with default IIAL tenant
 alter table clients
-  add column if not exists tenant_id uuid references tenants(id) on delete cascade;
+  add column if not exists tenant_id uuid references tenants(id) on delete cascade default '11111111-1111-1111-1111-111111111111'::uuid;
 
 create index if not exists clients_tenant_idx on clients (tenant_id);
 
@@ -62,27 +62,42 @@ select '11111111-1111-1111-1111-111111111111', id, 'owner'
 from consultants
 on conflict (tenant_id, user_id) do nothing;
 
+-- Ensure newly signed up users belong to IIAL by default
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.consultants (id, email, display_name)
+  values (new.id, new.email, coalesce(new.raw_user_meta_data ->> 'display_name', new.email))
+  on conflict (id) do nothing;
+
+  insert into public.tenant_members (tenant_id, user_id, role)
+  values ('11111111-1111-1111-1111-111111111111', new.id, 'member')
+  on conflict (tenant_id, user_id) do nothing;
+
+  return new;
+end;
+$$;
+
 -- ── RLS for tenants & tenant_members ───────────────────────────────────────
 alter table tenants enable row level security;
 alter table tenant_members enable row level security;
 
--- Any client/user can look up a tenant by slug/subdomain for branding & metadata resolution
+-- Public lookup by slug/subdomain for branding & metadata resolution
 drop policy if exists tenants_public_read on tenants;
 create policy tenants_public_read on tenants
   for select using (true);
 
+-- Users can only read their own tenant memberships (prevents infinite policy recursion)
 drop policy if exists tenant_members_read on tenant_members;
 create policy tenant_members_read on tenant_members
   for select to authenticated
-  using (
-    user_id = auth.uid()
-    or exists (
-      select 1 from tenant_members tm
-      where tm.tenant_id = tenant_members.tenant_id and tm.user_id = auth.uid()
-    )
-  );
+  using (user_id = auth.uid());
 
--- Helper function: Does auth.uid() belong to this tenant?
+-- Helper function: Does auth.uid() belong to this tenant? Security definer bypasses RLS recursion.
 create or replace function public.belongs_to_tenant(target_tenant_id uuid)
 returns boolean
 language sql
@@ -90,7 +105,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (
+  select (target_tenant_id is null) or exists (
     select 1 from tenant_members tm
     where tm.tenant_id = target_tenant_id and tm.user_id = auth.uid()
   );
@@ -120,22 +135,12 @@ as $$
   select exists (
     select 1 from clients c
     where c.id = target
-      and (
-        c.tenant_id is null
-        or exists (
-          select 1 from tenant_members tm
-          where tm.tenant_id = c.tenant_id and tm.user_id = auth.uid()
-        )
-      )
+      and public.belongs_to_tenant(c.tenant_id)
       and (
         c.consultant_id = auth.uid()
         or exists (
           select 1 from client_team_members m
           where m.client_id = c.id and m.user_id = auth.uid()
-        )
-        or exists (
-          select 1 from tenant_members tm
-          where tm.tenant_id = c.tenant_id and tm.user_id = auth.uid() and tm.role in ('owner', 'admin')
         )
       )
   );
@@ -146,20 +151,11 @@ drop policy if exists clients_select on clients;
 create policy clients_select on clients
   for select to authenticated
   using (
-    (
-      tenant_id is null
-      or exists (
-        select 1 from tenant_members tm
-        where tm.tenant_id = clients.tenant_id and tm.user_id = auth.uid()
-      )
-    )
+    public.belongs_to_tenant(tenant_id)
     and (
       consultant_id = auth.uid()
       or exists (
         select 1 from client_team_members m where m.client_id = id and m.user_id = auth.uid()
-      )
-      or exists (
-        select 1 from tenant_members tm where tm.tenant_id = clients.tenant_id and tm.user_id = auth.uid() and tm.role in ('owner', 'admin')
       )
     )
   );
@@ -169,51 +165,27 @@ create policy clients_insert on clients
   for insert to authenticated
   with check (
     consultant_id = auth.uid()
-    and (
-      tenant_id is null
-      or exists (
-        select 1 from tenant_members tm
-        where tm.tenant_id = clients.tenant_id and tm.user_id = auth.uid()
-      )
-    )
+    and public.belongs_to_tenant(tenant_id)
   );
 
 drop policy if exists clients_update on clients;
 create policy clients_update on clients
   for update to authenticated
   using (
-    (
-      tenant_id is null
-      or exists (
-        select 1 from tenant_members tm
-        where tm.tenant_id = clients.tenant_id and tm.user_id = auth.uid()
-      )
-    )
+    public.belongs_to_tenant(tenant_id)
     and (
       consultant_id = auth.uid()
       or exists (
         select 1 from client_team_members m where m.client_id = id and m.user_id = auth.uid()
-      )
-      or exists (
-        select 1 from tenant_members tm where tm.tenant_id = clients.tenant_id and tm.user_id = auth.uid() and tm.role in ('owner', 'admin')
       )
     )
   )
   with check (
-    (
-      tenant_id is null
-      or exists (
-        select 1 from tenant_members tm
-        where tm.tenant_id = clients.tenant_id and tm.user_id = auth.uid()
-      )
-    )
+    public.belongs_to_tenant(tenant_id)
     and (
       consultant_id = auth.uid()
       or exists (
         select 1 from client_team_members m where m.client_id = id and m.user_id = auth.uid()
-      )
-      or exists (
-        select 1 from tenant_members tm where tm.tenant_id = clients.tenant_id and tm.user_id = auth.uid() and tm.role in ('owner', 'admin')
       )
     )
   );
