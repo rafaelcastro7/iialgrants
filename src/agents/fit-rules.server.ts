@@ -37,9 +37,12 @@ export type RuleCheck = {
   detail: string;
 };
 
+export type Verdict = "eligible" | "ineligible" | "needs_input";
+
 export type RulesResult = {
   checks: RuleCheck[];
   hard_fail: boolean;
+  verdict: Verdict;
   rule_score: number;
   combined_score: (llmScore: number) => number;
   pass: (llmScore: number) => boolean;
