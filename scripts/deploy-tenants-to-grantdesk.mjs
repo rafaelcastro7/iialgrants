@@ -275,12 +275,12 @@ export function resolveTenantSlug({
 
   // 3. Subdomain extraction from hostname (e.g., iial.grantdesk.app, iial.localhost)
   if (hostname) {
-    const cleanHost = hostname.split(":")[0].toLowerCase();
+    const cleanHost = hostname.split(":")[0]?.toLowerCase() ?? "";
     // Match <subdomain>.grantdesk.<tld> or <subdomain>.localhost
     const parts = cleanHost.split(".");
     if (parts.length >= 2) {
       const candidate = parts[0];
-      if (candidate !== "www" && candidate !== "app" && candidate !== "api") {
+      if (candidate && candidate !== "www" && candidate !== "app" && candidate !== "api") {
         return candidate;
       }
     }
@@ -371,11 +371,11 @@ import { getTenantBranding, resolveTenantSlug } from "@/lib/tenant";
  * Top navigation bar with multi-tenant workspace badge,
  * contextual active routes, and active deadline indicator.
  */
-const LINKS = [
+const LINKS: Array<{ to: string; label: string; badge?: string }> = [
   { to: "/", label: "Due Radar", badge: "Live" },
   { to: "/clients", label: "Clients" },
   { to: "/catalog", label: "Funder Coverage" },
-] as const;
+];
 
 export function Nav() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
