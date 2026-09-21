@@ -159,11 +159,23 @@ export type { SourceAdapter, SourceGrant, SourceFunder, SourceHarvest } from "./
 export { craFoundations };
 `;
 
-fs.writeFileSync(path.join(grantDeskRoot, "src/server/sources/cra-foundations.ts"), craFoundationsContent, "utf8");
+fs.writeFileSync(
+  path.join(grantDeskRoot, "src/server/sources/cra-foundations.ts"),
+  craFoundationsContent,
+  "utf8",
+);
 console.log("Wrote cra-foundations.ts");
 
-fs.writeFileSync(path.join(grantDeskRoot, "src/server/sources/cra-foundations.test.ts"), craFoundationsTestContent, "utf8");
+fs.writeFileSync(
+  path.join(grantDeskRoot, "src/server/sources/cra-foundations.test.ts"),
+  craFoundationsTestContent,
+  "utf8",
+);
 console.log("Wrote cra-foundations.test.ts");
 
-fs.writeFileSync(path.join(grantDeskRoot, "src/server/sources/index.ts"), sourcesIndexContent, "utf8");
+fs.writeFileSync(
+  path.join(grantDeskRoot, "src/server/sources/index.ts"),
+  sourcesIndexContent,
+  "utf8",
+);
 console.log("Wrote sources/index.ts");
