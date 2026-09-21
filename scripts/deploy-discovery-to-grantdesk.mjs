@@ -137,7 +137,7 @@ export function formatDeadlineEmail({
   deadline: string;
   tenantSlug?: string;
 }): { subject: string; html: string } {
-  const branding = getTenantBranding(tenantSlug);
+  const _branding = getTenantBranding(tenantSlug);
   const urgencyEmoji = daysLeft <= 3 ? "🚨" : daysLeft <= 7 ? "⚠️" : "📅";
   const subject = \`\${urgencyEmoji} [Deadline in \${daysLeft}d] \${clientName}: \${grantTitle}\`;
 
@@ -199,17 +199,23 @@ export async function scanAndAlertNewGrants({
 
   // Fetch consultant emails
   const { data: consultants } = await supabase.from("consultants").select("id, email");
-  const emailMap = new Map((consultants ?? []).map((c: any) => [c.id, c.email]));
+  const emailMap = new Map((consultants ?? []).map((c: { id: string; email: string }) => [c.id, c.email]));
 
   let queued = 0;
   const today = new Date();
 
   for (const grant of grants) {
-    const funderName = (Array.isArray(grant.funder) ? grant.funder[0]?.name : (grant.funder as any)?.name) ?? "Funding Agency";
+    const funderName = (Array.isArray(grant.funder) ? (grant.funder[0] as { name?: string })?.name : (grant.funder as { name?: string } | null)?.name) ?? "Funding Agency";
     const amountStr = grant.amount_max ? \`\$\${Number(grant.amount_max).toLocaleString()} \${grant.currency ?? "CAD"}\` : "Disclosed in RFP";
 
     for (const client of clients) {
-      const profile = (Array.isArray(client.client_profiles) ? client.client_profiles[0] : client.client_profiles) as any;
+      const profile = (Array.isArray(client.client_profiles) ? client.client_profiles[0] : client.client_profiles) as {
+        jurisdictions?: string[];
+        sectors?: string[];
+        stage?: string | null;
+        annual_budget?: number | null;
+        lead_time_weeks?: number | null;
+      } | null;
       if (!profile) continue;
 
       const decision = decideEligibility({
@@ -285,13 +291,13 @@ export async function scanAndAlertDeadlines({
   if (error || !proposals) return { queued: 0 };
 
   const { data: consultants } = await supabase.from("consultants").select("id, email");
-  const emailMap = new Map((consultants ?? []).map((c: any) => [c.id, c.email]));
+  const emailMap = new Map((consultants ?? []).map((c: { id: string; email: string }) => [c.id, c.email]));
 
   let queued = 0;
 
   for (const row of proposals) {
-    const grant = (Array.isArray(row.grant) ? row.grant[0] : row.grant) as any;
-    const client = (Array.isArray(row.client) ? row.client[0] : row.client) as any;
+    const grant = (Array.isArray(row.grant) ? row.grant[0] : row.grant) as { id: string; title: string; deadline: string | null; status: string } | null;
+    const client = (Array.isArray(row.client) ? row.client[0] : row.client) as { name: string; consultant_id: string; tenant_id: string | null } | null;
     if (!grant?.deadline || !client) continue;
 
     const daysLeft = Math.ceil((new Date(grant.deadline).getTime() - today.getTime()) / 86_400_000);
