@@ -73,7 +73,8 @@ export const craFoundations: SourceAdapter = {
   label: "CRA T3010 Canadian Foundations",
   market: "CA",
   cadenceHours: 720,
-  async harvest(): Promise<SourceHarvest> {
+  description: "CRA T3010 registered public and private foundations granting to qualified donees.",
+  async harvest(_options: { limit?: number } = {}): Promise<SourceHarvest> {
     return { funders: [], grants: [] };
   },
 };
