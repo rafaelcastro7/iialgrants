@@ -136,4 +136,34 @@ describe("fit-rule audit boundaries", () => {
     expect(check(result, "sop_filter_5_runway")?.status).toBe("pass");
     expect(check(result, "deadline")).toBeUndefined();
   });
+
+  it("downgrades US jurisdiction hard-fail to needs_input when foreign entities are affirmed", () => {
+    const rules = {
+      ...DEFAULT_RULES,
+      required_jurisdictions: ["CA"],
+      hard_fail_on_jurisdiction: true,
+    };
+    const usGrantWithForeignAffirmation = {
+      ...grant,
+      country: "US",
+      summary: "NIH Biomedical research fund. Foreign organizations and entities are eligible to apply.",
+    };
+    const result = evaluateRules(rules, usGrantWithForeignAffirmation, new Date("2026-07-21T12:00:00Z"));
+    const jurisdictionCheck = check(result, "jurisdiction_required");
+    expect(jurisdictionCheck?.status).toBe("warn");
+    expect(jurisdictionCheck?.hard).toBe(false);
+    expect(result.hard_fail).toBe(false);
+    expect(result.verdict).toBe("needs_input");
+  });
+
+  it("produces eligible verdict when all hard gates pass", () => {
+    const rules = {
+      ...DEFAULT_RULES,
+      required_jurisdictions: ["CA"],
+      hard_fail_on_jurisdiction: true,
+    };
+    const result = evaluateRules(rules, grant, new Date("2026-07-21T12:00:00Z"));
+    expect(result.hard_fail).toBe(false);
+    expect(result.verdict).toBe("eligible");
+  });
 });
