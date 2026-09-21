@@ -39,6 +39,12 @@ const normalize = (value: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
+const STOPWORDS = new Set([
+  "the", "and", "for", "with", "that", "this", "from", "are", "have", "our", "all",
+  "pour", "avec", "dans", "nous", "notre", "nos", "les", "des", "une", "sur", "par",
+  "qui", "est", "sont", "que", "ces", "ses", "leur", "leurs",
+]);
+
 const includesTerm = (haystack: string, term: string) => {
   const needle = normalize(term);
   return (
@@ -98,7 +104,7 @@ export function scoreGrantForProfile(
     profile.mission
       .split(/\s+/)
       .map(normalize)
-      .filter((term) => term.length > 2),
+      .filter((term) => term.length > 2 && !STOPWORDS.has(term)),
     20,
   );
 
