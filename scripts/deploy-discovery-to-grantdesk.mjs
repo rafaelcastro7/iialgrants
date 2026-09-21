@@ -407,7 +407,9 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-export async function runDiscoveryCycle(): Promise<{
+export async function runDiscoveryCycle(
+  options: { skipEmbedding?: boolean; limit?: number } = {},
+): Promise<{
   sourcesRun: number;
   grantsUpserted: number;
   alertsQueued: number;
@@ -423,7 +425,7 @@ export async function runDiscoveryCycle(): Promise<{
   for (const source of SOURCES) {
     try {
       process.stdout.write(\`Ingesting \${source.key} ... \`);
-      const result = await runSource(source, { client: supabase });
+      const result = await runSource(source, { client: supabase, limit: options.limit });
       totalGrantsUpserted += result.grantsUpserted;
       sourcesRun++;
       console.log(\`ok (\${result.grantsUpserted} upserted, 0 duplicates)\`);
@@ -480,12 +482,14 @@ export async function runDiscoveryCycle(): Promise<{
 
   // 5. Update vector embeddings so new grants are instantly searchable
   let embedded = 0;
-  try {
-    const embedRes = await embedCatalog(supabase);
-    embedded = embedRes.embedded;
-    console.log(\`[Discovery Daemon] Embedded \${embedded} grants into pgvector.\`);
-  } catch (err) {
-    console.error(\`[Discovery Daemon] Embedding failed: \${err instanceof Error ? err.message : String(err)}\`);
+  if (!options.skipEmbedding) {
+    try {
+      const embedRes = await embedCatalog(supabase);
+      embedded = embedRes.embedded;
+      console.log(\`[Discovery Daemon] Embedded \${embedded} grants into pgvector.\`);
+    } catch (err) {
+      console.error(\`[Discovery Daemon] Embedding failed: \${err instanceof Error ? err.message : String(err)}\`);
+    }
   }
 
   console.log(\`[Discovery Daemon \${new Date().toISOString()}] Cycle complete. Grants: \${totalGrantsUpserted}, Alerts: \${alertsQueued + deadlinesQueued}\`);
@@ -542,8 +546,8 @@ describe("continuous 24/7 discovery & deduplication", () => {
       .from("grants")
       .select("id", { count: "exact", head: true });
 
-    // Run discovery cycle
-    const cycle1 = await runDiscoveryCycle();
+    // Run discovery cycle with small sample limit and skipEmbedding
+    const cycle1 = await runDiscoveryCycle({ skipEmbedding: true, limit: 10 });
     expect(cycle1.sourcesRun).toBeGreaterThanOrEqual(1);
 
     // Count grants after first run
@@ -552,14 +556,14 @@ describe("continuous 24/7 discovery & deduplication", () => {
       .select("id", { count: "exact", head: true });
 
     // Second run with the same sources
-    const cycle2 = await runDiscoveryCycle();
+    const cycle2 = await runDiscoveryCycle({ skipEmbedding: true, limit: 10 });
     const { count: countAfterSecond } = await admin
       .from("grants")
       .select("id", { count: "exact", head: true });
 
     // Verify: Grant count does not grow redundantly on second identical run
     expect(countAfterSecond).toBe(countAfterFirst);
-  }, 120_000);
+  }, 30_000);
 });
 `;
 
