@@ -408,7 +408,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 });
 
 export async function runDiscoveryCycle(
-  options: { skipEmbedding?: boolean; limit?: number; sources?: any[] } = {},
+  options: { skipEmbedding?: boolean; limit?: number; sources?: any[]; skipAlerts?: boolean } = {},
 ): Promise<{
   sourcesRun: number;
   grantsUpserted: number;
@@ -446,39 +446,42 @@ export async function runDiscoveryCycle(
     console.warn(\`[Discovery Daemon] Expire warning: \${expireErr.message}\`);
   }
 
-  // 2. Fetch recently touched grants (seen today) for match alerts
-  const { data: recentGrants } = await supabase
-    .from("grants")
-    .select("id")
-    .gte("last_seen_at", new Date(Date.now() - 3600_000).toISOString())
-    .limit(50);
-  
-  if (recentGrants) {
-    newlyDiscoveredGrantIds.push(...recentGrants.map((g: any) => g.id));
-  }
-
-  // 3. Run notifications for new matches
   let alertsQueued = 0;
-  try {
-    const res = await scanAndAlertNewGrants({ supabase, newGrantIds: newlyDiscoveredGrantIds });
-    alertsQueued = res.queued;
-    if (alertsQueued > 0) {
-      console.log(\`[Discovery Daemon] Queued \${alertsQueued} new grant email alerts.\`);
-    }
-  } catch (err) {
-    console.error(\`[Discovery Daemon] Alert scan failed: \${err instanceof Error ? err.message : String(err)}\`);
-  }
-
-  // 4. Run deadline alerts
   let deadlinesQueued = 0;
-  try {
-    const res = await scanAndAlertDeadlines({ supabase });
-    deadlinesQueued = res.queued;
-    if (deadlinesQueued > 0) {
-      console.log(\`[Discovery Daemon] Queued \${deadlinesQueued} deadline reminder alerts.\`);
+
+  if (!options.skipAlerts) {
+    // 2. Fetch recently touched grants (seen today) for match alerts
+    const { data: recentGrants } = await supabase
+      .from("grants")
+      .select("id")
+      .gte("last_seen_at", new Date(Date.now() - 3600_000).toISOString())
+      .limit(10);
+    
+    if (recentGrants) {
+      newlyDiscoveredGrantIds.push(...recentGrants.map((g: any) => g.id));
     }
-  } catch (err) {
-    console.error(\`[Discovery Daemon] Deadline scan failed: \${err instanceof Error ? err.message : String(err)}\`);
+
+    // 3. Run notifications for new matches
+    try {
+      const res = await scanAndAlertNewGrants({ supabase, newGrantIds: newlyDiscoveredGrantIds });
+      alertsQueued = res.queued;
+      if (alertsQueued > 0) {
+        console.log(\`[Discovery Daemon] Queued \${alertsQueued} new grant email alerts.\`);
+      }
+    } catch (err) {
+      console.error(\`[Discovery Daemon] Alert scan failed: \${err instanceof Error ? err.message : String(err)}\`);
+    }
+
+    // 4. Run deadline alerts
+    try {
+      const res = await scanAndAlertDeadlines({ supabase });
+      deadlinesQueued = res.queued;
+      if (deadlinesQueued > 0) {
+        console.log(\`[Discovery Daemon] Queued \${deadlinesQueued} deadline reminder alerts.\`);
+      }
+    } catch (err) {
+      console.error(\`[Discovery Daemon] Deadline scan failed: \${err instanceof Error ? err.message : String(err)}\`);
+    }
   }
 
   // 5. Update vector embeddings so new grants are instantly searchable
