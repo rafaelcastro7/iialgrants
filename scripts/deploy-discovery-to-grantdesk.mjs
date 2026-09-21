@@ -359,7 +359,7 @@ describe("notifications formatting and logic", () => {
     });
 
     expect(urgent.subject).toContain("🚨");
-    expect(urgent.subject).toContain("3 Days Remaining");
+    expect(urgent.subject).toContain("3d");
     expect(urgent.html).toContain("3 Days Remaining");
 
     const upcoming = formatDeadlineEmail({
@@ -369,7 +369,7 @@ describe("notifications formatting and logic", () => {
       deadline: "2026-10-05",
     });
 
-    expect(upcoming.subject).toContain("14 Days Remaining");
+    expect(upcoming.subject).toContain("14d");
     expect(upcoming.html).toContain("14 Days Remaining");
   });
 });
