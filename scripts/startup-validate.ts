@@ -9,6 +9,11 @@
  * and the summary says exactly what.
  *
  * Usage: bun run scripts/startup-validate.ts [--json]
+ *
+ * Environment auto-detection:
+ * - Local: Ollama reachable at OLLAMA_BASE_URL (default localhost:11434)
+ * - Lovable Cloud: Ollama not reachable, but Supabase Cloud + Cloud LLM keys present
+ * In cloud mode, Ollama checks become advisory (optional) since cloud LLMs are primary.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -17,7 +22,7 @@ import { join } from "path";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost:15435";
 const ANON_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || "";
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
+const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const APP_URL = process.env.APP_URL || "http://localhost:8080";
 const DEMO_EMAIL = "demo-admin@iial.test";
 const DEMO_PASSWORD = "IIAL-Demo-2026!";
@@ -59,6 +64,41 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}, ms = 15000)
     clearTimeout(timer);
   }
 }
+
+/**
+ * Detects if we're in Lovable Cloud (no Ollama, cloud LLMs only).
+ * Mirrors the logic in src/lib/env-detect.server.ts but runs in script context.
+ */
+async function detectRuntimeEnv(): Promise<"local" | "lovable-cloud"> {
+  const ollamaUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+
+  if (!ollamaUrl.includes("localhost") && !ollamaUrl.includes("127.0.0.1")) {
+    return "local";
+  }
+
+  let ollamaReachable = false;
+  try {
+    const res = await fetch(`${ollamaUrl}/api/tags`, {
+      signal: AbortSignal.timeout(3_000),
+    });
+    ollamaReachable = res.ok;
+  } catch {
+    ollamaReachable = false;
+  }
+
+  const hasCloudKeys = !!(
+    process.env.CEREBRAS_API_KEY ||
+    process.env.GROQ_API_KEY ||
+    process.env.GOOGLE_AI_STUDIO_KEY
+  );
+
+  if (ollamaReachable) return "local";
+  if (hasCloudKeys) return "lovable-cloud";
+  return "local"; // degraded local
+}
+
+const RUNTIME_ENV = await detectRuntimeEnv();
+const IS_CLOUD = RUNTIME_ENV === "lovable-cloud";
 
 // --- 1. Database gateway -----------------------------------------------------
 await check("supabase gateway", true, async () => {
@@ -116,8 +156,8 @@ await check("funders linked to grants", true, async () => {
   return `${linked} funders have at least one grant`;
 });
 
-// --- 5. Local embedding model ------------------------------------------------
-await check("ollama embeddings", true, async () => {
+// --- 5. Local embedding model (required locally, advisory in cloud) ----------
+await check("ollama embeddings", !IS_CLOUD, async () => {
   const tags = await fetchWithTimeout(`${OLLAMA_URL}/api/tags`);
   if (!tags.ok) throw new Error(`ollama HTTP ${tags.status}`);
   const { models } = (await tags.json()) as { models?: Array<{ name: string }> };
@@ -140,14 +180,8 @@ await check("ollama embeddings", true, async () => {
   return `nomic-embed-text ready (768 dims)`;
 });
 
-// --- 5b. Local agent chat models --------------------------------------------
-// Separate pulls from the embedding model, and their absence is quiet: the
-// agent falls through to a cloud provider, so runs mostly still succeed and
-// only fail when that fallback is unavailable. The critic failed exactly this
-// way with ollama_prewarm_404: model 'phi4-mini:latest' not found, leaving
-// proposals.critic_score NULL and the submit gate reporting "not reviewed"
-// even though the UI had shown the review running to completion.
-await check("ollama agent models", true, async () => {
+// --- 5b. Local agent chat models (required locally, advisory in cloud) -------
+await check("ollama agent models", !IS_CLOUD, async () => {
   const tags = await fetchWithTimeout(`${OLLAMA_URL}/api/tags`);
   if (!tags.ok) throw new Error(`ollama HTTP ${tags.status}`);
   const { models } = (await tags.json()) as { models?: Array<{ name: string }> };
@@ -163,11 +197,8 @@ await check("ollama agent models", true, async () => {
   return `${required.join(", ")} installed`;
 });
 
-// --- 5c. Cloud LLM chain (advisory: local Ollama still covers every agent) ---
-// Cerebras -> Groq -> Gemini, tried in that order before falling back local.
-// Provider model IDs rot: Gemini's mapped gemini-2.0-* pair had been retired
-// outright, so the whole tertiary rung was dead without anything reporting it.
-await check("cloud llm chain", false, async () => {
+// --- 5c. Cloud LLM chain (required in cloud, advisory locally) ---------------
+await check("cloud llm chain", IS_CLOUD, async () => {
   const { CEREBRAS_MODEL_MAP, GROQ_MODEL_MAP, GEMINI_MODEL_MAP } =
     await import("../src/agents/llm-cloud.server");
   const providers = [
@@ -277,9 +308,10 @@ const failedOptional = results.filter((r) => !r.ok && !r.required);
 const stamp = new Date().toISOString();
 
 if (JSON_OUT) {
-  console.log(JSON.stringify({ stamp, ok: failedRequired.length === 0, results }, null, 2));
+  console.log(JSON.stringify({ stamp, ok: failedRequired.length === 0, results, env: RUNTIME_ENV }, null, 2));
 } else {
   console.log(`\nIIAL Grants — startup validation  ${stamp}`);
+  console.log(`Environment: ${RUNTIME_ENV}`);
   console.log("=".repeat(64));
   for (const r of results) {
     const mark = r.ok ? "PASS" : r.required ? "FAIL" : "WARN";
