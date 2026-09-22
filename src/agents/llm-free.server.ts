@@ -15,6 +15,7 @@ import { logGenAI, newRunId } from "@/lib/otel";
 import { resolveModel, resolveFallback } from "@/agents/model-router.server";
 import { timeoutFor } from "@/agents/llm-timeouts.server";
 import { callCloudLlm } from "@/agents/llm-cloud.server";
+import { isLovableCloud, isLocalOllamaAvailable } from "@/lib/env-detect.server";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 type Agent = "discoverer" | "enricher" | "evaluator" | "strategist" | "writer" | "critic";
@@ -115,6 +116,24 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
     if (!msg.includes("cloud_llm_unavailable")) {
       console.warn(`[Free LLM Router] Cloud failed (${msg}). Falling back to local Ollama...`);
     }
+  }
+
+  // In Lovable Cloud, Ollama is not available — don't try and fail slowly.
+  const inCloud = await isLovableCloud();
+  if (inCloud) {
+    throw new Error(
+      "cloud_llm_unavailable: all cloud providers failed and Ollama is not available in this environment (Lovable Cloud). " +
+        "Ensure at least one of CEREBRAS_API_KEY, GROQ_API_KEY, or GOOGLE_AI_STUDIO_KEY is set and valid."
+    );
+  }
+
+  // Also skip if we already know Ollama isn't reachable (cached probe)
+  const ollamaOk = await isLocalOllamaAvailable();
+  if (!ollamaOk) {
+    throw new Error(
+      "cloud_llm_unavailable: all cloud providers failed and local Ollama is not reachable. " +
+        "Check OLLAMA_BASE_URL or ensure Ollama is running."
+    );
   }
 
   const runId = opts.runId ?? newRunId();
