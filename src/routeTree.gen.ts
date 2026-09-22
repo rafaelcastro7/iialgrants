@@ -36,6 +36,7 @@ import { Route as AuthenticatedGrantsIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedFundersIndexRouteImport } from './routes/_authenticated.funders.index'
 import { Route as AuthenticatedCompetitiveIndexRouteImport } from './routes/_authenticated.competitive.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
+import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
 import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticated.grants.$id'
 import { Route as AuthenticatedFundersFunderIdRouteImport } from './routes/_authenticated.funders.$funderId'
@@ -200,6 +201,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
+  id: '/api/public/health',
+  path: '/api/public/health',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedProposalsIdRoute =
   AuthenticatedProposalsIdRouteImport.update({
@@ -377,6 +383,7 @@ export interface FileRoutesByFullPath {
   '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
   '/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/competitive/': typeof AuthenticatedCompetitiveIndexRoute
   '/funders/': typeof AuthenticatedFundersIndexRoute
@@ -428,6 +435,7 @@ export interface FileRoutesByTo {
   '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
   '/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/competitive': typeof AuthenticatedCompetitiveIndexRoute
   '/funders': typeof AuthenticatedFundersIndexRoute
@@ -482,6 +490,7 @@ export interface FileRoutesById {
   '/_authenticated/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
   '/_authenticated/grants/$id': typeof AuthenticatedGrantsIdRouteWithChildren
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/competitive/': typeof AuthenticatedCompetitiveIndexRoute
   '/_authenticated/funders/': typeof AuthenticatedFundersIndexRoute
@@ -536,6 +545,7 @@ export interface FileRouteTypes {
     | '/funders/$funderId'
     | '/grants/$id'
     | '/proposals/$id'
+    | '/api/public/health'
     | '/admin/'
     | '/competitive/'
     | '/funders/'
@@ -587,6 +597,7 @@ export interface FileRouteTypes {
     | '/funders/$funderId'
     | '/grants/$id'
     | '/proposals/$id'
+    | '/api/public/health'
     | '/admin'
     | '/competitive'
     | '/funders'
@@ -640,6 +651,7 @@ export interface FileRouteTypes {
     | '/_authenticated/funders/$funderId'
     | '/_authenticated/grants/$id'
     | '/_authenticated/proposals/$id'
+    | '/api/public/health'
     | '/_authenticated/admin/'
     | '/_authenticated/competitive/'
     | '/_authenticated/funders/'
@@ -662,6 +674,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ComplianceRoute: typeof ComplianceRoute
   ReportTokenRoute: typeof ReportTokenRoute
+  ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicHooksDeadlinesRoute: typeof ApiPublicHooksDeadlinesRoute
   ApiPublicHooksDiscoverRoute: typeof ApiPublicHooksDiscoverRoute
   ApiPublicHooksEnrichRoute: typeof ApiPublicHooksEnrichRoute
@@ -861,6 +874,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/health': {
+      id: '/api/public/health'
+      path: '/api/public/health'
+      fullPath: '/api/public/health'
+      preLoaderRoute: typeof ApiPublicHealthRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/proposals/$id': {
       id: '/_authenticated/proposals/$id'
@@ -1150,6 +1170,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ComplianceRoute: ComplianceRoute,
   ReportTokenRoute: ReportTokenRoute,
+  ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicHooksDeadlinesRoute: ApiPublicHooksDeadlinesRoute,
   ApiPublicHooksDiscoverRoute: ApiPublicHooksDiscoverRoute,
   ApiPublicHooksEnrichRoute: ApiPublicHooksEnrichRoute,
