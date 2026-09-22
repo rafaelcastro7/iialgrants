@@ -308,7 +308,9 @@ const failedOptional = results.filter((r) => !r.ok && !r.required);
 const stamp = new Date().toISOString();
 
 if (JSON_OUT) {
-  console.log(JSON.stringify({ stamp, ok: failedRequired.length === 0, results, env: RUNTIME_ENV }, null, 2));
+  console.log(
+    JSON.stringify({ stamp, ok: failedRequired.length === 0, results, env: RUNTIME_ENV }, null, 2),
+  );
 } else {
   console.log(`\nIIAL Grants — startup validation  ${stamp}`);
   console.log(`Environment: ${RUNTIME_ENV}`);

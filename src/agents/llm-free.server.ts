@@ -123,7 +123,7 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
   if (inCloud) {
     throw new Error(
       "cloud_llm_unavailable: all cloud providers failed and Ollama is not available in this environment (Lovable Cloud). " +
-        "Ensure at least one of CEREBRAS_API_KEY, GROQ_API_KEY, or GOOGLE_AI_STUDIO_KEY is set and valid."
+        "Ensure at least one of CEREBRAS_API_KEY, GROQ_API_KEY, or GOOGLE_AI_STUDIO_KEY is set and valid.",
     );
   }
 
@@ -132,7 +132,7 @@ export async function callFreeLlm(opts: FreeLlmOptions): Promise<FreeLlmResult> 
   if (!ollamaOk) {
     throw new Error(
       "cloud_llm_unavailable: all cloud providers failed and local Ollama is not reachable. " +
-        "Check OLLAMA_BASE_URL or ensure Ollama is running."
+        "Check OLLAMA_BASE_URL or ensure Ollama is running.",
     );
   }
 

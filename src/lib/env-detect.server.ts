@@ -19,7 +19,7 @@ export async function detectRuntimeEnv(): Promise<RuntimeEnv> {
   if (_cachedEnv) return _cachedEnv;
 
   const ollamaUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-  
+
   // Quick check: if OLLAMA_BASE_URL is not localhost, assume cloud with remote Ollama
   if (!ollamaUrl.includes("localhost") && !ollamaUrl.includes("127.0.0.1")) {
     _cachedEnv = "local"; // Could be remote Ollama, treat as local-like
