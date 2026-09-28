@@ -178,15 +178,11 @@ export function ProposalDocumentExporter({ clientName, grantTitle, funderName, s
   };
 
   const handleCopyMarkdown = () => {
-    const text = `# Proposal: ${grantTitle}
-**Applicant**: ${clientName}
-**Funder**: ${funderName}
-**Date**: ${new Date().toLocaleDateString()}
-
----
-
-${sections.map((s) => `## ${s.heading}\n\n${s.content || "*Section draft pending.*"}`).join("\n\n---\n\n")}
-`;
+    const text = "# Proposal: " + grantTitle + "\\n" +
+      "**Applicant**: " + clientName + "\\n" +
+      "**Funder**: " + funderName + "\\n" +
+      "**Date**: " + new Date().toLocaleDateString() + "\\n\\n---\\n\\n" +
+      sections.map((s) => "## " + s.heading + "\\n\\n" + (s.content || "*Section draft pending.*")).join("\\n\\n---\\n\\n");
     navigator.clipboard.writeText(text);
     alert("Markdown proposal copied to clipboard!");
   };
