@@ -26,7 +26,9 @@
     "workflows": "Workflows",
     "autonomy": "Autonomy",
     "settings": "Settings",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "clients": "Clients",
+    "clientsList": "All Clients"
   },
   "auth": {
     "signIn": "Sign in",
