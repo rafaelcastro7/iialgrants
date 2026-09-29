@@ -64,6 +64,7 @@ import { Route as ApiPublicHooksDeadlinesRouteImport } from './routes/api/public
 import { Route as AuthenticatedProposalsProposalIdRevisionRouteImport } from './routes/_authenticated.proposals.$proposalId.revision'
 import { Route as AuthenticatedGrantsIdAuditRouteImport } from './routes/_authenticated.grants.$id.audit'
 import { Route as AuthenticatedClientsOrgIdInfoRouteImport } from './routes/_authenticated.clients.$orgId.info'
+import { Route as AuthenticatedClientsOrgIdGrantsRouteImport } from './routes/_authenticated.clients.$orgId.grants'
 
 const ComplianceRoute = ComplianceRouteImport.update({
   id: '/compliance',
@@ -366,6 +367,12 @@ const AuthenticatedClientsOrgIdInfoRoute =
     path: '/info',
     getParentRoute: () => AuthenticatedClientsOrgIdRoute,
   } as any)
+const AuthenticatedClientsOrgIdGrantsRoute =
+  AuthenticatedClientsOrgIdGrantsRouteImport.update({
+    id: '/grants',
+    path: '/grants',
+    getParentRoute: () => AuthenticatedClientsOrgIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -412,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/funders/': typeof AuthenticatedFundersIndexRoute
   '/grants/': typeof AuthenticatedGrantsIndexRoute
   '/proposals/': typeof AuthenticatedProposalsIndexRoute
+  '/clients/$orgId/grants': typeof AuthenticatedClientsOrgIdGrantsRoute
   '/clients/$orgId/info': typeof AuthenticatedClientsOrgIdInfoRoute
   '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/proposals/$proposalId/revision': typeof AuthenticatedProposalsProposalIdRevisionRoute
@@ -467,6 +475,7 @@ export interface FileRoutesByTo {
   '/funders': typeof AuthenticatedFundersIndexRoute
   '/grants': typeof AuthenticatedGrantsIndexRoute
   '/proposals': typeof AuthenticatedProposalsIndexRoute
+  '/clients/$orgId/grants': typeof AuthenticatedClientsOrgIdGrantsRoute
   '/clients/$orgId/info': typeof AuthenticatedClientsOrgIdInfoRoute
   '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/proposals/$proposalId/revision': typeof AuthenticatedProposalsProposalIdRevisionRoute
@@ -525,6 +534,7 @@ export interface FileRoutesById {
   '/_authenticated/funders/': typeof AuthenticatedFundersIndexRoute
   '/_authenticated/grants/': typeof AuthenticatedGrantsIndexRoute
   '/_authenticated/proposals/': typeof AuthenticatedProposalsIndexRoute
+  '/_authenticated/clients/$orgId/grants': typeof AuthenticatedClientsOrgIdGrantsRoute
   '/_authenticated/clients/$orgId/info': typeof AuthenticatedClientsOrgIdInfoRoute
   '/_authenticated/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/_authenticated/proposals/$proposalId/revision': typeof AuthenticatedProposalsProposalIdRevisionRoute
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
     | '/funders/'
     | '/grants/'
     | '/proposals/'
+    | '/clients/$orgId/grants'
     | '/clients/$orgId/info'
     | '/grants/$id/audit'
     | '/proposals/$proposalId/revision'
@@ -638,6 +649,7 @@ export interface FileRouteTypes {
     | '/funders'
     | '/grants'
     | '/proposals'
+    | '/clients/$orgId/grants'
     | '/clients/$orgId/info'
     | '/grants/$id/audit'
     | '/proposals/$proposalId/revision'
@@ -695,6 +707,7 @@ export interface FileRouteTypes {
     | '/_authenticated/funders/'
     | '/_authenticated/grants/'
     | '/_authenticated/proposals/'
+    | '/_authenticated/clients/$orgId/grants'
     | '/_authenticated/clients/$orgId/info'
     | '/_authenticated/grants/$id/audit'
     | '/_authenticated/proposals/$proposalId/revision'
@@ -1110,6 +1123,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsOrgIdInfoRouteImport
       parentRoute: typeof AuthenticatedClientsOrgIdRoute
     }
+    '/_authenticated/clients/$orgId/grants': {
+      id: '/_authenticated/clients/$orgId/grants'
+      path: '/grants'
+      fullPath: '/clients/$orgId/grants'
+      preLoaderRoute: typeof AuthenticatedClientsOrgIdGrantsRouteImport
+      parentRoute: typeof AuthenticatedClientsOrgIdRoute
+    }
   }
 }
 
@@ -1146,11 +1166,13 @@ const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
 interface AuthenticatedClientsOrgIdRouteChildren {
+  AuthenticatedClientsOrgIdGrantsRoute: typeof AuthenticatedClientsOrgIdGrantsRoute
   AuthenticatedClientsOrgIdInfoRoute: typeof AuthenticatedClientsOrgIdInfoRoute
 }
 
 const AuthenticatedClientsOrgIdRouteChildren: AuthenticatedClientsOrgIdRouteChildren =
   {
+    AuthenticatedClientsOrgIdGrantsRoute: AuthenticatedClientsOrgIdGrantsRoute,
     AuthenticatedClientsOrgIdInfoRoute: AuthenticatedClientsOrgIdInfoRoute,
   }
 
