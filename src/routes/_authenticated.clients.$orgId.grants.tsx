@@ -54,7 +54,7 @@ function ClientGrantsTab() {
   const [sortKey, setSortKey] = useState<"fit" | "deadline" | "amount" | "relevance">("fit");
   const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
 
-  const grants = data?.grants ?? [];
+  const grants = useMemo(() => data?.grants ?? [], [data?.grants]);
 
   // Filter grants client-side for search
   const filteredGrants = useMemo(() => {
