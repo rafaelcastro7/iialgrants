@@ -27,6 +27,8 @@ import {
   BrainCircuit,
   BookOpen,
   Library,
+  Users,
+  Briefcase,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
