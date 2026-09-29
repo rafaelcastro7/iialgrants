@@ -63,6 +63,7 @@ import { Route as ApiPublicHooksDiscoverRouteImport } from './routes/api/public/
 import { Route as ApiPublicHooksDeadlinesRouteImport } from './routes/api/public/hooks/deadlines'
 import { Route as AuthenticatedProposalsProposalIdRevisionRouteImport } from './routes/_authenticated.proposals.$proposalId.revision'
 import { Route as AuthenticatedGrantsIdAuditRouteImport } from './routes/_authenticated.grants.$id.audit'
+import { Route as AuthenticatedClientsOrgIdInfoRouteImport } from './routes/_authenticated.clients.$orgId.info'
 
 const ComplianceRoute = ComplianceRouteImport.update({
   id: '/compliance',
@@ -359,6 +360,12 @@ const AuthenticatedGrantsIdAuditRoute =
     path: '/audit',
     getParentRoute: () => AuthenticatedGrantsIdRoute,
   } as any)
+const AuthenticatedClientsOrgIdInfoRoute =
+  AuthenticatedClientsOrgIdInfoRouteImport.update({
+    id: '/info',
+    path: '/info',
+    getParentRoute: () => AuthenticatedClientsOrgIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -392,7 +399,7 @@ export interface FileRoutesByFullPath {
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
-  '/clients/$orgId': typeof AuthenticatedClientsOrgIdRoute
+  '/clients/$orgId': typeof AuthenticatedClientsOrgIdRouteWithChildren
   '/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -405,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/funders/': typeof AuthenticatedFundersIndexRoute
   '/grants/': typeof AuthenticatedGrantsIndexRoute
   '/proposals/': typeof AuthenticatedProposalsIndexRoute
+  '/clients/$orgId/info': typeof AuthenticatedClientsOrgIdInfoRoute
   '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/proposals/$proposalId/revision': typeof AuthenticatedProposalsProposalIdRevisionRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
@@ -446,7 +454,7 @@ export interface FileRoutesByTo {
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
-  '/clients/$orgId': typeof AuthenticatedClientsOrgIdRoute
+  '/clients/$orgId': typeof AuthenticatedClientsOrgIdRouteWithChildren
   '/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -459,6 +467,7 @@ export interface FileRoutesByTo {
   '/funders': typeof AuthenticatedFundersIndexRoute
   '/grants': typeof AuthenticatedGrantsIndexRoute
   '/proposals': typeof AuthenticatedProposalsIndexRoute
+  '/clients/$orgId/info': typeof AuthenticatedClientsOrgIdInfoRoute
   '/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/proposals/$proposalId/revision': typeof AuthenticatedProposalsProposalIdRevisionRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
@@ -503,7 +512,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
-  '/_authenticated/clients/$orgId': typeof AuthenticatedClientsOrgIdRoute
+  '/_authenticated/clients/$orgId': typeof AuthenticatedClientsOrgIdRouteWithChildren
   '/_authenticated/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/_authenticated/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/_authenticated/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -516,6 +525,7 @@ export interface FileRoutesById {
   '/_authenticated/funders/': typeof AuthenticatedFundersIndexRoute
   '/_authenticated/grants/': typeof AuthenticatedGrantsIndexRoute
   '/_authenticated/proposals/': typeof AuthenticatedProposalsIndexRoute
+  '/_authenticated/clients/$orgId/info': typeof AuthenticatedClientsOrgIdInfoRoute
   '/_authenticated/grants/$id/audit': typeof AuthenticatedGrantsIdAuditRoute
   '/_authenticated/proposals/$proposalId/revision': typeof AuthenticatedProposalsProposalIdRevisionRoute
   '/api/public/hooks/deadlines': typeof ApiPublicHooksDeadlinesRoute
@@ -573,6 +583,7 @@ export interface FileRouteTypes {
     | '/funders/'
     | '/grants/'
     | '/proposals/'
+    | '/clients/$orgId/info'
     | '/grants/$id/audit'
     | '/proposals/$proposalId/revision'
     | '/api/public/hooks/deadlines'
@@ -627,6 +638,7 @@ export interface FileRouteTypes {
     | '/funders'
     | '/grants'
     | '/proposals'
+    | '/clients/$orgId/info'
     | '/grants/$id/audit'
     | '/proposals/$proposalId/revision'
     | '/api/public/hooks/deadlines'
@@ -683,6 +695,7 @@ export interface FileRouteTypes {
     | '/_authenticated/funders/'
     | '/_authenticated/grants/'
     | '/_authenticated/proposals/'
+    | '/_authenticated/clients/$orgId/info'
     | '/_authenticated/grants/$id/audit'
     | '/_authenticated/proposals/$proposalId/revision'
     | '/api/public/hooks/deadlines'
@@ -1090,6 +1103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGrantsIdAuditRouteImport
       parentRoute: typeof AuthenticatedGrantsIdRoute
     }
+    '/_authenticated/clients/$orgId/info': {
+      id: '/_authenticated/clients/$orgId/info'
+      path: '/info'
+      fullPath: '/clients/$orgId/info'
+      preLoaderRoute: typeof AuthenticatedClientsOrgIdInfoRouteImport
+      parentRoute: typeof AuthenticatedClientsOrgIdRoute
+    }
   }
 }
 
@@ -1125,6 +1145,20 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
+interface AuthenticatedClientsOrgIdRouteChildren {
+  AuthenticatedClientsOrgIdInfoRoute: typeof AuthenticatedClientsOrgIdInfoRoute
+}
+
+const AuthenticatedClientsOrgIdRouteChildren: AuthenticatedClientsOrgIdRouteChildren =
+  {
+    AuthenticatedClientsOrgIdInfoRoute: AuthenticatedClientsOrgIdInfoRoute,
+  }
+
+const AuthenticatedClientsOrgIdRouteWithChildren =
+  AuthenticatedClientsOrgIdRoute._addFileChildren(
+    AuthenticatedClientsOrgIdRouteChildren,
+  )
+
 interface AuthenticatedGrantsIdRouteChildren {
   AuthenticatedGrantsIdAuditRoute: typeof AuthenticatedGrantsIdAuditRoute
 }
@@ -1156,7 +1190,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRenewalRoute: typeof AuthenticatedRenewalRoute
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
-  AuthenticatedClientsOrgIdRoute: typeof AuthenticatedClientsOrgIdRoute
+  AuthenticatedClientsOrgIdRoute: typeof AuthenticatedClientsOrgIdRouteWithChildren
   AuthenticatedCompetitiveProgramsRoute: typeof AuthenticatedCompetitiveProgramsRoute
   AuthenticatedCompetitiveRecipientsRoute: typeof AuthenticatedCompetitiveRecipientsRoute
   AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
@@ -1188,7 +1222,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedRenewalRoute: AuthenticatedRenewalRoute,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
-  AuthenticatedClientsOrgIdRoute: AuthenticatedClientsOrgIdRoute,
+  AuthenticatedClientsOrgIdRoute: AuthenticatedClientsOrgIdRouteWithChildren,
   AuthenticatedCompetitiveProgramsRoute: AuthenticatedCompetitiveProgramsRoute,
   AuthenticatedCompetitiveRecipientsRoute:
     AuthenticatedCompetitiveRecipientsRoute,
