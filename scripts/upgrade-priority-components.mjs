@@ -475,8 +475,18 @@ export function AskGrantDeskChat() {
 }
 `;
 
-fs.writeFileSync(path.join(COMPONENTS_DIR, "GrantPrioritizationMatrix.tsx"), roiMatrixContent, "utf-8");
-fs.writeFileSync(path.join(COMPONENTS_DIR, "ProposalDocumentExporter.tsx"), exporterContent, "utf-8");
+fs.writeFileSync(
+  path.join(COMPONENTS_DIR, "GrantPrioritizationMatrix.tsx"),
+  roiMatrixContent,
+  "utf-8",
+);
+fs.writeFileSync(
+  path.join(COMPONENTS_DIR, "ProposalDocumentExporter.tsx"),
+  exporterContent,
+  "utf-8",
+);
 fs.writeFileSync(path.join(COMPONENTS_DIR, "AskGrantDeskChat.tsx"), chatContent, "utf-8");
 
-console.log("Upgraded components with CSV export, compliance matrix, shortcut listeners and suggestions!");
+console.log(
+  "Upgraded components with CSV export, compliance matrix, shortcut listeners and suggestions!",
+);

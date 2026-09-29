@@ -622,9 +622,21 @@ export function AskGrantDeskChat() {
 }
 `;
 
-fs.writeFileSync(path.join(GRANTDESK_DIR, "ProposalPipelineBoard.tsx"), pipelineBoardContent, "utf-8");
-fs.writeFileSync(path.join(GRANTDESK_DIR, "ExplainableFitScorecard.tsx"), scorecardContent, "utf-8");
-fs.writeFileSync(path.join(GRANTDESK_DIR, "ProposalApprovalWorkflow.tsx"), workflowContent, "utf-8");
+fs.writeFileSync(
+  path.join(GRANTDESK_DIR, "ProposalPipelineBoard.tsx"),
+  pipelineBoardContent,
+  "utf-8",
+);
+fs.writeFileSync(
+  path.join(GRANTDESK_DIR, "ExplainableFitScorecard.tsx"),
+  scorecardContent,
+  "utf-8",
+);
+fs.writeFileSync(
+  path.join(GRANTDESK_DIR, "ProposalApprovalWorkflow.tsx"),
+  workflowContent,
+  "utf-8",
+);
 fs.writeFileSync(path.join(GRANTDESK_DIR, "GrantBudgetPlanner.tsx"), budgetContent, "utf-8");
 fs.writeFileSync(path.join(GRANTDESK_DIR, "AskGrantDeskChat.tsx"), chatContent, "utf-8");
 

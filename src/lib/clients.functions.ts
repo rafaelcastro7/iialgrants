@@ -14,7 +14,8 @@ export const listUserOrganizations = createServerFn({ method: "GET" })
     const supabase = await createSupabaseAdmin();
     const { data, error } = await supabase
       .from("user_organizations")
-      .select(`
+      .select(
+        `
         org_id,
         role,
         organizations:org_id (
@@ -23,7 +24,8 @@ export const listUserOrganizations = createServerFn({ method: "GET" })
           slug,
           created_at
         )
-      `)
+      `,
+      )
       .eq("user_id", context.userId);
 
     if (error) throw new Error(error.message);
@@ -82,9 +84,18 @@ export const getClientOrganization = createServerFn({ method: "GET" })
     // Get stats: grants, proposals, submissions for this org
     const [{ count: grantsCount }, { count: proposalsCount }, { count: submissionsCount }] =
       await Promise.all([
-        supabase.from("grants").select("*", { count: "exact", head: true }).eq("org_id", data.orgId),
-        supabase.from("proposals").select("*", { count: "exact", head: true }).eq("org_id", data.orgId),
-        supabase.from("submissions").select("*", { count: "exact", head: true }).eq("org_id", data.orgId),
+        supabase
+          .from("grants")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", data.orgId),
+        supabase
+          .from("proposals")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", data.orgId),
+        supabase
+          .from("submissions")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", data.orgId),
       ]);
 
     return {
@@ -108,14 +119,24 @@ export const createOrganization = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       name: z.string().min(1).max(200),
-      slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/).optional(),
-    })
+      slug: z
+        .string()
+        .min(1)
+        .max(100)
+        .regex(/^[a-z0-9-]+$/)
+        .optional(),
+    }),
   )
   .handler(async ({ data, context }) => {
     const admin = await createSupabaseAdmin();
 
     // Generate slug if not provided
-    const slug = data.slug ?? data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const slug =
+      data.slug ??
+      data.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
 
     // Check if slug exists
     const { data: existing } = await admin
@@ -152,10 +173,7 @@ export const createOrganization = createServerFn({ method: "POST" })
       .single();
 
     if (!existingProfile?.org_id) {
-      await admin
-        .from("profiles")
-        .update({ org_id: org.id })
-        .eq("id", context.userId);
+      await admin.from("profiles").update({ org_id: org.id }).eq("id", context.userId);
     }
 
     return { organization: org };
@@ -171,7 +189,7 @@ export const inviteUserToOrganization = createServerFn({ method: "POST" })
       orgId: z.string().uuid(),
       email: z.string().email(),
       role: z.enum(["admin", "member", "viewer"]).default("member"),
-    })
+    }),
   )
   .handler(async ({ data, context }) => {
     const admin = await createSupabaseAdmin();
@@ -227,7 +245,7 @@ export const removeUserFromOrganization = createServerFn({ method: "POST" })
     z.object({
       orgId: z.string().uuid(),
       userId: z.string().uuid(),
-    })
+    }),
   )
   .handler(async ({ data, context }) => {
     const admin = await createSupabaseAdmin();
@@ -271,7 +289,7 @@ export const updateUserOrganizationRole = createServerFn({ method: "POST" })
       orgId: z.string().uuid(),
       userId: z.string().uuid(),
       role: z.enum(["admin", "member", "viewer"]),
-    })
+    }),
   )
   .handler(async ({ data, context }) => {
     const admin = await createSupabaseAdmin();
@@ -336,7 +354,8 @@ export const listOrganizationMembers = createServerFn({ method: "GET" })
     // Get members with user details
     const { data: members, error } = await admin
       .from("user_organizations")
-      .select(`
+      .select(
+        `
         user_id,
         role,
         created_at,
@@ -346,7 +365,8 @@ export const listOrganizationMembers = createServerFn({ method: "GET" })
           full_name,
           avatar_url
         )
-      `)
+      `,
+      )
       .eq("org_id", data.orgId);
 
     if (error) throw new Error(error.message);
@@ -365,7 +385,7 @@ export const listGrantsForOrganization = createServerFn({ method: "GET" })
       limit: z.number().int().min(1).max(200).default(100),
       status: z.string().optional(),
       minFitScore: z.number().min(0).max(100).optional(),
-    })
+    }),
   )
   .handler(async ({ data, context }) => {
     const supabase = await createSupabaseAdmin();
@@ -388,7 +408,7 @@ export const listGrantsForOrganization = createServerFn({ method: "GET" })
         `id, title, title_fr, summary, summary_fr, amount_cad_min, amount_cad_max,
          deadline, sectors, language, url, status, created_at,
          funder:funders(id, name, name_fr, jurisdiction),
-         evaluation:grant_evaluations!left(fit_score, rationale_en, rationale_fr, eligibility_pass, created_at)`
+         evaluation:grant_evaluations!left(fit_score, rationale_en, rationale_fr, eligibility_pass, created_at)`,
       )
       .eq("org_id", data.orgId)
       .order("created_at", { ascending: false })

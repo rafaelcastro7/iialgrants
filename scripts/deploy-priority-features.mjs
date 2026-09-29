@@ -372,8 +372,16 @@ const showcaseContent = `export function DesignSystemShowcase() {
 }
 `;
 
-fs.writeFileSync(path.join(COMPONENTS_DIR, "GrantPrioritizationMatrix.tsx"), roiMatrixContent, "utf-8");
-fs.writeFileSync(path.join(COMPONENTS_DIR, "ProposalDocumentExporter.tsx"), exporterContent, "utf-8");
+fs.writeFileSync(
+  path.join(COMPONENTS_DIR, "GrantPrioritizationMatrix.tsx"),
+  roiMatrixContent,
+  "utf-8",
+);
+fs.writeFileSync(
+  path.join(COMPONENTS_DIR, "ProposalDocumentExporter.tsx"),
+  exporterContent,
+  "utf-8",
+);
 fs.writeFileSync(path.join(COMPONENTS_DIR, "DesignSystemShowcase.tsx"), showcaseContent, "utf-8");
 
 // Create design-system route e:/dev/grantdesk/src/routes/design-system.tsx
@@ -386,4 +394,6 @@ export const Route = createFileRoute("/design-system")({
 `;
 fs.writeFileSync(path.join(ROUTES_DIR, "design-system.tsx"), routeContent, "utf-8");
 
-console.log("Written GrantPrioritizationMatrix, ProposalDocumentExporter, and DesignSystemShowcase!");
+console.log(
+  "Written GrantPrioritizationMatrix, ProposalDocumentExporter, and DesignSystemShowcase!",
+);

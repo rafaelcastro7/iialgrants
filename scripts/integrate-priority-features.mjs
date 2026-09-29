@@ -9,7 +9,7 @@ let navContent = fs.readFileSync(navPath, "utf-8");
 if (!navContent.includes('to: "/design-system"')) {
   navContent = navContent.replace(
     '{ to: "/catalog", label: "Funder Coverage" },',
-    '{ to: "/catalog", label: "Funder Coverage" },\n  { to: "/design-system", label: "Design Tokens" },'
+    '{ to: "/catalog", label: "Funder Coverage" },\n  { to: "/design-system", label: "Design Tokens" },',
   );
   fs.writeFileSync(navPath, navContent, "utf-8");
   console.log("Updated Nav.tsx with Design Tokens link!");
@@ -21,7 +21,7 @@ let clientContent = fs.readFileSync(clientPath, "utf-8");
 if (!clientContent.includes("GrantPrioritizationMatrix")) {
   clientContent = clientContent.replace(
     'import { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";',
-    'import { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";\nimport { GrantPrioritizationMatrix } from "@/components/GrantPrioritizationMatrix";'
+    'import { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";\nimport { GrantPrioritizationMatrix } from "@/components/GrantPrioritizationMatrix";',
   );
   const matrixSection = `
         {/* Prioritization Matrix */}
@@ -58,8 +58,8 @@ if (!clientContent.includes("GrantPrioritizationMatrix")) {
         />
   `;
   clientContent = clientContent.replace(
-    '<GrantBudgetPlanner grantMaxAmount={150000} />',
-    `<GrantBudgetPlanner grantMaxAmount={150000} />\n${matrixSection}`
+    "<GrantBudgetPlanner grantMaxAmount={150000} />",
+    `<GrantBudgetPlanner grantMaxAmount={150000} />\n${matrixSection}`,
   );
   fs.writeFileSync(clientPath, clientContent, "utf-8");
   console.log("Updated clients.$clientId.tsx with GrantPrioritizationMatrix!");
@@ -71,7 +71,7 @@ let proposalContent = fs.readFileSync(proposalPath, "utf-8");
 if (!proposalContent.includes("ProposalDocumentExporter")) {
   proposalContent = proposalContent.replace(
     'import { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";',
-    'import { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";\nimport { ProposalDocumentExporter } from "@/components/ProposalDocumentExporter";'
+    'import { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";\nimport { ProposalDocumentExporter } from "@/components/ProposalDocumentExporter";',
   );
   const exporterSection = `
         <ProposalDocumentExporter
@@ -82,8 +82,8 @@ if (!proposalContent.includes("ProposalDocumentExporter")) {
         />
   `;
   proposalContent = proposalContent.replace(
-    '<GrantBudgetPlanner grantMaxAmount={100000} />',
-    `<GrantBudgetPlanner grantMaxAmount={100000} />\n${exporterSection}`
+    "<GrantBudgetPlanner grantMaxAmount={100000} />",
+    `<GrantBudgetPlanner grantMaxAmount={100000} />\n${exporterSection}`,
   );
   fs.writeFileSync(proposalPath, proposalContent, "utf-8");
   console.log("Updated proposal editor with ProposalDocumentExporter!");

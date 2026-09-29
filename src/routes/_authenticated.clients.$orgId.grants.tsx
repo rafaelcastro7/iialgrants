@@ -7,9 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, ChevronDown, ChevronUp, Target, Calendar, DollarSign, Building2 } from "lucide-react";
+import {
+  Search,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  Target,
+  Calendar,
+  DollarSign,
+  Building2,
+} from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useState, useMemo } from "react";
 
@@ -17,7 +32,10 @@ export const Route = createFileRoute("/_authenticated/clients/$orgId/grants")({
   component: ClientGrantsTab,
 });
 
-const grantsQueryOptions = (orgId: string, params: { status?: string; minFitScore?: number; search?: string }) =>
+const grantsQueryOptions = (
+  orgId: string,
+  params: { status?: string; minFitScore?: number; search?: string },
+) =>
   queryOptions({
     queryKey: ["clients", "grants", orgId, params],
     queryFn: () => listGrantsForOrganization({ orgId, ...params }),
@@ -72,7 +90,10 @@ function ClientGrantsTab() {
           if (!b.deadline) return -1;
           return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
         case "amount":
-          return (b.amount_cad_max ?? b.amount_cad_min ?? 0) - (a.amount_cad_max ?? a.amount_cad_min ?? 0);
+          return (
+            (b.amount_cad_max ?? b.amount_cad_min ?? 0) -
+            (a.amount_cad_max ?? a.amount_cad_min ?? 0)
+          );
         case "relevance":
           return (b.evaluation?.fit_score ?? 0) - (a.evaluation?.fit_score ?? 0);
         default:
@@ -112,7 +133,10 @@ function ClientGrantsTab() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={minFitScore?.toString() ?? "all"} onValueChange={(v) => setMinFitScore(v === "all" ? undefined : Number(v))}>
+          <Select
+            value={minFitScore?.toString() ?? "all"}
+            onValueChange={(v) => setMinFitScore(v === "all" ? undefined : Number(v))}
+          >
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder={t("clients.grants.minFitScore")} />
             </SelectTrigger>
@@ -181,7 +205,9 @@ function ClientGrantsTab() {
           </p>
           {viewMode === "cards" ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredGrants.map((grant) => <GrantCard key={grant.id} grant={grant} />)}
+              {filteredGrants.map((grant) => (
+                <GrantCard key={grant.id} grant={grant} />
+              ))}
             </div>
           ) : (
             <GrantTable grants={filteredGrants} />
@@ -208,7 +234,9 @@ function GrantCard({ grant }: { grant: any }) {
             <p className="text-sm text-muted-foreground truncate">{grant.funder?.name}</p>
           </div>
           {fitScore !== null && (
-            <Badge className={`shrink-0 ${fitScore >= 70 ? "bg-green-100 text-green-800" : fitScore >= 40 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
+            <Badge
+              className={`shrink-0 ${fitScore >= 70 ? "bg-green-100 text-green-800" : fitScore >= 40 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
+            >
               {t("clients.grants.fitScore", { score: fitScore })}
             </Badge>
           )}
@@ -220,20 +248,23 @@ function GrantCard({ grant }: { grant: any }) {
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           {grant.amount_cad_max && (
             <span className="flex items-center gap-1">
-              <DollarSign className="h-3.5 w-3.5" />
-              ${grant.amount_cad_min?.toLocaleString()}–${grant.amount_cad_max.toLocaleString()} CAD
+              <DollarSign className="h-3.5 w-3.5" />${grant.amount_cad_min?.toLocaleString()}–$
+              {grant.amount_cad_max.toLocaleString()} CAD
             </span>
           )}
           {grant.sectors?.length && (
             <span className="flex items-center gap-1">
               <Target className="h-3.5 w-3.5" />
-              {grant.sectors.slice(0, 2).join(", ")}{grant.sectors.length > 2 ? "…" : ""}
+              {grant.sectors.slice(0, 2).join(", ")}
+              {grant.sectors.length > 2 ? "…" : ""}
             </span>
           )}
         </div>
 
         {deadline && (
-          <div className={`flex items-center gap-1 text-xs ${isUrgent ? "text-destructive" : "text-muted-foreground"}`}>
+          <div
+            className={`flex items-center gap-1 text-xs ${isUrgent ? "text-destructive" : "text-muted-foreground"}`}
+          >
             <Calendar className="h-3.5 w-3.5" />
             {daysLeft !== null && daysLeft >= 0 ? (
               <>
@@ -274,9 +305,15 @@ function GrantTable({ grants }: { grants: any[] }) {
             <thead className="bg-muted/50">
               <tr>
                 <th className="p-3 text-left font-medium">{t("clients.grants.grant")}</th>
-                <th className="p-3 text-left font-medium hidden md:table-cell">{t("clients.grants.funder")}</th>
-                <th className="p-3 text-left font-medium hidden lg:table-cell">{t("clients.grants.fit")}</th>
-                <th className="p-3 text-left font-medium hidden md:table-cell">{t("clients.grants.amount")}</th>
+                <th className="p-3 text-left font-medium hidden md:table-cell">
+                  {t("clients.grants.funder")}
+                </th>
+                <th className="p-3 text-left font-medium hidden lg:table-cell">
+                  {t("clients.grants.fit")}
+                </th>
+                <th className="p-3 text-left font-medium hidden md:table-cell">
+                  {t("clients.grants.amount")}
+                </th>
                 <th className="p-3 text-left font-medium">{t("clients.grants.deadline")}</th>
                 <th className="p-3 text-left font-medium">{t("clients.grants.status")}</th>
                 <th className="p-3 text-right font-medium">{t("clients.grants.actions")}</th>
@@ -290,7 +327,9 @@ function GrantTable({ grants }: { grants: any[] }) {
                       <a href={`/grants/${grant.id}`} className="font-medium hover:underline">
                         {grant.title}
                       </a>
-                      <p className="text-xs text-muted-foreground truncate max-w-xs">{grant.summary}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-xs">
+                        {grant.summary}
+                      </p>
                     </div>
                   </td>
                   <td className="p-3 hidden md:table-cell">{grant.funder?.name}</td>
@@ -301,8 +340,8 @@ function GrantTable({ grants }: { grants: any[] }) {
                           grant.evaluation.fit_score >= 70
                             ? "bg-green-100 text-green-800"
                             : grant.evaluation.fit_score >= 40
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
                         }
                       >
                         {grant.evaluation.fit_score}%
@@ -337,7 +376,9 @@ function GrantTable({ grants }: { grants: any[] }) {
                     )}
                   </td>
                   <td className="p-3">
-                    <Badge variant="outline">{t(`grants.status.${grant.status}`) || grant.status}</Badge>
+                    <Badge variant="outline">
+                      {t(`grants.status.${grant.status}`) || grant.status}
+                    </Badge>
                   </td>
                   <td className="p-3 text-right">
                     <Button variant="ghost" size="sm" asChild>

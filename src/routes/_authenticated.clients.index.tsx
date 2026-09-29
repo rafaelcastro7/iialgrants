@@ -12,7 +12,14 @@ import { PageContainer, PageHeader } from "@/components/PageLayout";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageTransition } from "@/components/PageTransition";
 import { Link } from "@tanstack/react-router";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
@@ -30,7 +37,10 @@ export const Route = createFileRoute("/_authenticated/clients/")({
   head: () => ({
     meta: [
       { title: "Clients — IIAL" },
-      { name: "description", content: "Manage client organizations and their grant opportunities." },
+      {
+        name: "description",
+        content: "Manage client organizations and their grant opportunities.",
+      },
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(orgsQueryOptions),
@@ -40,7 +50,11 @@ export const Route = createFileRoute("/_authenticated/clients/")({
 
 const createOrgSchema = z.object({
   name: z.string().min(1, "Organization name is required").max(200),
-  slug: z.string().max(100).regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens").optional(),
+  slug: z
+    .string()
+    .max(100)
+    .regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens")
+    .optional(),
 });
 
 type CreateOrgForm = z.infer<typeof createOrgSchema>;
@@ -92,25 +106,21 @@ function ClientsPage() {
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">{t("clients.name")}</Label>
-                      <Input
-                        id="name"
-                        {...form.register("name")}
-                        placeholder="Acme Foundation"
-                      />
+                      <Input id="name" {...form.register("name")} placeholder="Acme Foundation" />
                       {form.formState.errors.name && (
-                        <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+                        <p className="text-sm text-destructive">
+                          {form.formState.errors.name.message}
+                        </p>
                       )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="slug">{t("clients.slug")}</Label>
-                      <Input
-                        id="slug"
-                        {...form.register("slug")}
-                        placeholder="acme-foundation"
-                      />
+                      <Input id="slug" {...form.register("slug")} placeholder="acme-foundation" />
                       <p className="text-xs text-muted-foreground">{t("clients.slugHint")}</p>
                       {form.formState.errors.slug && (
-                        <p className="text-sm text-destructive">{form.formState.errors.slug.message}</p>
+                        <p className="text-sm text-destructive">
+                          {form.formState.errors.slug.message}
+                        </p>
                       )}
                     </div>
                     <DialogFooter>
@@ -127,7 +137,9 @@ function ClientsPage() {
           {organizations.length === 0 ? (
             <div className="rounded-2xl border border-border/70 bg-card/90 p-10 text-center shadow-sm">
               <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-              <h2 className="mb-2 font-display text-2xl text-foreground">{t("clients.emptyTitle")}</h2>
+              <h2 className="mb-2 font-display text-2xl text-foreground">
+                {t("clients.emptyTitle")}
+              </h2>
               <p className="mx-auto mb-6 max-w-xl text-sm text-muted-foreground">
                 {t("clients.emptyDescription")}
               </p>

@@ -19,7 +19,8 @@ export const Route = createFileRoute("/_authenticated/clients/$orgId")({
   head: () => ({
     meta: [{ title: "Client Detail — IIAL" }],
   }),
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(clientQueryOptions(params.orgId)),
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(clientQueryOptions(params.orgId)),
   errorComponent: ({ error, reset }) => <RouteErrorBoundary error={error} reset={reset} />,
   component: ClientLayout,
 });
@@ -53,7 +54,11 @@ function ClientLayout() {
           {/* Client header with context switch */}
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Link to="/clients" className="p-2 hover:bg-accent rounded-lg transition-colors" title={t("clients.backToList")}>
+              <Link
+                to="/clients"
+                className="p-2 hover:bg-accent rounded-lg transition-colors"
+                title={t("clients.backToList")}
+              >
                 <ChevronLeft className="h-5 w-5" />
               </Link>
               <div>
@@ -75,9 +80,21 @@ function ClientLayout() {
           {/* Stats row */}
           <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={Users} label={t("clients.stats.members")} value={stats.memberCount} />
-            <StatCard icon={FolderOpen} label={t("clients.stats.grants")} value={stats.grantsCount} />
-            <StatCard icon={FileText} label={t("clients.stats.proposals")} value={stats.proposalsCount} />
-            <StatCard icon={Send} label={t("clients.stats.submissions")} value={stats.submissionsCount} />
+            <StatCard
+              icon={FolderOpen}
+              label={t("clients.stats.grants")}
+              value={stats.grantsCount}
+            />
+            <StatCard
+              icon={FileText}
+              label={t("clients.stats.proposals")}
+              value={stats.proposalsCount}
+            />
+            <StatCard
+              icon={Send}
+              label={t("clients.stats.submissions")}
+              value={stats.submissionsCount}
+            />
           </div>
 
           {/* Tabs for Info / Grants */}
@@ -106,7 +123,15 @@ function ClientLayout() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+}) {
   return (
     <Card>
       <CardContent className="p-4">

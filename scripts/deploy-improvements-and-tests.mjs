@@ -166,8 +166,16 @@ describe("budget-analytics", () => {
 `;
 
 fs.writeFileSync(path.join(GRANTDESK_LIB, "prioritization.ts"), prioritizationCode, "utf-8");
-fs.writeFileSync(path.join(GRANTDESK_LIB, "prioritization.test.ts"), prioritizationTestCode, "utf-8");
+fs.writeFileSync(
+  path.join(GRANTDESK_LIB, "prioritization.test.ts"),
+  prioritizationTestCode,
+  "utf-8",
+);
 fs.writeFileSync(path.join(GRANTDESK_LIB, "budget-analytics.ts"), budgetAnalyticsCode, "utf-8");
-fs.writeFileSync(path.join(GRANTDESK_LIB, "budget-analytics.test.ts"), budgetAnalyticsTestCode, "utf-8");
+fs.writeFileSync(
+  path.join(GRANTDESK_LIB, "budget-analytics.test.ts"),
+  budgetAnalyticsTestCode,
+  "utf-8",
+);
 
 console.log("Written prioritization and budget-analytics logic and tests!");

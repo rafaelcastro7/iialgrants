@@ -2,7 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, DollarSign, Calendar, Users, Target, Tag, Globe, FileText, Shield } from "lucide-react";
+import {
+  Building2,
+  MapPin,
+  DollarSign,
+  Calendar,
+  Users,
+  Target,
+  Tag,
+  Globe,
+  FileText,
+  Shield,
+} from "lucide-react";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_authenticated/clients/$orgId/info")({
@@ -34,8 +45,16 @@ function ClientInfoTab() {
           <CardContent className="space-y-4">
             <DetailRow label={t("org.name")} value={organization.name} icon={Building2} />
             <DetailRow label={t("clients.info.slug")} value={organization.slug} icon={Tag} />
-            <DetailRow label={t("clients.info.created")} value={format(new Date(organization.created_at), "PPP")} icon={Calendar} />
-            <DetailRow label={t("clients.info.role")} value={<Badge>{t(`clients.roles.${membership}`)}</Badge>} icon={Shield} />
+            <DetailRow
+              label={t("clients.info.created")}
+              value={format(new Date(organization.created_at), "PPP")}
+              icon={Calendar}
+            />
+            <DetailRow
+              label={t("clients.info.role")}
+              value={<Badge>{t(`clients.roles.${membership}`)}</Badge>}
+              icon={Shield}
+            />
           </CardContent>
         </Card>
 
@@ -44,48 +63,128 @@ function ClientInfoTab() {
             <CardTitle>{t("clients.info.grantReadinessProfile")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <DetailRow label={t("org.sectors")} value={profile.sectors?.join(", ") || t("app.none")} icon={Target} />
-            <DetailRow label={t("org.jurisdictions")} value={profile.jurisdictions?.join(", ") || "CA"} icon={Globe} />
-            <DetailRow label={t("org.stage")} value={t(`org.stages.${profile.stage}`)} icon={Users} />
+            <DetailRow
+              label={t("org.sectors")}
+              value={profile.sectors?.join(", ") || t("app.none")}
+              icon={Target}
+            />
+            <DetailRow
+              label={t("org.jurisdictions")}
+              value={profile.jurisdictions?.join(", ") || "CA"}
+              icon={Globe}
+            />
+            <DetailRow
+              label={t("org.stage")}
+              value={t(`org.stages.${profile.stage}`)}
+              icon={Users}
+            />
             <DetailRow
               label={t("org.budget")}
-              value={profile.annual_budget_cad ? `$${profile.annual_budget_cad.toLocaleString()} CAD` : t("app.none")}
+              value={
+                profile.annual_budget_cad
+                  ? `$${profile.annual_budget_cad.toLocaleString()} CAD`
+                  : t("app.none")
+              }
               icon={DollarSign}
             />
-            <DetailRow label={t("org.focus")} value={profile.focus_areas || t("app.none")} icon={FileText} />
-            <DetailRow label={t("clients.info.legalName")} value={profile.legal_name || t("app.none")} icon={FileText} />
-            <DetailRow label={t("clients.info.businessNumber")} value={profile.business_number || t("app.none")} icon={Shield} />
-            <DetailRow label={t("clients.info.website")} value={profile.website || t("app.none")} icon={Globe} />
-            <DetailRow label={t("clients.info.mission")} value={profile.mission || t("app.none")} icon={Target} />
-            <DetailRow label={t("clients.info.applicantTypes")} value={profile.applicant_types?.join(", ") || t("app.none")} icon={Users} />
-            <DetailRow label={t("clients.info.activities")} value={profile.activities?.join(", ") || t("app.none")} icon={Target} />
-            <DetailRow label={t("clients.info.capabilities")} value={profile.capabilities?.join(", ") || t("app.none")} icon={Target} />
-            <DetailRow label={t("clients.info.populationsServed")} value={profile.populations_served?.join(", ") || t("app.none")} icon={Users} />
-            <DetailRow label={t("clients.info.operatingRegions")} value={profile.operating_regions?.join(", ") || t("app.none")} icon={Globe} />
-            <DetailRow label={t("clients.info.languages")} value={profile.languages?.join(", ") || t("app.none")} icon={Globe} />
+            <DetailRow
+              label={t("org.focus")}
+              value={profile.focus_areas || t("app.none")}
+              icon={FileText}
+            />
+            <DetailRow
+              label={t("clients.info.legalName")}
+              value={profile.legal_name || t("app.none")}
+              icon={FileText}
+            />
+            <DetailRow
+              label={t("clients.info.businessNumber")}
+              value={profile.business_number || t("app.none")}
+              icon={Shield}
+            />
+            <DetailRow
+              label={t("clients.info.website")}
+              value={profile.website || t("app.none")}
+              icon={Globe}
+            />
+            <DetailRow
+              label={t("clients.info.mission")}
+              value={profile.mission || t("app.none")}
+              icon={Target}
+            />
+            <DetailRow
+              label={t("clients.info.applicantTypes")}
+              value={profile.applicant_types?.join(", ") || t("app.none")}
+              icon={Users}
+            />
+            <DetailRow
+              label={t("clients.info.activities")}
+              value={profile.activities?.join(", ") || t("app.none")}
+              icon={Target}
+            />
+            <DetailRow
+              label={t("clients.info.capabilities")}
+              value={profile.capabilities?.join(", ") || t("app.none")}
+              icon={Target}
+            />
+            <DetailRow
+              label={t("clients.info.populationsServed")}
+              value={profile.populations_served?.join(", ") || t("app.none")}
+              icon={Users}
+            />
+            <DetailRow
+              label={t("clients.info.operatingRegions")}
+              value={profile.operating_regions?.join(", ") || t("app.none")}
+              icon={Globe}
+            />
+            <DetailRow
+              label={t("clients.info.languages")}
+              value={profile.languages?.join(", ") || t("app.none")}
+              icon={Globe}
+            />
             <DetailRow
               label={t("clients.info.yearsOperating")}
-              value={profile.years_operating ? `${profile.years_operating} ${t("clients.info.years")}` : t("app.none")}
+              value={
+                profile.years_operating
+                  ? `${profile.years_operating} ${t("clients.info.years")}`
+                  : t("app.none")
+              }
               icon={Calendar}
             />
             <DetailRow
               label={t("clients.info.employeeCount")}
-              value={profile.employee_count ? `${profile.employee_count.toLocaleString()}` : t("app.none")}
+              value={
+                profile.employee_count
+                  ? `${profile.employee_count.toLocaleString()}`
+                  : t("app.none")
+              }
               icon={Users}
             />
             <DetailRow
               label={t("clients.info.registrationStatus")}
-              value={profile.registration_status ? profile.registration_status.replace(/_/g, " ") : t("app.none")}
+              value={
+                profile.registration_status
+                  ? profile.registration_status.replace(/_/g, " ")
+                  : t("app.none")
+              }
               icon={Shield}
             />
             <DetailRow
               label={t("clients.info.fundingMin")}
-              value={profile.funding_min_cad ? `$${profile.funding_min_cad.toLocaleString()} CAD` : t("app.none")}
+              value={
+                profile.funding_min_cad
+                  ? `$${profile.funding_min_cad.toLocaleString()} CAD`
+                  : t("app.none")
+              }
               icon={DollarSign}
             />
             <DetailRow
               label={t("clients.info.fundingMax")}
-              value={profile.funding_max_cad ? `$${profile.funding_max_cad.toLocaleString()} CAD` : t("app.none")}
+              value={
+                profile.funding_max_cad
+                  ? `$${profile.funding_max_cad.toLocaleString()} CAD`
+                  : t("app.none")
+              }
               icon={DollarSign}
             />
             <DetailRow
@@ -95,7 +194,11 @@ function ClientInfoTab() {
             />
             <DetailRow
               label={t("clients.info.indirectCostRate")}
-              value={profile.indirect_cost_rate_pct ? `${profile.indirect_cost_rate_pct}%` : t("app.none")}
+              value={
+                profile.indirect_cost_rate_pct
+                  ? `${profile.indirect_cost_rate_pct}%`
+                  : t("app.none")
+              }
               icon={DollarSign}
             />
           </CardContent>
@@ -146,7 +249,15 @@ function ClientInfoTab() {
   );
 }
 
-function DetailRow({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon: React.ComponentType<{ className?: string }> }) {
+function DetailRow({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
   return (
     <div className="flex items-start gap-3">
       <Icon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
@@ -191,15 +302,30 @@ function CompletenessIndicator({ profile }: { profile: Record<string, unknown> }
       <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#16a34a" : pct >= 50 ? "#ca8a04" : "#dc2626" }}
+          style={{
+            width: `${pct}%`,
+            backgroundColor: pct >= 80 ? "#16a34a" : pct >= 50 ? "#ca8a04" : "#dc2626",
+          }}
         />
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">{filled} of {fields.length} fields completed</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {filled} of {fields.length} fields completed
+      </p>
     </div>
   );
 }
 
-function ActionButton({ label, href, icon: Icon, description }: { label: string; href: string; icon: React.ComponentType<{ className?: string }>; description: string }) {
+function ActionButton({
+  label,
+  href,
+  icon: Icon,
+  description,
+}: {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+}) {
   return (
     <a
       href={href}

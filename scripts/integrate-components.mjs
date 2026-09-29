@@ -9,12 +9,9 @@ let rootContent = fs.readFileSync(rootPath, "utf-8");
 if (!rootContent.includes("AskGrantDeskChat")) {
   rootContent = rootContent.replace(
     'import { Nav } from "@/components/Nav";',
-    'import { Nav } from "@/components/Nav";\nimport { AskGrantDeskChat } from "@/components/AskGrantDeskChat";'
+    'import { Nav } from "@/components/Nav";\nimport { AskGrantDeskChat } from "@/components/AskGrantDeskChat";',
   );
-  rootContent = rootContent.replace(
-    "<Nav />",
-    "<Nav />\n      <AskGrantDeskChat />"
-  );
+  rootContent = rootContent.replace("<Nav />", "<Nav />\n      <AskGrantDeskChat />");
   fs.writeFileSync(rootPath, rootContent, "utf-8");
   console.log("Updated __root.tsx with AskGrantDeskChat!");
 }
@@ -25,11 +22,11 @@ let matchesContent = fs.readFileSync(matchesPath, "utf-8");
 if (!matchesContent.includes("ExplainableFitScorecard")) {
   matchesContent = matchesContent.replace(
     'import { findMatches } from "@/server/match.functions";',
-    'import { findMatches } from "@/server/match.functions";\nimport { ExplainableFitScorecard } from "@/components/ExplainableFitScorecard";'
+    'import { findMatches } from "@/server/match.functions";\nimport { ExplainableFitScorecard } from "@/components/ExplainableFitScorecard";',
   );
   matchesContent = matchesContent.replace(
-    '{axes.length > 0 && (',
-    '<div className="mt-3"><ExplainableFitScorecard relevance={row.relevance} verdict={row.verdict} axes={axes} /></div>\n        {axes.length > 0 && ('
+    "{axes.length > 0 && (",
+    '<div className="mt-3"><ExplainableFitScorecard relevance={row.relevance} verdict={row.verdict} axes={axes} /></div>\n        {axes.length > 0 && (',
   );
   fs.writeFileSync(matchesPath, matchesContent, "utf-8");
   console.log("Updated clients_.$clientId.matches.tsx with ExplainableFitScorecard!");
@@ -41,7 +38,7 @@ let clientDetailContent = fs.readFileSync(clientDetailPath, "utf-8");
 if (!clientDetailContent.includes("ProposalPipelineBoard")) {
   clientDetailContent = clientDetailContent.replace(
     'import { assessProfile, nextGap, type ProfileFields } from "@/lib/profile-completeness";',
-    'import { assessProfile, nextGap, type ProfileFields } from "@/lib/profile-completeness";\nimport { ProposalPipelineBoard, type ProposalItem } from "@/components/ProposalPipelineBoard";\nimport { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";'
+    'import { assessProfile, nextGap, type ProfileFields } from "@/lib/profile-completeness";\nimport { ProposalPipelineBoard, type ProposalItem } from "@/components/ProposalPipelineBoard";\nimport { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";',
   );
   // Add sample proposals pipeline state
   const pipelineSection = `
@@ -88,21 +85,21 @@ if (!clientDetailContent.includes("ProposalPipelineBoard")) {
         <GrantBudgetPlanner grantMaxAmount={150000} />
       </section>
   `;
-  clientDetailContent = clientDetailContent.replace(
-    '</main>',
-    `${pipelineSection}\n    </main>`
-  );
+  clientDetailContent = clientDetailContent.replace("</main>", `${pipelineSection}\n    </main>`);
   fs.writeFileSync(clientDetailPath, clientDetailContent, "utf-8");
   console.log("Updated clients.$clientId.tsx with ProposalPipelineBoard & GrantBudgetPlanner!");
 }
 
 // 4. Update proposal editor clients_.$clientId.proposals.$grantId.tsx to include ProposalApprovalWorkflow & GrantBudgetPlanner
-const proposalEditorPath = path.join(GRANTDESK_SRC, "routes/clients_.$clientId.proposals.$grantId.tsx");
+const proposalEditorPath = path.join(
+  GRANTDESK_SRC,
+  "routes/clients_.$clientId.proposals.$grantId.tsx",
+);
 let proposalEditorContent = fs.readFileSync(proposalEditorPath, "utf-8");
 if (!proposalEditorContent.includes("ProposalApprovalWorkflow")) {
   proposalEditorContent = proposalEditorContent.replace(
     'import { createFileRoute, Link } from "@tanstack/react-router";',
-    'import { createFileRoute, Link } from "@tanstack/react-router";\nimport { ProposalApprovalWorkflow } from "@/components/ProposalApprovalWorkflow";\nimport { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";'
+    'import { createFileRoute, Link } from "@tanstack/react-router";\nimport { ProposalApprovalWorkflow } from "@/components/ProposalApprovalWorkflow";\nimport { GrantBudgetPlanner } from "@/components/GrantBudgetPlanner";',
   );
 
   const workflowSection = `
@@ -120,8 +117,8 @@ if (!proposalEditorContent.includes("ProposalApprovalWorkflow")) {
   `;
 
   proposalEditorContent = proposalEditorContent.replace(
-    '</main>',
-    `${workflowSection}\n    </main>`
+    "</main>",
+    `${workflowSection}\n    </main>`,
   );
   fs.writeFileSync(proposalEditorPath, proposalEditorContent, "utf-8");
   console.log("Updated proposal editor with ProposalApprovalWorkflow & GrantBudgetPlanner!");
