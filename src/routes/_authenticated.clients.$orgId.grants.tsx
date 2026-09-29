@@ -218,7 +218,25 @@ function ClientGrantsTab() {
   );
 }
 
-function GrantCard({ grant }: { grant: any }) {
+interface GrantRow {
+  id: string;
+  title: string;
+  title_fr?: string | null;
+  summary?: string | null;
+  summary_fr?: string | null;
+  amount_cad_min?: number | null;
+  amount_cad_max?: number | null;
+  deadline?: string | null;
+  sectors?: string[];
+  language?: string | null;
+  url?: string | null;
+  status: string;
+  created_at: string;
+  funder?: { id: string; name: string; name_fr?: string | null; jurisdiction?: string | null } | null;
+  evaluation?: { fit_score: number; rationale_en?: string | null; rationale_fr?: string | null; eligibility_pass?: boolean | null; created_at: string } | null;
+}
+
+function GrantCard({ grant }: { grant: GrantRow }) {
   const { t } = useTranslation();
   const fitScore = grant.evaluation?.fit_score ?? null;
   const deadline = grant.deadline ? new Date(grant.deadline) : null;
@@ -294,7 +312,7 @@ function GrantCard({ grant }: { grant: any }) {
   );
 }
 
-function GrantTable({ grants }: { grants: any[] }) {
+function GrantTable({ grants }: { grants: GrantRow[] }) {
   const { t } = useTranslation();
 
   return (
