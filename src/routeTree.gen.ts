@@ -43,6 +43,7 @@ import { Route as AuthenticatedGrantsIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedFundersFunderIdRouteImport } from './routes/_authenticated.funders.$funderId'
 import { Route as AuthenticatedCompetitiveRecipientsRouteImport } from './routes/_authenticated.competitive.recipients'
 import { Route as AuthenticatedCompetitiveProgramsRouteImport } from './routes/_authenticated.competitive.programs'
+import { Route as AuthenticatedClientsOrgIdRouteImport } from './routes/_authenticated.clients.$orgId'
 import { Route as AuthenticatedAdminWorkflowsRouteImport } from './routes/_authenticated.admin.workflows'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
 import { Route as AuthenticatedAdminSourcesRouteImport } from './routes/_authenticated.admin.sources'
@@ -243,6 +244,12 @@ const AuthenticatedCompetitiveProgramsRoute =
     path: '/competitive/programs',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedClientsOrgIdRoute =
+  AuthenticatedClientsOrgIdRouteImport.update({
+    id: '/clients/$orgId',
+    path: '/clients/$orgId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminWorkflowsRoute =
   AuthenticatedAdminWorkflowsRouteImport.update({
     id: '/workflows',
@@ -385,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
+  '/clients/$orgId': typeof AuthenticatedClientsOrgIdRoute
   '/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -438,6 +446,7 @@ export interface FileRoutesByTo {
   '/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
+  '/clients/$orgId': typeof AuthenticatedClientsOrgIdRoute
   '/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -494,6 +503,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/sources': typeof AuthenticatedAdminSourcesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/workflows': typeof AuthenticatedAdminWorkflowsRoute
+  '/_authenticated/clients/$orgId': typeof AuthenticatedClientsOrgIdRoute
   '/_authenticated/competitive/programs': typeof AuthenticatedCompetitiveProgramsRoute
   '/_authenticated/competitive/recipients': typeof AuthenticatedCompetitiveRecipientsRoute
   '/_authenticated/funders/$funderId': typeof AuthenticatedFundersFunderIdRoute
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/admin/sources'
     | '/admin/users'
     | '/admin/workflows'
+    | '/clients/$orgId'
     | '/competitive/programs'
     | '/competitive/recipients'
     | '/funders/$funderId'
@@ -603,6 +614,7 @@ export interface FileRouteTypes {
     | '/admin/sources'
     | '/admin/users'
     | '/admin/workflows'
+    | '/clients/$orgId'
     | '/competitive/programs'
     | '/competitive/recipients'
     | '/funders/$funderId'
@@ -658,6 +670,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/sources'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/workflows'
+    | '/_authenticated/clients/$orgId'
     | '/_authenticated/competitive/programs'
     | '/_authenticated/competitive/recipients'
     | '/_authenticated/funders/$funderId'
@@ -937,6 +950,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCompetitiveProgramsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/clients/$orgId': {
+      id: '/_authenticated/clients/$orgId'
+      path: '/clients/$orgId'
+      fullPath: '/clients/$orgId'
+      preLoaderRoute: typeof AuthenticatedClientsOrgIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/workflows': {
       id: '/_authenticated/admin/workflows'
       path: '/workflows'
@@ -1136,6 +1156,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRenewalRoute: typeof AuthenticatedRenewalRoute
   AuthenticatedSubmissionsRoute: typeof AuthenticatedSubmissionsRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
+  AuthenticatedClientsOrgIdRoute: typeof AuthenticatedClientsOrgIdRoute
   AuthenticatedCompetitiveProgramsRoute: typeof AuthenticatedCompetitiveProgramsRoute
   AuthenticatedCompetitiveRecipientsRoute: typeof AuthenticatedCompetitiveRecipientsRoute
   AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
@@ -1167,6 +1188,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedRenewalRoute: AuthenticatedRenewalRoute,
   AuthenticatedSubmissionsRoute: AuthenticatedSubmissionsRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
+  AuthenticatedClientsOrgIdRoute: AuthenticatedClientsOrgIdRoute,
   AuthenticatedCompetitiveProgramsRoute: AuthenticatedCompetitiveProgramsRoute,
   AuthenticatedCompetitiveRecipientsRoute:
     AuthenticatedCompetitiveRecipientsRoute,
