@@ -232,8 +232,19 @@ interface GrantRow {
   url?: string | null;
   status: string;
   created_at: string;
-  funder?: { id: string; name: string; name_fr?: string | null; jurisdiction?: string | null } | null;
-  evaluation?: { fit_score: number; rationale_en?: string | null; rationale_fr?: string | null; eligibility_pass?: boolean | null; created_at: string } | null;
+  funder?: {
+    id: string;
+    name: string;
+    name_fr?: string | null;
+    jurisdiction?: string | null;
+  } | null;
+  evaluation?: {
+    fit_score: number;
+    rationale_en?: string | null;
+    rationale_fr?: string | null;
+    eligibility_pass?: boolean | null;
+    created_at: string;
+  } | null;
 }
 
 function GrantCard({ grant }: { grant: GrantRow }) {
