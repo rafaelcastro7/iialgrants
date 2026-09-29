@@ -35,6 +35,7 @@ import { Route as AuthenticatedProposalsIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedGrantsIndexRouteImport } from './routes/_authenticated.grants.index'
 import { Route as AuthenticatedFundersIndexRouteImport } from './routes/_authenticated.funders.index'
 import { Route as AuthenticatedCompetitiveIndexRouteImport } from './routes/_authenticated.competitive.index'
+import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated.clients.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated.proposals.$id'
@@ -195,6 +196,12 @@ const AuthenticatedCompetitiveIndexRoute =
   AuthenticatedCompetitiveIndexRouteImport.update({
     id: '/competitive/',
     path: '/competitive/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedClientsIndexRoute =
+  AuthenticatedClientsIndexRouteImport.update({
+    id: '/clients/',
+    path: '/clients/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
@@ -385,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/clients/': typeof AuthenticatedClientsIndexRoute
   '/competitive/': typeof AuthenticatedCompetitiveIndexRoute
   '/funders/': typeof AuthenticatedFundersIndexRoute
   '/grants/': typeof AuthenticatedGrantsIndexRoute
@@ -437,6 +445,7 @@ export interface FileRoutesByTo {
   '/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/clients': typeof AuthenticatedClientsIndexRoute
   '/competitive': typeof AuthenticatedCompetitiveIndexRoute
   '/funders': typeof AuthenticatedFundersIndexRoute
   '/grants': typeof AuthenticatedGrantsIndexRoute
@@ -492,6 +501,7 @@ export interface FileRoutesById {
   '/_authenticated/proposals/$id': typeof AuthenticatedProposalsIdRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/_authenticated/competitive/': typeof AuthenticatedCompetitiveIndexRoute
   '/_authenticated/funders/': typeof AuthenticatedFundersIndexRoute
   '/_authenticated/grants/': typeof AuthenticatedGrantsIndexRoute
@@ -547,6 +557,7 @@ export interface FileRouteTypes {
     | '/proposals/$id'
     | '/api/public/health'
     | '/admin/'
+    | '/clients/'
     | '/competitive/'
     | '/funders/'
     | '/grants/'
@@ -599,6 +610,7 @@ export interface FileRouteTypes {
     | '/proposals/$id'
     | '/api/public/health'
     | '/admin'
+    | '/clients'
     | '/competitive'
     | '/funders'
     | '/grants'
@@ -653,6 +665,7 @@ export interface FileRouteTypes {
     | '/_authenticated/proposals/$id'
     | '/api/public/health'
     | '/_authenticated/admin/'
+    | '/_authenticated/clients/'
     | '/_authenticated/competitive/'
     | '/_authenticated/funders/'
     | '/_authenticated/grants/'
@@ -866,6 +879,13 @@ declare module '@tanstack/react-router' {
       path: '/competitive'
       fullPath: '/competitive/'
       preLoaderRoute: typeof AuthenticatedCompetitiveIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/clients/': {
+      id: '/_authenticated/clients/'
+      path: '/clients'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof AuthenticatedClientsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/': {
@@ -1121,6 +1141,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedFundersFunderIdRoute: typeof AuthenticatedFundersFunderIdRoute
   AuthenticatedGrantsIdRoute: typeof AuthenticatedGrantsIdRouteWithChildren
   AuthenticatedProposalsIdRoute: typeof AuthenticatedProposalsIdRoute
+  AuthenticatedClientsIndexRoute: typeof AuthenticatedClientsIndexRoute
   AuthenticatedCompetitiveIndexRoute: typeof AuthenticatedCompetitiveIndexRoute
   AuthenticatedFundersIndexRoute: typeof AuthenticatedFundersIndexRoute
   AuthenticatedGrantsIndexRoute: typeof AuthenticatedGrantsIndexRoute
@@ -1152,6 +1173,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedFundersFunderIdRoute: AuthenticatedFundersFunderIdRoute,
   AuthenticatedGrantsIdRoute: AuthenticatedGrantsIdRouteWithChildren,
   AuthenticatedProposalsIdRoute: AuthenticatedProposalsIdRoute,
+  AuthenticatedClientsIndexRoute: AuthenticatedClientsIndexRoute,
   AuthenticatedCompetitiveIndexRoute: AuthenticatedCompetitiveIndexRoute,
   AuthenticatedFundersIndexRoute: AuthenticatedFundersIndexRoute,
   AuthenticatedGrantsIndexRoute: AuthenticatedGrantsIndexRoute,
