@@ -83,6 +83,13 @@ type NavGroup = {
 // "how do I get to related things" the same mental model.
 const NAV_GROUPS: NavGroup[] = [
   {
+    label: "Clients",
+    items: [
+      { to: "/clients", labelKey: "nav.clients", icon: Users },
+      { to: "/clients", labelKey: "nav.clientsList", icon: Briefcase },
+    ],
+  },
+  {
     label: "Discover",
     items: [
       { to: "/grants", labelKey: "nav.grants", icon: Search },
