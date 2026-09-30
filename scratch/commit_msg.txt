@@ -1,0 +1,10 @@
+feat(email): port organization email settings and delivery transports
+
+- Add org_email_settings migration with encrypted storage (pgp_sym_encrypt via server EMAIL_SETTINGS_KEY)
+- Support presets: Gmail (465 TLS), Microsoft 365 (587 STARTTLS), Custom SMTP, Resend
+- Add secure server functions and RPC helpers with role-based checks
+- Deliver pending outbox rows via SMTP (Nodemailer) or Resend API with idempotency and retry backoff
+- Add settings page at /settings/email with live test email sender and status display
+- Add unit tests for presets, form validation, and provider delivery
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
